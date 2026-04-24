@@ -10,6 +10,21 @@ export default function Orders() {
   const [search, setSearch]     = useState('')
   const [detail, setDetail]     = useState(null)
   const [cancelling, setCancelling] = useState(false)
+  const [paying, setPaying] = useState(false)
+
+  const markPaid = async (id) => {
+    if (!window.confirm('Marquer ce paiement comme reçu ?')) return
+    setPaying(true)
+    try {
+      await api.patch(`/admin/orders/${id}/payment`, { paymentStatus: 'PAID' })
+      setDetail(prev => prev ? { ...prev, paymentStatus: 'PAID' } : prev)
+      fetch()
+    } catch (e) {
+      alert(e.response?.data?.message ?? 'Erreur')
+    } finally {
+      setPaying(false)
+    }
+  }
 
   const cancelOrder = async (id) => {
     if (!window.confirm('Annuler cette commande ?')) return
@@ -124,15 +139,26 @@ export default function Orders() {
               <Row label="Créée le"      value={detail.createdAt ? new Date(detail.createdAt).toLocaleString('fr-FR') : '—'} />
             </div>
             <div style={{ marginTop: 20, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              {!['DELIVERED', 'CANCELLED'].includes(detail.status) && (
-                <button
-                  onClick={() => cancelOrder(detail.id)}
-                  disabled={cancelling}
-                  style={{ ...btnOutline, color: '#e53e3e', borderColor: '#e53e3e', background: 'rgba(229,62,62,0.08)' }}
-                >
-                  {cancelling ? 'Annulation…' : '✕ Annuler la commande'}
-                </button>
-              )}
+              <div style={{ display: 'flex', gap: 8 }}>
+                {!['DELIVERED', 'CANCELLED'].includes(detail.status) && (
+                  <button
+                    onClick={() => cancelOrder(detail.id)}
+                    disabled={cancelling}
+                    style={{ ...btnOutline, color: '#e53e3e', borderColor: '#e53e3e', background: 'rgba(229,62,62,0.08)' }}
+                  >
+                    {cancelling ? 'Annulation…' : '✕ Annuler'}
+                  </button>
+                )}
+                {detail.status === 'DELIVERED' && detail.paymentStatus === 'PENDING' && (
+                  <button
+                    onClick={() => markPaid(detail.id)}
+                    disabled={paying}
+                    style={{ ...btnOutline, color: '#38a169', borderColor: '#38a169', background: 'rgba(56,161,105,0.08)' }}
+                  >
+                    {paying ? 'En cours…' : '✓ Marquer payé'}
+                  </button>
+                )}
+              </div>
               <button onClick={() => setDetail(null)} style={{ ...btnOutline, marginLeft: 'auto' }}>Fermer</button>
             </div>
           </div>
