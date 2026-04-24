@@ -5,10 +5,25 @@ import { RefreshCw, Search } from 'lucide-react'
 import { glass, glassInput } from '../lib/glassStyles'
 
 export default function Orders() {
-  const [orders, setOrders]   = useState([])
-  const [loading, setLoading] = useState(true)
-  const [search, setSearch]   = useState('')
-  const [detail, setDetail]   = useState(null)
+  const [orders, setOrders]     = useState([])
+  const [loading, setLoading]   = useState(true)
+  const [search, setSearch]     = useState('')
+  const [detail, setDetail]     = useState(null)
+  const [cancelling, setCancelling] = useState(false)
+
+  const cancelOrder = async (id) => {
+    if (!window.confirm('Annuler cette commande ?')) return
+    setCancelling(true)
+    try {
+      await api.patch(`/admin/orders/${id}/cancel`)
+      setDetail(null)
+      fetch()
+    } catch (e) {
+      alert(e.response?.data?.message ?? 'Erreur lors de l\'annulation')
+    } finally {
+      setCancelling(false)
+    }
+  }
 
   const fetch = useCallback(async () => {
     setLoading(true)
@@ -108,8 +123,17 @@ export default function Orders() {
               {detail.disputeNotes && <Row label="Note litige" value={<span style={{ color: 'var(--danger)' }}>{detail.disputeNotes}</span>} />}
               <Row label="Créée le"      value={detail.createdAt ? new Date(detail.createdAt).toLocaleString('fr-FR') : '—'} />
             </div>
-            <div style={{ marginTop: 20, textAlign: 'right' }}>
-              <button onClick={() => setDetail(null)} style={btnOutline}>Fermer</button>
+            <div style={{ marginTop: 20, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              {!['DELIVERED', 'CANCELLED'].includes(detail.status) && (
+                <button
+                  onClick={() => cancelOrder(detail.id)}
+                  disabled={cancelling}
+                  style={{ ...btnOutline, color: '#e53e3e', borderColor: '#e53e3e', background: 'rgba(229,62,62,0.08)' }}
+                >
+                  {cancelling ? 'Annulation…' : '✕ Annuler la commande'}
+                </button>
+              )}
+              <button onClick={() => setDetail(null)} style={{ ...btnOutline, marginLeft: 'auto' }}>Fermer</button>
             </div>
           </div>
         </div>
