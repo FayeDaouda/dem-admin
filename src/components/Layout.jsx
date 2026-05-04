@@ -2,19 +2,20 @@ import { useState, useEffect } from 'react'
 import { NavLink, useNavigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import {
-  LayoutDashboard, CreditCard, Package, Users, Settings, LogOut, Truck, Map, Menu, X,
+  LayoutDashboard, CreditCard, Package, Users, Settings, LogOut, Truck, Map, Menu, X, TrendingUp,
 } from 'lucide-react'
 import logoSrc from '../assets/logo-dem.svg'
 import { useResponsive } from '../lib/useResponsive'
 
 const NAV = [
-  { to: '/',          icon: LayoutDashboard, label: 'Dashboard' },
-  { to: '/map',       icon: Map,             label: 'Carte live' },
-  { to: '/payments',  icon: CreditCard,      label: 'Paiements' },
-  { to: '/orders',    icon: Package,         label: 'Courses' },
-  { to: '/drivers',   icon: Truck,           label: 'Drivers' },
-  { to: '/clients',   icon: Users,           label: 'Clients' },
-  { to: '/config',    icon: Settings,        label: 'Tarifs' },
+  { to: '/',            icon: LayoutDashboard, label: 'Dashboard' },
+  { to: '/map',         icon: Map,             label: 'Carte live' },
+  { to: '/payments',    icon: CreditCard,      label: 'Paiements' },
+  { to: '/orders',      icon: Package,         label: 'Courses' },
+  { to: '/drivers',     icon: Truck,           label: 'Drivers' },
+  { to: '/clients',     icon: Users,           label: 'Clients' },
+  { to: '/acquisition', icon: TrendingUp,      label: 'Acquisition' },
+  { to: '/config',      icon: Settings,        label: 'Tarifs' },
 ]
 
 export default function Layout({ children }) {

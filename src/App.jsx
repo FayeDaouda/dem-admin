@@ -8,8 +8,9 @@ const LiveMap = lazy(() => import('./pages/LiveMap'))
 import Payments  from './pages/Payments'
 import Orders    from './pages/Orders'
 import Drivers   from './pages/Drivers'
-import Clients   from './pages/Clients'
-import Config    from './pages/Config'
+import Clients     from './pages/Clients'
+import Config      from './pages/Config'
+import Acquisition from './pages/Acquisition'
 
 function ProtectedRoute({ children }) {
   const { user, loading } = useAuth()
@@ -33,7 +34,8 @@ function AppRoutes() {
       <Route path="/orders"   element={<ProtectedRoute><Orders /></ProtectedRoute>} />
       <Route path="/drivers"  element={<ProtectedRoute><Drivers /></ProtectedRoute>} />
       <Route path="/clients"  element={<ProtectedRoute><Clients /></ProtectedRoute>} />
-      <Route path="/config"   element={<ProtectedRoute><Config /></ProtectedRoute>} />
+      <Route path="/config"      element={<ProtectedRoute><Config /></ProtectedRoute>} />
+      <Route path="/acquisition" element={<ProtectedRoute><Acquisition /></ProtectedRoute>} />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   )
