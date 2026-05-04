@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import api from '../lib/api'
-import { Save } from 'lucide-react'
+import { Save, ExternalLink } from 'lucide-react'
+import { useNavigate } from 'react-router-dom'
 import { glass, glassInput } from '../lib/glassStyles'
 
 const CONFIG_META = {
@@ -9,7 +10,22 @@ const CONFIG_META = {
   price_per_km:       { label: 'Prix par kilomètre (F)',        description: 'Montant facturé par km de distance haversine' },
 }
 
+// Grille des frais DEM (identique à pricing_service.dart et orders.service.js)
+const FEE_GRID = [
+  [900,  1250,  65], [1251, 1600,  90], [1601, 2000, 120],
+  [2001, 2450, 155], [2451, 2750, 185], [2751, 3100, 215],
+  [3101, 3490, 255], [3491, 3900, 295], [3901, 4450, 350],
+  [4451, 5000, 425],
+]
+function computeDemFee(coursePrice) {
+  for (const [min, max, fee] of FEE_GRID) {
+    if (coursePrice >= min && coursePrice <= max) return fee
+  }
+  return coursePrice < 900 ? 0 : 425
+}
+
 export default function Config() {
+  const navigate = useNavigate()
   const [config, setConfig] = useState({})
   const [draft,  setDraft]  = useState({})
   const [loading, setLoading] = useState(true)
@@ -111,24 +127,59 @@ export default function Config() {
             </div>
           ))}
 
-          {/* Aperçu prix */}
+          {/* Simulation prix */}
           <div style={{ ...glass, padding: '20px 24px' }}>
-            <h3 style={{ fontSize: 14, fontWeight: 600, marginBottom: 16 }}>Simulation — Course de 5 km</h3>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 8, fontSize: 13 }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
+              <h3 style={{ fontSize: 14, fontWeight: 600 }}>Simulation — Course de 5 km</h3>
+              <button
+                onClick={() => navigate('/acquisition')}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: 5,
+                  background: 'none', border: 'none', color: 'var(--primary)',
+                  fontSize: 11, fontWeight: 600, cursor: 'pointer',
+                }}
+              >
+                Voir grille frais <ExternalLink size={11} />
+              </button>
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10, fontSize: 13 }}>
               {['DELIVERY', 'RIDE'].map(type => {
-                const base = parseFloat(draft[`base_fare_${type.toLowerCase()}`] ?? 500)
-                const perKm = parseFloat(draft['price_per_km'] ?? 200)
-                const total = Math.round(base + 5 * perKm)
+                const base      = parseFloat(draft[`base_fare_${type.toLowerCase()}`] ?? 500)
+                const perKm     = parseFloat(draft['price_per_km'] ?? 200)
+                const coursePx  = Math.round(base + 5 * perKm)
+                const demFee    = computeDemFee(coursePx)
+                const totalPx   = coursePx + demFee
+
                 return (
-                  <div key={type} style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 12px', background: 'var(--surface2)', borderRadius: 'var(--radius-sm)' }}>
-                    <span style={{ color: 'var(--text-muted)' }}>{type}</span>
-                    <span style={{ fontWeight: 700 }}>{total.toLocaleString()} F</span>
+                  <div key={type} style={{ background: 'var(--surface2)', borderRadius: 'var(--radius-sm)', overflow: 'hidden' }}>
+                    {/* Titre type */}
+                    <div style={{ padding: '6px 12px', background: 'rgba(0,119,182,.07)', fontWeight: 700, fontSize: 11, color: 'var(--primary)', letterSpacing: '.5px' }}>
+                      {type}
+                    </div>
+                    {/* Décomposition */}
+                    <div style={{ padding: '10px 12px', display: 'flex', flexDirection: 'column', gap: 5 }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                        <span style={{ color: 'var(--text-muted)' }}>Prix course (livreur)</span>
+                        <span style={{ fontWeight: 600 }}>{coursePx.toLocaleString()} F</span>
+                      </div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                        <span style={{ color: 'var(--text-muted)' }}>+ Frais DEM</span>
+                        <span style={{ fontWeight: 600, color: 'var(--primary)' }}>+{demFee} F</span>
+                      </div>
+                      <div style={{ height: 1, background: 'rgba(0,0,0,.08)', margin: '3px 0' }} />
+                      <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                        <span style={{ fontWeight: 700 }}>Total client</span>
+                        <span style={{ fontWeight: 800, fontSize: 15 }}>{totalPx.toLocaleString()} F</span>
+                      </div>
+                    </div>
                   </div>
                 )
               })}
             </div>
-            <p style={{ color: 'var(--text-muted)', fontSize: 11, marginTop: 10 }}>
-              Hors multiplicateur surge. Calcul : base + 5 × prix/km
+
+            <p style={{ color: 'var(--text-muted)', fontSize: 11, marginTop: 12 }}>
+              Hors surge pricing. Calcul : base + 5 × prix/km + frais DEM selon grille.
             </p>
           </div>
         </div>
