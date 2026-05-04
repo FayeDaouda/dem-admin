@@ -71,8 +71,9 @@ export default function Dashboard() {
       setSnapshot(lRes.data)
       setTimeseries(tRes.data.map(d => ({
         ...d,
-        dateLabel: new Date(d.date + 'T00:00:00').toLocaleDateString('fr-FR', { weekday: 'short', day: 'numeric' }),
-        revenueK: Math.round(d.revenue / 1000),
+        dateLabel:      new Date(d.date + 'T00:00:00').toLocaleDateString('fr-FR', { weekday: 'short', day: 'numeric' }),
+        driverRevenueK: Math.round((d.driverRevenue ?? 0) / 1000),
+        demRevenueK:    Math.round((d.demRevenue    ?? 0) / 1000),
       })))
     } catch (e) {
       console.error(e)
@@ -116,7 +117,7 @@ export default function Dashboard() {
   })).filter(d => d.value > 0) : []
 
   const { isMobile, isTablet } = useResponsive()
-  const statCols = isMobile ? 'repeat(2,1fr)' : isTablet ? 'repeat(3,1fr)' : 'repeat(6,1fr)'
+  const statCols = isMobile ? 'repeat(2,1fr)' : isTablet ? 'repeat(3,1fr)' : 'repeat(7,1fr)'
   const chartCols = isMobile ? '1fr' : isTablet ? '1fr 1fr' : '1fr 1fr 300px'
   const livecols  = isMobile ? '1fr' : '1fr 320px'
 
@@ -132,8 +133,10 @@ export default function Dashboard() {
         <StatCard icon={Truck}        label="Drivers dispo"     value={loading ? '…' : stats?.drivers.available ?? 0}   color="var(--success)"
                   sub={`/ ${stats?.drivers.total ?? 0} total`} />
         <StatCard icon={Users}        label="Clients"           value={loading ? '…' : stats?.clients.total ?? 0}       color="#a78bfa" />
-        <StatCard icon={CreditCard}   label="Revenus du jour"   value={loading ? '…' : `${(stats?.revenue.today ?? 0).toLocaleString()} F`} color="var(--success)"
-                  sub={`Total : ${((stats?.revenue.total ?? 0) / 1000).toFixed(0)}k F`} />
+        <StatCard icon={CreditCard}   label="Livreurs du jour"  value={loading ? '…' : `${(stats?.revenue.driver.today ?? 0).toLocaleString()} F`} color="var(--success)"
+                  sub={`Total : ${((stats?.revenue.driver.total ?? 0) / 1000).toFixed(0)}k F`} />
+        <StatCard icon={CreditCard}   label="Frais DEM du jour" value={loading ? '…' : `${(stats?.revenue.dem.today ?? 0).toLocaleString()} F`} color="var(--warning)"
+                  sub={`Total : ${((stats?.revenue.dem.total ?? 0) / 1000).toFixed(0)}k F`} />
       </div>
 
       {/* ── Charts row ── */}
@@ -153,15 +156,20 @@ export default function Dashboard() {
           </ResponsiveContainer>
         </div>
 
-        {/* Line chart — revenus */}
+        {/* Line chart — revenus livreurs + frais DEM */}
         <div style={card}>
           <h2 style={cardTitle}>Revenus — 7 derniers jours (k F)</h2>
+          <div style={{ display: 'flex', gap: 16, marginBottom: 10 }}>
+            <span style={{ fontSize: 11, color: '#f59e0b', fontWeight: 600 }}>● Livreurs</span>
+            <span style={{ fontSize: 11, color: 'var(--primary)', fontWeight: 600 }}>● Frais DEM</span>
+          </div>
           <ResponsiveContainer width="100%" height={200}>
             <LineChart data={timeseries} margin={{ top: 0, right: 8, left: -20, bottom: 0 }}>
               <XAxis dataKey="dateLabel" tick={{ fontSize: 11, fill: 'var(--text-muted)' }} axisLine={false} tickLine={false} />
               <YAxis tick={{ fontSize: 11, fill: 'var(--text-muted)' }} axisLine={false} tickLine={false} />
-              <Tooltip contentStyle={TOOLTIP_STYLE} formatter={v => [`${v}k F`, 'Revenus']} />
-              <Line type="monotone" dataKey="revenueK" stroke="#f59e0b" strokeWidth={2} dot={{ fill: '#f59e0b', r: 3 }} />
+              <Tooltip contentStyle={TOOLTIP_STYLE} formatter={(v, name) => [`${v}k F`, name === 'driverRevenueK' ? 'Livreurs' : 'Frais DEM']} />
+              <Line type="monotone" dataKey="driverRevenueK" stroke="#f59e0b"        strokeWidth={2} dot={{ fill: '#f59e0b',        r: 3 }} />
+              <Line type="monotone" dataKey="demRevenueK"    stroke="var(--primary)" strokeWidth={2} dot={{ fill: 'var(--primary)', r: 3 }} />
             </LineChart>
           </ResponsiveContainer>
         </div>
