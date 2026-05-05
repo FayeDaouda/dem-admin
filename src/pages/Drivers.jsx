@@ -4,6 +4,37 @@ import Badge from '../components/Badge'
 import { RefreshCw, BarChart2, Phone, CheckCircle, XCircle } from 'lucide-react'
 import { glass } from '../lib/glassStyles'
 
+const BADGE_TIERS = [
+  { name: 'DEM Gainde',     emoji: '🏅', color: '#B8860B', bg: '#FFF8E1', courses: 500, referrals: 0,  rating: 4.2 },
+  { name: 'DEM Buur',       emoji: '👑', color: '#7B1FA2', bg: '#F3E5F5', courses: 300, referrals: 0,  rating: 4.0 },
+  { name: 'DEM Domou Ndey', emoji: '⭐', color: '#1565C0', bg: '#E3F2FD', courses: 135, referrals: 0,  rating: 4.0 },
+  { name: 'DEM Door Warr',  emoji: '✅', color: '#00838F', bg: '#E0F7FA', courses: 70,  referrals: 0,  rating: 3.5 },
+  { name: 'DEM Mbokk',      emoji: '👥', color: '#00695C', bg: '#E0F2F1', courses: 30,  referrals: 12, rating: 3.5 },
+  { name: 'DEM Xarit',      emoji: '🤝', color: '#0288D1', bg: '#E1F5FE', courses: 3,   referrals: 3,  rating: 0   },
+]
+
+function computeBadge(courses, referrals, rating) {
+  for (const tier of BADGE_TIERS) {
+    const okRating = tier.rating === 0 || rating >= tier.rating
+    if (courses >= tier.courses && referrals >= tier.referrals && okRating) return tier
+  }
+  return null
+}
+
+function DriverBadgeChip({ driver }) {
+  const badge = computeBadge(driver.deliveredCourses ?? 0, driver.referralCount ?? 0, driver.avgRating ?? 0)
+  if (!badge) return <span style={{ color: 'var(--text-muted)', fontSize: 12 }}>Nouveau</span>
+  return (
+    <span style={{
+      background: badge.bg, color: badge.color,
+      padding: '2px 10px', borderRadius: 20,
+      fontSize: 12, fontWeight: 600, whiteSpace: 'nowrap',
+    }}>
+      {badge.emoji} {badge.name}
+    </span>
+  )
+}
+
 export default function Drivers() {
   const [drivers, setDrivers]           = useState([])
   const [loading, setLoading]           = useState(true)
@@ -172,7 +203,7 @@ export default function Drivers() {
           <table style={tableStyle}>
             <thead>
               <tr>
-                {['Nom', 'Téléphone', 'Véhicule', 'Statut', 'Disponible', 'Vérifié', 'Banni', 'Actions'].map(h => (
+                {['Nom', 'Badge', 'Courses', 'Téléphone', 'Véhicule', 'Statut', 'Vérifié', 'Actions'].map(h => (
                   <th key={h} style={thStyle}>{h}</th>
                 ))}
               </tr>
@@ -180,26 +211,28 @@ export default function Drivers() {
             <tbody>
               {drivers.map(d => (
                 <tr key={d.id} style={{ borderBottom: '1px solid var(--border)' }}>
-                  <td style={tdStyle}>{d.name ?? '—'}</td>
+                  <td style={tdStyle}>
+                    <div style={{ fontWeight: 600 }}>{d.name ?? '—'}</div>
+                    <Badge status={d.isAvailable ? 'ONLINE' : 'OFFLINE'} />
+                  </td>
+                  <td style={tdStyle}><DriverBadgeChip driver={d} /></td>
+                  <td style={{ ...tdStyle, textAlign: 'center' }}>
+                    <div style={{ fontWeight: 700 }}>{d.deliveredCourses ?? 0}</div>
+                    {d.avgRating > 0 && (
+                      <div style={{ fontSize: 11, color: '#f59e0b' }}>★ {d.avgRating}</div>
+                    )}
+                  </td>
                   <td style={tdStyle}>{d.phone}</td>
                   <td style={tdStyle}>{d.vehicleType ?? '—'}</td>
                   <td style={tdStyle}>
-                    <Badge status={d.isAvailable ? 'ONLINE' : 'OFFLINE'} />
-                  </td>
-                  <td style={tdStyle}>
                     {d.isActive
                       ? <span style={{ color: 'var(--success)' }}>✓ Actif</span>
-                      : <span style={{ color: 'var(--text-muted)' }}>Inactif</span>}
+                      : <span style={{ color: 'var(--danger)' }}>Suspendu</span>}
                   </td>
                   <td style={tdStyle}>
                     {d.isVerified
                       ? <span style={{ color: 'var(--success)' }}>✓</span>
                       : <span style={{ color: 'var(--warning)' }}>En attente</span>}
-                  </td>
-                  <td style={tdStyle}>
-                    {d.isBanned
-                      ? <span style={{ color: 'var(--danger)' }}>Banni</span>
-                      : <span style={{ color: 'var(--text-muted)' }}>—</span>}
                   </td>
                   <td style={tdStyle}>
                     <div style={{ display: 'flex', gap: 8 }}>
