@@ -49,7 +49,7 @@ export default function Drivers() {
   }
 
   async function toggleBan(driver) {
-    const action = driver.isBanned ? 'activate' : 'suspend'
+    const action = driver.isActive ? 'suspend' : 'activate'
     if (!confirm(`${action === 'suspend' ? 'Suspendre' : 'Réactiver'} ${driver.name ?? driver.phone} ?`)) return
     try {
       await api.patch(`/admin/drivers/${driver.id}/${action}`, action === 'suspend' ? { reason: 'Suspendu par admin' } : {})
