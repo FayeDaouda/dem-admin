@@ -8,16 +8,22 @@ export function AuthProvider({ children }) {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    const token = localStorage.getItem('dem_admin_token')
+    const token  = localStorage.getItem('dem_admin_token')
     const stored = localStorage.getItem('dem_admin_user')
-    if (token && stored) {
-      try {
-        setUser(JSON.parse(stored))
-      } catch {
-        logout()
-      }
-    }
-    setLoading(false)
+    if (!token || !stored) { setLoading(false); return }
+
+    // Vérifie que le token est toujours valide côté serveur
+    api.get('/admin/auth/me')
+      .then(res => {
+        const admin = res.data?.admin ?? res.data
+        localStorage.setItem('dem_admin_user', JSON.stringify(admin))
+        setUser(admin)
+      })
+      .catch(() => {
+        localStorage.removeItem('dem_admin_token')
+        localStorage.removeItem('dem_admin_user')
+      })
+      .finally(() => setLoading(false))
   }, [])
 
   async function login(email, password) {
