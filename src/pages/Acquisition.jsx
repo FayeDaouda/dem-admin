@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react'
 import api from '../lib/api'
 import { glass, glassInput } from '../lib/glassStyles'
 import {
-  Zap, Users, GitBranch, DollarSign,
+  Zap, Users, GitBranch, DollarSign, Award,
   ToggleLeft, ToggleRight, Play, RefreshCw, CheckCircle, Circle,
 } from 'lucide-react'
 
@@ -19,10 +19,11 @@ const TAB_STYLE = (active) => ({
 })
 
 const TABS = [
-  { id: 'forfait',    label: 'Forfait',       icon: Zap },
-  { id: 'clients',   label: '100 Clients',   icon: Users },
-  { id: 'referrals', label: 'Parrainage',    icon: GitBranch },
-  { id: 'fees',      label: 'Frais',         icon: DollarSign },
+  { id: 'forfait',      label: 'Forfait',       icon: Zap },
+  { id: 'clients',      label: '100 Clients',   icon: Users },
+  { id: 'referrals',    label: 'Parrainage',    icon: GitBranch },
+  { id: 'ambassadeurs', label: 'Ambassadeurs',  icon: Award },
+  { id: 'fees',         label: 'Frais',         icon: DollarSign },
 ]
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -82,10 +83,11 @@ export default function Acquisition() {
         ))}
       </div>
 
-      {tab === 'forfait'    && <ForfaitTab notify={notify} />}
-      {tab === 'clients'   && <ClientsTab notify={notify} />}
-      {tab === 'referrals' && <ReferralsTab />}
-      {tab === 'fees'      && <FeesTab />}
+      {tab === 'forfait'      && <ForfaitTab notify={notify} />}
+      {tab === 'clients'      && <ClientsTab notify={notify} />}
+      {tab === 'referrals'    && <ReferralsTab />}
+      {tab === 'ambassadeurs' && <AmbassadeursTab />}
+      {tab === 'fees'         && <FeesTab />}
 
       {snack && <Snack msg={snack.msg} ok={snack.ok} />}
     </div>
@@ -429,6 +431,153 @@ function ReferralsTab() {
           )
         })
       }
+    </div>
+  )
+}
+
+// ── Tab Ambassadeurs ──────────────────────────────────────────────────────────
+function AmbassadeursTab() {
+  const [data,     setData]     = useState(null)
+  const [loading,  setLoading]  = useState(true)
+  const [expanded, setExpanded] = useState(null)
+
+  const load = useCallback(async () => {
+    setLoading(true)
+    try {
+      const res = await api.get('/admin/ambassadors')
+      setData(res.data)
+    } catch (e) {
+      console.error(e)
+    } finally {
+      setLoading(false)
+    }
+  }, [])
+
+  useEffect(() => { load() }, [load])
+
+  const ambassadors = data?.ambassadors ?? []
+  const totalDrivers    = ambassadors.reduce((s, a) => s + a.referredCount, 0)
+  const totalDelivered  = ambassadors.reduce((s, a) => s + a.totalDelivered, 0)
+
+  if (loading) return <div style={{ color: 'var(--text-muted)' }}>Chargement…</div>
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+      {/* Stats globales */}
+      <div style={{ display: 'flex', gap: 12 }}>
+        <StatBox label="Ambassadeurs actifs"     value={ambassadors.length}           color="#B8860B" />
+        <StatBox label="Drivers recrutés"        value={totalDrivers}                 color="var(--primary)" />
+        <StatBox label="Courses livrées (réseau)" value={totalDelivered.toLocaleString()} color="var(--success)" />
+      </div>
+
+      {ambassadors.length === 0 ? (
+        <Card>
+          <div style={{ color: 'var(--text-muted)', textAlign: 'center', padding: '32px 0', fontSize: 13 }}>
+            Aucun ambassadeur désigné. Activez le statut depuis la page Drivers.
+          </div>
+        </Card>
+      ) : ambassadors.map(a => {
+        const isOpen  = expanded === a.id
+        const drivers = a.referredDrivers ?? []
+
+        return (
+          <Card key={a.id} style={{ padding: '14px 18px' }}>
+            {/* En-tête ambassadeur */}
+            <div
+              onClick={() => setExpanded(isOpen ? null : a.id)}
+              style={{ display: 'flex', alignItems: 'center', gap: 12, cursor: 'pointer' }}
+            >
+              {/* Avatar */}
+              <div style={{
+                width: 42, height: 42, borderRadius: '50%', flexShrink: 0,
+                background: 'linear-gradient(135deg,#FFF8E1,#FFD700)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                fontWeight: 800, color: '#B8860B', fontSize: 15,
+              }}>
+                {(a.name ?? '?')[0].toUpperCase()}
+              </div>
+
+              {/* Infos */}
+              <div style={{ flex: 1 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <span style={{ fontWeight: 700, fontSize: 14 }}>{a.name ?? '—'}</span>
+                  <span style={{ background: '#FFF8E1', color: '#B8860B', fontSize: 11, fontWeight: 700, padding: '1px 8px', borderRadius: 20 }}>
+                    🏅 Ambassadeur
+                  </span>
+                  {!a.isActive && (
+                    <span style={{ background: '#fee2e2', color: '#ef4444', fontSize: 11, fontWeight: 700, padding: '1px 8px', borderRadius: 20 }}>
+                      Suspendu
+                    </span>
+                  )}
+                </div>
+                <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2 }}>
+                  {a.phone} · Code : <code style={{ background: 'rgba(0,0,0,.05)', padding: '0 4px', borderRadius: 4 }}>{a.referralCode}</code>
+                </div>
+              </div>
+
+              {/* Stats résumé */}
+              <div style={{ display: 'flex', gap: 16, textAlign: 'center' }}>
+                <div>
+                  <div style={{ fontSize: 18, fontWeight: 800, color: 'var(--primary)' }}>{a.referredCount}</div>
+                  <div style={{ fontSize: 10, color: 'var(--text-muted)' }}>recrutés</div>
+                </div>
+                <div>
+                  <div style={{ fontSize: 18, fontWeight: 800, color: 'var(--success)' }}>{a.activeReferrals}</div>
+                  <div style={{ fontSize: 10, color: 'var(--text-muted)' }}>actifs</div>
+                </div>
+                <div>
+                  <div style={{ fontSize: 18, fontWeight: 800, color: '#f59e0b' }}>{a.totalDelivered}</div>
+                  <div style={{ fontSize: 10, color: 'var(--text-muted)' }}>courses</div>
+                </div>
+                <div style={{ color: 'var(--text-muted)', fontSize: 18, lineHeight: '42px' }}>
+                  {isOpen ? '▲' : '▼'}
+                </div>
+              </div>
+            </div>
+
+            {/* Tableau des drivers filleuls */}
+            {isOpen && (
+              <div style={{ marginTop: 16, borderTop: '1px solid rgba(0,0,0,.06)', paddingTop: 14 }}>
+                <Label>Drivers recrutés par {a.name}</Label>
+                {drivers.length === 0 ? (
+                  <div style={{ color: 'var(--text-muted)', fontSize: 13 }}>Aucun driver recruté pour l'instant.</div>
+                ) : (
+                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+                    <thead>
+                      <tr>
+                        {['Driver', 'Véhicule', 'Statut', 'Courses livrées', 'Rejoint le'].map(h => (
+                          <th key={h} style={{ textAlign: 'left', padding: '6px 8px', color: 'var(--text-muted)', fontSize: 11, fontWeight: 700, borderBottom: '1px solid rgba(0,0,0,.07)' }}>
+                            {h}
+                          </th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {drivers.map(d => (
+                        <tr key={d.id} style={{ borderBottom: '1px solid rgba(0,0,0,.04)' }}>
+                          <td style={{ padding: '9px 8px', fontWeight: 600 }}>{d.name ?? '—'}</td>
+                          <td style={{ padding: '9px 8px', color: 'var(--text-muted)' }}>{d.vehicleType ?? '—'}</td>
+                          <td style={{ padding: '9px 8px' }}>
+                            {d.isActive
+                              ? <span style={{ color: 'var(--success)', fontWeight: 600 }}>✓ Actif</span>
+                              : <span style={{ color: 'var(--danger)' }}>Suspendu</span>}
+                          </td>
+                          <td style={{ padding: '9px 8px', fontWeight: 700, color: 'var(--primary)' }}>
+                            {d.deliveredCourses}
+                          </td>
+                          <td style={{ padding: '9px 8px', color: 'var(--text-muted)', fontSize: 12 }}>
+                            {new Date(d.joinedAt).toLocaleDateString('fr-FR')}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                )}
+              </div>
+            )}
+          </Card>
+        )
+      })}
     </div>
   )
 }
