@@ -1,16 +1,23 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { AuthProvider, useAuth } from './contexts/AuthContext'
-import Layout from './components/Layout'
-import Login    from './pages/Login'
-import { lazy } from 'react'
-import Dashboard from './pages/Dashboard'
-const LiveMap = lazy(() => import('./pages/LiveMap'))
-import Payments  from './pages/Payments'
-import Orders    from './pages/Orders'
-import Drivers   from './pages/Drivers'
+import { lazy, Suspense } from 'react'
+import Layout      from './components/Layout'
+import Login       from './pages/Login'
+import Dashboard   from './pages/Dashboard'
+import Payments    from './pages/Payments'
+import Orders      from './pages/Orders'
+import Drivers     from './pages/Drivers'
 import Clients     from './pages/Clients'
 import Config      from './pages/Config'
 import Acquisition from './pages/Acquisition'
+
+const LiveMap = lazy(() => import('./pages/LiveMap'))
+
+const PageLoader = () => (
+  <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)' }}>
+    Chargement…
+  </div>
+)
 
 function ProtectedRoute({ children }) {
   const { user, loading } = useAuth()
@@ -45,7 +52,9 @@ export default function App() {
   return (
     <BrowserRouter>
       <AuthProvider>
-        <AppRoutes />
+        <Suspense fallback={<PageLoader />}>
+          <AppRoutes />
+        </Suspense>
       </AuthProvider>
     </BrowserRouter>
   )
