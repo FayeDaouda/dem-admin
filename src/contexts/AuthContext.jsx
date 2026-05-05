@@ -19,9 +19,15 @@ export function AuthProvider({ children }) {
         localStorage.setItem('dem_admin_user', JSON.stringify(admin))
         setUser(admin)
       })
-      .catch(() => {
-        localStorage.removeItem('dem_admin_token')
-        localStorage.removeItem('dem_admin_user')
+      .catch((err) => {
+        // Seul un 401 signifie token invalide → déconnexion
+        // 404/500/réseau = backend indisponible → on garde la session stockée
+        if (err.response?.status === 401) {
+          localStorage.removeItem('dem_admin_token')
+          localStorage.removeItem('dem_admin_user')
+        } else {
+          setUser(JSON.parse(stored))
+        }
       })
       .finally(() => setLoading(false))
   }, [])

@@ -133,10 +133,10 @@ export default function Dashboard() {
         <StatCard icon={Truck}        label="Drivers dispo"     value={loading ? '…' : stats?.drivers.available ?? 0}   color="var(--success)"
                   sub={`/ ${stats?.drivers.total ?? 0} total`} />
         <StatCard icon={Users}        label="Clients"           value={loading ? '…' : stats?.clients.total ?? 0}       color="#a78bfa" />
-        <StatCard icon={CreditCard}   label="Livreurs du jour"  value={loading ? '…' : `${(stats?.revenue.driver.today ?? 0).toLocaleString()} F`} color="var(--success)"
-                  sub={`Total : ${((stats?.revenue.driver.total ?? 0) / 1000).toFixed(0)}k F`} />
-        <StatCard icon={CreditCard}   label="Frais DEM du jour" value={loading ? '…' : `${(stats?.revenue.dem.today ?? 0).toLocaleString()} F`} color="var(--warning)"
-                  sub={`Total : ${((stats?.revenue.dem.total ?? 0) / 1000).toFixed(0)}k F`} />
+        <StatCard icon={CreditCard}   label="Livreurs du jour"  value={loading ? '…' : `${(stats?.revenue?.driver?.today ?? 0).toLocaleString()} F`} color="var(--success)"
+                  sub={`Total : ${((stats?.revenue?.driver?.total ?? 0) / 1000).toFixed(0)}k F`} />
+        <StatCard icon={CreditCard}   label="Frais DEM du jour" value={loading ? '…' : `${(stats?.revenue?.dem?.today ?? 0).toLocaleString()} F`} color="var(--warning)"
+                  sub={`Total : ${((stats?.revenue?.dem?.total ?? 0) / 1000).toFixed(0)}k F`} />
       </div>
 
       {/* ── Charts row ── */}
