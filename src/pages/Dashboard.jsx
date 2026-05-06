@@ -125,8 +125,6 @@ export default function Dashboard() {
     <div>
       <h1 style={{ fontSize: isMobile ? 18 : 22, fontWeight: 700, marginBottom: isMobile ? 16 : 24 }}>Dashboard</h1>
 
-      <Phasebanner />
-
       {/* ── Stat cards ── */}
       <div style={{ display: 'grid', gridTemplateColumns: statCols, gap: isMobile ? 8 : 12, marginBottom: isMobile ? 16 : 24 }}>
         <StatCard icon={Package}      label="Total courses"     value={loading ? '…' : stats?.orders.total ?? 0}        color="var(--primary)" />

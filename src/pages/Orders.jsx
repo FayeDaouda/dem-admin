@@ -30,7 +30,7 @@ export default function Orders() {
     if (!window.confirm('Annuler cette commande ?')) return
     setCancelling(true)
     try {
-      await api.patch(`/admin/orders/${id}/cancel`)
+      await api.patch(`/admin/orders/${id}/cancel`, { reason: 'Annulé par admin' })
       setDetail(null)
       fetch()
     } catch (e) {
