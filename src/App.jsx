@@ -10,6 +10,7 @@ import Drivers     from './pages/Drivers'
 import Clients     from './pages/Clients'
 import Config      from './pages/Config'
 import Acquisition from './pages/Acquisition'
+import Validation  from './pages/Validation'
 
 const LiveMap = lazy(() => import('./pages/LiveMap'))
 
@@ -43,6 +44,7 @@ function AppRoutes() {
       <Route path="/clients"  element={<ProtectedRoute><Clients /></ProtectedRoute>} />
       <Route path="/config"      element={<ProtectedRoute><Config /></ProtectedRoute>} />
       <Route path="/acquisition" element={<ProtectedRoute><Acquisition /></ProtectedRoute>} />
+      <Route path="/validation"  element={<ProtectedRoute><Validation /></ProtectedRoute>} />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   )
