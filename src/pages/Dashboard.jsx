@@ -53,6 +53,71 @@ const STATUS_PIE = [
   { key: 'cancelled',     label: 'Annulées',    color: '#ef4444' },
 ]
 
+function Phasebanner() {
+  const [phase, setPhase]       = useState(null)
+  const [saving, setSaving]     = useState(false)
+
+  useEffect(() => {
+    api.get('/admin/billing/phase').then(r => setPhase(r.data)).catch(() => {})
+  }, [])
+
+  async function toggle() {
+    if (!phase) return
+    const next = !phase.billingActive
+    if (!confirm(next
+      ? 'Activer la Phase 2 ? Les commissions et forfaits seront prélevés sur les gains des drivers.'
+      : 'Revenir en Phase 1 ? Commissions et forfaits seront remis à zéro.')) return
+    setSaving(true)
+    try {
+      const r = await api.put('/admin/billing/phase', { billingActive: next })
+      setPhase(r.data)
+    } catch (e) {
+      alert(e.response?.data?.message ?? 'Erreur.')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  if (!phase) return null
+
+  const isPhase2 = phase.billingActive
+
+  return (
+    <div style={{
+      display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+      padding: '12px 20px', borderRadius: 12, marginBottom: 20,
+      background: isPhase2 ? 'rgba(34,197,94,.10)' : 'rgba(245,158,11,.10)',
+      border: `1px solid ${isPhase2 ? 'rgba(34,197,94,.30)' : 'rgba(245,158,11,.30)'}`,
+    }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+        <span style={{ fontSize: 20 }}>{isPhase2 ? '✅' : '🎁'}</span>
+        <div>
+          <div style={{ fontWeight: 700, fontSize: 14, color: isPhase2 ? '#15803d' : '#b45309' }}>
+            {isPhase2 ? 'Phase 2 — Monétisation active' : 'Phase 1 — Lancement (tout est gratuit)'}
+          </div>
+          <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 1 }}>
+            {isPhase2
+              ? 'Commissions et forfait journalier prélevés sur les gains des drivers.'
+              : 'Commission = 0 · Forfait = 0 · Gains drivers = 100% du prix de la course.'}
+          </div>
+        </div>
+      </div>
+      <button
+        onClick={toggle}
+        disabled={saving}
+        style={{
+          padding: '7px 16px', borderRadius: 8, border: 'none', cursor: saving ? 'not-allowed' : 'pointer',
+          fontWeight: 700, fontSize: 13,
+          background: isPhase2 ? 'rgba(245,158,11,.15)' : 'rgba(34,197,94,.15)',
+          color: isPhase2 ? '#b45309' : '#15803d',
+        }}
+      >
+        {saving ? '…' : isPhase2 ? 'Revenir Phase 1' : 'Activer Phase 2'}
+      </button>
+    </div>
+  )
+}
+
 export default function Dashboard() {
   const [stats, setStats]       = useState(null)
   const [snapshot, setSnapshot] = useState(null)
@@ -124,6 +189,8 @@ export default function Dashboard() {
   return (
     <div>
       <h1 style={{ fontSize: isMobile ? 18 : 22, fontWeight: 700, marginBottom: isMobile ? 16 : 24 }}>Dashboard</h1>
+
+      <Phasebanner />
 
       {/* ── Stat cards ── */}
       <div style={{ display: 'grid', gridTemplateColumns: statCols, gap: isMobile ? 8 : 12, marginBottom: isMobile ? 16 : 24 }}>
