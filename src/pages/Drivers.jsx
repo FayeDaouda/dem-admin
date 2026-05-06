@@ -104,17 +104,6 @@ export default function Drivers() {
     }
   }
 
-  async function toggleAmbassador(driver) {
-    const next = !driver.isAmbassador
-    if (!confirm(`${next ? 'Promouvoir' : 'Retirer le statut de'} ${driver.name ?? driver.phone} comme ambassadeur ?`)) return
-    try {
-      await api.patch(`/admin/drivers/${driver.id}/ambassador`, { isAmbassador: next })
-      fetch()
-    } catch (e) {
-      alert(e.response?.data?.message ?? 'Erreur.')
-    }
-  }
-
   async function resolvePhoneChange(driverId, approve) {
     setResolving(driverId)
     try {
@@ -238,7 +227,18 @@ export default function Drivers() {
                 <tr key={d.id} style={{ borderBottom: '1px solid var(--border)' }}>
                   <td style={tdStyle}>
                     <div style={{ fontWeight: 600 }}>{d.name ?? '—'}</div>
-                    <Badge status={d.isAvailable ? 'ONLINE' : 'OFFLINE'} />
+                    <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', marginTop: 3 }}>
+                      <Badge status={d.isAvailable ? 'ONLINE' : 'OFFLINE'} />
+                      {d.managedById && (
+                        <span style={{
+                          fontSize: 10, fontWeight: 700, padding: '1px 6px', borderRadius: 8,
+                          background: d.managedBy?.ambassadorStatus === 'ACTIVE' ? 'rgba(124,58,237,.10)' : 'rgba(245,158,11,.12)',
+                          color:      d.managedBy?.ambassadorStatus === 'ACTIVE' ? '#7c3aed' : '#b45309',
+                        }}>
+                          AM {d.managedBy?.ambassadorStatus === 'ACTIVE' ? '✓' : '⏳'}
+                        </span>
+                      )}
+                    </div>
                   </td>
                   <td style={tdStyle}><DriverBadgeChip driver={d} badgeTiers={badgeTiers} /></td>
                   <td style={{ ...tdStyle, textAlign: 'center' }}>
@@ -263,13 +263,6 @@ export default function Drivers() {
                     <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
                       <button onClick={() => showStats(d.id)} style={btnSmall} title="Statistiques paiement">
                         <BarChart2 size={13} /> Stats
-                      </button>
-                      <button
-                        onClick={() => toggleAmbassador(d)}
-                        style={{ ...btnSmall, color: d.isAmbassador ? '#B8860B' : 'var(--text-muted)', borderColor: d.isAmbassador ? '#B8860B' : 'rgba(0,119,182,0.25)', background: d.isAmbassador ? '#FFF8E1' : 'rgba(255,255,255,0.5)' }}
-                        title={d.isAmbassador ? 'Retirer le statut ambassadeur' : 'Promouvoir ambassadeur'}
-                      >
-                        🏅 {d.isAmbassador ? 'Ambassadeur' : 'Promouvoir'}
                       </button>
                       <button
                         onClick={() => toggleBan(d)}
