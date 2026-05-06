@@ -209,8 +209,12 @@ function CommissionsTab() {
       const g = res.data.grid ?? DEFAULT_FEE_GRID
       setGrid(g)
       setDraft(g.map(t => ({ ...t })))
-    } catch (e) { console.error(e) }
-    finally { setLoading(false) }
+    } catch (e) {
+      console.error(e)
+      // Fallback sur les valeurs par défaut si l'API échoue (endpoint pas encore déployé)
+      setGrid(DEFAULT_FEE_GRID)
+      setDraft(DEFAULT_FEE_GRID.map(t => ({ ...t })))
+    } finally { setLoading(false) }
   }, [])
 
   useEffect(() => { load() }, [load])
@@ -334,8 +338,11 @@ function BadgesTab() {
       const res = await api.get('/admin/badges/config')
       setBadges(res.data.badges)
       setDraft(res.data.badges.map(b => ({ ...b })))
-    } catch (e) { console.error(e) }
-    finally { setLoading(false) }
+    } catch (e) {
+      console.error(e)
+      setBadges(DEFAULT_BADGES)
+      setDraft(DEFAULT_BADGES.map(b => ({ ...b })))
+    } finally { setLoading(false) }
   }, [])
 
   useEffect(() => { load() }, [load])
