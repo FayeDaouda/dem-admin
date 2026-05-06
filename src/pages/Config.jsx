@@ -1,30 +1,24 @@
 import { useState, useEffect, useCallback } from 'react'
 import api from '../lib/api'
-import { Save, ExternalLink, RotateCcw } from 'lucide-react'
+import { Save, RotateCcw } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { glass, glassInput } from '../lib/glassStyles'
 
-// ── Config tarifaire ──────────────────────────────────────────────────────────
+// ── Helpers ───────────────────────────────────────────────────────────────────
 const CONFIG_META = {
-  base_fare_delivery: { label: 'Tarif de base – Livraison (F)', description: 'Montant fixe ajouté à chaque commande de type DELIVERY' },
-  base_fare_ride:     { label: 'Tarif de base – Course (F)',    description: 'Montant fixe ajouté à chaque commande de type RIDE' },
+  base_fare_delivery: { label: 'Tarif de base – Livraison (F)', description: 'Montant fixe ajouté à chaque commande DELIVERY' },
+  base_fare_ride:     { label: 'Tarif de base – Course (F)',    description: 'Montant fixe ajouté à chaque commande RIDE' },
   price_per_km:       { label: 'Prix par kilomètre (F)',        description: 'Montant facturé par km de distance haversine' },
 }
 
-const FEE_GRID = [
-  [900,  1250,  65], [1251, 1600,  90], [1601, 2000, 120],
-  [2001, 2450, 155], [2451, 2750, 185], [2751, 3100, 215],
-  [3101, 3490, 255], [3491, 3900, 295], [3901, 4450, 350],
-  [4451, 5000, 425],
-]
-function computeDemFee(coursePrice) {
-  for (const [min, max, fee] of FEE_GRID) {
-    if (coursePrice >= min && coursePrice <= max) return fee
+function computeDemFeeFromGrid(price, grid) {
+  if (!grid || grid.length === 0) return 0
+  for (const { min, max, fee } of grid) {
+    if (price >= min && price <= max) return fee
   }
-  return coursePrice < 900 ? 0 : 425
+  return price < grid[0].min ? 0 : grid[grid.length - 1].fee
 }
 
-// ── Valeurs par défaut badges (miroir du backend) ─────────────────────────────
 const DEFAULT_BADGES = [
   { tier: 'gainde',    name: 'DEM Gainde',     emoji: '🏅', courses: 500, referrals: 0,  rating: 4.2 },
   { tier: 'buur',      name: 'DEM Buur',       emoji: '👑', courses: 300, referrals: 0,  rating: 4.0 },
@@ -34,6 +28,14 @@ const DEFAULT_BADGES = [
   { tier: 'xarit',     name: 'DEM Xarit',      emoji: '🤝', courses: 3,   referrals: 3,  rating: 0   },
 ]
 
+const DEFAULT_FEE_GRID = [
+  { min: 900,  max: 1250, fee: 65  }, { min: 1251, max: 1600, fee: 90  },
+  { min: 1601, max: 2000, fee: 120 }, { min: 2001, max: 2450, fee: 155 },
+  { min: 2451, max: 2750, fee: 185 }, { min: 2751, max: 3100, fee: 215 },
+  { min: 3101, max: 3490, fee: 255 }, { min: 3491, max: 3900, fee: 295 },
+  { min: 3901, max: 4450, fee: 350 }, { min: 4451, max: 5000, fee: 425 },
+]
+
 const TAB = (active) => ({
   padding: '7px 18px', borderRadius: 'var(--radius-sm)', border: 'none', cursor: 'pointer',
   background: active ? 'var(--primary)' : 'transparent',
@@ -41,17 +43,34 @@ const TAB = (active) => ({
   fontWeight: active ? 700 : 500, fontSize: 13, transition: 'all .15s',
 })
 
+const btnSave = (has) => ({
+  display: 'flex', alignItems: 'center', gap: 8, padding: '8px 18px',
+  borderRadius: 'var(--radius-sm)', border: 'none',
+  background: has ? 'var(--primary)' : 'var(--surface2)',
+  color: has ? '#fff' : 'var(--text-muted)',
+  fontWeight: 600, fontSize: 13, cursor: has ? 'pointer' : 'default',
+})
+
+const btnOutline = {
+  display: 'flex', alignItems: 'center', gap: 6, padding: '8px 14px',
+  borderRadius: 'var(--radius-sm)', border: '1px solid rgba(0,119,182,.25)',
+  background: 'rgba(255,255,255,.5)', color: 'var(--text-muted)', fontSize: 13, cursor: 'pointer',
+}
+
+// ── Page principale ───────────────────────────────────────────────────────────
 export default function Config() {
   const [tab, setTab] = useState('tarifs')
   return (
     <div>
       <h1 style={{ fontSize: 22, fontWeight: 700, marginBottom: 20 }}>Configuration</h1>
       <div style={{ display: 'flex', gap: 4, marginBottom: 24, background: 'rgba(255,255,255,.45)', borderRadius: 'var(--radius)', padding: 4, width: 'fit-content' }}>
-        <button style={TAB(tab === 'tarifs')} onClick={() => setTab('tarifs')}>Tarifs</button>
-        <button style={TAB(tab === 'badges')} onClick={() => setTab('badges')}>Badges drivers</button>
+        <button style={TAB(tab === 'tarifs')}      onClick={() => setTab('tarifs')}>Tarifs</button>
+        <button style={TAB(tab === 'commissions')} onClick={() => setTab('commissions')}>Commissions</button>
+        <button style={TAB(tab === 'badges')}      onClick={() => setTab('badges')}>Badges drivers</button>
       </div>
-      {tab === 'tarifs' && <TarifsTab />}
-      {tab === 'badges' && <BadgesTab />}
+      {tab === 'tarifs'      && <TarifsTab />}
+      {tab === 'commissions' && <CommissionsTab />}
+      {tab === 'badges'      && <BadgesTab />}
     </div>
   )
 }
@@ -59,25 +78,30 @@ export default function Config() {
 // ── Tab Tarifs ────────────────────────────────────────────────────────────────
 function TarifsTab() {
   const navigate = useNavigate()
-  const [config, setConfig] = useState({})
-  const [draft,  setDraft]  = useState({})
+  const [config,  setConfig]  = useState({})
+  const [draft,   setDraft]   = useState({})
+  const [feeGrid, setFeeGrid] = useState(DEFAULT_FEE_GRID)
   const [loading, setLoading] = useState(true)
-  const [saving, setSaving]   = useState(false)
-  const [saved, setSaved]     = useState(false)
+  const [saving,  setSaving]  = useState(false)
+  const [saved,   setSaved]   = useState(false)
 
-  const fetch = useCallback(async () => {
+  const load = useCallback(async () => {
     setLoading(true)
     try {
-      const res = await api.get('/admin/config')
+      const [cfgRes, feeRes] = await Promise.all([
+        api.get('/admin/config'),
+        api.get('/admin/fees/config'),
+      ])
       const map = {}
-      for (const row of (res.data ?? [])) map[row.key] = row.value
+      for (const row of (cfgRes.data ?? [])) map[row.key] = row.value
       setConfig(map)
       setDraft(map)
+      setFeeGrid(feeRes.data.grid ?? DEFAULT_FEE_GRID)
     } catch (e) { console.error(e) }
     finally { setLoading(false) }
   }, [])
 
-  useEffect(() => { fetch() }, [fetch])
+  useEffect(() => { load() }, [load])
 
   async function handleSave() {
     setSaving(true)
@@ -97,17 +121,7 @@ function TarifsTab() {
   return (
     <div>
       <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 16 }}>
-        <button
-          onClick={handleSave}
-          disabled={!hasChanges || saving}
-          style={{
-            display: 'flex', alignItems: 'center', gap: 8, padding: '9px 18px',
-            borderRadius: 'var(--radius-sm)', border: 'none',
-            background: hasChanges ? 'var(--primary)' : 'var(--surface2)',
-            color: hasChanges ? '#fff' : 'var(--text-muted)',
-            fontWeight: 600, fontSize: 13, cursor: hasChanges ? 'pointer' : 'default',
-          }}
-        >
+        <button onClick={handleSave} disabled={!hasChanges || saving} style={btnSave(hasChanges)}>
           <Save size={14} />
           {saved ? 'Sauvegardé ✓' : saving ? 'Enregistrement…' : 'Sauvegarder'}
         </button>
@@ -121,8 +135,7 @@ function TarifsTab() {
               <p style={{ color: 'var(--text-muted)', fontSize: 12, marginBottom: 12 }}>{meta.description}</p>
               <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                 <input
-                  type="number"
-                  value={draft[key] ?? ''}
+                  type="number" value={draft[key] ?? ''}
                   onChange={e => setDraft(d => ({ ...d, [key]: e.target.value }))}
                   style={{ ...glassInput, width: 140, fontSize: 15, fontWeight: 600,
                     border: `1px solid ${draft[key] !== config[key] ? 'var(--primary)' : 'rgba(0,119,182,0.3)'}` }}
@@ -134,11 +147,13 @@ function TarifsTab() {
             </div>
           ))}
 
+          {/* Simulation — utilise la grille configurée */}
           <div style={{ ...glass, padding: '20px 24px' }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
               <h3 style={{ fontSize: 14, fontWeight: 600 }}>Simulation — Course de 5 km</h3>
-              <button onClick={() => navigate('/acquisition')} style={{ display: 'flex', alignItems: 'center', gap: 5, background: 'none', border: 'none', color: 'var(--primary)', fontSize: 11, fontWeight: 600, cursor: 'pointer' }}>
-                Voir grille frais <ExternalLink size={11} />
+              <button onClick={() => navigate('/config', { state: { tab: 'commissions' } })}
+                style={{ background: 'none', border: 'none', color: 'var(--primary)', fontSize: 11, fontWeight: 600, cursor: 'pointer' }}>
+                → Éditer grille commissions
               </button>
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10, fontSize: 13 }}>
@@ -146,7 +161,7 @@ function TarifsTab() {
                 const base     = parseFloat(draft[`base_fare_${type.toLowerCase()}`] ?? 500)
                 const perKm    = parseFloat(draft['price_per_km'] ?? 200)
                 const coursePx = Math.round(base + 5 * perKm)
-                const demFee   = computeDemFee(coursePx)
+                const demFee   = computeDemFeeFromGrid(coursePx, feeGrid)
                 return (
                   <div key={type} style={{ background: 'var(--surface2)', borderRadius: 'var(--radius-sm)', overflow: 'hidden' }}>
                     <div style={{ padding: '6px 12px', background: 'rgba(0,119,182,.07)', fontWeight: 700, fontSize: 11, color: 'var(--primary)', letterSpacing: '.5px' }}>{type}</div>
@@ -156,7 +171,7 @@ function TarifsTab() {
                         <span style={{ fontWeight: 600 }}>{coursePx.toLocaleString()} F</span>
                       </div>
                       <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                        <span style={{ color: 'var(--text-muted)' }}>+ Frais DEM</span>
+                        <span style={{ color: 'var(--text-muted)' }}>+ Commission DEM</span>
                         <span style={{ fontWeight: 600, color: 'var(--primary)' }}>+{demFee} F</span>
                       </div>
                       <div style={{ height: 1, background: 'rgba(0,0,0,.08)', margin: '3px 0' }} />
@@ -169,10 +184,138 @@ function TarifsTab() {
                 )
               })}
             </div>
-            <p style={{ color: 'var(--text-muted)', fontSize: 11, marginTop: 12 }}>Hors surge pricing. Calcul : base + 5 × prix/km + frais DEM selon grille.</p>
+            <p style={{ color: 'var(--text-muted)', fontSize: 11, marginTop: 12 }}>
+              Phase 1 : commission = 0 FCFA. La grille s'appliquera en Phase 2.
+            </p>
           </div>
         </div>
       )}
+    </div>
+  )
+}
+
+// ── Tab Commissions ───────────────────────────────────────────────────────────
+function CommissionsTab() {
+  const [grid,    setGrid]    = useState(null)
+  const [draft,   setDraft]   = useState(null)
+  const [loading, setLoading] = useState(true)
+  const [saving,  setSaving]  = useState(false)
+  const [saved,   setSaved]   = useState(false)
+
+  const load = useCallback(async () => {
+    setLoading(true)
+    try {
+      const res = await api.get('/admin/fees/config')
+      const g = res.data.grid ?? DEFAULT_FEE_GRID
+      setGrid(g)
+      setDraft(g.map(t => ({ ...t })))
+    } catch (e) { console.error(e) }
+    finally { setLoading(false) }
+  }, [])
+
+  useEffect(() => { load() }, [load])
+
+  function update(i, field, val) {
+    setDraft(prev => prev.map((t, idx) =>
+      idx === i ? { ...t, [field]: parseInt(val, 10) || 0 } : t
+    ))
+  }
+
+  async function handleSave() {
+    setSaving(true)
+    try {
+      await api.put('/admin/fees/config', { grid: draft })
+      setGrid(draft.map(t => ({ ...t })))
+      setSaved(true)
+      setTimeout(() => setSaved(false), 2500)
+    } catch (e) {
+      alert(e.response?.data?.message ?? 'Erreur.')
+    } finally { setSaving(false) }
+  }
+
+  async function handleReset() {
+    if (!confirm('Remettre la grille par défaut du lancement ?')) return
+    setSaving(true)
+    try {
+      const res = await api.post('/admin/fees/config/reset')
+      setGrid(res.data.grid)
+      setDraft(res.data.grid.map(t => ({ ...t })))
+    } catch (e) { alert('Erreur reset.') }
+    finally { setSaving(false) }
+  }
+
+  const hasChanges = draft && grid && JSON.stringify(draft) !== JSON.stringify(grid)
+
+  if (loading || !draft) return <div style={{ color: 'var(--text-muted)' }}>Chargement…</div>
+
+  return (
+    <div style={{ maxWidth: 680 }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
+        <p style={{ color: 'var(--text-muted)', fontSize: 13, maxWidth: 420 }}>
+          Grille de commissions DEM prélevées sur le prix de la course. Active en Phase 2.
+        </p>
+        <div style={{ display: 'flex', gap: 8 }}>
+          <button onClick={handleReset} style={btnOutline} disabled={saving}>
+            <RotateCcw size={13} /> Défaut
+          </button>
+          <button onClick={handleSave} disabled={!hasChanges || saving} style={btnSave(hasChanges)}>
+            <Save size={14} />
+            {saved ? 'Sauvegardé ✓' : saving ? 'Enregistrement…' : 'Sauvegarder'}
+          </button>
+        </div>
+      </div>
+
+      <div style={{ ...glass, padding: 0, overflowX: 'auto' }}>
+        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+          <thead>
+            <tr style={{ background: 'rgba(0,119,182,.05)' }}>
+              {['Tranche min (F)', 'Tranche max (F)', 'Commission (F)', 'Aperçu'].map(h => (
+                <th key={h} style={{ textAlign: 'left', padding: '12px 16px', fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', letterSpacing: '.5px', borderBottom: '1px solid rgba(0,0,0,.07)' }}>{h}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {draft.map((t, i) => {
+              const origMin = grid[i]?.min
+              const origMax = grid[i]?.max
+              const origFee = grid[i]?.fee
+              return (
+                <tr key={i} style={{ borderBottom: i < draft.length - 1 ? '1px solid rgba(0,0,0,.05)' : 'none' }}>
+                  <td style={{ padding: '10px 16px' }}>
+                    <input type="number" min={0} value={t.min}
+                      onChange={e => update(i, 'min', e.target.value)}
+                      style={{ ...glassInput, width: 100, textAlign: 'center', fontWeight: 600,
+                        border: `1px solid ${t.min !== origMin ? 'var(--primary)' : 'rgba(0,119,182,.25)'}` }}
+                    />
+                  </td>
+                  <td style={{ padding: '10px 16px' }}>
+                    <input type="number" min={0} value={t.max}
+                      onChange={e => update(i, 'max', e.target.value)}
+                      style={{ ...glassInput, width: 100, textAlign: 'center', fontWeight: 600,
+                        border: `1px solid ${t.max !== origMax ? 'var(--primary)' : 'rgba(0,119,182,.25)'}` }}
+                    />
+                  </td>
+                  <td style={{ padding: '10px 16px' }}>
+                    <input type="number" min={0} value={t.fee}
+                      onChange={e => update(i, 'fee', e.target.value)}
+                      style={{ ...glassInput, width: 100, textAlign: 'center', fontWeight: 700,
+                        color: 'var(--primary)',
+                        border: `1px solid ${t.fee !== origFee ? 'var(--primary)' : 'rgba(0,119,182,.25)'}` }}
+                    />
+                  </td>
+                  <td style={{ padding: '10px 16px', fontSize: 12, color: 'var(--text-muted)' }}>
+                    {t.min.toLocaleString()} – {t.max.toLocaleString()} F → <strong style={{ color: 'var(--primary)' }}>{t.fee} F</strong>
+                  </td>
+                </tr>
+              )
+            })}
+          </tbody>
+        </table>
+      </div>
+
+      <p style={{ color: 'var(--text-muted)', fontSize: 11, marginTop: 12 }}>
+        Champs en bleu = modifications non sauvegardées. Phase 1 active : commission = 0 FCFA quelle que soit la grille.
+      </p>
     </div>
   )
 }
@@ -221,98 +364,71 @@ function BadgesTab() {
   }
 
   const hasChanges = draft && badges && JSON.stringify(draft) !== JSON.stringify(badges)
-
   if (loading || !draft) return <div style={{ color: 'var(--text-muted)' }}>Chargement…</div>
 
   return (
     <div style={{ maxWidth: 760 }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
         <p style={{ color: 'var(--text-muted)', fontSize: 13 }}>
-          Définissez les seuils de chaque niveau. Les badges sont recalculés en temps réel dans l'app driver.
+          Seuils de chaque niveau. Recalculés en temps réel dans l'app driver.
         </p>
         <div style={{ display: 'flex', gap: 8 }}>
-          <button onClick={handleReset} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 14px', borderRadius: 'var(--radius-sm)', border: '1px solid rgba(0,119,182,.25)', background: 'rgba(255,255,255,.5)', color: 'var(--text-muted)', fontSize: 13, cursor: 'pointer' }}>
-            <RotateCcw size={13} /> Défaut
-          </button>
-          <button
-            onClick={handleSave}
-            disabled={!hasChanges || saving}
-            style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 18px', borderRadius: 'var(--radius-sm)', border: 'none', background: hasChanges ? 'var(--primary)' : 'var(--surface2)', color: hasChanges ? '#fff' : 'var(--text-muted)', fontWeight: 600, fontSize: 13, cursor: hasChanges ? 'pointer' : 'default' }}
-          >
+          <button onClick={handleReset} style={btnOutline}><RotateCcw size={13} /> Défaut</button>
+          <button onClick={handleSave} disabled={!hasChanges || saving} style={btnSave(hasChanges)}>
             <Save size={14} />
             {saved ? 'Sauvegardé ✓' : saving ? 'Enregistrement…' : 'Sauvegarder'}
           </button>
         </div>
       </div>
-
-      {/* Tableau éditeur */}
-      <div style={{ ...glass, padding: '0', overflowX: 'auto' }}>
+      <div style={{ ...glass, padding: 0, overflowX: 'auto' }}>
         <table style={{ width: '100%', borderCollapse: 'collapse' }}>
           <thead>
             <tr style={{ background: 'rgba(0,119,182,.05)' }}>
               {['Niveau', 'Courses min', 'Parrainages min', 'Note min (/5)', 'Aperçu'].map(h => (
-                <th key={h} style={{ textAlign: 'left', padding: '12px 16px', fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', letterSpacing: '.5px', borderBottom: '1px solid rgba(0,0,0,.07)' }}>
-                  {h}
-                </th>
+                <th key={h} style={{ textAlign: 'left', padding: '12px 16px', fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', letterSpacing: '.5px', borderBottom: '1px solid rgba(0,0,0,.07)' }}>{h}</th>
               ))}
             </tr>
           </thead>
           <tbody>
             {draft.map((b, i) => (
               <tr key={b.tier} style={{ borderBottom: i < draft.length - 1 ? '1px solid rgba(0,0,0,.05)' : 'none' }}>
-                {/* Nom badge (non modifiable) */}
                 <td style={{ padding: '12px 16px' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                     <span style={{ fontSize: 18 }}>{b.emoji}</span>
                     <span style={{ fontWeight: 700, fontSize: 13 }}>{b.name}</span>
                   </div>
                 </td>
-                {/* Courses */}
                 <td style={{ padding: '10px 16px' }}>
-                  <input
-                    type="number" min={0}
-                    value={b.courses}
+                  <input type="number" min={0} value={b.courses}
                     onChange={e => update(i, 'courses', e.target.value)}
                     style={{ ...glassInput, width: 90, textAlign: 'center', fontWeight: 700,
                       border: `1px solid ${b.courses !== badges[i]?.courses ? 'var(--primary)' : 'rgba(0,119,182,.25)'}` }}
                   />
                 </td>
-                {/* Parrainages */}
                 <td style={{ padding: '10px 16px' }}>
-                  <input
-                    type="number" min={0}
-                    value={b.referrals}
+                  <input type="number" min={0} value={b.referrals}
                     onChange={e => update(i, 'referrals', e.target.value)}
                     style={{ ...glassInput, width: 90, textAlign: 'center', fontWeight: 700,
                       border: `1px solid ${b.referrals !== badges[i]?.referrals ? 'var(--primary)' : 'rgba(0,119,182,.25)'}` }}
                   />
                 </td>
-                {/* Note */}
                 <td style={{ padding: '10px 16px' }}>
-                  <input
-                    type="number" min={0} max={5} step={0.1}
-                    value={b.rating}
+                  <input type="number" min={0} max={5} step={0.1} value={b.rating}
                     onChange={e => update(i, 'rating', e.target.value)}
                     style={{ ...glassInput, width: 90, textAlign: 'center', fontWeight: 700,
                       border: `1px solid ${b.rating !== badges[i]?.rating ? 'var(--primary)' : 'rgba(0,119,182,.25)'}` }}
                   />
                 </td>
-                {/* Aperçu badge */}
-                <td style={{ padding: '10px 16px' }}>
-                  <span style={{ fontSize: 11, color: 'var(--text-muted)', fontStyle: 'italic' }}>
-                    {b.courses} courses
-                    {b.referrals > 0 ? ` + ${b.referrals} parrainages` : ''}
-                    {b.rating > 0 ? ` + ${b.rating}★` : ''}
-                  </span>
+                <td style={{ padding: '10px 16px', fontSize: 11, color: 'var(--text-muted)', fontStyle: 'italic' }}>
+                  {b.courses} courses{b.referrals > 0 ? ` + ${b.referrals} parr.` : ''}{b.rating > 0 ? ` + ${b.rating}★` : ''}
                 </td>
               </tr>
             ))}
           </tbody>
         </table>
       </div>
-
       <p style={{ color: 'var(--text-muted)', fontSize: 11, marginTop: 12 }}>
-        Les champs en bleu indiquent une modification non sauvegardée. Le bouton Défaut remet les valeurs originales du lancement.
+        Les champs en bleu indiquent une modification non sauvegardée.
       </p>
     </div>
   )

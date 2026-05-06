@@ -4,33 +4,40 @@ import Badge from '../components/Badge'
 import { RefreshCw, BarChart2, Phone, CheckCircle, XCircle } from 'lucide-react'
 import { glass } from '../lib/glassStyles'
 
-const BADGE_TIERS = [
-  { name: 'DEM Gainde',     emoji: '🏅', color: '#B8860B', bg: '#FFF8E1', courses: 500, referrals: 0,  rating: 4.2 },
-  { name: 'DEM Buur',       emoji: '👑', color: '#7B1FA2', bg: '#F3E5F5', courses: 300, referrals: 0,  rating: 4.0 },
-  { name: 'DEM Domou Ndey', emoji: '⭐', color: '#1565C0', bg: '#E3F2FD', courses: 135, referrals: 0,  rating: 4.0 },
-  { name: 'DEM Door Warr',  emoji: '✅', color: '#00838F', bg: '#E0F7FA', courses: 70,  referrals: 0,  rating: 3.5 },
-  { name: 'DEM Mbokk',      emoji: '👥', color: '#00695C', bg: '#E0F2F1', courses: 30,  referrals: 12, rating: 3.5 },
-  { name: 'DEM Xarit',      emoji: '🤝', color: '#0288D1', bg: '#E1F5FE', courses: 3,   referrals: 3,  rating: 0   },
+// Propriétés visuelles fixes par tier (couleurs/emojis non configurables)
+const BADGE_VISUALS = {
+  gainde:    { emoji: '🏅', color: '#B8860B', bg: '#FFF8E1' },
+  buur:      { emoji: '👑', color: '#7B1FA2', bg: '#F3E5F5' },
+  domouNdey: { emoji: '⭐', color: '#1565C0', bg: '#E3F2FD' },
+  doorWarr:  { emoji: '✅', color: '#00838F', bg: '#E0F7FA' },
+  mbokk:     { emoji: '👥', color: '#00695C', bg: '#E0F2F1' },
+  xarit:     { emoji: '🤝', color: '#0288D1', bg: '#E1F5FE' },
+}
+
+const DEFAULT_BADGE_TIERS = [
+  { tier: 'gainde',    name: 'DEM Gainde',     courses: 500, referrals: 0,  rating: 4.2 },
+  { tier: 'buur',      name: 'DEM Buur',       courses: 300, referrals: 0,  rating: 4.0 },
+  { tier: 'domouNdey', name: 'DEM Domou Ndey', courses: 135, referrals: 0,  rating: 4.0 },
+  { tier: 'doorWarr',  name: 'DEM Door Warr',  courses: 70,  referrals: 0,  rating: 3.5 },
+  { tier: 'mbokk',     name: 'DEM Mbokk',      courses: 30,  referrals: 12, rating: 3.5 },
+  { tier: 'xarit',     name: 'DEM Xarit',      courses: 3,   referrals: 3,  rating: 0   },
 ]
 
-function computeBadge(courses, referrals, rating) {
-  for (const tier of BADGE_TIERS) {
+function computeBadge(courses, referrals, rating, tiers) {
+  for (const tier of (tiers ?? DEFAULT_BADGE_TIERS)) {
     const okRating = tier.rating === 0 || rating >= tier.rating
     if (courses >= tier.courses && referrals >= tier.referrals && okRating) return tier
   }
   return null
 }
 
-function DriverBadgeChip({ driver }) {
-  const badge = computeBadge(driver.deliveredCourses ?? 0, driver.referralCount ?? 0, driver.avgRating ?? 0)
+function DriverBadgeChip({ driver, badgeTiers }) {
+  const badge = computeBadge(driver.deliveredCourses ?? 0, driver.referralCount ?? 0, driver.avgRating ?? 0, badgeTiers)
   if (!badge) return <span style={{ color: 'var(--text-muted)', fontSize: 12 }}>Nouveau</span>
+  const v = BADGE_VISUALS[badge.tier] ?? { emoji: '🏅', color: '#888', bg: '#f5f5f5' }
   return (
-    <span style={{
-      background: badge.bg, color: badge.color,
-      padding: '2px 10px', borderRadius: 20,
-      fontSize: 12, fontWeight: 600, whiteSpace: 'nowrap',
-    }}>
-      {badge.emoji} {badge.name}
+    <span style={{ background: v.bg, color: v.color, padding: '2px 10px', borderRadius: 20, fontSize: 12, fontWeight: 600, whiteSpace: 'nowrap' }}>
+      {v.emoji} {badge.name}
     </span>
   )
 }
@@ -38,10 +45,11 @@ function DriverBadgeChip({ driver }) {
 export default function Drivers() {
   const [drivers, setDrivers]           = useState([])
   const [loading, setLoading]           = useState(true)
+  const [badgeTiers, setBadgeTiers]     = useState(null)
   const [stats, setStats]         = useState(null)
   const [phoneReqs, setPhoneReqs] = useState([])
   const [phoneLoading, setPhoneLoading] = useState(true)
-  const [resolving, setResolving]       = useState(null) // driverId en cours
+  const [resolving, setResolving]       = useState(null)
 
   const fetch = useCallback(async () => {
     setLoading(true)
@@ -67,7 +75,13 @@ export default function Drivers() {
     }
   }, [])
 
-  useEffect(() => { fetch(); fetchPhoneRequests() }, [fetch, fetchPhoneRequests])
+  useEffect(() => {
+    fetch()
+    fetchPhoneRequests()
+    api.get('/admin/badges/config')
+      .then(r => setBadgeTiers(r.data.badges))
+      .catch(() => {})
+  }, [fetch, fetchPhoneRequests])
 
   async function showStats(driverId) {
     setStats({ driverId, loading: true })
@@ -226,7 +240,7 @@ export default function Drivers() {
                     <div style={{ fontWeight: 600 }}>{d.name ?? '—'}</div>
                     <Badge status={d.isAvailable ? 'ONLINE' : 'OFFLINE'} />
                   </td>
-                  <td style={tdStyle}><DriverBadgeChip driver={d} /></td>
+                  <td style={tdStyle}><DriverBadgeChip driver={d} badgeTiers={badgeTiers} /></td>
                   <td style={{ ...tdStyle, textAlign: 'center' }}>
                     <div style={{ fontWeight: 700 }}>{d.deliveredCourses ?? 0}</div>
                     {d.avgRating > 0 && (
