@@ -1,11 +1,106 @@
 import { useState, useEffect, useCallback } from 'react'
 import api from '../lib/api'
-import { RefreshCw } from 'lucide-react'
+import { RefreshCw, Eye, X } from 'lucide-react'
 import { glass } from '../lib/glassStyles'
 
-export default function Clients() {
-  const [clients, setClients] = useState([])
+function ClientDetailModal({ client, onClose }) {
+  const [detail, setDetail] = useState(null)
   const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    api.get(`/admin/clients/${client.id}`)
+      .then(r => { setDetail(r.data); setLoading(false) })
+      .catch(() => setLoading(false))
+  }, [client.id])
+
+  const d = detail ?? client
+
+  return (
+    <div style={overlay} onClick={onClose}>
+      <div style={{ ...glass, width: 460, maxWidth: '92vw', padding: '0', borderRadius: 16, overflow: 'hidden', maxHeight: '90vh', display: 'flex', flexDirection: 'column' }} onClick={e => e.stopPropagation()}>
+
+        {/* Header gradient */}
+        <div style={{ background: 'linear-gradient(135deg,#0CB8DE,#0671BA,#04317C)', padding: '24px 20px 20px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10 }}>
+          <button onClick={onClose} style={{ position: 'absolute', top: 12, right: 12, background: 'rgba(255,255,255,.15)', border: 'none', borderRadius: 8, width: 28, height: 28, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff' }}>
+            <X size={14} />
+          </button>
+          {/* Avatar */}
+          <div style={{ width: 64, height: 64, borderRadius: '50%', border: '2px solid rgba(255,255,255,.5)', overflow: 'hidden', background: 'rgba(255,255,255,.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+            {d.avatar
+              ? <img src={d.avatar} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+              : <span style={{ fontSize: 24, fontWeight: 800, color: '#fff' }}>{(d.name ?? d.phone ?? '?')[0].toUpperCase()}</span>
+            }
+          </div>
+          <div style={{ textAlign: 'center' }}>
+            <div style={{ fontWeight: 700, fontSize: 16, color: '#fff' }}>{d.name ?? '—'}</div>
+            <div style={{ fontSize: 12, color: 'rgba(255,255,255,.75)', marginTop: 2 }}>{d.phone}</div>
+          </div>
+          <div style={{ display: 'flex', gap: 8 }}>
+            {d.isBanned && <span style={{ fontSize: 11, fontWeight: 700, padding: '2px 10px', borderRadius: 20, background: 'rgba(239,68,68,.25)', color: '#fca5a5' }}>Banni</span>}
+            {!d.isBanned && d.isActive && <span style={{ fontSize: 11, fontWeight: 700, padding: '2px 10px', borderRadius: 20, background: 'rgba(34,197,94,.20)', color: '#86efac' }}>Actif</span>}
+            {!d.isBanned && !d.isActive && <span style={{ fontSize: 11, fontWeight: 700, padding: '2px 10px', borderRadius: 20, background: 'rgba(245,158,11,.20)', color: '#fcd34d' }}>Inactif</span>}
+          </div>
+        </div>
+
+        {/* Contenu */}
+        <div style={{ overflowY: 'auto', padding: '20px' }}>
+          {loading ? (
+            <div style={{ color: 'var(--text-muted)', textAlign: 'center', padding: 20 }}>Chargement…</div>
+          ) : (<>
+            {/* Infos */}
+            <div style={infoBox}>
+              <div style={sectionLabel}>Informations</div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px 16px' }}>
+                {[
+                  ['Email',       d.email ?? '—'],
+                  ['Inscrit le',  d.createdAt ? new Date(d.createdAt).toLocaleDateString('fr-FR') : '—'],
+                  ['Vérifié',     d.isVerified ? '✓ Oui' : 'Non'],
+                  ['Code parrain', d.referralCode ?? '—'],
+                ].map(([label, val]) => (
+                  <div key={label}>
+                    <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>{label}</div>
+                    <div style={{ fontSize: 13, fontWeight: 600, marginTop: 2 }}>{val}</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Commandes récentes */}
+            {detail?.ordersAsClient?.length > 0 && (
+              <div style={{ ...infoBox, marginTop: 14 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+                  <div style={sectionLabel}>Commandes récentes</div>
+                  <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>
+                    Total dépensé : <strong>{(detail.totalSpent ?? 0).toLocaleString()} F</strong>
+                  </span>
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                  {detail.ordersAsClient.slice(0, 5).map(o => (
+                    <div key={o.id} style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 12 }}>
+                      <span style={{ width: 8, height: 8, borderRadius: '50%', flexShrink: 0, background: o.status === 'DELIVERED' ? '#22c55e' : o.status === 'CANCELLED' ? '#ef4444' : '#f59e0b' }} />
+                      <span style={{ flex: 1, color: 'var(--text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        {o.deliveryAddress ?? o.pickupAddress ?? '—'}
+                      </span>
+                      <span style={{ fontWeight: 600, flexShrink: 0 }}>{(o.price ?? 0).toLocaleString()} F</span>
+                      <span style={{ color: 'var(--text-muted)', flexShrink: 0 }}>
+                        {o.createdAt ? new Date(o.createdAt).toLocaleDateString('fr-FR') : ''}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </>)}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+export default function Clients() {
+  const [clients, setClients]   = useState([])
+  const [loading, setLoading]   = useState(true)
+  const [selected, setSelected] = useState(null)
 
   const fetch = useCallback(async () => {
     setLoading(true)
@@ -50,7 +145,7 @@ export default function Clients() {
           <table style={tableStyle}>
             <thead>
               <tr>
-                {['Nom', 'Téléphone', 'Inscription', 'Banni', 'Action'].map(h => (
+                {['Client', 'Téléphone', 'Inscription', 'Statut', 'Actions'].map(h => (
                   <th key={h} style={thStyle}>{h}</th>
                 ))}
               </tr>
@@ -58,23 +153,38 @@ export default function Clients() {
             <tbody>
               {clients.map(c => (
                 <tr key={c.id} style={{ borderBottom: '1px solid var(--border)' }}>
-                  <td style={tdStyle}>{c.name ?? '—'}</td>
+                  <td style={tdStyle}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                      <div style={{ width: 34, height: 34, borderRadius: '50%', overflow: 'hidden', background: 'linear-gradient(135deg,rgba(12,184,222,.15),rgba(6,113,186,.15))', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                        {c.avatar
+                          ? <img src={c.avatar} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                          : <span style={{ fontWeight: 700, color: '#0671BA', fontSize: 13 }}>{(c.name ?? c.phone ?? '?')[0].toUpperCase()}</span>
+                        }
+                      </div>
+                      <span style={{ fontWeight: 600 }}>{c.name ?? '—'}</span>
+                    </div>
+                  </td>
                   <td style={tdStyle}>{c.phone}</td>
                   <td style={{ ...tdStyle, color: 'var(--text-muted)', fontSize: 12 }}>
                     {c.createdAt ? new Date(c.createdAt).toLocaleDateString('fr-FR') : '—'}
                   </td>
                   <td style={tdStyle}>
                     {c.isBanned
-                      ? <span style={{ color: 'var(--danger)' }}>Banni</span>
-                      : <span style={{ color: 'var(--text-muted)' }}>—</span>}
+                      ? <span style={{ color: 'var(--danger)', fontSize: 12, fontWeight: 600 }}>🚫 Banni</span>
+                      : <span style={{ color: 'var(--success)', fontSize: 12 }}>✓ Actif</span>}
                   </td>
                   <td style={tdStyle}>
-                    <button
-                      onClick={() => toggleBan(c)}
-                      style={{ ...btnSmall, color: c.isBanned ? 'var(--success)' : 'var(--danger)', borderColor: c.isBanned ? 'var(--success)' : 'var(--danger)' }}
-                    >
-                      {c.isBanned ? 'Débannir' : 'Bannir'}
-                    </button>
+                    <div style={{ display: 'flex', gap: 6 }}>
+                      <button onClick={() => setSelected(c)} style={btnSmall} title="Voir détail">
+                        <Eye size={13} /> Voir
+                      </button>
+                      <button
+                        onClick={() => toggleBan(c)}
+                        style={{ ...btnSmall, color: c.isBanned ? 'var(--success)' : 'var(--danger)', borderColor: c.isBanned ? 'var(--success)' : 'var(--danger)' }}
+                      >
+                        {c.isBanned ? 'Débannir' : 'Bannir'}
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -82,13 +192,18 @@ export default function Clients() {
           </table>
         )}
       </div>
+
+      {selected && <ClientDetailModal client={selected} onClose={() => setSelected(null)} />}
     </div>
   )
 }
 
+const overlay    = { position: 'fixed', inset: 0, background: 'rgba(0,40,80,.45)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100 }
+const infoBox    = { background: 'var(--surface2)', borderRadius: 10, padding: '12px 14px' }
+const sectionLabel = { fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '.5px', marginBottom: 8 }
 const card       = { ...glass, padding: '20px 24px', overflowX: 'auto' }
 const tableStyle = { width: '100%', borderCollapse: 'collapse' }
 const thStyle    = { textAlign: 'left', padding: '8px 10px', color: 'var(--text-muted)', fontSize: 12, fontWeight: 600, borderBottom: '1px solid rgba(0,119,182,0.12)' }
 const tdStyle    = { padding: '10px 10px', verticalAlign: 'middle' }
 const btnOutline = { display: 'flex', alignItems: 'center', gap: 6, padding: '7px 14px', borderRadius: 'var(--radius-sm)', border: '1px solid rgba(0,119,182,0.25)', background: 'rgba(255,255,255,0.5)', color: 'var(--text-muted)', fontSize: 13, cursor: 'pointer' }
-const btnSmall   = { padding: '4px 10px', borderRadius: 'var(--radius-sm)', border: '1px solid rgba(0,119,182,0.25)', background: 'rgba(255,255,255,0.5)', fontSize: 12, cursor: 'pointer' }
+const btnSmall   = { display: 'flex', alignItems: 'center', gap: 4, padding: '4px 10px', borderRadius: 'var(--radius-sm)', border: '1px solid rgba(0,119,182,0.25)', background: 'rgba(255,255,255,0.5)', color: 'var(--text-muted)', fontSize: 12, cursor: 'pointer' }
