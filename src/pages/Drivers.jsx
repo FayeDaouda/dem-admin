@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import api from '../lib/api'
 import Badge from '../components/Badge'
-import { RefreshCw, BarChart2, Phone, CheckCircle, XCircle } from 'lucide-react'
+import { RefreshCw, BarChart2, Phone, CheckCircle, XCircle, Eye } from 'lucide-react'
 import { glass } from '../lib/glassStyles'
 
 // Propriétés visuelles fixes par tier (couleurs/emojis non configurables)
@@ -42,12 +42,38 @@ function DriverBadgeChip({ driver, badgeTiers }) {
   )
 }
 
+function DocThumb({ url, label }) {
+  const [zoomed, setZoomed] = useState(false)
+  if (!url) return (
+    <div style={{ width: 80, height: 64, borderRadius: 8, background: 'var(--surface2)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 4 }}>
+      <span style={{ fontSize: 20 }}>📄</span>
+      <span style={{ fontSize: 9, color: 'var(--text-muted)' }}>{label}</span>
+    </div>
+  )
+  return (
+    <>
+      <div style={{ position: 'relative', cursor: 'pointer' }} onClick={() => setZoomed(true)} title={label}>
+        <img src={url} alt={label} style={{ width: 80, height: 64, objectFit: 'cover', borderRadius: 8, border: '1px solid rgba(0,119,182,.15)', display: 'block' }} />
+        <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, background: 'rgba(0,0,0,.45)', borderBottomLeftRadius: 8, borderBottomRightRadius: 8, padding: '2px 4px', textAlign: 'center' }}>
+          <span style={{ fontSize: 9, color: '#fff' }}>{label}</span>
+        </div>
+      </div>
+      {zoomed && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.75)', zIndex: 300, display: 'flex', alignItems: 'center', justifyContent: 'center' }} onClick={() => setZoomed(false)}>
+          <img src={url} alt={label} style={{ maxWidth: '90vw', maxHeight: '85vh', borderRadius: 12 }} />
+        </div>
+      )}
+    </>
+  )
+}
+
 export default function Drivers() {
   const [drivers, setDrivers]           = useState([])
   const [loading, setLoading]           = useState(true)
   const [badgeTiers, setBadgeTiers]     = useState(null)
   const [fleetFilter, setFleetFilter]   = useState('all')
   const [stats, setStats]         = useState(null)
+  const [detail, setDetail]       = useState(null)
   const [phoneReqs, setPhoneReqs] = useState([])
   const [phoneLoading, setPhoneLoading] = useState(true)
   const [resolving, setResolving]       = useState(null)
@@ -281,6 +307,9 @@ export default function Drivers() {
                   </td>
                   <td style={tdStyle}>
                     <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                      <button onClick={() => setDetail(d)} style={btnSmall} title="Voir infos & documents">
+                        <Eye size={13} /> Voir
+                      </button>
                       <button onClick={() => showStats(d.id)} style={btnSmall} title="Statistiques paiement">
                         <BarChart2 size={13} /> Stats
                       </button>
@@ -298,6 +327,80 @@ export default function Drivers() {
           </table>
         )}
       </div>
+
+      {/* Modal détail driver */}
+      {detail && (
+        <div style={overlay} onClick={() => setDetail(null)}>
+          <div style={{ ...modalBox, width: 560, maxHeight: '90vh', overflowY: 'auto' }} onClick={e => e.stopPropagation()}>
+            {/* Header */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 20 }}>
+              <div style={{ width: 52, height: 52, borderRadius: '50%', background: 'linear-gradient(135deg,#0CB8DE,#0671BA)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22, color: '#fff', fontWeight: 700, flexShrink: 0 }}>
+                {detail.avatar
+                  ? <img src={detail.avatar} alt="" style={{ width: 52, height: 52, borderRadius: '50%', objectFit: 'cover' }} />
+                  : (detail.name ?? '?')[0].toUpperCase()}
+              </div>
+              <div>
+                <div style={{ fontWeight: 700, fontSize: 16 }}>{detail.name ?? '—'}</div>
+                <div style={{ color: 'var(--text-muted)', fontSize: 13 }}>{detail.phone}</div>
+              </div>
+              <div style={{ marginLeft: 'auto', display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4 }}>
+                <span style={{ fontSize: 12, padding: '2px 10px', borderRadius: 20, fontWeight: 600, background: detail.isActive ? 'rgba(16,185,129,.12)' : 'rgba(239,68,68,.12)', color: detail.isActive ? '#059669' : '#dc2626' }}>
+                  {detail.isActive ? '✓ Actif' : 'Suspendu'}
+                </span>
+                <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>
+                  {detail.vehicleType === 'MOTO' ? '🏍 Moto' : detail.vehicleType === 'TAXI' ? '🚗 Taxi' : '—'}
+                </span>
+              </div>
+            </div>
+
+            {/* Infos */}
+            <div style={{ background: 'var(--surface2)', borderRadius: 10, padding: '14px 16px', marginBottom: 16 }}>
+              <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 10 }}>Informations</div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px 16px' }}>
+                {[
+                  ['Plaque', detail.vehiclePlate ?? '—'],
+                  ['Email', detail.email ?? '—'],
+                  ['Vérifié', detail.isVerified ? '✓ Oui' : 'Non'],
+                  ['Inscrit le', detail.createdAt ? new Date(detail.createdAt).toLocaleDateString('fr-FR') : '—'],
+                ].map(([label, val]) => (
+                  <div key={label}>
+                    <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>{label}</div>
+                    <div style={{ fontSize: 13, fontWeight: 600, marginTop: 2 }}>{val}</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Ambassadeur */}
+            {detail.managedById && (
+              <div style={{ background: 'rgba(124,58,237,.06)', border: '1px solid rgba(124,58,237,.15)', borderRadius: 10, padding: '10px 14px', marginBottom: 16, fontSize: 13 }}>
+                <span style={{ fontWeight: 600 }}>👤 Flotte AM : </span>
+                <span>{detail.managedBy?.name ?? '—'}</span>
+                <span style={{ marginLeft: 8, fontSize: 11, padding: '1px 6px', borderRadius: 8, background: detail.managedBy?.ambassadorStatus === 'ACTIVE' ? 'rgba(124,58,237,.12)' : 'rgba(245,158,11,.12)', color: detail.managedBy?.ambassadorStatus === 'ACTIVE' ? '#7c3aed' : '#b45309', fontWeight: 700 }}>
+                  {detail.managedBy?.ambassadorStatus === 'ACTIVE' ? 'AM ✓' : 'AM ⏳'}
+                </span>
+              </div>
+            )}
+
+            {/* Documents */}
+            <div style={{ marginBottom: 20 }}>
+              <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 10 }}>Documents</div>
+              <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+                <DocThumb url={detail.licenseFront}  label="Permis recto" />
+                <DocThumb url={detail.licenseBack}   label="Permis verso" />
+                <DocThumb url={detail.vehiclePhoto}  label="Véhicule" />
+                <DocThumb url={detail.casquePhoto}   label="Casque" />
+                <DocThumb url={detail.cniRecto}      label="CNI recto" />
+                <DocThumb url={detail.cniVerso}      label="CNI verso" />
+              </div>
+            </div>
+
+            <div style={{ textAlign: 'right' }}>
+              <button onClick={() => setDetail(null)} style={btnOutline}>Fermer</button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Modal stats */}
       {stats && (
