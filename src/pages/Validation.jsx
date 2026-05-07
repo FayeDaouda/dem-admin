@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react'
 import api from '../lib/api'
 import { glass, glassInput } from '../lib/glassStyles'
 import { RefreshCw, CheckCircle, XCircle, ChevronDown, ChevronUp, Shield, Truck, Layers, AlertTriangle } from 'lucide-react'
+import SuspendModal from '../components/SuspendModal'
 
 // ── Styles partagés ───────────────────────────────────────────────────────────
 const card      = { ...glass, padding: '18px 20px' }
@@ -97,11 +98,13 @@ export default function Validation() {
 // ── Tab Ambassadeurs ──────────────────────────────────────────────────────────
 function AmbassadorsTab() {
   const [list,     setList]     = useState([])
-  const [loading,  setLoading]  = useState(true)
-  const [filter,   setFilter]   = useState('PENDING')
-  const [expanded, setExpanded] = useState(null)
-  const [reason,   setReason]   = useState('')
-  const [acting,   setActing]   = useState(null)
+  const [loading,       setLoading]       = useState(true)
+  const [filter,        setFilter]        = useState('PENDING')
+  const [expanded,      setExpanded]      = useState(null)
+  const [reason,        setReason]        = useState('')
+  const [acting,        setActing]        = useState(null)
+  const [suspendTarget, setSuspendTarget] = useState(null)
+  const [suspending,    setSuspending]    = useState(false)
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -126,15 +129,19 @@ function AmbassadorsTab() {
     finally { setActing(null) }
   }
 
-  async function handleSuspend(id) {
-    if (!confirm('Suspendre cet ambassadeur et tous ses livreurs ?')) return
+  async function handleSuspendConfirm(reason, fix) {
+    if (!suspendTarget) return
+    setSuspending(true)
+    const fullReason = [reason, fix ? `À corriger : ${fix}` : ''].filter(Boolean).join('\n')
     try {
-      await api.patch(`/admin/ambassadors/${id}/suspend`, { reason: 'Suspendu par admin' })
+      await api.patch(`/admin/ambassadors/${suspendTarget.id}/suspend`, { reason: fullReason })
+      setSuspendTarget(null)
       load()
     } catch (e) { alert(e.response?.data?.message ?? 'Erreur.') }
+    finally { setSuspending(false) }
   }
 
-  return (
+  return (<>
     <div style={{ display:'flex', flexDirection:'column', gap:12 }}>
       {/* Filtres */}
       <div style={{ display:'flex', gap:8, marginBottom:4, flexWrap:'wrap' }}>
@@ -220,7 +227,7 @@ function AmbassadorsTab() {
 
                 {/* Action ACTIVE → Suspendre */}
                 {am.ambassadorStatus === 'ACTIVE' && (
-                  <button style={{ ...btnRefuse, alignSelf:'flex-start' }} onClick={() => handleSuspend(am.id)}>
+                  <button style={{ ...btnRefuse, alignSelf:'flex-start' }} onClick={() => setSuspendTarget(am)}>
                     Suspendre (+ tous ses livreurs)
                   </button>
                 )}
@@ -237,7 +244,15 @@ function AmbassadorsTab() {
         )
       })}
     </div>
-  )
+    {suspendTarget && (
+      <SuspendModal
+        target="ambassador"
+        onConfirm={handleSuspendConfirm}
+        onClose={() => setSuspendTarget(null)}
+        loading={suspending}
+      />
+    )}
+  </>)
 }
 
 // ── Tab Livreurs en attente ───────────────────────────────────────────────────

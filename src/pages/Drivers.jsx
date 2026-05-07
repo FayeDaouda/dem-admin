@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import api from '../lib/api'
 import Badge from '../components/Badge'
+import SuspendModal from '../components/SuspendModal'
 import { RefreshCw, BarChart2, Phone, CheckCircle, XCircle, Eye } from 'lucide-react'
 import { glass } from '../lib/glassStyles'
 
@@ -72,9 +73,11 @@ export default function Drivers() {
   const [loading, setLoading]           = useState(true)
   const [badgeTiers, setBadgeTiers]     = useState(null)
   const [fleetFilter, setFleetFilter]   = useState('all')
-  const [stats, setStats]         = useState(null)
-  const [detail, setDetail]       = useState(null)
-  const [phoneReqs, setPhoneReqs] = useState([])
+  const [stats, setStats]               = useState(null)
+  const [detail, setDetail]             = useState(null)
+  const [suspendTarget, setSuspendTarget] = useState(null)
+  const [suspending, setSuspending]     = useState(false)
+  const [phoneReqs, setPhoneReqs]       = useState([])
   const [phoneLoading, setPhoneLoading] = useState(true)
   const [resolving, setResolving]       = useState(null)
 
@@ -120,11 +123,25 @@ export default function Drivers() {
     }
   }
 
-  async function toggleBan(driver) {
-    const action = driver.isActive ? 'suspend' : 'activate'
-    if (!confirm(`${action === 'suspend' ? 'Suspendre' : 'Réactiver'} ${driver.name ?? driver.phone} ?`)) return
+  async function handleSuspendConfirm(reason, fix) {
+    if (!suspendTarget) return
+    setSuspending(true)
+    const fullReason = [reason, fix ? `À corriger : ${fix}` : ''].filter(Boolean).join('\n')
     try {
-      await api.patch(`/admin/drivers/${driver.id}/${action}`, action === 'suspend' ? { reason: 'Suspendu par admin' } : {})
+      await api.patch(`/admin/drivers/${suspendTarget.id}/suspend`, { reason: fullReason })
+      setSuspendTarget(null)
+      fetch()
+    } catch (e) {
+      alert(e.response?.data?.message ?? 'Erreur.')
+    } finally {
+      setSuspending(false)
+    }
+  }
+
+  async function activateDriver(driver) {
+    if (!confirm(`Réactiver ${driver.name ?? driver.phone} ?`)) return
+    try {
+      await api.patch(`/admin/drivers/${driver.id}/activate`)
       fetch()
     } catch (e) {
       alert(e.response?.data?.message ?? 'Erreur.')
@@ -313,12 +330,10 @@ export default function Drivers() {
                       <button onClick={() => showStats(d.id)} style={btnSmall} title="Statistiques paiement">
                         <BarChart2 size={13} /> Stats
                       </button>
-                      <button
-                        onClick={() => toggleBan(d)}
-                        style={{ ...btnSmall, color: d.isActive ? 'var(--danger)' : 'var(--success)', borderColor: d.isActive ? 'var(--danger)' : 'var(--success)' }}
-                      >
-                        {d.isActive ? 'Suspendre' : 'Réactiver'}
-                      </button>
+                      {d.isActive
+                        ? <button onClick={() => setSuspendTarget(d)} style={{ ...btnSmall, color: 'var(--danger)', borderColor: 'var(--danger)' }}>Suspendre</button>
+                        : <button onClick={() => activateDriver(d)} style={{ ...btnSmall, color: 'var(--success)', borderColor: 'var(--success)' }}>Réactiver</button>
+                      }
                     </div>
                   </td>
                 </tr>
@@ -327,6 +342,16 @@ export default function Drivers() {
           </table>
         )}
       </div>
+
+      {/* Modal suspension driver */}
+      {suspendTarget && (
+        <SuspendModal
+          target="driver"
+          onConfirm={handleSuspendConfirm}
+          onClose={() => setSuspendTarget(null)}
+          loading={suspending}
+        />
+      )}
 
       {/* Modal détail driver */}
       {detail && (
