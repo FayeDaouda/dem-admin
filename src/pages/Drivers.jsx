@@ -46,6 +46,7 @@ export default function Drivers() {
   const [drivers, setDrivers]           = useState([])
   const [loading, setLoading]           = useState(true)
   const [badgeTiers, setBadgeTiers]     = useState(null)
+  const [fleetFilter, setFleetFilter]   = useState('all')
   const [stats, setStats]         = useState(null)
   const [phoneReqs, setPhoneReqs] = useState([])
   const [phoneLoading, setPhoneLoading] = useState(true)
@@ -207,8 +208,22 @@ export default function Drivers() {
       )}
 
       {/* ── Liste complète drivers ── */}
-      <div style={{ marginBottom: 12 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 12, flexWrap: 'wrap' }}>
         <h2 style={{ fontSize: 15, fontWeight: 700 }}>Tous les drivers</h2>
+        <div style={{ display: 'flex', gap: 6, marginLeft: 'auto' }}>
+          {[
+            ['all',         'Tous'],
+            ['fleet',       '🏍 Flotte AM'],
+            ['independent', '👤 Indépendants'],
+          ].map(([key, label]) => (
+            <button key={key} onClick={() => setFleetFilter(key)} style={{
+              padding: '4px 12px', borderRadius: 20, border: '1px solid rgba(0,119,182,.25)',
+              background: fleetFilter === key ? 'var(--primary)' : 'rgba(255,255,255,.5)',
+              color: fleetFilter === key ? '#fff' : 'var(--text-muted)',
+              fontSize: 12, fontWeight: 600, cursor: 'pointer',
+            }}>{label}</button>
+          ))}
+        </div>
       </div>
       <div style={card}>
         {loading ? (
@@ -223,7 +238,12 @@ export default function Drivers() {
               </tr>
             </thead>
             <tbody>
-              {drivers.map(d => (
+              {drivers
+                .filter(d =>
+                  fleetFilter === 'fleet'       ? !!d.managedById :
+                  fleetFilter === 'independent' ? !d.managedById  : true
+                )
+                .map(d => (
                 <tr key={d.id} style={{ borderBottom: '1px solid var(--border)' }}>
                   <td style={tdStyle}>
                     <div style={{ fontWeight: 600 }}>{d.name ?? '—'}</div>
