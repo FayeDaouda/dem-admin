@@ -3,6 +3,7 @@ import api from '../lib/api'
 import { glass, glassInput } from '../lib/glassStyles'
 import { RefreshCw, CheckCircle, XCircle, ChevronDown, ChevronUp, Shield, Truck, Layers, AlertTriangle } from 'lucide-react'
 import SuspendModal from '../components/SuspendModal'
+import AmbassadorDetailModal from '../components/AmbassadorDetailModal'
 
 // ── Styles partagés ───────────────────────────────────────────────────────────
 const card      = { ...glass, padding: '18px 20px' }
@@ -105,6 +106,7 @@ function AmbassadorsTab() {
   const [acting,        setActing]        = useState(null)
   const [suspendTarget, setSuspendTarget] = useState(null)
   const [suspending,    setSuspending]    = useState(false)
+  const [detailAmId,    setDetailAmId]    = useState(null)
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -177,6 +179,10 @@ function AmbassadorsTab() {
                 </div>
               </div>
               <StatusBadge status={am.ambassadorStatus} />
+              <button onClick={() => setDetailAmId(am.id)}
+                style={{ display:'flex', alignItems:'center', gap:4, padding:'4px 10px', borderRadius:8, border:'1px solid rgba(0,119,182,.25)', background:'rgba(255,255,255,.5)', color:'var(--primary)', fontSize:12, fontWeight:600, cursor:'pointer', flexShrink:0 }}>
+                Voir
+              </button>
               <button onClick={() => { setExpanded(isOpen ? null : am.id); setReason('') }}
                 style={{ background:'none', border:'none', cursor:'pointer', color:'var(--text-muted)', flexShrink:0 }}>
                 {isOpen ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
@@ -250,6 +256,12 @@ function AmbassadorsTab() {
         onConfirm={handleSuspendConfirm}
         onClose={() => setSuspendTarget(null)}
         loading={suspending}
+      />
+    )}
+    {detailAmId && (
+      <AmbassadorDetailModal
+        ambassadorId={detailAmId}
+        onClose={() => setDetailAmId(null)}
       />
     )}
   </>)
