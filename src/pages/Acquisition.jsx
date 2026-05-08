@@ -19,11 +19,12 @@ const TAB_STYLE = (active) => ({
 })
 
 const TABS = [
-  { id: 'forfait',      label: 'Forfait',       icon: Zap },
-  { id: 'clients',      label: '100 Clients',   icon: Users },
-  { id: 'referrals',    label: 'Parrainage',    icon: GitBranch },
-  { id: 'ambassadeurs', label: 'Ambassadeurs',  icon: Award },
-  { id: 'fees',         label: 'Frais',         icon: DollarSign },
+  { id: 'forfait',      label: 'Forfait',        icon: Zap },
+  { id: 'clients',      label: '100 Clients',    icon: Users },
+  { id: 'referrals',    label: 'Parrainage',     icon: GitBranch },
+  { id: 'badges',       label: 'Badges clients', icon: Award },
+  { id: 'ambassadeurs', label: 'Ambassadeurs',   icon: Award },
+  { id: 'fees',         label: 'Frais',          icon: DollarSign },
 ]
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -86,6 +87,7 @@ export default function Acquisition() {
       {tab === 'forfait'      && <ForfaitTab notify={notify} />}
       {tab === 'clients'      && <ClientsTab notify={notify} />}
       {tab === 'referrals'    && <ReferralsTab />}
+      {tab === 'badges'       && <BadgesTab />}
       {tab === 'ambassadeurs' && <AmbassadeursTab />}
       {tab === 'fees'         && <FeesTab />}
 
@@ -640,6 +642,198 @@ function FeesTab() {
 
         <div style={{ marginTop: 14, padding: '10px 12px', background: 'rgba(0,180,216,.06)', borderRadius: 8, fontSize: 12, color: 'var(--text-muted)' }}>
           Frais moyen pondéré : ~120 FCFA · Net MLM (–20%) : ~96 FCFA/course
+        </div>
+      </Card>
+    </div>
+  )
+}
+
+// ── Tab Badges Clients ────────────────────────────────────────────────────────
+
+const BADGE_VISUALS = {
+  vip:     { emoji: '💎', color: '#7c3aed', bg: 'rgba(124,58,237,.10)',  name: 'DEM VIP' },
+  buur:    { emoji: '👑', color: '#7B1FA2', bg: 'rgba(123,31,162,.10)',  name: 'DEM Buur' },
+  djambar: { emoji: '🏆', color: '#1565C0', bg: 'rgba(21,101,192,.10)',  name: 'DEM Djambar' },
+  mbokk:   { emoji: '⭐', color: '#00695C', bg: 'rgba(0,105,92,.10)',    name: 'DEM Mbokk' },
+  xarit:   { emoji: '🤝', color: '#0288D1', bg: 'rgba(2,136,209,.10)',   name: 'DEM Xarit' },
+  classic: { emoji: '✅', color: '#00838F', bg: 'rgba(0,131,143,.10)',   name: 'DEM Classic' },
+}
+
+function BadgesTab() {
+  const [stats,    setStats]    = useState(null)
+  const [referrers, setReferrers] = useState([])
+  const [tiers,    setTiers]    = useState([])
+  const [pending,  setPending]  = useState([])
+  const [loading,  setLoading]  = useState(true)
+  const [validating, setValidating] = useState(null)
+
+  const load = useCallback(async () => {
+    setLoading(true)
+    try {
+      const [s, r, t, p] = await Promise.all([
+        api.get('/admin/client-badges/stats'),
+        api.get('/admin/client-badges/top-referrers'),
+        api.get('/admin/client-badges/tiers'),
+        api.get('/admin/clients', { params: { needsBadgeValidation: true } }).catch(() => ({ data: { clients: [] } })),
+      ])
+      setStats(s.data)
+      setReferrers(r.data.referrers ?? [])
+      setTiers(t.data.tiers ?? [])
+      // Pending validation = clients who reached mbokk+ but not yet validated
+      const allClients = p.data.clients ?? []
+      setPending(allClients.filter(c => ['mbokk','djambar','buur','vip'].includes(c.clientBadge) && !c.clientBadgeValidated))
+    } catch (e) { console.error(e) }
+    finally { setLoading(false) }
+  }, [])
+
+  useEffect(() => { load() }, [load])
+
+  async function validate(clientId) {
+    setValidating(clientId)
+    try {
+      await api.patch(`/admin/clients/${clientId}/badge/validate`)
+      load()
+    } catch (e) { alert(e.response?.data?.message ?? 'Erreur') }
+    finally { setValidating(null) }
+  }
+
+  if (loading) return <div style={{ color: 'var(--text-muted)', padding: 40, textAlign: 'center' }}>Chargement…</div>
+
+  const total = stats?.total ?? 0
+  const dist  = stats?.distribution ?? []
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+
+      {/* Distribution */}
+      <Card>
+        <div style={{ fontWeight: 700, fontSize: 15, marginBottom: 16 }}>Distribution des badges</div>
+        <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+          {Object.entries(BADGE_VISUALS).map(([id, v]) => {
+            const count = dist.find(d => d.badge === id)?._count ?? dist.find(d => d.badge === id)?.count ?? 0
+            const pct   = total > 0 ? Math.round((count / total) * 100) : 0
+            return (
+              <div key={id} style={{ flex: '1 1 140px', background: v.bg, borderRadius: 12, padding: '12px 14px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+                  <span style={{ fontSize: 18 }}>{v.emoji}</span>
+                  <span style={{ fontWeight: 700, fontSize: 13, color: v.color }}>{v.name}</span>
+                </div>
+                <div style={{ fontSize: 26, fontWeight: 800, color: v.color }}>{count}</div>
+                <div style={{ height: 4, borderRadius: 4, background: 'rgba(0,0,0,.08)', marginTop: 6 }}>
+                  <div style={{ height: '100%', borderRadius: 4, width: `${pct}%`, background: v.color, transition: 'width .4s' }} />
+                </div>
+                <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 4 }}>{pct}% des clients</div>
+              </div>
+            )
+          })}
+          <div style={{ flex: '1 1 140px', background: 'var(--surface2)', borderRadius: 12, padding: '12px 14px' }}>
+            <div style={{ fontWeight: 700, fontSize: 13, color: 'var(--text-muted)', marginBottom: 8 }}>Sans badge</div>
+            <div style={{ fontSize: 26, fontWeight: 800, color: 'var(--text-muted)' }}>
+              {total - dist.reduce((s, d) => s + (d.count ?? d._count ?? 0), 0)}
+            </div>
+            <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 14 }}>Nouveau ou 0 course</div>
+          </div>
+        </div>
+      </Card>
+
+      {/* Validations en attente (Mbokk+) */}
+      {pending.length > 0 && (
+        <Card>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 14 }}>
+            <span style={{ fontSize: 16 }}>⏳</span>
+            <div style={{ fontWeight: 700, fontSize: 15 }}>Validations internes en attente</div>
+            <span style={{ background: 'rgba(245,158,11,.15)', color: '#b45309', fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 20 }}>{pending.length}</span>
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            {pending.map(c => {
+              const v = BADGE_VISUALS[c.clientBadge] ?? {}
+              return (
+                <div key={c.id} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 12px', background: 'var(--surface2)', borderRadius: 10 }}>
+                  <span style={{ fontSize: 18 }}>{v.emoji ?? '🎯'}</span>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontWeight: 600, fontSize: 13 }}>{c.name ?? '—'}</div>
+                    <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>{c.phone} · <span style={{ color: v.color, fontWeight: 700 }}>{v.name}</span></div>
+                  </div>
+                  <button
+                    onClick={() => validate(c.id)}
+                    disabled={validating === c.id}
+                    style={{ padding: '6px 14px', borderRadius: 8, border: 'none', background: '#15803d', color: '#fff', fontWeight: 700, fontSize: 12, cursor: 'pointer', opacity: validating === c.id ? 0.5 : 1 }}
+                  >
+                    {validating === c.id ? '…' : '✓ Valider'}
+                  </button>
+                </div>
+              )
+            })}
+          </div>
+        </Card>
+      )}
+
+      {/* Top parrains */}
+      <Card>
+        <div style={{ fontWeight: 700, fontSize: 15, marginBottom: 14 }}>🏅 Top parrains (filleuls actifs)</div>
+        {referrers.length === 0 ? (
+          <div style={{ color: 'var(--text-muted)', fontSize: 13 }}>Aucun parrainage validé.</div>
+        ) : (
+          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+            <thead>
+              <tr>{['#', 'Client', 'Badge', 'Code parrain', 'Filleuls actifs'].map(h => (
+                <th key={h} style={{ textAlign: 'left', padding: '6px 10px', color: 'var(--text-muted)', fontSize: 11, fontWeight: 600, borderBottom: '1px solid rgba(0,119,182,.10)' }}>{h}</th>
+              ))}</tr>
+            </thead>
+            <tbody>
+              {referrers.slice(0, 20).map((r, i) => {
+                const v = BADGE_VISUALS[r.clientBadge] ?? {}
+                return (
+                  <tr key={r.id} style={{ borderBottom: '1px solid var(--border)' }}>
+                    <td style={{ padding: '8px 10px', fontWeight: 700, color: i < 3 ? '#f59e0b' : 'var(--text-muted)', fontSize: 13 }}>#{i + 1}</td>
+                    <td style={{ padding: '8px 10px' }}>
+                      <div style={{ fontWeight: 600, fontSize: 13 }}>{r.name ?? '—'}</div>
+                      <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>{r.phone}</div>
+                    </td>
+                    <td style={{ padding: '8px 10px' }}>
+                      {v.name
+                        ? <span style={{ background: v.bg, color: v.color, fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 20 }}>{v.emoji} {v.name}</span>
+                        : <span style={{ color: 'var(--text-muted)', fontSize: 11 }}>Sans badge</span>}
+                    </td>
+                    <td style={{ padding: '8px 10px', fontFamily: 'monospace', fontSize: 12, color: 'var(--primary)', fontWeight: 600 }}>{r.referralCode}</td>
+                    <td style={{ padding: '8px 10px', fontWeight: 700, fontSize: 16, color: 'var(--primary)' }}>{r.validReferralCount}</td>
+                  </tr>
+                )
+              })}
+            </tbody>
+          </table>
+        )}
+      </Card>
+
+      {/* Conditions des tiers */}
+      <Card>
+        <div style={{ fontWeight: 700, fontSize: 15, marginBottom: 14 }}>📋 Conditions des tiers</div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+          {tiers.map(tier => {
+            const v = BADGE_VISUALS[tier.id] ?? {}
+            return (
+              <div key={tier.id} style={{ background: v.bg ?? 'var(--surface2)', borderRadius: 10, padding: '10px 14px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+                  <span style={{ fontSize: 16 }}>{v.emoji ?? '🎯'}</span>
+                  <span style={{ fontWeight: 700, fontSize: 14, color: v.color }}>{tier.name}</span>
+                  {tier.requiresValidation && <span style={{ fontSize: 10, fontWeight: 700, padding: '1px 6px', borderRadius: 6, background: 'rgba(245,158,11,.20)', color: '#b45309' }}>validation admin</span>}
+                </div>
+                <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', fontSize: 12, color: 'var(--text-muted)' }}>
+                  {Object.entries(tier.paths).map(([path, conds]) => (
+                    <div key={path} style={{ background: 'rgba(255,255,255,.6)', borderRadius: 8, padding: '6px 10px', minWidth: 150 }}>
+                      <div style={{ fontWeight: 700, marginBottom: 4, textTransform: 'capitalize', color: 'var(--text)' }}>
+                        {path === 'commandeur' ? '⚔️ Commandeur' : path === 'parrain' ? '🤝 Parrain' : '⚖️ Équilibre'}
+                      </div>
+                      {conds.courses   > 0 && <div>🏍 {conds.courses} courses</div>}
+                      {conds.referrals > 0 && <div>👥 {conds.referrals} filleuls</div>}
+                      {conds.rating    > 0 && <div>⭐ note ≥ {conds.rating}</div>}
+                      {conds.profileComplete && <div>👤 profil complet</div>}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )
+          })}
         </div>
       </Card>
     </div>
