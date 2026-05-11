@@ -827,7 +827,7 @@ function BadgesTab() {
                       {conds.courses   > 0 && <div>🏍 {conds.courses} courses</div>}
                       {conds.referrals > 0 && <div>👥 {conds.referrals} filleuls</div>}
                       {conds.rating    > 0 && <div>⭐ note ≥ {conds.rating}</div>}
-                      {conds.profileComplete && <div>👤 profil complet</div>}
+                      {conds.profileComplete && <div title="nom + email + ≥1 adresse favorite">📍 profil complet</div>}
                     </div>
                   ))}
                 </div>

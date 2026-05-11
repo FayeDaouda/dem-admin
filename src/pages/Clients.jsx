@@ -56,6 +56,7 @@ function ClientDetailModal({ client, onClose }) {
                   ['Inscrit le',  d.createdAt ? new Date(d.createdAt).toLocaleDateString('fr-FR') : '—'],
                   ['Vérifié',     d.isVerified ? '✓ Oui' : 'Non'],
                   ['Code parrain', d.referralCode ?? '—'],
+                  ['Adresses fav.', `${d._count?.favoriteAddresses ?? 0} / 6`],
                 ].map(([label, val]) => (
                   <div key={label}>
                     <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>{label}</div>
