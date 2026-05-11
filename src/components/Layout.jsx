@@ -7,17 +7,31 @@ import {
 import logoSrc from '../assets/logo-dem.svg'
 import { useResponsive } from '../lib/useResponsive'
 
+// roles: undefined = tous les rôles. Sinon tableau des rôles autorisés (SUPER bypass toujours).
 const NAV = [
-  { to: '/',            icon: LayoutDashboard, label: 'Dashboard' },
-  { to: '/map',         icon: Map,             label: 'Carte live' },
-  { to: '/payments',    icon: CreditCard,      label: 'Paiements' },
-  { to: '/orders',      icon: Package,         label: 'Courses' },
-  { to: '/drivers',     icon: Truck,           label: 'Drivers' },
-  { to: '/clients',     icon: Users,           label: 'Clients' },
-  { to: '/acquisition', icon: TrendingUp,      label: 'Acquisition' },
-  { to: '/validation',  icon: ShieldCheck,     label: 'Validation' },
-  { to: '/config',      icon: Settings,        label: 'Tarifs' },
+  { to: '/',            icon: LayoutDashboard, label: 'Dashboard'   },
+  { to: '/map',         icon: Map,             label: 'Carte live',   roles: ['SUPER','DEV'] },
+  { to: '/payments',    icon: CreditCard,      label: 'Paiements',    roles: ['SUPER','FINANCE'] },
+  { to: '/orders',      icon: Package,         label: 'Courses',      roles: ['SUPER','DEV','FINANCE'] },
+  { to: '/drivers',     icon: Truck,           label: 'Drivers',      roles: ['SUPER','DEV'] },
+  { to: '/clients',     icon: Users,           label: 'Clients',      roles: ['SUPER','DEV'] },
+  { to: '/acquisition', icon: TrendingUp,      label: 'Acquisition',  roles: ['SUPER','MARKETING'] },
+  { to: '/validation',  icon: ShieldCheck,     label: 'Validation',   roles: ['SUPER'] },
+  { to: '/config',      icon: Settings,        label: 'Tarifs',       roles: ['SUPER','DEV'] },
 ]
+
+const ROLE_LABELS = {
+  SUPER:     { label: 'Super Admin',     color: '#f59e0b' },
+  DEV:       { label: 'Dev Admin',       color: '#6366f1' },
+  FINANCE:   { label: 'Finance Admin',   color: '#22c55e' },
+  MARKETING: { label: 'Marketing Admin', color: '#ec4899' },
+}
+
+function canSeeNav(item, adminRole) {
+  if (!item.roles) return true          // pas de restriction
+  if (!adminRole || adminRole === 'SUPER') return true  // SUPER voit tout
+  return item.roles.includes(adminRole)
+}
 
 export default function Layout({ children }) {
   const { user, logout } = useAuth()
@@ -68,9 +82,9 @@ export default function Layout({ children }) {
         )}
       </div>
 
-      {/* Nav */}
+      {/* Nav — filtré selon adminRole */}
       <nav style={{ flex: 1, padding: '10px 6px', display: 'flex', flexDirection: 'column', gap: 2 }}>
-        {NAV.map(({ to, icon: Icon, label }) => (
+        {NAV.filter(item => canSeeNav(item, user?.adminRole)).map(({ to, icon: Icon, label }) => (
           <NavLink
             key={to}
             to={to}
@@ -97,16 +111,25 @@ export default function Layout({ children }) {
         ))}
       </nav>
 
-      {/* User + Logout */}
+      {/* User + rôle + Logout */}
       <div style={{
         padding: collapsed ? '10px 6px' : '10px 10px',
         borderTop: '1px solid rgba(255,255,255,0.18)',
       }}>
-        {!collapsed && (
-          <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.65)', marginBottom: 6, paddingLeft: 4, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-            {user?.name ?? user?.email}
-          </div>
-        )}
+        {!collapsed && (() => {
+          const role = user?.adminRole ?? 'SUPER'
+          const rl   = ROLE_LABELS[role] ?? ROLE_LABELS.SUPER
+          return (
+            <div style={{ marginBottom: 6, paddingLeft: 4 }}>
+              <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.65)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                {user?.name ?? user?.email}
+              </div>
+              <div style={{ marginTop: 3, display: 'inline-block', fontSize: 10, fontWeight: 700, padding: '2px 7px', borderRadius: 10, background: rl.color + '33', color: rl.color, border: `1px solid ${rl.color}55` }}>
+                {rl.label}
+              </div>
+            </div>
+          )
+        })()}
         <button
           onClick={handleLogout}
           title={collapsed ? 'Déconnexion' : undefined}
