@@ -19,14 +19,6 @@ function computeDemFeeFromGrid(price, grid) {
   return price < grid[0].min ? 0 : grid[grid.length - 1].fee
 }
 
-const DEFAULT_BADGES = [
-  { tier: 'gainde',    name: 'DEM Gainde',     emoji: '🏅', courses: 500, referrals: 0,  rating: 4.2 },
-  { tier: 'buur',      name: 'DEM Buur',       emoji: '👑', courses: 300, referrals: 0,  rating: 4.0 },
-  { tier: 'domouNdey', name: 'DEM Domou Ndey', emoji: '⭐', courses: 135, referrals: 0,  rating: 4.0 },
-  { tier: 'doorWarr',  name: 'DEM Door Warr',  emoji: '✅', courses: 70,  referrals: 0,  rating: 3.5 },
-  { tier: 'mbokk',     name: 'DEM Mbokk',      emoji: '👥', courses: 30,  referrals: 12, rating: 3.5 },
-  { tier: 'xarit',     name: 'DEM Xarit',      emoji: '🤝', courses: 3,   referrals: 3,  rating: 0   },
-]
 
 const DEFAULT_FEE_GRID = [
   { min: 900,  max: 1250, fee: 65  }, { min: 1251, max: 1600, fee: 90  },
@@ -66,11 +58,9 @@ export default function Config() {
       <div style={{ display: 'flex', gap: 4, marginBottom: 24, background: 'rgba(255,255,255,.45)', borderRadius: 'var(--radius)', padding: 4, width: 'fit-content' }}>
         <button style={TAB(tab === 'tarifs')}      onClick={() => setTab('tarifs')}>Tarifs</button>
         <button style={TAB(tab === 'commissions')} onClick={() => setTab('commissions')}>Commissions</button>
-        <button style={TAB(tab === 'badges')}      onClick={() => setTab('badges')}>Badges drivers</button>
       </div>
       {tab === 'tarifs'      && <TarifsTab />}
       {tab === 'commissions' && <CommissionsTab />}
-      {tab === 'badges'      && <BadgesTab />}
     </div>
   )
 }
@@ -324,119 +314,3 @@ function CommissionsTab() {
   )
 }
 
-// ── Tab Badges ────────────────────────────────────────────────────────────────
-function BadgesTab() {
-  const [badges,  setBadges]  = useState(null)
-  const [draft,   setDraft]   = useState(null)
-  const [loading, setLoading] = useState(true)
-  const [saving,  setSaving]  = useState(false)
-  const [saved,   setSaved]   = useState(false)
-
-  const load = useCallback(async () => {
-    setLoading(true)
-    try {
-      const res = await api.get('/admin/badges/config')
-      setBadges(res.data.badges)
-      setDraft(res.data.badges.map(b => ({ ...b })))
-    } catch (e) {
-      console.error(e)
-      setBadges(DEFAULT_BADGES)
-      setDraft(DEFAULT_BADGES.map(b => ({ ...b })))
-    } finally { setLoading(false) }
-  }, [])
-
-  useEffect(() => { load() }, [load])
-
-  function update(i, field, val) {
-    setDraft(prev => prev.map((b, idx) =>
-      idx === i ? { ...b, [field]: field === 'rating' ? parseFloat(val) || 0 : parseInt(val, 10) || 0 } : b
-    ))
-  }
-
-  async function handleSave() {
-    setSaving(true)
-    try {
-      await api.put('/admin/badges/config', { badges: draft })
-      setBadges(draft.map(b => ({ ...b })))
-      setSaved(true)
-      setTimeout(() => setSaved(false), 2500)
-    } catch (e) {
-      alert(e.response?.data?.message ?? 'Erreur.')
-    } finally { setSaving(false) }
-  }
-
-  function handleReset() {
-    if (!confirm('Remettre les valeurs par défaut ?')) return
-    setDraft(DEFAULT_BADGES.map(b => ({ ...b })))
-  }
-
-  const hasChanges = draft && badges && JSON.stringify(draft) !== JSON.stringify(badges)
-  if (loading || !draft) return <div style={{ color: 'var(--text-muted)' }}>Chargement…</div>
-
-  return (
-    <div style={{ maxWidth: 760 }}>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
-        <p style={{ color: 'var(--text-muted)', fontSize: 13 }}>
-          Seuils de chaque niveau. Recalculés en temps réel dans l'app driver.
-        </p>
-        <div style={{ display: 'flex', gap: 8 }}>
-          <button onClick={handleReset} style={btnOutline}><RotateCcw size={13} /> Défaut</button>
-          <button onClick={handleSave} disabled={!hasChanges || saving} style={btnSave(hasChanges)}>
-            <Save size={14} />
-            {saved ? 'Sauvegardé ✓' : saving ? 'Enregistrement…' : 'Sauvegarder'}
-          </button>
-        </div>
-      </div>
-      <div style={{ ...glass, padding: 0, overflowX: 'auto' }}>
-        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-          <thead>
-            <tr style={{ background: 'rgba(0,119,182,.05)' }}>
-              {['Niveau', 'Courses min', 'Parrainages min', 'Note min (/5)', 'Aperçu'].map(h => (
-                <th key={h} style={{ textAlign: 'left', padding: '12px 16px', fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', letterSpacing: '.5px', borderBottom: '1px solid rgba(0,0,0,.07)' }}>{h}</th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {draft.map((b, i) => (
-              <tr key={b.tier} style={{ borderBottom: i < draft.length - 1 ? '1px solid rgba(0,0,0,.05)' : 'none' }}>
-                <td style={{ padding: '12px 16px' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <span style={{ fontSize: 18 }}>{b.emoji}</span>
-                    <span style={{ fontWeight: 700, fontSize: 13 }}>{b.name}</span>
-                  </div>
-                </td>
-                <td style={{ padding: '10px 16px' }}>
-                  <input type="number" min={0} value={b.courses}
-                    onChange={e => update(i, 'courses', e.target.value)}
-                    style={{ ...glassInput, width: 90, textAlign: 'center', fontWeight: 700,
-                      border: `1px solid ${b.courses !== badges[i]?.courses ? 'var(--primary)' : 'rgba(0,119,182,.25)'}` }}
-                  />
-                </td>
-                <td style={{ padding: '10px 16px' }}>
-                  <input type="number" min={0} value={b.referrals}
-                    onChange={e => update(i, 'referrals', e.target.value)}
-                    style={{ ...glassInput, width: 90, textAlign: 'center', fontWeight: 700,
-                      border: `1px solid ${b.referrals !== badges[i]?.referrals ? 'var(--primary)' : 'rgba(0,119,182,.25)'}` }}
-                  />
-                </td>
-                <td style={{ padding: '10px 16px' }}>
-                  <input type="number" min={0} max={5} step={0.1} value={b.rating}
-                    onChange={e => update(i, 'rating', e.target.value)}
-                    style={{ ...glassInput, width: 90, textAlign: 'center', fontWeight: 700,
-                      border: `1px solid ${b.rating !== badges[i]?.rating ? 'var(--primary)' : 'rgba(0,119,182,.25)'}` }}
-                  />
-                </td>
-                <td style={{ padding: '10px 16px', fontSize: 11, color: 'var(--text-muted)', fontStyle: 'italic' }}>
-                  {b.courses} courses{b.referrals > 0 ? ` + ${b.referrals} parr.` : ''}{b.rating > 0 ? ` + ${b.rating}★` : ''}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-      <p style={{ color: 'var(--text-muted)', fontSize: 11, marginTop: 12 }}>
-        Les champs en bleu indiquent une modification non sauvegardée.
-      </p>
-    </div>
-  )
-}
