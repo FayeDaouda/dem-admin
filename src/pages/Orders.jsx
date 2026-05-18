@@ -9,8 +9,9 @@ export default function Orders() {
   const [loading, setLoading]   = useState(true)
   const [search, setSearch]     = useState('')
   const [detail, setDetail]     = useState(null)
-  const [cancelling, setCancelling] = useState(false)
-  const [paying, setPaying] = useState(false)
+  const [cancelling, setCancelling]     = useState(false)
+  const [paying, setPaying]             = useState(false)
+  const [redispatching, setRedispatching] = useState(false)
 
   const markPaid = async (id) => {
     if (!window.confirm('Marquer ce paiement comme reçu ?')) return
@@ -23,6 +24,20 @@ export default function Orders() {
       alert(e.response?.data?.message ?? 'Erreur')
     } finally {
       setPaying(false)
+    }
+  }
+
+  const redispatch = async (id) => {
+    if (!globalThis.confirm('Forcer un re-dispatch ? Le livreur actuel sera retiré et un nouveau sera recherché automatiquement.')) return
+    setRedispatching(true)
+    try {
+      await api.patch(`/admin/orders/${id}/redispatch`)
+      setDetail(prev => prev ? { ...prev, status: 'PENDING', driver: null } : prev)
+      fetch()
+    } catch (e) {
+      alert(e.response?.data?.message ?? 'Erreur lors du re-dispatch')
+    } finally {
+      setRedispatching(false)
     }
   }
 
@@ -139,7 +154,16 @@ export default function Orders() {
               <Row label="Créée le"      value={detail.createdAt ? new Date(detail.createdAt).toLocaleString('fr-FR') : '—'} />
             </div>
             <div style={{ marginTop: 20, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <div style={{ display: 'flex', gap: 8 }}>
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                {detail.status === 'ACCEPTED' && (
+                  <button
+                    onClick={() => redispatch(detail.id)}
+                    disabled={redispatching}
+                    style={{ ...btnOutline, color: '#f97316', borderColor: '#f97316', background: 'rgba(249,115,22,0.08)' }}
+                  >
+                    {redispatching ? 'Re-dispatch…' : '↺ Re-dispatcher'}
+                  </button>
+                )}
                 {!['DELIVERED', 'CANCELLED'].includes(detail.status) && (
                   <button
                     onClick={() => cancelOrder(detail.id)}

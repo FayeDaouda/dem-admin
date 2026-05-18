@@ -6,7 +6,7 @@ import {
 import { connectSocket, disconnectSocket } from '../lib/socket'
 import api from '../lib/api'
 import Badge from '../components/Badge'
-import { Package, Truck, AlertTriangle, TrendingUp, Users, CreditCard } from 'lucide-react'
+import { Package, Truck, AlertTriangle, TrendingUp, Users, CreditCard, Activity, Wifi } from 'lucide-react'
 import { glass } from '../lib/glassStyles'
 import { useResponsive } from '../lib/useResponsive'
 
@@ -59,6 +59,15 @@ export default function Dashboard() {
   const [timeseries, setTimeseries] = useState([])
   const [events, setEvents]     = useState([])
   const [loading, setLoading]   = useState(true)
+  const [health, setHealth]     = useState(null)
+
+  // Santé système — poll toutes les 30s indépendamment du reste
+  useEffect(() => {
+    const fetchHealth = () => api.get('/health').then(r => setHealth(r.data)).catch(() => {})
+    fetchHealth()
+    const t = setInterval(fetchHealth, 30_000)
+    return () => clearInterval(t)
+  }, [])
 
   const fetchAll = useCallback(async () => {
     try {
@@ -246,6 +255,78 @@ export default function Dashboard() {
           </div>
         </div>
       </div>
+
+      {/* ── Santé système ── */}
+      {health && (
+        <div style={{ ...card, marginBottom: isMobile ? 12 : 20 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 14 }}>
+            <Activity size={15} color="var(--primary)" />
+            <h2 style={{ ...cardTitle, marginBottom: 0 }}>Santé système</h2>
+            <span style={{
+              marginLeft: 'auto', fontSize: 11, color: health.status === 'ok' ? '#22c55e' : '#ef4444',
+              fontWeight: 700, background: health.status === 'ok' ? '#22c55e18' : '#ef444418',
+              padding: '2px 10px', borderRadius: 20,
+            }}>
+              {health.status === 'ok' ? '● Opérationnel' : '● Dégradé'}
+            </span>
+            <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>
+              <Wifi size={11} style={{ marginRight: 3 }} />
+              {health.sockets?.connected ?? '?'} sockets
+            </span>
+            <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>
+              ↑ {Math.floor((health.uptime ?? 0) / 3600)}h{Math.floor(((health.uptime ?? 0) % 3600) / 60)}m
+            </span>
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr 1fr' : 'repeat(4,1fr)', gap: 10 }}>
+            {[
+              {
+                label: 'Dispatch',
+                items: [
+                  { k: 'Cycles',           v: health.dispatch?.cycles        ?? 0 },
+                  { k: 'Sans driver',      v: health.dispatch?.noDriverEvents ?? 0, warn: health.dispatch?.noDriverEvents > 5 },
+                  { k: 'Offres expirées',  v: health.dispatch?.offersExpired  ?? 0 },
+                  { k: 'Auto-annulées',    v: health.dispatch?.autoCancelled  ?? 0, warn: health.dispatch?.autoCancelled > 0 },
+                ],
+              },
+              {
+                label: 'Commandes live',
+                items: [
+                  { k: 'En attente',   v: health.orders?.pending   ?? 0, warn: health.orders?.pending > 10 },
+                  { k: 'Acceptées',    v: health.orders?.accepted  ?? 0 },
+                  { k: 'En transit',   v: health.orders?.picked_up ?? 0 },
+                ],
+              },
+              {
+                label: 'Drivers',
+                items: [
+                  { k: 'Total',        v: health.drivers?.total     ?? 0 },
+                  { k: 'En ligne',     v: health.drivers?.online    ?? 0 },
+                  { k: 'Disponibles',  v: health.drivers?.available ?? 0 },
+                ],
+              },
+              {
+                label: 'Incidents',
+                items: [
+                  { k: 'Cycles job',   v: health.incident?.cycles            ?? 0 },
+                  { k: 'Re-dispatch',  v: health.incident?.redispatched      ?? 0, warn: health.incident?.redispatched > 3 },
+                  { k: 'Injoignables', v: health.incident?.unreachableAlerts ?? 0, warn: health.incident?.unreachableAlerts > 0 },
+                ],
+              },
+            ].map(({ label, items }) => (
+              <div key={label} style={{ background: 'rgba(0,119,182,0.04)', borderRadius: 10, padding: '10px 14px', border: '1px solid rgba(0,119,182,0.10)' }}>
+                <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--primary)', marginBottom: 8, textTransform: 'uppercase', letterSpacing: 0.5 }}>{label}</div>
+                {items.map(({ k, v, warn }) => (
+                  <div key={k} style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
+                    <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>{k}</span>
+                    <span style={{ fontSize: 12, fontWeight: 700, color: warn ? '#f97316' : 'var(--text)' }}>{v}</span>
+                  </div>
+                ))}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Drivers disponibles */}
       <div style={card}>

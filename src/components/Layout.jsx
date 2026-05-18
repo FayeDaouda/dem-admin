@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { NavLink, useNavigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import {
-  LayoutDashboard, CreditCard, Package, Users, Settings, LogOut, Truck, Map, Menu, X, TrendingUp, ShieldCheck,
+  LayoutDashboard, CreditCard, Package, Users, Settings, LogOut, Truck, Map, Menu, X, TrendingUp, ShieldCheck, AlertTriangle, ScrollText,
 } from 'lucide-react'
 import logoSrc from '../assets/logo-dem.svg'
 import { useResponsive } from '../lib/useResponsive'
@@ -16,6 +16,8 @@ const NAV = [
   { to: '/drivers',     icon: Truck,           label: 'Drivers',      roles: ['SUPER','DEV'] },
   { to: '/clients',     icon: Users,           label: 'Clients',      roles: ['SUPER','DEV'] },
   { to: '/acquisition', icon: TrendingUp,      label: 'Acquisition',  roles: ['SUPER','MARKETING'] },
+  { to: '/incidents',   icon: AlertTriangle,   label: 'Incidents',    roles: ['SUPER','DEV'] },
+  { to: '/audit',       icon: ScrollText,      label: 'Audit',        roles: ['SUPER','DEV'] },
   { to: '/validation',  icon: ShieldCheck,     label: 'Validation',   roles: ['SUPER'] },
   { to: '/config',      icon: Settings,        label: 'Tarifs',       roles: ['SUPER','DEV'] },
 ]
