@@ -11,11 +11,18 @@ function DriverFormModal({ initial, onClose, onSaved }) {
   const [form, setForm] = useState({
     name:         initial?.name         ?? '',
     phone:        initial?.phone        ?? '',
-    vehicleType:  initial?.vehicleType  ?? 'MOTO',
     vehiclePlate: initial?.vehiclePlate ?? '',
+    managedById:  initial?.managedById  ?? '',
   })
+  const [chefs, setChefs]   = useState([])
   const [saving, setSaving] = useState(false)
   const [error, setError]   = useState('')
+
+  useEffect(() => {
+    api.get('/admin/chefs-de-flotte', { params: { status: 'APPROVED' } })
+      .then(r => setChefs(Array.isArray(r.data?.chefs) ? r.data.chefs : []))
+      .catch(() => {})
+  }, [])
 
   function set(k, v) { setForm(f => ({ ...f, [k]: v })) }
 
@@ -23,10 +30,11 @@ function DriverFormModal({ initial, onClose, onSaved }) {
     if (!form.phone.trim()) { setError('Le numéro est obligatoire.'); return }
     setSaving(true); setError('')
     try {
+      const payload = { ...form, managedById: form.managedById || null }
       if (isEdit) {
-        await api.patch(`/admin/drivers/${initial.id}`, form)
+        await api.patch(`/admin/drivers/${initial.id}`, payload)
       } else {
-        await api.post('/admin/drivers', form)
+        await api.post('/admin/drivers', payload)
       }
       onSaved()
     } catch (e) {
@@ -44,6 +52,7 @@ function DriverFormModal({ initial, onClose, onSaved }) {
           <h2 style={{ fontSize: 17, fontWeight: 700 }}>{isEdit ? 'Modifier le livreur' : 'Créer un livreur'}</h2>
           <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', display: 'flex', padding: 4 }}><XCircle size={16} /></button>
         </div>
+
         <div style={{ marginBottom: 14 }}>
           <label style={labelStyle}>Nom complet</label>
           <input type="text" value={form.name} onChange={e => set('name', e.target.value)} placeholder="Ex : Moussa Diop" style={inputStyle} />
@@ -53,18 +62,21 @@ function DriverFormModal({ initial, onClose, onSaved }) {
           <input type="tel" value={form.phone} onChange={e => set('phone', e.target.value)} placeholder="+221 77 000 00 00" style={inputStyle} />
         </div>
         <div style={{ marginBottom: 14 }}>
-          <label style={labelStyle}>Type de véhicule</label>
-          <select value={form.vehicleType} onChange={e => set('vehicleType', e.target.value)} style={{ ...inputStyle }}>
-            <option value="MOTO">🏍 Moto</option>
-            <option value="TAXI">🚗 Taxi</option>
-            <option value="VELO">🚲 Vélo</option>
-            <option value="VOITURE">🚙 Voiture</option>
-          </select>
-        </div>
-        <div style={{ marginBottom: 14 }}>
           <label style={labelStyle}>Plaque d'immatriculation</label>
           <input type="text" value={form.vehiclePlate} onChange={e => set('vehiclePlate', e.target.value)} placeholder="Ex : DK 1234 AB" style={inputStyle} />
         </div>
+        <div style={{ marginBottom: 14 }}>
+          <label style={labelStyle}>Chef de flotte (optionnel)</label>
+          <select value={form.managedById} onChange={e => set('managedById', e.target.value)} style={inputStyle}>
+            <option value="">— Indépendant —</option>
+            {chefs.map(c => (
+              <option key={c.id} value={c.id}>
+                {c.name ?? c.phone}{c.companyName ? ` · ${c.companyName}` : ''}
+              </option>
+            ))}
+          </select>
+        </div>
+
         {error && <div style={{ fontSize: 12, color: 'var(--danger)', background: 'rgba(239,68,68,.08)', borderRadius: 6, padding: '7px 10px', marginTop: 4 }}>{error}</div>}
         <div style={{ display: 'flex', gap: 10, marginTop: 20 }}>
           <button onClick={onClose} style={{ flex: 1, padding: '8px 0', borderRadius: 8, border: '1px solid rgba(0,119,182,.25)', background: 'rgba(255,255,255,.5)', cursor: 'pointer', fontSize: 13 }}>Annuler</button>
