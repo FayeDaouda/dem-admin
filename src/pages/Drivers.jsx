@@ -19,8 +19,8 @@ function DriverFormModal({ initial, onClose, onSaved }) {
   const [error, setError]   = useState('')
 
   useEffect(() => {
-    api.get('/admin/chefs-de-flotte', { params: { status: 'APPROVED' } })
-      .then(r => setChefs(Array.isArray(r.data?.chefs) ? r.data.chefs : []))
+    api.get('/admin/chefs-de-flotte', { params: { status: 'all' } })
+      .then(r => setChefs(Array.isArray(r.data?.chefs) ? r.data.chefs.filter(c => c.isActive) : []))
       .catch(() => {})
   }, [])
 
