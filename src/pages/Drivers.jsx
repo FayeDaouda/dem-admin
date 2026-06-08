@@ -5,6 +5,17 @@ import SuspendModal from '../components/SuspendModal'
 import { RefreshCw, BarChart2, Phone, CheckCircle, XCircle, Eye, Plus, Pencil, Trash2 } from 'lucide-react'
 import { glass } from '../lib/glassStyles'
 
+const DOC_LIST = [
+  { key: 'idCardFront',    label: 'CNI recto' },
+  { key: 'idCardBack',     label: 'CNI verso' },
+  { key: 'licenseFront',   label: 'Permis recto' },
+  { key: 'licenseBack',    label: 'Permis verso' },
+  { key: 'vehiclePhoto',   label: 'Photo moto' },
+  { key: 'carteGrise',     label: 'Carte grise recto' },
+  { key: 'carteGriseBack', label: 'Carte grise verso' },
+  { key: 'assurance',      label: 'Assurance' },
+]
+
 // ── Modal Créer / Modifier livreur ────────────────────────────────────────────
 function DriverFormModal({ initial, onClose, onSaved }) {
   const isEdit = !!initial
@@ -14,9 +25,12 @@ function DriverFormModal({ initial, onClose, onSaved }) {
     vehiclePlate: initial?.vehiclePlate ?? '',
     managedById:  initial?.managedById  ?? '',
   })
-  const [chefs, setChefs]   = useState([])
-  const [saving, setSaving] = useState(false)
-  const [error, setError]   = useState('')
+  const [docs, setDocs]         = useState({ insuranceExpiry: '' })
+  const [showDocs, setShowDocs] = useState(false)
+  const [chefs, setChefs]       = useState([])
+  const [saving, setSaving]     = useState(false)
+  const [savingStep, setSavingStep] = useState('')
+  const [error, setError]       = useState('')
 
   useEffect(() => {
     api.get('/admin/chefs-de-flotte', { params: { status: 'all' } })
@@ -25,21 +39,40 @@ function DriverFormModal({ initial, onClose, onSaved }) {
   }, [])
 
   function set(k, v) { setForm(f => ({ ...f, [k]: v })) }
+  function setDoc(k, v) { setDocs(d => ({ ...d, [k]: v })) }
+
+  const hasFiles = DOC_LIST.some(d => docs[d.key] instanceof File) || !!docs.insuranceExpiry
 
   async function save() {
     if (!form.phone.trim()) { setError('Le numéro est obligatoire.'); return }
     setSaving(true); setError('')
     try {
       const payload = { ...form, managedById: form.managedById || null }
+      let driverId = initial?.id
+
       if (isEdit) {
+        setSavingStep('Mise à jour…')
         await api.patch(`/admin/drivers/${initial.id}`, payload)
       } else {
-        await api.post('/admin/drivers', payload)
+        setSavingStep('Création du compte…')
+        const { data } = await api.post('/admin/drivers', payload)
+        driverId = data.driver.id
       }
+
+      if (hasFiles && driverId) {
+        setSavingStep('Upload des documents…')
+        const fd = new FormData()
+        DOC_LIST.forEach(({ key }) => { if (docs[key] instanceof File) fd.append(key, docs[key]) })
+        if (docs.insuranceExpiry) fd.append('insuranceExpiry', docs.insuranceExpiry)
+        await api.patch(`/admin/drivers/${driverId}/documents`, fd, {
+          headers: { 'Content-Type': 'multipart/form-data' },
+        })
+      }
+
       onSaved()
     } catch (e) {
       setError(e.response?.data?.message ?? 'Erreur.')
-    } finally { setSaving(false) }
+    } finally { setSaving(false); setSavingStep('') }
   }
 
   const inputStyle = { width: '100%', padding: '8px 10px', borderRadius: 8, border: '1px solid rgba(0,119,182,.2)', background: 'rgba(255,255,255,.6)', fontSize: 13, outline: 'none', boxSizing: 'border-box' }
@@ -47,12 +80,15 @@ function DriverFormModal({ initial, onClose, onSaved }) {
 
   return (
     <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,40,80,.45)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 200 }} onClick={onClose}>
-      <div style={{ ...glass, width: 420, maxWidth: '92vw', borderRadius: 16, padding: 24 }} onClick={e => e.stopPropagation()}>
+      <div style={{ ...glass, width: 460, maxWidth: '94vw', borderRadius: 16, padding: 24, maxHeight: '90vh', overflowY: 'auto' }} onClick={e => e.stopPropagation()}>
+
+        {/* En-tête */}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
           <h2 style={{ fontSize: 17, fontWeight: 700 }}>{isEdit ? 'Modifier le livreur' : 'Créer un livreur'}</h2>
           <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', display: 'flex', padding: 4 }}><XCircle size={16} /></button>
         </div>
 
+        {/* Infos de base */}
         <div style={{ marginBottom: 14 }}>
           <label style={labelStyle}>Nom complet</label>
           <input type="text" value={form.name} onChange={e => set('name', e.target.value)} placeholder="Ex : Moussa Diop" style={inputStyle} />
@@ -77,11 +113,55 @@ function DriverFormModal({ initial, onClose, onSaved }) {
           </select>
         </div>
 
-        {error && <div style={{ fontSize: 12, color: 'var(--danger)', background: 'rgba(239,68,68,.08)', borderRadius: 6, padding: '7px 10px', marginTop: 4 }}>{error}</div>}
+        {/* Section documents */}
+        <div style={{ borderTop: '1px solid rgba(0,119,182,.12)', paddingTop: 14, marginTop: 4 }}>
+          <button
+            type="button"
+            onClick={() => setShowDocs(v => !v)}
+            style={{ width: '100%', background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '4px 0', marginBottom: showDocs ? 14 : 0 }}
+          >
+            <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--primary)' }}>
+              Documents livreur {hasFiles ? `(${DOC_LIST.filter(d => docs[d.key] instanceof File).length + (docs.insuranceExpiry ? 1 : 0)} sélectionné(s))` : '(optionnel)'}
+            </span>
+            <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>{showDocs ? '▲' : '▼'}</span>
+          </button>
+
+          {showDocs && (
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+              {DOC_LIST.map(({ key, label }) => (
+                <div key={key}>
+                  <label style={labelStyle}>{label}</label>
+                  <label htmlFor={`doc-${key}`} style={{
+                    display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer',
+                    padding: '7px 10px', borderRadius: 8, fontSize: 12,
+                    border: `1px solid ${docs[key] ? 'rgba(0,180,100,.5)' : 'rgba(0,119,182,.2)'}`,
+                    background: docs[key] ? 'rgba(0,180,100,.07)' : 'rgba(255,255,255,.6)',
+                    color: docs[key] ? '#15803d' : 'var(--text-muted)',
+                    whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+                  }}>
+                    <span>{docs[key] ? '✓' : '+'}</span>
+                    <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                      {docs[key] ? docs[key].name : 'Choisir'}
+                    </span>
+                    <input id={`doc-${key}`} type="file" accept="image/*" style={{ display: 'none' }}
+                      onChange={e => setDoc(key, e.target.files[0] ?? null)} />
+                  </label>
+                </div>
+              ))}
+              <div style={{ gridColumn: '1 / -1' }}>
+                <label style={labelStyle}>Date expiration assurance</label>
+                <input type="date" value={docs.insuranceExpiry} onChange={e => setDoc('insuranceExpiry', e.target.value)} style={inputStyle} />
+              </div>
+            </div>
+          )}
+        </div>
+
+        {error && <div style={{ fontSize: 12, color: 'var(--danger)', background: 'rgba(239,68,68,.08)', borderRadius: 6, padding: '7px 10px', marginTop: 12 }}>{error}</div>}
+
         <div style={{ display: 'flex', gap: 10, marginTop: 20 }}>
           <button onClick={onClose} style={{ flex: 1, padding: '8px 0', borderRadius: 8, border: '1px solid rgba(0,119,182,.25)', background: 'rgba(255,255,255,.5)', cursor: 'pointer', fontSize: 13 }}>Annuler</button>
           <button onClick={save} disabled={saving} style={{ flex: 1, padding: '8px 0', borderRadius: 8, border: 'none', background: 'var(--primary)', color: '#fff', fontWeight: 600, cursor: 'pointer', fontSize: 13 }}>
-            {saving ? 'Enregistrement…' : isEdit ? 'Enregistrer' : 'Créer'}
+            {saving ? savingStep || 'Enregistrement…' : isEdit ? 'Enregistrer' : 'Créer'}
           </button>
         </div>
       </div>
