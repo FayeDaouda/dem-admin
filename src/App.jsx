@@ -10,9 +10,10 @@ import Drivers     from './pages/Drivers'
 import Clients     from './pages/Clients'
 import Config      from './pages/Config'
 import Acquisition from './pages/Acquisition'
-import Validation  from './pages/Validation'
-import Incidents  from './pages/Incidents'
-import Audit      from './pages/Audit'
+import Validation    from './pages/Validation'
+import Incidents    from './pages/Incidents'
+import Audit        from './pages/Audit'
+import ChefsDeFlotte from './pages/ChefsDeFlotte'
 
 const LiveMap = lazy(() => import('./pages/LiveMap'))
 
@@ -48,7 +49,8 @@ function AppRoutes() {
       <Route path="/acquisition" element={<ProtectedRoute><Acquisition /></ProtectedRoute>} />
       <Route path="/incidents"   element={<ProtectedRoute><Incidents /></ProtectedRoute>} />
       <Route path="/audit"       element={<ProtectedRoute><Audit /></ProtectedRoute>} />
-      <Route path="/validation"  element={<ProtectedRoute><Validation /></ProtectedRoute>} />
+      <Route path="/validation"      element={<ProtectedRoute><Validation /></ProtectedRoute>} />
+      <Route path="/chefs-de-flotte" element={<ProtectedRoute><ChefsDeFlotte /></ProtectedRoute>} />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   )

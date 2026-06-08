@@ -2,8 +2,80 @@ import { useState, useEffect, useCallback } from 'react'
 import api from '../lib/api'
 import Badge from '../components/Badge'
 import SuspendModal from '../components/SuspendModal'
-import { RefreshCw, BarChart2, Phone, CheckCircle, XCircle, Eye } from 'lucide-react'
+import { RefreshCw, BarChart2, Phone, CheckCircle, XCircle, Eye, Plus, Pencil, Trash2 } from 'lucide-react'
 import { glass } from '../lib/glassStyles'
+
+// ── Modal Créer / Modifier livreur ────────────────────────────────────────────
+function DriverFormModal({ initial, onClose, onSaved }) {
+  const isEdit = !!initial
+  const [form, setForm] = useState({
+    name:         initial?.name         ?? '',
+    phone:        initial?.phone        ?? '',
+    vehicleType:  initial?.vehicleType  ?? 'MOTO',
+    vehiclePlate: initial?.vehiclePlate ?? '',
+  })
+  const [saving, setSaving] = useState(false)
+  const [error, setError]   = useState('')
+
+  function set(k, v) { setForm(f => ({ ...f, [k]: v })) }
+
+  async function save() {
+    if (!form.phone.trim()) { setError('Le numéro est obligatoire.'); return }
+    setSaving(true); setError('')
+    try {
+      if (isEdit) {
+        await api.patch(`/admin/drivers/${initial.id}`, form)
+      } else {
+        await api.post('/admin/drivers', form)
+      }
+      onSaved()
+    } catch (e) {
+      setError(e.response?.data?.message ?? 'Erreur.')
+    } finally { setSaving(false) }
+  }
+
+  const inputStyle = { width: '100%', padding: '8px 10px', borderRadius: 8, border: '1px solid rgba(0,119,182,.2)', background: 'rgba(255,255,255,.6)', fontSize: 13, outline: 'none', boxSizing: 'border-box' }
+  const labelStyle = { display: 'block', fontSize: 12, fontWeight: 600, color: 'var(--text-muted)', marginBottom: 5 }
+
+  return (
+    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,40,80,.45)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 200 }} onClick={onClose}>
+      <div style={{ ...glass, width: 420, maxWidth: '92vw', borderRadius: 16, padding: 24 }} onClick={e => e.stopPropagation()}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
+          <h2 style={{ fontSize: 17, fontWeight: 700 }}>{isEdit ? 'Modifier le livreur' : 'Créer un livreur'}</h2>
+          <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', display: 'flex', padding: 4 }}><XCircle size={16} /></button>
+        </div>
+        <div style={{ marginBottom: 14 }}>
+          <label style={labelStyle}>Nom complet</label>
+          <input type="text" value={form.name} onChange={e => set('name', e.target.value)} placeholder="Ex : Moussa Diop" style={inputStyle} />
+        </div>
+        <div style={{ marginBottom: 14 }}>
+          <label style={labelStyle}>Téléphone *</label>
+          <input type="tel" value={form.phone} onChange={e => set('phone', e.target.value)} placeholder="+221 77 000 00 00" style={inputStyle} />
+        </div>
+        <div style={{ marginBottom: 14 }}>
+          <label style={labelStyle}>Type de véhicule</label>
+          <select value={form.vehicleType} onChange={e => set('vehicleType', e.target.value)} style={{ ...inputStyle }}>
+            <option value="MOTO">🏍 Moto</option>
+            <option value="TAXI">🚗 Taxi</option>
+            <option value="VELO">🚲 Vélo</option>
+            <option value="VOITURE">🚙 Voiture</option>
+          </select>
+        </div>
+        <div style={{ marginBottom: 14 }}>
+          <label style={labelStyle}>Plaque d'immatriculation</label>
+          <input type="text" value={form.vehiclePlate} onChange={e => set('vehiclePlate', e.target.value)} placeholder="Ex : DK 1234 AB" style={inputStyle} />
+        </div>
+        {error && <div style={{ fontSize: 12, color: 'var(--danger)', background: 'rgba(239,68,68,.08)', borderRadius: 6, padding: '7px 10px', marginTop: 4 }}>{error}</div>}
+        <div style={{ display: 'flex', gap: 10, marginTop: 20 }}>
+          <button onClick={onClose} style={{ flex: 1, padding: '8px 0', borderRadius: 8, border: '1px solid rgba(0,119,182,.25)', background: 'rgba(255,255,255,.5)', cursor: 'pointer', fontSize: 13 }}>Annuler</button>
+          <button onClick={save} disabled={saving} style={{ flex: 1, padding: '8px 0', borderRadius: 8, border: 'none', background: 'var(--primary)', color: '#fff', fontWeight: 600, cursor: 'pointer', fontSize: 13 }}>
+            {saving ? 'Enregistrement…' : isEdit ? 'Enregistrer' : 'Créer'}
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
 
 // Propriétés visuelles fixes par tier (couleurs/emojis non configurables)
 const BADGE_VISUALS = {
@@ -75,6 +147,7 @@ export default function Drivers() {
   const [fleetFilter, setFleetFilter]   = useState('all')
   const [stats, setStats]               = useState(null)
   const [detail, setDetail]             = useState(null)
+  const [formTarget, setFormTarget]     = useState(null)
   const [suspendTarget, setSuspendTarget] = useState(null)
   const [suspending, setSuspending]     = useState(false)
   const [phoneReqs, setPhoneReqs]       = useState([])
@@ -148,6 +221,16 @@ export default function Drivers() {
     }
   }
 
+  async function deleteDriver(driver) {
+    if (!confirm(`Supprimer définitivement ${driver.name ?? driver.phone} ? Cette action est irréversible.`)) return
+    try {
+      await api.delete(`/admin/drivers/${driver.id}`)
+      fetch()
+    } catch (e) {
+      alert(e.response?.data?.message ?? 'Erreur.')
+    }
+  }
+
   async function resolvePhoneChange(driverId, approve) {
     setResolving(driverId)
     try {
@@ -164,9 +247,14 @@ export default function Drivers() {
     <div>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24 }}>
         <h1 style={{ fontSize: 22, fontWeight: 700 }}>Drivers</h1>
-        <button onClick={() => { fetch(); fetchPhoneRequests() }} style={btnOutline}>
-          <RefreshCw size={14} /> Actualiser
-        </button>
+        <div style={{ display: 'flex', gap: 8 }}>
+          <button onClick={() => { fetch(); fetchPhoneRequests() }} style={btnOutline}>
+            <RefreshCw size={14} /> Actualiser
+          </button>
+          <button onClick={() => setFormTarget({})} style={btnPrimary}>
+            <Plus size={14} /> Nouveau livreur
+          </button>
+        </div>
       </div>
 
       {/* ── Demandes changement de numéro ── */}
@@ -323,17 +411,23 @@ export default function Drivers() {
                       : <span style={{ color: 'var(--warning)' }}>En attente</span>}
                   </td>
                   <td style={tdStyle}>
-                    <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                    <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap' }}>
                       <button onClick={() => setDetail(d)} style={btnSmall} title="Voir infos & documents">
-                        <Eye size={13} /> Voir
+                        <Eye size={13} />
                       </button>
                       <button onClick={() => showStats(d.id)} style={btnSmall} title="Statistiques paiement">
-                        <BarChart2 size={13} /> Stats
+                        <BarChart2 size={13} />
+                      </button>
+                      <button onClick={() => setFormTarget(d)} style={btnSmall} title="Modifier">
+                        <Pencil size={13} />
                       </button>
                       {d.isActive
                         ? <button onClick={() => setSuspendTarget(d)} style={{ ...btnSmall, color: 'var(--danger)', borderColor: 'var(--danger)' }}>Suspendre</button>
                         : <button onClick={() => activateDriver(d)} style={{ ...btnSmall, color: 'var(--success)', borderColor: 'var(--success)' }}>Réactiver</button>
                       }
+                      <button onClick={() => deleteDriver(d)} style={{ ...btnSmall, color: 'var(--danger)', borderColor: 'var(--danger)' }} title="Supprimer">
+                        <Trash2 size={13} />
+                      </button>
                     </div>
                   </td>
                 </tr>
@@ -427,6 +521,15 @@ export default function Drivers() {
         </div>
       )}
 
+      {/* Modal créer / modifier driver */}
+      {formTarget !== null && (
+        <DriverFormModal
+          initial={formTarget.id ? formTarget : null}
+          onClose={() => setFormTarget(null)}
+          onSaved={() => { setFormTarget(null); fetch() }}
+        />
+      )}
+
       {/* Modal stats */}
       {stats && (
         <div style={overlay} onClick={() => setStats(null)}>
@@ -469,6 +572,7 @@ const tableStyle = { width: '100%', borderCollapse: 'collapse' }
 const thStyle    = { textAlign: 'left', padding: '8px 10px', color: 'var(--text-muted)', fontSize: 12, fontWeight: 600, borderBottom: '1px solid rgba(0,119,182,0.12)' }
 const tdStyle    = { padding: '10px 10px', verticalAlign: 'middle' }
 const btnOutline = { display: 'flex', alignItems: 'center', gap: 6, padding: '7px 14px', borderRadius: 'var(--radius-sm)', border: '1px solid rgba(0,119,182,0.25)', background: 'rgba(255,255,255,0.5)', color: 'var(--text-muted)', fontSize: 13, cursor: 'pointer' }
+const btnPrimary = { display: 'flex', alignItems: 'center', gap: 6, padding: '7px 14px', borderRadius: 'var(--radius-sm)', border: 'none', background: 'var(--primary)', color: '#fff', fontSize: 13, fontWeight: 600, cursor: 'pointer' }
 const btnSmall   = { display: 'flex', alignItems: 'center', gap: 4, padding: '4px 10px', borderRadius: 'var(--radius-sm)', border: '1px solid rgba(0,119,182,0.25)', background: 'rgba(255,255,255,0.5)', color: 'var(--text-muted)', fontSize: 12, cursor: 'pointer' }
 const overlay    = { position: 'fixed', inset: 0, background: 'rgba(0,40,80,0.45)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100 }
 const modalBox   = { ...glass, padding: '28px 32px', width: 440, maxWidth: '90vw' }

@@ -1,8 +1,77 @@
 import { useState, useEffect, useCallback } from 'react'
 import api from '../lib/api'
-import { RefreshCw, Eye, X } from 'lucide-react'
+import { RefreshCw, Eye, X, Plus, Pencil, Trash2 } from 'lucide-react'
 import { glass } from '../lib/glassStyles'
 
+// ── Modal Créer / Modifier ────────────────────────────────────────────────────
+function ClientFormModal({ initial, onClose, onSaved }) {
+  const isEdit = !!initial
+  const [form, setForm] = useState({
+    name:  initial?.name  ?? '',
+    phone: initial?.phone ?? '',
+    email: initial?.email ?? '',
+  })
+  const [saving, setSaving] = useState(false)
+  const [error, setError]   = useState('')
+
+  function set(k, v) { setForm(f => ({ ...f, [k]: v })) }
+
+  async function save() {
+    if (!form.phone.trim()) { setError('Le numéro est obligatoire.'); return }
+    setSaving(true); setError('')
+    try {
+      if (isEdit) {
+        await api.patch(`/admin/clients/${initial.id}`, form)
+      } else {
+        await api.post('/admin/clients', form)
+      }
+      onSaved()
+    } catch (e) {
+      setError(e.response?.data?.message ?? 'Erreur.')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  return (
+    <div style={overlay} onClick={onClose}>
+      <div style={{ ...glass, width: 420, maxWidth: '92vw', borderRadius: 16, padding: 24 }} onClick={e => e.stopPropagation()}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
+          <h2 style={{ fontSize: 17, fontWeight: 700 }}>{isEdit ? 'Modifier le client' : 'Créer un client'}</h2>
+          <button onClick={onClose} style={btnIcon}><X size={16} /></button>
+        </div>
+
+        {[
+          { key: 'name',  label: 'Nom complet',         type: 'text',  placeholder: 'Ex : Amadou Diallo' },
+          { key: 'phone', label: 'Téléphone *',          type: 'tel',   placeholder: '+221 77 000 00 00' },
+          { key: 'email', label: 'Email (optionnel)',     type: 'email', placeholder: 'email@example.com' },
+        ].map(({ key, label, type, placeholder }) => (
+          <div key={key} style={{ marginBottom: 14 }}>
+            <label style={labelStyle}>{label}</label>
+            <input
+              type={type}
+              value={form[key]}
+              onChange={e => set(key, e.target.value)}
+              placeholder={placeholder}
+              style={inputStyle}
+            />
+          </div>
+        ))}
+
+        {error && <div style={errorStyle}>{error}</div>}
+
+        <div style={{ display: 'flex', gap: 10, marginTop: 20 }}>
+          <button onClick={onClose} style={{ ...btnOutline, flex: 1 }}>Annuler</button>
+          <button onClick={save} disabled={saving} style={{ ...btnPrimary, flex: 1 }}>
+            {saving ? 'Enregistrement…' : isEdit ? 'Enregistrer' : 'Créer'}
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ── Modal Détail ──────────────────────────────────────────────────────────────
 function ClientDetailModal({ client, onClose }) {
   const [detail, setDetail] = useState(null)
   const [loading, setLoading] = useState(true)
@@ -18,13 +87,10 @@ function ClientDetailModal({ client, onClose }) {
   return (
     <div style={overlay} onClick={onClose}>
       <div style={{ ...glass, width: 460, maxWidth: '92vw', padding: '0', borderRadius: 16, overflow: 'hidden', maxHeight: '90vh', display: 'flex', flexDirection: 'column' }} onClick={e => e.stopPropagation()}>
-
-        {/* Header gradient */}
         <div style={{ background: 'linear-gradient(135deg,#0CB8DE,#0671BA,#04317C)', padding: '24px 20px 20px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10 }}>
           <button onClick={onClose} style={{ position: 'absolute', top: 12, right: 12, background: 'rgba(255,255,255,.15)', border: 'none', borderRadius: 8, width: 28, height: 28, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff' }}>
             <X size={14} />
           </button>
-          {/* Avatar */}
           <div style={{ width: 64, height: 64, borderRadius: '50%', border: '2px solid rgba(255,255,255,.5)', overflow: 'hidden', background: 'rgba(255,255,255,.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
             {d.avatar
               ? <img src={d.avatar} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
@@ -41,20 +107,17 @@ function ClientDetailModal({ client, onClose }) {
             {!d.isBanned && !d.isActive && <span style={{ fontSize: 11, fontWeight: 700, padding: '2px 10px', borderRadius: 20, background: 'rgba(245,158,11,.20)', color: '#fcd34d' }}>Inactif</span>}
           </div>
         </div>
-
-        {/* Contenu */}
         <div style={{ overflowY: 'auto', padding: '20px' }}>
           {loading ? (
             <div style={{ color: 'var(--text-muted)', textAlign: 'center', padding: 20 }}>Chargement…</div>
           ) : (<>
-            {/* Infos */}
             <div style={infoBox}>
               <div style={sectionLabel}>Informations</div>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px 16px' }}>
                 {[
-                  ['Email',       d.email ?? '—'],
-                  ['Inscrit le',  d.createdAt ? new Date(d.createdAt).toLocaleDateString('fr-FR') : '—'],
-                  ['Vérifié',     d.isVerified ? '✓ Oui' : 'Non'],
+                  ['Email',        d.email ?? '—'],
+                  ['Inscrit le',   d.createdAt ? new Date(d.createdAt).toLocaleDateString('fr-FR') : '—'],
+                  ['Vérifié',      d.isVerified ? '✓ Oui' : 'Non'],
                   ['Code parrain', d.referralCode ?? '—'],
                   ['Adresses fav.', `${d._count?.favoriteAddresses ?? 0} / 6`],
                 ].map(([label, val]) => (
@@ -65,8 +128,6 @@ function ClientDetailModal({ client, onClose }) {
                 ))}
               </div>
             </div>
-
-            {/* Commandes récentes */}
             {detail?.ordersAsClient?.length > 0 && (
               <div style={{ ...infoBox, marginTop: 14 }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
@@ -98,10 +159,12 @@ function ClientDetailModal({ client, onClose }) {
   )
 }
 
+// ── Page principale ───────────────────────────────────────────────────────────
 export default function Clients() {
   const [clients, setClients]   = useState([])
   const [loading, setLoading]   = useState(true)
   const [selected, setSelected] = useState(null)
+  const [formTarget, setFormTarget] = useState(null) // null=fermé, {}=créer, {id,...}=modifier
 
   const fetch = useCallback(async () => {
     setLoading(true)
@@ -128,13 +191,28 @@ export default function Clients() {
     }
   }
 
+  async function deleteClient(client) {
+    if (!confirm(`Supprimer définitivement ${client.name ?? client.phone} ? Cette action est irréversible.`)) return
+    try {
+      await api.delete(`/admin/clients/${client.id}`)
+      fetch()
+    } catch (e) {
+      alert(e.response?.data?.message ?? 'Erreur.')
+    }
+  }
+
   return (
     <div>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24 }}>
         <h1 style={{ fontSize: 22, fontWeight: 700 }}>Clients</h1>
-        <button onClick={fetch} style={btnOutline}>
-          <RefreshCw size={14} /> Actualiser
-        </button>
+        <div style={{ display: 'flex', gap: 8 }}>
+          <button onClick={fetch} style={btnOutline}>
+            <RefreshCw size={14} /> Actualiser
+          </button>
+          <button onClick={() => setFormTarget({})} style={btnPrimary}>
+            <Plus size={14} /> Nouveau client
+          </button>
+        </div>
       </div>
 
       <div style={card}>
@@ -175,15 +253,25 @@ export default function Clients() {
                       : <span style={{ color: 'var(--success)', fontSize: 12 }}>✓ Actif</span>}
                   </td>
                   <td style={tdStyle}>
-                    <div style={{ display: 'flex', gap: 6 }}>
+                    <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap' }}>
                       <button onClick={() => setSelected(c)} style={btnSmall} title="Voir détail">
-                        <Eye size={13} /> Voir
+                        <Eye size={13} />
+                      </button>
+                      <button onClick={() => setFormTarget(c)} style={btnSmall} title="Modifier">
+                        <Pencil size={13} />
                       </button>
                       <button
                         onClick={() => toggleBan(c)}
-                        style={{ ...btnSmall, color: c.isBanned ? 'var(--success)' : 'var(--danger)', borderColor: c.isBanned ? 'var(--success)' : 'var(--danger)' }}
+                        style={{ ...btnSmall, color: c.isBanned ? 'var(--success)' : 'var(--warning)', borderColor: c.isBanned ? 'var(--success)' : 'var(--warning)' }}
                       >
                         {c.isBanned ? 'Débannir' : 'Bannir'}
+                      </button>
+                      <button
+                        onClick={() => deleteClient(c)}
+                        style={{ ...btnSmall, color: 'var(--danger)', borderColor: 'var(--danger)' }}
+                        title="Supprimer"
+                      >
+                        <Trash2 size={13} />
                       </button>
                     </div>
                   </td>
@@ -195,16 +283,29 @@ export default function Clients() {
       </div>
 
       {selected && <ClientDetailModal client={selected} onClose={() => setSelected(null)} />}
+
+      {formTarget !== null && (
+        <ClientFormModal
+          initial={formTarget.id ? formTarget : null}
+          onClose={() => setFormTarget(null)}
+          onSaved={() => { setFormTarget(null); fetch() }}
+        />
+      )}
     </div>
   )
 }
 
-const overlay    = { position: 'fixed', inset: 0, background: 'rgba(0,40,80,.45)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100 }
-const infoBox    = { background: 'var(--surface2)', borderRadius: 10, padding: '12px 14px' }
+const overlay      = { position: 'fixed', inset: 0, background: 'rgba(0,40,80,.45)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100 }
+const infoBox      = { background: 'var(--surface2)', borderRadius: 10, padding: '12px 14px' }
 const sectionLabel = { fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '.5px', marginBottom: 8 }
-const card       = { ...glass, padding: '20px 24px', overflowX: 'auto' }
-const tableStyle = { width: '100%', borderCollapse: 'collapse' }
-const thStyle    = { textAlign: 'left', padding: '8px 10px', color: 'var(--text-muted)', fontSize: 12, fontWeight: 600, borderBottom: '1px solid rgba(0,119,182,0.12)' }
-const tdStyle    = { padding: '10px 10px', verticalAlign: 'middle' }
-const btnOutline = { display: 'flex', alignItems: 'center', gap: 6, padding: '7px 14px', borderRadius: 'var(--radius-sm)', border: '1px solid rgba(0,119,182,0.25)', background: 'rgba(255,255,255,0.5)', color: 'var(--text-muted)', fontSize: 13, cursor: 'pointer' }
-const btnSmall   = { display: 'flex', alignItems: 'center', gap: 4, padding: '4px 10px', borderRadius: 'var(--radius-sm)', border: '1px solid rgba(0,119,182,0.25)', background: 'rgba(255,255,255,0.5)', color: 'var(--text-muted)', fontSize: 12, cursor: 'pointer' }
+const card         = { ...glass, padding: '20px 24px', overflowX: 'auto' }
+const tableStyle   = { width: '100%', borderCollapse: 'collapse' }
+const thStyle      = { textAlign: 'left', padding: '8px 10px', color: 'var(--text-muted)', fontSize: 12, fontWeight: 600, borderBottom: '1px solid rgba(0,119,182,0.12)' }
+const tdStyle      = { padding: '10px 10px', verticalAlign: 'middle' }
+const labelStyle   = { display: 'block', fontSize: 12, fontWeight: 600, color: 'var(--text-muted)', marginBottom: 5 }
+const inputStyle   = { width: '100%', padding: '8px 10px', borderRadius: 8, border: '1px solid rgba(0,119,182,.2)', background: 'rgba(255,255,255,.6)', fontSize: 13, outline: 'none', boxSizing: 'border-box' }
+const errorStyle   = { fontSize: 12, color: 'var(--danger)', background: 'rgba(239,68,68,.08)', borderRadius: 6, padding: '7px 10px', marginTop: 4 }
+const btnOutline   = { display: 'flex', alignItems: 'center', gap: 6, padding: '7px 14px', borderRadius: 'var(--radius-sm)', border: '1px solid rgba(0,119,182,0.25)', background: 'rgba(255,255,255,0.5)', color: 'var(--text-muted)', fontSize: 13, cursor: 'pointer' }
+const btnPrimary   = { display: 'flex', alignItems: 'center', gap: 6, padding: '7px 14px', borderRadius: 'var(--radius-sm)', border: 'none', background: 'var(--primary)', color: '#fff', fontSize: 13, fontWeight: 600, cursor: 'pointer' }
+const btnSmall     = { display: 'flex', alignItems: 'center', gap: 4, padding: '4px 10px', borderRadius: 'var(--radius-sm)', border: '1px solid rgba(0,119,182,0.25)', background: 'rgba(255,255,255,0.5)', color: 'var(--text-muted)', fontSize: 12, cursor: 'pointer' }
+const btnIcon      = { background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', display: 'flex', padding: 4, borderRadius: 6 }
