@@ -73,10 +73,12 @@ export default function Incidents() {
     const refresh = () => fetch()
     s.on('admin:incident:driver_redispatched', refresh)
     s.on('admin:incident:driver_unreachable',  refresh)
+    s.on('admin:incident:user_report',         refresh)
     s.on('admin:payment:disputed',             refresh)
     return () => {
       s.off('admin:incident:driver_redispatched', refresh)
       s.off('admin:incident:driver_unreachable',  refresh)
+      s.off('admin:incident:user_report',         refresh)
       s.off('admin:payment:disputed',             refresh)
     }
   }, [fetch])
