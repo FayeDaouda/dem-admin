@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import api from '../lib/api'
-import { RefreshCw, Eye, Plus, Pencil, Trash2, X } from 'lucide-react'
-import { glass, pageWrap, pageScroll, stickyTh } from '../lib/glassStyles'
+import { RefreshCw, Eye, Plus, Pencil, Trash2, X, Search, CheckCircle } from 'lucide-react'
+import { glass, glassInput, pageWrap, pageScroll, stickyTh } from '../lib/glassStyles'
 
 // ── Modal Créer / Modifier ────────────────────────────────────────────────────
 function ChefFormModal({ initial, onClose, onSaved }) {
@@ -104,10 +104,10 @@ function ChefDetailModal({ chef, onClose }) {
             <X size={14} />
           </button>
           <div style={{ width: 60, height: 60, borderRadius: '50%', border: '2px solid rgba(255,255,255,.5)', background: 'rgba(255,255,255,.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 26, fontWeight: 800, color: '#fff' }}>
-            {d.avatar ? <img src={d.avatar} alt="" style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover' }} /> : (d.name ?? '?')[0].toUpperCase()}
+            {d.avatar ? <img src={d.avatar} alt="" style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover' }} /> : (d.name?.trim() || d.phone || '?')[0].toUpperCase()}
           </div>
           <div style={{ textAlign: 'center' }}>
-            <div style={{ fontWeight: 700, fontSize: 16, color: '#fff' }}>{d.name ?? '—'}</div>
+            <div style={{ fontWeight: 700, fontSize: 16, color: '#fff' }}>{d.name?.trim() || d.phone}</div>
             <div style={{ fontSize: 12, color: 'rgba(255,255,255,.75)', marginTop: 2 }}>{d.phone}</div>
           </div>
           <div style={{ display: 'flex', gap: 8 }}>
@@ -180,6 +180,9 @@ export default function ChefsDeFlotte() {
   const [selected, setSelected] = useState(null)
   const [formTarget, setFormTarget] = useState(null)
   const [statusFilter, setStatusFilter] = useState('all')
+  const [search, setSearch]       = useState('')
+  const [sortDate, setSortDate]   = useState(null)
+  const [acting, setActing]       = useState(null)
 
   const fetch = useCallback(async () => {
     setLoading(true)
@@ -205,7 +208,35 @@ export default function ChefsDeFlotte() {
     }
   }
 
-  const filtered = chefs.filter(c => statusFilter === 'all' || c.chefDeFlotteStatus === statusFilter)
+  async function approveChef(chef) {
+    if (!confirm(`Approuver ${chef.name?.trim() || chef.phone} comme chef de flotte ?`)) return
+    setActing(chef.id)
+    try {
+      await api.patch(`/admin/chefs-de-flotte/${chef.id}/validate`, { approve: true })
+      fetch()
+    } catch (e) {
+      alert(e.response?.data?.message ?? 'Erreur.')
+    } finally {
+      setActing(null)
+    }
+  }
+
+  const filtered = chefs
+    .filter(c => statusFilter === 'all' || c.chefDeFlotteStatus === statusFilter)
+    .filter(c => {
+      const q = search.trim().toLowerCase()
+      if (!q) return true
+      return (c.name ?? '').toLowerCase().includes(q) || (c.phone ?? '').includes(q)
+    })
+
+  const sorted = sortDate
+    ? [...filtered].sort((a, b) => {
+        const diff = new Date(a.createdAt) - new Date(b.createdAt)
+        return sortDate === 'asc' ? diff : -diff
+      })
+    : filtered
+
+  const hasFilters = !!(search || statusFilter !== 'all')
 
   return (
     <div style={pageWrap}>
@@ -229,30 +260,45 @@ export default function ChefsDeFlotte() {
         ))}
       </div>
 
+      {/* Recherche */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16, flexWrap: 'wrap', flexShrink: 0 }}>
+        <div style={{ position: 'relative', flex: '1 1 220px', maxWidth: 280 }}>
+          <Search size={14} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
+          <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Nom ou téléphone…" style={{ ...glassInput, paddingLeft: 36, width: '100%' }} />
+        </div>
+      </div>
+
       <div style={pageScroll}>
       <div style={card}>
         {loading ? (
           <div style={{ color: 'var(--text-muted)', padding: 20 }}>Chargement…</div>
-        ) : filtered.length === 0 ? (
-          <div style={{ color: 'var(--text-muted)', padding: 20 }}>Aucun chef de flotte.</div>
+        ) : sorted.length === 0 ? (
+          <div style={{ color: 'var(--text-muted)', padding: 20 }}>Aucun chef de flotte{hasFilters ? ' pour ce filtre' : ''}.</div>
         ) : (
           <table style={tableStyle}>
             <thead>
               <tr>
                 {['Chef de flotte', 'Téléphone', 'Société', 'Flotte', 'Statut', 'Inscription', 'Actions'].map(h => (
-                  <th key={h} style={{ ...thStyle, ...stickyTh }}>{h}</th>
+                  <th
+                    key={h}
+                    style={{ ...thStyle, ...stickyTh, ...(h === 'Inscription' ? { cursor: 'pointer', userSelect: 'none' } : {}) }}
+                    onClick={h === 'Inscription' ? () => setSortDate(s => s === 'desc' ? 'asc' : s === 'asc' ? null : 'desc') : undefined}
+                    title={h === 'Inscription' ? 'Trier par date d\'inscription' : undefined}
+                  >
+                    {h}{h === 'Inscription' && (sortDate === 'desc' ? ' ▼' : sortDate === 'asc' ? ' ▲' : ' ⇅')}
+                  </th>
                 ))}
               </tr>
             </thead>
             <tbody>
-              {filtered.map(c => (
+              {sorted.map(c => (
                 <tr key={c.id} style={{ borderBottom: '1px solid var(--border)' }}>
                   <td style={tdStyle}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                       <div style={{ width: 34, height: 34, borderRadius: '50%', background: 'linear-gradient(135deg,rgba(124,58,237,.15),rgba(6,113,186,.15))', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, color: '#7c3aed', fontSize: 13, flexShrink: 0 }}>
-                        {c.avatar ? <img src={c.avatar} alt="" style={{ width: 34, height: 34, borderRadius: '50%', objectFit: 'cover' }} /> : (c.name ?? '?')[0].toUpperCase()}
+                        {c.avatar ? <img src={c.avatar} alt="" style={{ width: 34, height: 34, borderRadius: '50%', objectFit: 'cover' }} /> : (c.name?.trim() || c.phone || '?')[0].toUpperCase()}
                       </div>
-                      <span style={{ fontWeight: 600 }}>{c.name ?? '—'}</span>
+                      <span style={{ fontWeight: 600 }}>{c.name?.trim() || c.phone}</span>
                     </div>
                   </td>
                   <td style={tdStyle}>{c.phone}</td>
@@ -271,6 +317,11 @@ export default function ChefsDeFlotte() {
                   </td>
                   <td style={tdStyle}>
                     <div style={{ display: 'flex', gap: 5 }}>
+                      {c.chefDeFlotteStatus === 'PENDING' && (
+                        <button onClick={() => approveChef(c)} disabled={acting === c.id} style={{ ...btnSmall, color: 'var(--success)', borderColor: 'var(--success)' }} title="Approuver">
+                          <CheckCircle size={13} />
+                        </button>
+                      )}
                       <button onClick={() => setSelected(c)} style={btnSmall} title="Voir détail"><Eye size={13} /></button>
                       <button onClick={() => setFormTarget(c)} style={btnSmall} title="Modifier"><Pencil size={13} /></button>
                       <button onClick={() => deleteChef(c)} style={{ ...btnSmall, color: 'var(--danger)', borderColor: 'var(--danger)' }} title="Supprimer"><Trash2 size={13} /></button>

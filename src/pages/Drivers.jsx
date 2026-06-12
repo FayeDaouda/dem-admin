@@ -549,10 +549,10 @@ export default function Drivers() {
                       {d.managedById && (
                         <span style={{
                           fontSize: 10, fontWeight: 700, padding: '1px 6px', borderRadius: 8,
-                          background: d.managedBy?.ambassadorStatus === 'ACTIVE' ? 'rgba(124,58,237,.10)' : 'rgba(245,158,11,.12)',
-                          color:      d.managedBy?.ambassadorStatus === 'ACTIVE' ? '#7c3aed' : '#b45309',
+                          background: d.managedBy?.chefDeFlotteStatus === 'ACTIVE' ? 'rgba(124,58,237,.10)' : 'rgba(245,158,11,.12)',
+                          color:      d.managedBy?.chefDeFlotteStatus === 'ACTIVE' ? '#7c3aed' : '#b45309',
                         }}>
-                          AM {d.managedBy?.ambassadorStatus === 'ACTIVE' ? '✓' : '⏳'}
+                          AM {d.managedBy?.chefDeFlotteStatus === 'ACTIVE' ? '✓' : '⏳'}
                         </span>
                       )}
                     </div>
@@ -662,8 +662,8 @@ export default function Drivers() {
               <div style={{ background: 'rgba(124,58,237,.06)', border: '1px solid rgba(124,58,237,.15)', borderRadius: 10, padding: '10px 14px', marginBottom: 16, fontSize: 13 }}>
                 <span style={{ fontWeight: 600 }}>👤 Flotte AM : </span>
                 <span>{detail.managedBy?.name ?? '—'}</span>
-                <span style={{ marginLeft: 8, fontSize: 11, padding: '1px 6px', borderRadius: 8, background: detail.managedBy?.ambassadorStatus === 'ACTIVE' ? 'rgba(124,58,237,.12)' : 'rgba(245,158,11,.12)', color: detail.managedBy?.ambassadorStatus === 'ACTIVE' ? '#7c3aed' : '#b45309', fontWeight: 700 }}>
-                  {detail.managedBy?.ambassadorStatus === 'ACTIVE' ? 'AM ✓' : 'AM ⏳'}
+                <span style={{ marginLeft: 8, fontSize: 11, padding: '1px 6px', borderRadius: 8, background: detail.managedBy?.chefDeFlotteStatus === 'ACTIVE' ? 'rgba(124,58,237,.12)' : 'rgba(245,158,11,.12)', color: detail.managedBy?.chefDeFlotteStatus === 'ACTIVE' ? '#7c3aed' : '#b45309', fontWeight: 700 }}>
+                  {detail.managedBy?.chefDeFlotteStatus === 'ACTIVE' ? 'AM ✓' : 'AM ⏳'}
                 </span>
               </div>
             )}

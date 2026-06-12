@@ -48,7 +48,7 @@ export default function AmbassadorDetailModal({ ambassadorId, onClose }) {
   useEffect(() => {
     if (!ambassadorId) return
     setLoading(true)
-    api.get(`/admin/ambassadors/${ambassadorId}`)
+    api.get(`/admin/chefs-de-flotte/${ambassadorId}`)
       .then(r => { setAm(r.data); setLoading(false) })
       .catch(() => setLoading(false))
   }, [ambassadorId])
@@ -61,7 +61,7 @@ export default function AmbassadorDetailModal({ ambassadorId, onClose }) {
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '18px 24px', borderBottom: '1px solid rgba(0,119,182,.10)', flexShrink: 0 }}>
           <div style={{ flex: 1, fontWeight: 700, fontSize: 16 }}>Détail ambassadeur</div>
           {!loading && am && (
-            <button onClick={() => { setLoading(true); api.get(`/admin/ambassadors/${ambassadorId}`).then(r => { setAm(r.data); setLoading(false) }) }}
+            <button onClick={() => { setLoading(true); api.get(`/admin/chefs-de-flotte/${ambassadorId}`).then(r => { setAm(r.data); setLoading(false) }) }}
               style={btnIcon} title="Actualiser">
               <RefreshCw size={14} />
             </button>
@@ -88,7 +88,7 @@ export default function AmbassadorDetailModal({ ambassadorId, onClose }) {
                 <div style={{ fontWeight: 700, fontSize: 16 }}>{am.name ?? '—'}</div>
                 <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>{am.phone}</div>
               </div>
-              <StatusBadge status={am.ambassadorStatus} isActive={am.isActive} />
+              <StatusBadge status={am.chefDeFlotteStatus} isActive={am.isActive} />
             </div>
 
             {/* Infos entreprise */}
@@ -147,7 +147,7 @@ export default function AmbassadorDetailModal({ ambassadorId, onClose }) {
                         {avg && <> · ★ {avg}</>}
                       </div>
                     </div>
-                    <StatusBadge status={d.ambassadorStatus} isActive={d.isActive} />
+                    <StatusBadge status={d.chefDeFlotteStatus} isActive={d.isActive} />
                     <span style={{ color: 'var(--text-muted)', fontSize: 16, marginLeft: 4 }}>{isOpen ? '▲' : '▼'}</span>
                   </div>
 

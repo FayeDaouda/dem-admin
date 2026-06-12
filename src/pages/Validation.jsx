@@ -113,8 +113,8 @@ function AmbassadorsTab() {
   const load = useCallback(async () => {
     setLoading(true)
     try {
-      const res = await api.get('/admin/ambassadors', { params: { status: filter } })
-      setList(res.data.ambassadors ?? [])
+      const res = await api.get('/admin/chefs-de-flotte', { params: { status: filter } })
+      setList(res.data.chefs ?? [])
     } catch (e) { console.error(e) }
     finally { setLoading(false) }
   }, [filter])
@@ -125,7 +125,7 @@ function AmbassadorsTab() {
     if (!approve && !reason.trim()) { alert('Saisissez un motif de refus.'); return }
     setActing(id)
     try {
-      await api.patch(`/admin/ambassadors/${id}/validate`, { approve, reason: reason.trim() || undefined })
+      await api.patch(`/admin/chefs-de-flotte/${id}/validate`, { approve, reason: reason.trim() || undefined })
       setReason('')
       setExpanded(null)
       load()
@@ -138,7 +138,7 @@ function AmbassadorsTab() {
     setSuspending(true)
     const fullReason = [reason, fix ? `À corriger : ${fix}` : ''].filter(Boolean).join('\n')
     try {
-      await api.patch(`/admin/ambassadors/${suspendTarget.id}/suspend`, { reason: fullReason })
+      await api.patch(`/admin/chefs-de-flotte/${suspendTarget.id}/suspend`, { reason: fullReason })
       setSuspendTarget(null)
       load()
     } catch (e) { alert(e.response?.data?.message ?? 'Erreur.') }
@@ -180,7 +180,7 @@ function AmbassadorsTab() {
                   <> · <strong>{am._count?.managedDrivers ?? 0}</strong> livreur(s)</>
                 </div>
               </div>
-              <StatusBadge status={am.ambassadorStatus} />
+              <StatusBadge status={am.chefDeFlotteStatus} />
               <button onClick={() => setDetailAmId(am.id)}
                 style={{ display:'flex', alignItems:'center', gap:4, padding:'4px 10px', borderRadius:8, border:'1px solid rgba(0,119,182,.25)', background:'rgba(255,255,255,.5)', color:'var(--primary)', fontSize:12, fontWeight:600, cursor:'pointer', flexShrink:0 }}>
                 Voir
@@ -214,7 +214,7 @@ function AmbassadorsTab() {
                 )}
 
                 {/* Actions PENDING */}
-                {am.ambassadorStatus === 'PENDING' && (
+                {am.chefDeFlotteStatus === 'PENDING' && (
                   <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
                     <input
                       placeholder="Motif de refus (obligatoire si refus)"
@@ -234,14 +234,14 @@ function AmbassadorsTab() {
                 )}
 
                 {/* Action ACTIVE → Suspendre */}
-                {am.ambassadorStatus === 'ACTIVE' && (
+                {am.chefDeFlotteStatus === 'ACTIVE' && (
                   <button style={{ ...btnRefuse, alignSelf:'flex-start' }} onClick={() => setSuspendTarget(am)}>
                     Suspendre (+ tous ses livreurs)
                   </button>
                 )}
 
                 {/* Motif refus */}
-                {am.ambassadorStatus === 'REJECTED' && am.rejectionReason && (
+                {am.chefDeFlotteStatus === 'REJECTED' && am.rejectionReason && (
                   <div style={{ fontSize:12, color:'#dc2626', background:'rgba(239,68,68,.06)', padding:'8px 12px', borderRadius:8 }}>
                     <strong>Motif :</strong> {am.rejectionReason}
                   </div>
@@ -314,7 +314,7 @@ function DriversTab() {
         const isOpen       = expanded === d.id
         const insurance    = d.insuranceExpiry ? new Date(d.insuranceExpiry) : null
         const isExpired    = insurance && insurance < new Date()
-        const amNotActive  = d.managedBy && d.managedBy.ambassadorStatus !== 'ACTIVE'
+        const amNotActive  = d.managedBy && d.managedBy.chefDeFlotteStatus !== 'ACTIVE'
         const canValidate  = !isExpired && !amNotActive
 
         return (
@@ -329,11 +329,11 @@ function DriversTab() {
                 <div style={{ fontSize:12, color:'var(--text-muted)' }}>
                   {d.phone} · {d.vehicleType ?? '—'}
                   {d.managedBy && (
-                    <> · AM : <strong style={{ color: d.managedBy.ambassadorStatus === 'ACTIVE' ? '#15803d' : '#b45309' }}>
+                    <> · AM : <strong style={{ color: d.managedBy.chefDeFlotteStatus === 'ACTIVE' ? '#15803d' : '#b45309' }}>
                       {d.managedBy.name ?? d.managedBy.phone}
                     </strong>
-                    <span style={{ marginLeft:4, fontSize:11, background: d.managedBy.ambassadorStatus === 'ACTIVE' ? 'rgba(34,197,94,.12)' : 'rgba(245,158,11,.12)', color: d.managedBy.ambassadorStatus === 'ACTIVE' ? '#15803d' : '#b45309', padding:'1px 6px', borderRadius:10, fontWeight:600 }}>
-                      {d.managedBy.ambassadorStatus === 'ACTIVE' ? 'Actif' : d.managedBy.ambassadorStatus ?? '—'}
+                    <span style={{ marginLeft:4, fontSize:11, background: d.managedBy.chefDeFlotteStatus === 'ACTIVE' ? 'rgba(34,197,94,.12)' : 'rgba(245,158,11,.12)', color: d.managedBy.chefDeFlotteStatus === 'ACTIVE' ? '#15803d' : '#b45309', padding:'1px 6px', borderRadius:10, fontWeight:600 }}>
+                      {d.managedBy.chefDeFlotteStatus === 'ACTIVE' ? 'Actif' : d.managedBy.chefDeFlotteStatus ?? '—'}
                     </span></>
                   )}
                 </div>
@@ -359,7 +359,7 @@ function DriversTab() {
                   <div style={{ display:'flex', alignItems:'flex-start', gap:10, background:'rgba(245,158,11,.08)', border:'1px solid rgba(245,158,11,.25)', borderRadius:10, padding:'10px 14px' }}>
                     <AlertTriangle size={16} style={{ color:'#b45309', flexShrink:0, marginTop:1 }} />
                     <div style={{ fontSize:13, color:'#92400e' }}>
-                      <strong>Activation bloquée</strong> — L'ambassadeur <em>{d.managedBy?.name ?? ''}</em> n'est pas encore validé ({d.managedBy?.ambassadorStatus ?? '—'}).
+                      <strong>Activation bloquée</strong> — L'ambassadeur <em>{d.managedBy?.name ?? ''}</em> n'est pas encore validé ({d.managedBy?.chefDeFlotteStatus ?? '—'}).
                       Validez d'abord l'ambassadeur dans l'onglet <strong>Ambassadeurs</strong>.
                     </div>
                   </div>
