@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import api from '../lib/api'
-import { RefreshCw, Eye, X, Plus, Pencil, Trash2 } from 'lucide-react'
-import { glass, pageWrap, pageScroll, stickyTh } from '../lib/glassStyles'
+import { RefreshCw, Eye, X, Plus, Pencil, Trash2, Search } from 'lucide-react'
+import { glass, glassInput, pageWrap, pageScroll, stickyTh } from '../lib/glassStyles'
 
 // ── Modal Créer / Modifier ────────────────────────────────────────────────────
 function ClientFormModal({ initial, onClose, onSaved }) {
@@ -160,25 +160,48 @@ function ClientDetailModal({ client, onClose }) {
 }
 
 // ── Page principale ───────────────────────────────────────────────────────────
+const LIMIT = 50
+
 export default function Clients() {
   const [clients, setClients]   = useState([])
+  const [total, setTotal]       = useState(0)
   const [loading, setLoading]   = useState(true)
   const [selected, setSelected] = useState(null)
   const [formTarget, setFormTarget] = useState(null) // null=fermé, {}=créer, {id,...}=modifier
+  const [search, setSearch]         = useState('')
+  const [status, setStatus]         = useState('')
+  const [period, setPeriod]         = useState('')
+  const [hasOrders, setHasOrders]   = useState('')
+  const [sortByCourses, setSortByCourses] = useState(false)
+  const [page, setPage]             = useState(1)
 
   const fetch = useCallback(async () => {
     setLoading(true)
     try {
-      const res = await api.get('/admin/clients')
+      const params = { page, limit: LIMIT }
+      if (search.trim()) params.search = search.trim()
+      if (status)        params.status = status
+      if (period)        params.period = period
+      if (hasOrders)     params.hasOrders = hasOrders
+      if (sortByCourses) params.sortBy = 'courses'
+      const res = await api.get('/admin/clients', { params })
       setClients(Array.isArray(res.data?.clients) ? res.data.clients : (Array.isArray(res.data) ? res.data : []))
+      setTotal(res.data?.total ?? 0)
     } catch (e) {
       console.error(e)
     } finally {
       setLoading(false)
     }
-  }, [])
+  }, [page, search, status, period, hasOrders, sortByCourses])
 
   useEffect(() => { fetch() }, [fetch])
+
+  const totalPages = Math.max(1, Math.ceil(total / LIMIT))
+  const hasFilters = !!(search || status || period || hasOrders)
+
+  function updateFilter(setter) {
+    return (v) => { setter(v); setPage(1) }
+  }
 
   async function toggleBan(client) {
     const action = client.isBanned ? 'unban' : 'ban'
@@ -204,7 +227,12 @@ export default function Clients() {
   return (
     <div style={pageWrap}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24, flexShrink: 0 }}>
-        <h1 style={{ fontSize: 22, fontWeight: 700 }}>Clients</h1>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <h1 style={{ fontSize: 22, fontWeight: 700 }}>Clients</h1>
+          <span style={{ fontSize: 13, color: 'var(--text-muted)', fontWeight: 400 }}>
+            {total.toLocaleString()} client{total !== 1 ? 's' : ''}
+          </span>
+        </div>
         <div style={{ display: 'flex', gap: 8 }}>
           <button onClick={fetch} style={btnOutline}>
             <RefreshCw size={14} /> Actualiser
@@ -215,18 +243,58 @@ export default function Clients() {
         </div>
       </div>
 
+      {/* ── Recherche & filtres ── */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16, flexWrap: 'wrap', flexShrink: 0 }}>
+        <div style={{ position: 'relative', flex: '1 1 220px', maxWidth: 280 }}>
+          <Search size={14} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
+          <input
+            value={search}
+            onChange={e => updateFilter(setSearch)(e.target.value)}
+            placeholder="Nom ou téléphone…"
+            style={{ ...glassInput, paddingLeft: 36, width: '100%' }}
+          />
+        </div>
+        <select value={status} onChange={e => updateFilter(setStatus)(e.target.value)} style={{ ...glassInput, width: 150 }}>
+          <option value="">Statut : Tous</option>
+          <option value="active">✓ Actif</option>
+          <option value="inactive">Inactif</option>
+          <option value="banned">🚫 Banni</option>
+        </select>
+        <select value={period} onChange={e => updateFilter(setPeriod)(e.target.value)} style={{ ...glassInput, width: 180 }}>
+          <option value="">Inscription : Toujours</option>
+          <option value="today">Aujourd'hui</option>
+          <option value="7d">7 derniers jours</option>
+          <option value="30d">30 derniers jours</option>
+        </select>
+        <select value={hasOrders} onChange={e => updateFilter(setHasOrders)(e.target.value)} style={{ ...glassInput, width: 170 }}>
+          <option value="">Courses : Tous</option>
+          <option value="some">Avec courses</option>
+          <option value="none">Sans course</option>
+        </select>
+      </div>
+
       <div style={pageScroll}>
       <div style={card}>
         {loading ? (
           <div style={{ color: 'var(--text-muted)', padding: 20 }}>Chargement…</div>
         ) : clients.length === 0 ? (
-          <div style={{ color: 'var(--text-muted)', padding: 20 }}>Aucun client.</div>
+          <div style={{ color: 'var(--text-muted)', padding: 20 }}>Aucun client{hasFilters ? ' pour ce filtre' : ''}.</div>
         ) : (
           <table style={tableStyle}>
             <thead>
               <tr>
-                {['Client', 'Téléphone', 'Inscription', 'Statut', 'Actions'].map(h => (
-                  <th key={h} style={{ ...thStyle, ...stickyTh }}>{h}</th>
+                {['Client', 'Téléphone', 'Courses', 'Inscription', 'Statut', 'Actions'].map(h => (
+                  <th
+                    key={h}
+                    style={{
+                      ...thStyle, ...stickyTh,
+                      ...(h === 'Courses' ? { cursor: 'pointer', userSelect: 'none' } : {}),
+                    }}
+                    onClick={h === 'Courses' ? () => updateFilter(setSortByCourses)(s => !s) : undefined}
+                    title={h === 'Courses' ? 'Trier par nombre de courses' : undefined}
+                  >
+                    {h}{h === 'Courses' && (sortByCourses ? ' ▼' : ' ⇅')}
+                  </th>
                 ))}
               </tr>
             </thead>
@@ -245,13 +313,16 @@ export default function Clients() {
                     </div>
                   </td>
                   <td style={tdStyle}>{c.phone}</td>
+                  <td style={{ ...tdStyle, textAlign: 'center', fontWeight: 700 }}>{c._count?.ordersAsClient ?? 0}</td>
                   <td style={{ ...tdStyle, color: 'var(--text-muted)', fontSize: 12 }}>
                     {c.createdAt ? new Date(c.createdAt).toLocaleDateString('fr-FR') : '—'}
                   </td>
                   <td style={tdStyle}>
                     {c.isBanned
                       ? <span style={{ color: 'var(--danger)', fontSize: 12, fontWeight: 600 }}>🚫 Banni</span>
-                      : <span style={{ color: 'var(--success)', fontSize: 12 }}>✓ Actif</span>}
+                      : c.isActive
+                        ? <span style={{ color: 'var(--success)', fontSize: 12 }}>✓ Actif</span>
+                        : <span style={{ color: 'var(--warning)', fontSize: 12 }}>Inactif</span>}
                   </td>
                   <td style={tdStyle}>
                     <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap' }}>
@@ -282,6 +353,17 @@ export default function Clients() {
           </table>
         )}
       </div>
+
+      {/* ── Pagination ── */}
+      {totalPages > 1 && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, justifyContent: 'center', marginTop: 16 }}>
+          <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page <= 1} style={btnOutline}>← Préc.</button>
+          <span style={{ fontSize: 13, color: 'var(--text-muted)', padding: '0 8px' }}>
+            Page {page} / {totalPages}
+          </span>
+          <button onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page >= totalPages} style={btnOutline}>Suiv. →</button>
+        </div>
+      )}
       </div>
 
       {selected && <ClientDetailModal client={selected} onClose={() => setSelected(null)} />}

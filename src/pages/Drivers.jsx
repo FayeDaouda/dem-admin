@@ -2,8 +2,8 @@ import { useState, useEffect, useCallback } from 'react'
 import api from '../lib/api'
 import Badge from '../components/Badge'
 import SuspendModal from '../components/SuspendModal'
-import { RefreshCw, BarChart2, Phone, CheckCircle, XCircle, Eye, Plus, Pencil, Trash2 } from 'lucide-react'
-import { glass, pageWrap, pageScroll, stickyTh } from '../lib/glassStyles'
+import { RefreshCw, BarChart2, Phone, CheckCircle, XCircle, Eye, Plus, Pencil, Trash2, Search } from 'lucide-react'
+import { glass, glassInput, pageWrap, pageScroll, stickyTh } from '../lib/glassStyles'
 
 const DOC_LIST = [
   { key: 'idCardFront',    label: 'CNI recto' },
@@ -237,6 +237,11 @@ export default function Drivers() {
   const [loading, setLoading]           = useState(true)
   const [badgeTiers, setBadgeTiers]     = useState(null)
   const [fleetFilter, setFleetFilter]   = useState('all')
+  const [search, setSearch]             = useState('')
+  const [onlineFilter, setOnlineFilter] = useState('all')
+  const [verifFilter, setVerifFilter]   = useState('all')
+  const [badgeFilter, setBadgeFilter]   = useState('all')
+  const [sortCourses, setSortCourses]   = useState(null)
   const [stats, setStats]               = useState(null)
   const [detail, setDetail]             = useState(null)
   const [formTarget, setFormTarget]     = useState(null)
@@ -334,6 +339,37 @@ export default function Drivers() {
       setResolving(null)
     }
   }
+
+  const visibleDrivers = drivers
+    .filter(d =>
+      fleetFilter === 'fleet'       ? !!d.managedById :
+      fleetFilter === 'independent' ? !d.managedById  : true
+    )
+    .filter(d =>
+      onlineFilter === 'online'  ? d.isAvailable :
+      onlineFilter === 'offline' ? !d.isAvailable : true
+    )
+    .filter(d =>
+      verifFilter === 'verified' ? d.isVerified :
+      verifFilter === 'pending'  ? !d.isVerified : true
+    )
+    .filter(d => {
+      if (badgeFilter === 'all') return true
+      const badge = computeBadge(d.deliveredCourses ?? 0, d.referralCount ?? 0, d.avgRating ?? 0, badgeTiers)
+      return badgeFilter === 'nouveau' ? !badge : badge?.tier === badgeFilter
+    })
+    .filter(d => {
+      const q = search.trim().toLowerCase()
+      if (!q) return true
+      return (d.name ?? '').toLowerCase().includes(q) || (d.phone ?? '').includes(q)
+    })
+
+  const sortedDrivers = sortCourses
+    ? [...visibleDrivers].sort((a, b) => {
+        const diff = (a.deliveredCourses ?? 0) - (b.deliveredCourses ?? 0)
+        return sortCourses === 'asc' ? diff : -diff
+      })
+    : visibleDrivers
 
   return (
     <div style={pageWrap}>
@@ -448,6 +484,36 @@ export default function Drivers() {
           ))}
         </div>
       </div>
+
+      {/* ── Recherche & filtres ── */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16, flexWrap: 'wrap', flexShrink: 0 }}>
+        <div style={{ position: 'relative', flex: '1 1 220px', maxWidth: 280 }}>
+          <Search size={14} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
+          <input
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            placeholder="Nom ou téléphone…"
+            style={{ ...glassInput, paddingLeft: 36, width: '100%' }}
+          />
+        </div>
+        <select value={onlineFilter} onChange={e => setOnlineFilter(e.target.value)} style={{ ...glassInput, width: 160 }}>
+          <option value="all">Disponibilité : Tous</option>
+          <option value="online">🟢 En ligne</option>
+          <option value="offline">⚪ Hors ligne</option>
+        </select>
+        <select value={verifFilter} onChange={e => setVerifFilter(e.target.value)} style={{ ...glassInput, width: 160 }}>
+          <option value="all">Vérification : Tous</option>
+          <option value="verified">✓ Vérifié</option>
+          <option value="pending">En attente</option>
+        </select>
+        <select value={badgeFilter} onChange={e => setBadgeFilter(e.target.value)} style={{ ...glassInput, width: 180 }}>
+          <option value="all">Badge : Tous</option>
+          <option value="nouveau">Nouveau</option>
+          {(badgeTiers ?? DEFAULT_BADGE_TIERS).map(t => (
+            <option key={t.tier} value={t.tier}>{BADGE_VISUALS[t.tier]?.emoji} {t.name}</option>
+          ))}
+        </select>
+      </div>
       <div style={pageScroll}>
       <div style={card}>
         {loading ? (
@@ -457,20 +523,27 @@ export default function Drivers() {
             <thead>
               <tr>
                 {['Nom', 'Badge', 'Courses', 'Téléphone', 'Véhicule', 'Statut', 'Vérifié', 'Actions'].map(h => (
-                  <th key={h} style={{ ...thStyle, ...stickyTh }}>{h}</th>
+                  <th
+                    key={h}
+                    style={{
+                      ...thStyle, ...stickyTh,
+                      ...(h === 'Courses' ? { cursor: 'pointer', userSelect: 'none' } : {}),
+                    }}
+                    onClick={h === 'Courses'
+                      ? () => setSortCourses(s => s === 'desc' ? 'asc' : s === 'asc' ? null : 'desc')
+                      : undefined}
+                    title={h === 'Courses' ? 'Trier par nombre de courses' : undefined}
+                  >
+                    {h}{h === 'Courses' && (sortCourses === 'desc' ? ' ▼' : sortCourses === 'asc' ? ' ▲' : ' ⇅')}
+                  </th>
                 ))}
               </tr>
             </thead>
             <tbody>
-              {drivers
-                .filter(d =>
-                  fleetFilter === 'fleet'       ? !!d.managedById :
-                  fleetFilter === 'independent' ? !d.managedById  : true
-                )
-                .map(d => (
+              {sortedDrivers.map(d => (
                 <tr key={d.id} style={{ borderBottom: '1px solid var(--border)' }}>
                   <td style={tdStyle}>
-                    <div style={{ fontWeight: 600 }}>{d.name ?? '—'}</div>
+                    <div style={{ fontWeight: 600 }}>{d.name?.trim() || d.phone}</div>
                     <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', marginTop: 3 }}>
                       <Badge status={d.isAvailable ? 'ONLINE' : 'OFFLINE'} />
                       {d.managedById && (
