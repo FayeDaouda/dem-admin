@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { RefreshCw, Search, Shield } from 'lucide-react'
 import api from '../lib/api'
-import { glass, glassInput } from '../lib/glassStyles'
+import { glass, glassInput, pageWrap, pageScroll, stickyTh } from '../lib/glassStyles'
 
 // ── Couleurs par catégorie d'action ──────────────────────────────────────────
 function actionColor(action = '') {
@@ -67,9 +67,9 @@ export default function Audit() {
   }
 
   return (
-    <div>
+    <div style={pageWrap}>
       {/* ── Header ── */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24, flexWrap: 'wrap', gap: 12 }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24, flexWrap: 'wrap', gap: 12, flexShrink: 0 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
           <Shield size={20} color="var(--primary)" />
           <h1 style={{ fontSize: 22, fontWeight: 700 }}>Journal d'audit</h1>
@@ -83,7 +83,7 @@ export default function Audit() {
       </div>
 
       {/* ── Filtres ── */}
-      <div style={{ position: 'relative', marginBottom: 20, maxWidth: 360 }}>
+      <div style={{ position: 'relative', marginBottom: 20, maxWidth: 360, flexShrink: 0 }}>
         <Search size={14} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
         <input
           value={search}
@@ -94,7 +94,8 @@ export default function Audit() {
       </div>
 
       {/* ── Table ── */}
-      <div style={{ ...glass, padding: '0 0 4px', overflowX: 'auto', marginBottom: 16 }}>
+      <div style={pageScroll}>
+      <div style={{ ...glass, padding: '0 0 4px', marginBottom: 16 }}>
         {loading ? (
           <div style={{ padding: 24, color: 'var(--text-muted)' }}>Chargement…</div>
         ) : logs.length === 0 ? (
@@ -107,7 +108,7 @@ export default function Audit() {
             <thead>
               <tr>
                 {['Date & heure', 'Action', 'Admin', 'Type cible', 'Cible', 'Détails'].map(h => (
-                  <th key={h} style={thStyle}>{h}</th>
+                  <th key={h} style={{ ...thStyle, ...stickyTh }}>{h}</th>
                 ))}
               </tr>
             </thead>
@@ -155,6 +156,7 @@ export default function Audit() {
           <button onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page >= totalPages} style={btnOutline}>Suiv. →</button>
         </div>
       )}
+      </div>
 
       {/* ── Modal détail ── */}
       {detail && (

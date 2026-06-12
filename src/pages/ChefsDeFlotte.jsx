@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import api from '../lib/api'
 import { RefreshCw, Eye, Plus, Pencil, Trash2, X } from 'lucide-react'
-import { glass } from '../lib/glassStyles'
+import { glass, pageWrap, pageScroll, stickyTh } from '../lib/glassStyles'
 
 // ── Modal Créer / Modifier ────────────────────────────────────────────────────
 function ChefFormModal({ initial, onClose, onSaved }) {
@@ -208,8 +208,8 @@ export default function ChefsDeFlotte() {
   const filtered = chefs.filter(c => statusFilter === 'all' || c.chefDeFlotteStatus === statusFilter)
 
   return (
-    <div>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24 }}>
+    <div style={pageWrap}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24, flexShrink: 0 }}>
         <h1 style={{ fontSize: 22, fontWeight: 700 }}>Chefs de flotte</h1>
         <div style={{ display: 'flex', gap: 8 }}>
           <button onClick={fetch} style={btnOutline}><RefreshCw size={14} /> Actualiser</button>
@@ -218,7 +218,7 @@ export default function ChefsDeFlotte() {
       </div>
 
       {/* Filtres statut */}
-      <div style={{ display: 'flex', gap: 6, marginBottom: 16, flexWrap: 'wrap' }}>
+      <div style={{ display: 'flex', gap: 6, marginBottom: 16, flexWrap: 'wrap', flexShrink: 0 }}>
         {[['all', 'Tous'], ['PENDING', '⏳ En attente'], ['APPROVED', '✓ Approuvés'], ['SUSPENDED', '⚠ Suspendus']].map(([key, label]) => (
           <button key={key} onClick={() => setStatusFilter(key)} style={{
             padding: '4px 14px', borderRadius: 20, border: '1px solid rgba(0,119,182,.25)',
@@ -229,6 +229,7 @@ export default function ChefsDeFlotte() {
         ))}
       </div>
 
+      <div style={pageScroll}>
       <div style={card}>
         {loading ? (
           <div style={{ color: 'var(--text-muted)', padding: 20 }}>Chargement…</div>
@@ -239,7 +240,7 @@ export default function ChefsDeFlotte() {
             <thead>
               <tr>
                 {['Chef de flotte', 'Téléphone', 'Société', 'Flotte', 'Statut', 'Inscription', 'Actions'].map(h => (
-                  <th key={h} style={thStyle}>{h}</th>
+                  <th key={h} style={{ ...thStyle, ...stickyTh }}>{h}</th>
                 ))}
               </tr>
             </thead>
@@ -281,6 +282,7 @@ export default function ChefsDeFlotte() {
           </table>
         )}
       </div>
+      </div>
 
       {selected && <ChefDetailModal chef={selected} onClose={() => setSelected(null)} />}
 
@@ -298,7 +300,7 @@ export default function ChefsDeFlotte() {
 const overlay      = { position: 'fixed', inset: 0, background: 'rgba(0,40,80,.45)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100 }
 const infoBox      = { background: 'var(--surface2)', borderRadius: 10, padding: '12px 14px' }
 const sectionLabel = { fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '.5px', marginBottom: 8 }
-const card         = { ...glass, padding: '20px 24px', overflowX: 'auto' }
+const card         = { ...glass, padding: '20px 24px' }
 const tableStyle   = { width: '100%', borderCollapse: 'collapse' }
 const thStyle      = { textAlign: 'left', padding: '8px 10px', color: 'var(--text-muted)', fontSize: 12, fontWeight: 600, borderBottom: '1px solid rgba(0,119,182,0.12)' }
 const tdStyle      = { padding: '10px 10px', verticalAlign: 'middle' }

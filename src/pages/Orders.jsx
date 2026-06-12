@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react'
 import api from '../lib/api'
 import Badge from '../components/Badge'
 import { RefreshCw, Search } from 'lucide-react'
-import { glass, glassInput } from '../lib/glassStyles'
+import { glass, glassInput, pageWrap, pageScroll, stickyTh } from '../lib/glassStyles'
 
 export default function Orders() {
   const [orders, setOrders]     = useState([])
@@ -80,8 +80,8 @@ export default function Orders() {
   })
 
   return (
-    <div>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24 }}>
+    <div style={pageWrap}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24, flexShrink: 0 }}>
         <h1 style={{ fontSize: 22, fontWeight: 700 }}>Toutes les courses</h1>
         <button onClick={fetch} style={btnOutline}>
           <RefreshCw size={14} /> Actualiser
@@ -89,7 +89,7 @@ export default function Orders() {
       </div>
 
       {/* Search */}
-      <div style={{ position: 'relative', marginBottom: 20, maxWidth: 360 }}>
+      <div style={{ position: 'relative', marginBottom: 20, maxWidth: 360, flexShrink: 0 }}>
         <Search size={14} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
         <input
           value={search}
@@ -99,6 +99,7 @@ export default function Orders() {
         />
       </div>
 
+      <div style={pageScroll}>
       <div style={card}>
         {loading ? (
           <div style={{ color: 'var(--text-muted)', padding: 20 }}>Chargement…</div>
@@ -107,7 +108,7 @@ export default function Orders() {
             <thead>
               <tr>
                 {['ID', 'Type', 'Statut', 'Client', 'Driver', 'Prix', 'Paiement', 'Date'].map(h => (
-                  <th key={h} style={thStyle}>{h}</th>
+                  <th key={h} style={{ ...thStyle, ...stickyTh }}>{h}</th>
                 ))}
               </tr>
             </thead>
@@ -133,6 +134,7 @@ export default function Orders() {
             </tbody>
           </table>
         )}
+      </div>
       </div>
 
       {/* Détail modal */}
@@ -201,7 +203,7 @@ function Row({ label, value }) {
   )
 }
 
-const card       = { ...glass, padding: '20px 24px', overflowX: 'auto' }
+const card       = { ...glass, padding: '20px 24px' }
 const tableStyle = { width: '100%', borderCollapse: 'collapse' }
 const thStyle    = { textAlign: 'left', padding: '8px 10px', color: 'var(--text-muted)', fontSize: 12, fontWeight: 600, borderBottom: '1px solid rgba(0,119,182,0.12)' }
 const tdStyle    = { padding: '10px 10px', verticalAlign: 'middle' }

@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import api from '../lib/api'
-import { glass, glassInput } from '../lib/glassStyles'
+import { glass, glassInput, pageWrap, pageScroll } from '../lib/glassStyles'
 import {
   Zap, Users, GitBranch, DollarSign, Award, Truck,
   ToggleLeft, ToggleRight, Play, RefreshCw, CheckCircle, Circle, Save, RotateCcw,
@@ -89,8 +89,8 @@ export default function Acquisition() {
   }
 
   return (
-    <div>
-      <div style={{ marginBottom: 24 }}>
+    <div style={pageWrap}>
+      <div style={{ marginBottom: 24, flexShrink: 0 }}>
         <h1 style={{ fontSize: 22, fontWeight: 700 }}>Plan d'acquisition</h1>
         <p style={{ color: 'var(--text-muted)', fontSize: 13, marginTop: 4 }}>
           Gestion du forfait, offre 100 clients, parrainage MLM et grille des frais.
@@ -98,7 +98,7 @@ export default function Acquisition() {
       </div>
 
       {/* TabBar */}
-      <div style={{ display: 'flex', gap: 4, marginBottom: 24, background: 'rgba(255,255,255,.45)', borderRadius: 'var(--radius)', padding: 4, width: 'fit-content' }}>
+      <div style={{ display: 'flex', gap: 4, marginBottom: 24, background: 'rgba(255,255,255,.45)', borderRadius: 'var(--radius)', padding: 4, width: 'fit-content', flexShrink: 0 }}>
         {TABS.map(({ id, label, icon: Icon }) => (
           <button key={id} onClick={() => setTab(id)} style={TAB_STYLE(tab === id)}>
             <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
@@ -108,13 +108,15 @@ export default function Acquisition() {
         ))}
       </div>
 
-      {tab === 'forfait'        && <ForfaitTab notify={notify} />}
-      {tab === 'clients'        && <ClientsTab notify={notify} />}
-      {tab === 'referrals'      && <ReferralsTab />}
-      {tab === 'badges'         && <BadgesTab />}
-      {tab === 'badges-drivers' && <DriverBadgesTab />}
-      {tab === 'ambassadeurs'   && <AmbassadeursTab />}
-      {tab === 'fees'           && <FeesTab />}
+      <div style={pageScroll}>
+        {tab === 'forfait'        && <ForfaitTab notify={notify} />}
+        {tab === 'clients'        && <ClientsTab notify={notify} />}
+        {tab === 'referrals'      && <ReferralsTab />}
+        {tab === 'badges'         && <BadgesTab />}
+        {tab === 'badges-drivers' && <DriverBadgesTab />}
+        {tab === 'ambassadeurs'   && <AmbassadeursTab />}
+        {tab === 'fees'           && <FeesTab />}
+      </div>
 
       {snack && <Snack msg={snack.msg} ok={snack.ok} />}
     </div>

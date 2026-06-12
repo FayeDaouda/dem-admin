@@ -26,3 +26,26 @@ export const glassInput = {
   fontSize: 14,
   outline: 'none',
 }
+
+// ── Pages liste : haut fixe (titre/actions/filtres) + liste scrollable ──
+export const pageWrap = {
+  height: '100%',
+  display: 'flex',
+  flexDirection: 'column',
+}
+
+export const pageScroll = {
+  flex: 1,
+  overflowY: 'auto',
+  overflowX: 'auto',
+  minHeight: 0,
+}
+
+export const stickyTh = {
+  position: 'sticky',
+  top: 0,
+  background: 'rgba(255,255,255,0.85)',
+  backdropFilter: 'blur(8px)',
+  WebkitBackdropFilter: 'blur(8px)',
+  zIndex: 1,
+}

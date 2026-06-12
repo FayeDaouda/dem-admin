@@ -175,7 +175,8 @@ export default function Layout({ children }) {
       <main style={{
         marginLeft: isMobile ? 0 : sidebarW,
         flex: 1,
-        minHeight: '100vh',
+        height: '100vh',
+        overflow: 'hidden',
         background: 'transparent',
         display: 'flex',
         flexDirection: 'column',
@@ -205,7 +206,7 @@ export default function Layout({ children }) {
           </div>
         )}
 
-        <div style={{ padding: isMobile ? '16px 14px' : isTablet ? '20px 20px' : '28px 32px', flex: 1 }}>
+        <div style={{ padding: isMobile ? '16px 14px' : isTablet ? '20px 20px' : '28px 32px', flex: 1, minHeight: 0, overflowY: 'auto' }}>
           {children}
         </div>
       </main>

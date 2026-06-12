@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react'
 import api from '../lib/api'
 import Badge from '../components/Badge'
 import { RefreshCw } from 'lucide-react'
-import { glass, glassModal, glassInput } from '../lib/glassStyles'
+import { glass, glassModal, glassInput, pageWrap, pageScroll, stickyTh } from '../lib/glassStyles'
 
 const PAYMENT_METHODS = ['CASH', 'WAVE', 'ORANGE_MONEY']
 const PM_LABELS = { CASH: 'Espèces', WAVE: 'Wave', ORANGE_MONEY: 'Orange Money' }
@@ -51,8 +51,8 @@ export default function Payments() {
   const disputed = orders.filter(o => o.paymentStatus === 'DISPUTED')
 
   return (
-    <div>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24 }}>
+    <div style={pageWrap}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24, flexShrink: 0 }}>
         <h1 style={{ fontSize: 22, fontWeight: 700 }}>Paiements</h1>
         <button onClick={fetch} style={btnOutline}>
           <RefreshCw size={14} /> Actualiser
@@ -72,13 +72,14 @@ export default function Payments() {
           gap: 10,
           color: 'var(--danger)',
           fontWeight: 600,
+          flexShrink: 0,
         }}>
           ⚠ {disputed.length} litige{disputed.length > 1 ? 's' : ''} en attente de résolution
         </div>
       )}
 
       {/* Filtres */}
-      <div style={{ display: 'flex', gap: 8, marginBottom: 20 }}>
+      <div style={{ display: 'flex', gap: 8, marginBottom: 20, flexShrink: 0 }}>
         {[['PENDING', 'En attente'], ['DISPUTED', 'Litiges'], ['all', 'Tout']].map(([val, label]) => (
           <button
             key={val}
@@ -99,6 +100,7 @@ export default function Payments() {
       </div>
 
       {/* Table */}
+      <div style={pageScroll}>
       <div style={card}>
         {loading ? (
           <div style={{ color: 'var(--text-muted)', padding: 20 }}>Chargement…</div>
@@ -109,7 +111,7 @@ export default function Payments() {
             <thead>
               <tr>
                 {['ID', 'Type', 'Client', 'Driver', 'Prix', 'Statut paiement', 'Note litige', 'Action'].map(h => (
-                  <th key={h} style={thStyle}>{h}</th>
+                  <th key={h} style={{ ...thStyle, ...stickyTh }}>{h}</th>
                 ))}
               </tr>
             </thead>
@@ -120,7 +122,7 @@ export default function Payments() {
                   <td style={tdStyle}><Badge status={o.orderType} /></td>
                   <td style={tdStyle}>{o.client?.name ?? o.client?.phone ?? '—'}</td>
                   <td style={tdStyle}>{o.driver?.name ?? '—'}</td>
-                  <td style={tdStyle} style={{ fontWeight: 600 }}>{o.price?.toLocaleString()} F</td>
+                  <td style={{ ...tdStyle, fontWeight: 600 }}>{o.price?.toLocaleString()} F</td>
                   <td style={tdStyle}><Badge status={o.paymentStatus} /></td>
                   <td style={tdStyle}>
                     {o.disputeNotes
@@ -137,6 +139,7 @@ export default function Payments() {
             </tbody>
           </table>
         )}
+      </div>
       </div>
 
       {/* Modal résolution */}

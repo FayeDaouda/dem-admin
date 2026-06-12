@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { AlertTriangle, RefreshCw, Filter } from 'lucide-react'
 import api from '../lib/api'
 import { connectSocket, disconnectSocket } from '../lib/socket'
-import { glass, glassInput } from '../lib/glassStyles'
+import { glass, glassInput, pageWrap, pageScroll, stickyTh } from '../lib/glassStyles'
 
 // ── Constantes ────────────────────────────────────────────────────────────────
 const SEVERITY_CFG = {
@@ -116,9 +116,9 @@ export default function Incidents() {
     : 0
 
   return (
-    <div>
+    <div style={pageWrap}>
       {/* ── Header ── */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24, flexWrap: 'wrap', gap: 12 }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24, flexWrap: 'wrap', gap: 12, flexShrink: 0 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
           <AlertTriangle size={22} color="#ef4444" />
           <h1 style={{ fontSize: 22, fontWeight: 700 }}>Incidents opérationnels</h1>
@@ -134,7 +134,7 @@ export default function Incidents() {
       </div>
 
       {/* ── Stat cards ── */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 12, marginBottom: 24 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 12, marginBottom: 24, flexShrink: 0 }}>
         {[
           { label: 'Ouverts',   value: openCount,                                         color: '#ef4444' },
           { label: 'Critiques', value: critCount,                                          color: '#f97316' },
@@ -149,7 +149,7 @@ export default function Incidents() {
       </div>
 
       {/* ── Filtres ── */}
-      <div style={{ display: 'flex', gap: 10, marginBottom: 16, flexWrap: 'wrap', alignItems: 'center' }}>
+      <div style={{ display: 'flex', gap: 10, marginBottom: 16, flexWrap: 'wrap', alignItems: 'center', flexShrink: 0 }}>
         <Filter size={14} style={{ color: 'var(--text-muted)' }} />
         <select value={filterStatus} onChange={e => setFilterStatus(e.target.value)} style={{ ...glassInput, width: 160 }}>
           <option value="">Tous les statuts</option>
@@ -166,7 +166,8 @@ export default function Incidents() {
       </div>
 
       {/* ── Liste ── */}
-      <div style={{ ...glass, padding: '0 0 4px', overflowX: 'auto' }}>
+      <div style={pageScroll}>
+      <div style={{ ...glass, padding: '0 0 4px' }}>
         {loading ? (
           <div style={{ padding: 24, color: 'var(--text-muted)' }}>Chargement…</div>
         ) : incidents.length === 0 ? (
@@ -179,7 +180,7 @@ export default function Incidents() {
             <thead>
               <tr>
                 {['Sévérité', 'Type', 'Statut', 'Order ID', 'Driver', 'Hors-ligne', 'Ouvert le', 'Notes'].map(h => (
-                  <th key={h} style={thStyle}>{h}</th>
+                  <th key={h} style={{ ...thStyle, ...stickyTh }}>{h}</th>
                 ))}
               </tr>
             </thead>
@@ -211,6 +212,7 @@ export default function Incidents() {
             </tbody>
           </table>
         )}
+      </div>
       </div>
 
       {/* ── Modal détail + workflow ── */}

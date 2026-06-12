@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import api from '../lib/api'
-import { glass, glassInput } from '../lib/glassStyles'
+import { glass, glassInput, pageWrap, pageScroll } from '../lib/glassStyles'
 import { RefreshCw, CheckCircle, XCircle, ChevronDown, ChevronUp, Shield, Truck, Layers, AlertTriangle } from 'lucide-react'
 import SuspendModal from '../components/SuspendModal'
 import AmbassadorDetailModal from '../components/AmbassadorDetailModal'
@@ -76,9 +76,9 @@ export default function Validation() {
   const [tab, setTab] = useState('ambassadors')
 
   return (
-    <div>
-      <h1 style={{ fontSize: 22, fontWeight: 700, marginBottom: 20 }}>Validation</h1>
-      <div style={{ display:'flex', gap:4, marginBottom:24, background:'rgba(255,255,255,.45)', borderRadius:'var(--radius)', padding:4, width:'fit-content' }}>
+    <div style={pageWrap}>
+      <h1 style={{ fontSize: 22, fontWeight: 700, marginBottom: 20, flexShrink: 0 }}>Validation</h1>
+      <div style={{ display:'flex', gap:4, marginBottom:24, background:'rgba(255,255,255,.45)', borderRadius:'var(--radius)', padding:4, width:'fit-content', flexShrink: 0 }}>
         <button style={TAB(tab === 'ambassadors')} onClick={() => setTab('ambassadors')}>
           <span style={{ display:'flex', alignItems:'center', gap:6 }}><Shield size={13} />Ambassadeurs</span>
         </button>
@@ -89,9 +89,11 @@ export default function Validation() {
           <span style={{ display:'flex', alignItems:'center', gap:6 }}><Layers size={13} />Extensions flotte</span>
         </button>
       </div>
-      {tab === 'ambassadors' && <AmbassadorsTab />}
-      {tab === 'drivers'     && <DriversTab />}
-      {tab === 'fleet'       && <FleetTab />}
+      <div style={pageScroll}>
+        {tab === 'ambassadors' && <AmbassadorsTab />}
+        {tab === 'drivers'     && <DriversTab />}
+        {tab === 'fleet'       && <FleetTab />}
+      </div>
     </div>
   )
 }

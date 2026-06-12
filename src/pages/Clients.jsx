@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import api from '../lib/api'
 import { RefreshCw, Eye, X, Plus, Pencil, Trash2 } from 'lucide-react'
-import { glass } from '../lib/glassStyles'
+import { glass, pageWrap, pageScroll, stickyTh } from '../lib/glassStyles'
 
 // ── Modal Créer / Modifier ────────────────────────────────────────────────────
 function ClientFormModal({ initial, onClose, onSaved }) {
@@ -202,8 +202,8 @@ export default function Clients() {
   }
 
   return (
-    <div>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24 }}>
+    <div style={pageWrap}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24, flexShrink: 0 }}>
         <h1 style={{ fontSize: 22, fontWeight: 700 }}>Clients</h1>
         <div style={{ display: 'flex', gap: 8 }}>
           <button onClick={fetch} style={btnOutline}>
@@ -215,6 +215,7 @@ export default function Clients() {
         </div>
       </div>
 
+      <div style={pageScroll}>
       <div style={card}>
         {loading ? (
           <div style={{ color: 'var(--text-muted)', padding: 20 }}>Chargement…</div>
@@ -225,7 +226,7 @@ export default function Clients() {
             <thead>
               <tr>
                 {['Client', 'Téléphone', 'Inscription', 'Statut', 'Actions'].map(h => (
-                  <th key={h} style={thStyle}>{h}</th>
+                  <th key={h} style={{ ...thStyle, ...stickyTh }}>{h}</th>
                 ))}
               </tr>
             </thead>
@@ -281,6 +282,7 @@ export default function Clients() {
           </table>
         )}
       </div>
+      </div>
 
       {selected && <ClientDetailModal client={selected} onClose={() => setSelected(null)} />}
 
@@ -298,7 +300,7 @@ export default function Clients() {
 const overlay      = { position: 'fixed', inset: 0, background: 'rgba(0,40,80,.45)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100 }
 const infoBox      = { background: 'var(--surface2)', borderRadius: 10, padding: '12px 14px' }
 const sectionLabel = { fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '.5px', marginBottom: 8 }
-const card         = { ...glass, padding: '20px 24px', overflowX: 'auto' }
+const card         = { ...glass, padding: '20px 24px' }
 const tableStyle   = { width: '100%', borderCollapse: 'collapse' }
 const thStyle      = { textAlign: 'left', padding: '8px 10px', color: 'var(--text-muted)', fontSize: 12, fontWeight: 600, borderBottom: '1px solid rgba(0,119,182,0.12)' }
 const tdStyle      = { padding: '10px 10px', verticalAlign: 'middle' }

@@ -3,7 +3,7 @@ import api from '../lib/api'
 import Badge from '../components/Badge'
 import SuspendModal from '../components/SuspendModal'
 import { RefreshCw, BarChart2, Phone, CheckCircle, XCircle, Eye, Plus, Pencil, Trash2 } from 'lucide-react'
-import { glass } from '../lib/glassStyles'
+import { glass, pageWrap, pageScroll, stickyTh } from '../lib/glassStyles'
 
 const DOC_LIST = [
   { key: 'idCardFront',    label: 'CNI recto' },
@@ -336,8 +336,8 @@ export default function Drivers() {
   }
 
   return (
-    <div>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24 }}>
+    <div style={pageWrap}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24, flexShrink: 0 }}>
         <h1 style={{ fontSize: 22, fontWeight: 700 }}>Drivers</h1>
         <div style={{ display: 'flex', gap: 8 }}>
           <button onClick={() => { fetch(); fetchPhoneRequests() }} style={btnOutline}>
@@ -351,7 +351,7 @@ export default function Drivers() {
 
       {/* ── Demandes changement de numéro ── */}
       {(phoneLoading || phoneReqs.length > 0) && (
-        <div style={{ marginBottom: 28 }}>
+        <div style={{ marginBottom: 28, flexShrink: 0 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
             <Phone size={16} color="var(--warning)" />
             <h2 style={{ fontSize: 15, fontWeight: 700, color: 'var(--text)' }}>
@@ -431,7 +431,7 @@ export default function Drivers() {
       )}
 
       {/* ── Liste complète drivers ── */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 12, flexWrap: 'wrap' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 12, flexWrap: 'wrap', flexShrink: 0 }}>
         <h2 style={{ fontSize: 15, fontWeight: 700 }}>Tous les drivers</h2>
         <div style={{ display: 'flex', gap: 6, marginLeft: 'auto' }}>
           {[
@@ -448,6 +448,7 @@ export default function Drivers() {
           ))}
         </div>
       </div>
+      <div style={pageScroll}>
       <div style={card}>
         {loading ? (
           <div style={{ color: 'var(--text-muted)', padding: 20 }}>Chargement…</div>
@@ -456,7 +457,7 @@ export default function Drivers() {
             <thead>
               <tr>
                 {['Nom', 'Badge', 'Courses', 'Téléphone', 'Véhicule', 'Statut', 'Vérifié', 'Actions'].map(h => (
-                  <th key={h} style={thStyle}>{h}</th>
+                  <th key={h} style={{ ...thStyle, ...stickyTh }}>{h}</th>
                 ))}
               </tr>
             </thead>
@@ -527,6 +528,7 @@ export default function Drivers() {
             </tbody>
           </table>
         )}
+      </div>
       </div>
 
       {/* Modal suspension driver */}
@@ -659,7 +661,7 @@ export default function Drivers() {
   )
 }
 
-const card       = { ...glass, padding: '20px 24px', overflowX: 'auto' }
+const card       = { ...glass, padding: '20px 24px' }
 const tableStyle = { width: '100%', borderCollapse: 'collapse' }
 const thStyle    = { textAlign: 'left', padding: '8px 10px', color: 'var(--text-muted)', fontSize: 12, fontWeight: 600, borderBottom: '1px solid rgba(0,119,182,0.12)' }
 const tdStyle    = { padding: '10px 10px', verticalAlign: 'middle' }
