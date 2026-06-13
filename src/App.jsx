@@ -15,7 +15,8 @@ import Incidents    from './pages/Incidents'
 import Audit        from './pages/Audit'
 import ChefsDeFlotte from './pages/ChefsDeFlotte'
 
-const LiveMap = lazy(() => import('./pages/LiveMap'))
+const LiveMap     = lazy(() => import('./pages/LiveMap'))
+const FleetSection = lazy(() => import('./pages/fleet/FleetSection'))
 
 const PageLoader = () => (
   <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)' }}>
@@ -51,6 +52,7 @@ function AppRoutes() {
       <Route path="/audit"       element={<ProtectedRoute><Audit /></ProtectedRoute>} />
       <Route path="/validation"      element={<ProtectedRoute><Validation /></ProtectedRoute>} />
       <Route path="/chefs-de-flotte" element={<ProtectedRoute><ChefsDeFlotte /></ProtectedRoute>} />
+      <Route path="/fleet/*" element={<FleetSection />} />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   )
