@@ -229,12 +229,14 @@ function DriverDetailModal({ driverId, onClose, onUpdated }) {
       if (docs.insuranceExpiry) fd.append('insuranceExpiry', docs.insuranceExpiry)
       await fleetApi.patch(`/chefs-de-flotte/me/drivers/${driverId}/documents`, fd, {
         headers: { 'Content-Type': 'multipart/form-data' },
+        timeout: 60000,
       })
       await fetchDetail()
       setSaved(true)
       onUpdated?.()
     } catch (e) {
-      setSaveError(e.response?.data?.message ?? 'Erreur.')
+      if (e.code === 'ECONNABORTED') setSaveError('Envoi trop long — réessayez avec des images plus légères.')
+      else setSaveError(e.response?.data?.message ?? 'Erreur.')
     } finally { setSaving(false) }
   }
 
@@ -253,7 +255,7 @@ function DriverDetailModal({ driverId, onClose, onUpdated }) {
 
   return (
     <div style={overlay} onClick={onClose}>
-      <div style={{ ...glass, width: 600, maxWidth: '94vw', borderRadius: 16, padding: 24, maxHeight: '90vh', overflowY: 'auto' }} onClick={e => e.stopPropagation()}>
+      <div style={{ ...glass, width: 960, maxWidth: '96vw', borderRadius: 16, padding: 24, maxHeight: '94vh', overflowY: 'auto' }} onClick={e => e.stopPropagation()}>
         {loading ? (
           <div style={{ color: 'var(--text-muted)', padding: 20, textAlign: 'center' }}>Chargement…</div>
         ) : loadError || !driver ? (
@@ -292,58 +294,63 @@ function DriverDetailModal({ driverId, onClose, onUpdated }) {
               </div>
             )}
 
-            {/* Chiffres */}
-            <div style={{ marginBottom: 16 }}>
-              <div style={sectionTitle}>Chiffres</div>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 10 }}>
-                {[
-                  ['Courses livrées', driver.deliveredCourses ?? 0, 'var(--success, #22c55e)'],
-                  ['Total généré',    `${(driver.totalEarned ?? 0).toLocaleString()} F`, 'var(--primary)'],
-                  ['Courses en cours', driver.pendingCourses ?? 0, '#f59e0b'],
-                  ['Note moyenne',     driver.avgRating != null ? `★ ${driver.avgRating}` : '—', '#f59e0b'],
-                ].map(([label, val, color]) => (
-                  <div key={label} style={{ background: 'rgba(0,119,182,.05)', borderRadius: 10, padding: '10px 14px', borderLeft: `3px solid ${color}` }}>
-                    <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>{label}</div>
-                    <div style={{ fontSize: 18, fontWeight: 700, color, marginTop: 2 }}>{val}</div>
+            {/* Corps en deux colonnes */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))', gap: 16 }}>
+              <div>
+                {/* Chiffres */}
+                <div style={{ marginBottom: 16 }}>
+                  <div style={sectionTitle}>Chiffres</div>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 10 }}>
+                    {[
+                      ['Courses livrées', driver.deliveredCourses ?? 0, 'var(--success, #22c55e)'],
+                      ['Total généré',    `${(driver.totalEarned ?? 0).toLocaleString()} F`, 'var(--primary)'],
+                      ['Courses en cours', driver.pendingCourses ?? 0, '#f59e0b'],
+                      ['Note moyenne',     driver.avgRating != null ? `★ ${driver.avgRating}` : '—', '#f59e0b'],
+                    ].map(([label, val, color]) => (
+                      <div key={label} style={{ background: 'rgba(0,119,182,.05)', borderRadius: 10, padding: '10px 14px', borderLeft: `3px solid ${color}` }}>
+                        <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>{label}</div>
+                        <div style={{ fontSize: 18, fontWeight: 700, color, marginTop: 2 }}>{val}</div>
+                      </div>
+                    ))}
                   </div>
-                ))}
-              </div>
-            </div>
+                </div>
 
-            {/* Informations */}
-            <div style={{ marginBottom: 16 }}>
-              <div style={sectionTitle}>Informations</div>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '8px 16px', background: 'rgba(0,119,182,.05)', borderRadius: 10, padding: '12px 14px' }}>
-                {[
-                  ['Plaque', driver.vehiclePlate ?? '—'],
-                  ['Email', driver.email ?? '—'],
-                  ['Vérifié par DEM', driver.isVerified ? '✓ Oui' : 'Non'],
-                  ['Statut dossier', driver.driverStatus ?? '—'],
-                  ['Solde', `${(driver.balance ?? 0).toLocaleString()} F`],
-                  ['Inscrit le', driver.createdAt ? new Date(driver.createdAt).toLocaleDateString('fr-FR') : '—'],
-                ].map(([label, val]) => (
-                  <div key={label}>
-                    <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>{label}</div>
-                    <div style={{ fontSize: 13, fontWeight: 600, marginTop: 2 }}>{val}</div>
+                {/* Informations */}
+                <div>
+                  <div style={sectionTitle}>Informations</div>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '8px 16px', background: 'rgba(0,119,182,.05)', borderRadius: 10, padding: '12px 14px' }}>
+                    {[
+                      ['Plaque', driver.vehiclePlate ?? '—'],
+                      ['Email', driver.email ?? '—'],
+                      ['Vérifié par DEM', driver.isVerified ? '✓ Oui' : 'Non'],
+                      ['Statut dossier', driver.driverStatus ?? '—'],
+                      ['Solde', `${(driver.balance ?? 0).toLocaleString()} F`],
+                      ['Inscrit le', driver.createdAt ? new Date(driver.createdAt).toLocaleDateString('fr-FR') : '—'],
+                    ].map(([label, val]) => (
+                      <div key={label}>
+                        <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>{label}</div>
+                        <div style={{ fontSize: 13, fontWeight: 600, marginTop: 2 }}>{val}</div>
+                      </div>
+                    ))}
                   </div>
-                ))}
+                </div>
               </div>
-            </div>
 
-            {/* Documents */}
-            <div style={{ marginBottom: 8 }}>
-              <div style={sectionTitle}>Documents</div>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, 84px)', gap: 12, justifyContent: 'space-between' }}>
-                {DOC_LIST.map(({ key, label }) => (
-                  <div key={key} style={{ display: 'flex', flexDirection: 'column', gap: 4, alignItems: 'center' }}>
-                    <DocThumb url={driver[key]} label={label} />
-                    <DocPicker file={docs[key]} hasExisting={!!driver[key]} onPick={f => setDoc(key, f)} />
-                  </div>
-                ))}
-              </div>
-              <div style={{ marginTop: 12, maxWidth: 220 }}>
-                <label style={labelStyle}>Date expiration assurance</label>
-                <input type="date" value={docs.insuranceExpiry} onChange={e => setDoc('insuranceExpiry', e.target.value)} style={inputStyle} />
+              {/* Documents */}
+              <div>
+                <div style={sectionTitle}>Documents</div>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, 84px)', gap: 12, justifyContent: 'space-between' }}>
+                  {DOC_LIST.map(({ key, label }) => (
+                    <div key={key} style={{ display: 'flex', flexDirection: 'column', gap: 4, alignItems: 'center' }}>
+                      <DocThumb url={driver[key]} label={label} />
+                      <DocPicker file={docs[key]} hasExisting={!!driver[key]} onPick={f => setDoc(key, f)} />
+                    </div>
+                  ))}
+                </div>
+                <div style={{ marginTop: 12, maxWidth: 220 }}>
+                  <label style={labelStyle}>Date expiration assurance</label>
+                  <input type="date" value={docs.insuranceExpiry} onChange={e => setDoc('insuranceExpiry', e.target.value)} style={inputStyle} />
+                </div>
               </div>
             </div>
 

@@ -14,6 +14,7 @@ import Validation    from './pages/Validation'
 import Incidents    from './pages/Incidents'
 import Audit        from './pages/Audit'
 import ChefsDeFlotte from './pages/ChefsDeFlotte'
+import ChefDetailPage from './pages/ChefDetailPage'
 
 const LiveMap     = lazy(() => import('./pages/LiveMap'))
 const FleetSection = lazy(() => import('./pages/fleet/FleetSection'))
@@ -52,6 +53,7 @@ function AppRoutes() {
       <Route path="/audit"       element={<ProtectedRoute><Audit /></ProtectedRoute>} />
       <Route path="/validation"      element={<ProtectedRoute><Validation /></ProtectedRoute>} />
       <Route path="/chefs-de-flotte" element={<ProtectedRoute><ChefsDeFlotte /></ProtectedRoute>} />
+      <Route path="/chefs-de-flotte/:id" element={<ProtectedRoute><ChefDetailPage /></ProtectedRoute>} />
       <Route path="/fleet/*" element={<FleetSection />} />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
