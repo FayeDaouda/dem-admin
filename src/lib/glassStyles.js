@@ -56,3 +56,21 @@ export const stickyTh = {
   WebkitBackdropFilter: 'blur(8px)',
   zIndex: 1,
 }
+
+// 1ʳᵉ colonne figée à gauche : reste visible pendant le scroll horizontal du tableau (mobile)
+export const stickyCol = {
+  position: 'sticky',
+  left: 0,
+  background: 'rgba(255,255,255,0.92)',
+  backdropFilter: 'blur(8px)',
+  WebkitBackdropFilter: 'blur(8px)',
+  boxShadow: '2px 0 4px -2px rgba(0,0,0,0.12)',
+  zIndex: 2,
+}
+
+// 1ʳᵉ cellule d'en-tête : figée à la fois en haut (stickyTh) et à gauche (stickyCol)
+export const stickyThCol = {
+  ...stickyTh,
+  ...stickyCol,
+  zIndex: 3,
+}

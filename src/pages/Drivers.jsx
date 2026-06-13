@@ -3,7 +3,7 @@ import api from '../lib/api'
 import Badge from '../components/Badge'
 import SuspendModal from '../components/SuspendModal'
 import { RefreshCw, BarChart2, Phone, CheckCircle, XCircle, Eye, Plus, Pencil, Trash2, Search } from 'lucide-react'
-import { glass, glassInput, pageWrap, pageScroll, stickyTh } from '../lib/glassStyles'
+import { glass, glassInput, pageWrap, pageScroll, stickyTh, stickyCol, stickyThCol } from '../lib/glassStyles'
 
 const DOC_LIST = [
   { key: 'idCardFront',    label: 'CNI recto' },
@@ -546,14 +546,14 @@ export default function Drivers() {
         {loading ? (
           <div style={{ color: 'var(--text-muted)', padding: 20 }}>Chargement…</div>
         ) : (
-          <table style={tableStyle}>
+          <table style={{ ...tableStyle, minWidth: 900 }}>
             <thead>
               <tr>
-                {['Nom', 'Badge', 'Courses', 'Téléphone', 'Véhicule', 'Statut', 'Vérifié', 'Actions'].map(h => (
+                {['Nom', 'Badge', 'Courses', 'Téléphone', 'Véhicule', 'Statut', 'Vérifié', 'Actions'].map((h, i) => (
                   <th
                     key={h}
                     style={{
-                      ...thStyle, ...stickyTh,
+                      ...thStyle, ...(i === 0 ? stickyThCol : stickyTh),
                       ...(h === 'Courses' ? { cursor: 'pointer', userSelect: 'none' } : {}),
                     }}
                     onClick={h === 'Courses'
@@ -569,7 +569,7 @@ export default function Drivers() {
             <tbody>
               {sortedDrivers.map(d => (
                 <tr key={d.id} style={{ borderBottom: '1px solid var(--border)' }}>
-                  <td style={tdStyle}>
+                  <td style={{ ...tdStyle, ...stickyCol }}>
                     <div style={{ fontWeight: 600 }}>{d.name?.trim() || d.phone}</div>
                     <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', marginTop: 3 }}>
                       <Badge status={d.isAvailable ? 'ONLINE' : 'OFFLINE'} />

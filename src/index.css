@@ -38,3 +38,7 @@ button { cursor: pointer; font-family: inherit; }
 ::-webkit-scrollbar { width: 6px; height: 6px; }
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: rgba(0,119,182,0.25); border-radius: 3px; }
+
+/* Garde les calques Leaflet (z-index jusqu'à 1000 par défaut) sous le menu mobile (z-index 200) */
+.leaflet-pane, .leaflet-top, .leaflet-bottom { z-index: 10 !important; }
+.leaflet-control { z-index: 15 !important; }

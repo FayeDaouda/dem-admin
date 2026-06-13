@@ -63,7 +63,7 @@ const Label = ({ children }) => (
 )
 
 const StatBox = ({ label, value, color }) => (
-  <div style={{ ...glass, padding: '14px 16px', flex: 1 }}>
+  <div style={{ ...glass, padding: '14px 16px', flex: '1 1 140px' }}>
     <div style={{ fontSize: 10, color: 'var(--text-muted)', fontWeight: 700, letterSpacing: '.5px', marginBottom: 4 }}>{label}</div>
     <div style={{ fontSize: 20, fontWeight: 800, color: color ?? 'var(--text)' }}>{value}</div>
   </div>
@@ -98,7 +98,7 @@ export default function Acquisition() {
       </div>
 
       {/* TabBar */}
-      <div style={{ display: 'flex', gap: 4, marginBottom: 24, background: 'rgba(255,255,255,.45)', borderRadius: 'var(--radius)', padding: 4, width: 'fit-content', flexShrink: 0 }}>
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginBottom: 24, background: 'rgba(255,255,255,.45)', borderRadius: 'var(--radius)', padding: 4, width: 'fit-content', flexShrink: 0 }}>
         {TABS.map(({ id, label, icon: Icon }) => (
           <button key={id} onClick={() => setTab(id)} style={TAB_STYLE(tab === id)}>
             <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
@@ -250,7 +250,7 @@ function ForfaitTab({ notify }) {
       </Card>
 
       {/* Résumé */}
-      <div style={{ display: 'flex', gap: 12 }}>
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12 }}>
         <StatBox label="Total dû" value={`${totalOwed.toLocaleString()} F`} color={totalOwed > 0 ? '#ef4444' : '#22c55e'} />
         <StatBox label="Enregistrements" value={records} />
         <StatBox label="Drivers concernés" value={drivers} />
@@ -310,7 +310,7 @@ function ClientsTab() {
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
 
       {/* Compteur */}
-      <div style={{ display: 'flex', gap: 12 }}>
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12 }}>
         <StatBox label="Places occupées" value={`${filled} / ${slots}`} />
         <StatBox label="Restantes" value={remaining} color={remaining > 10 ? '#22c55e' : '#ef4444'} />
         <StatBox label="Offre utilisée" value={used} color="var(--primary)" />
@@ -397,7 +397,7 @@ function ReferralsTab() {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-      <div style={{ display: 'flex', gap: 12 }}>
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12 }}>
         <StatBox label="Total parrainages" value={total} />
         <StatBox label="Crédits MLM distribués" value={`${credits.toLocaleString()} F`} color="var(--primary)" />
       </div>
@@ -493,7 +493,7 @@ function AmbassadeursTab() {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
       {/* Stats globales */}
-      <div style={{ display: 'flex', gap: 12 }}>
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12 }}>
         <StatBox label="Chefs de flotte actifs"  value={ambassadors.length}           color="#B8860B" />
         <StatBox label="Drivers recrutés"        value={totalDrivers}                 color="var(--primary)" />
         <StatBox label="Courses livrées (réseau)" value={totalDelivered.toLocaleString()} color="var(--success)" />

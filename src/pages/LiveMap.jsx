@@ -6,6 +6,8 @@ import { connectSocket, disconnectSocket } from '../lib/socket'
 import api from '../lib/api'
 import Badge from '../components/Badge'
 import { RefreshCw } from 'lucide-react'
+import { pageWrap, pageScroll } from '../lib/glassStyles'
+import { useResponsive } from '../lib/useResponsive'
 
 // Fix icônes Leaflet avec Vite
 delete L.Icon.Default.prototype._getIconUrl
@@ -52,6 +54,7 @@ function AutoFit({ points }) {
 }
 
 export default function LiveMap() {
+  const { isMobile } = useResponsive()
   const [snapshot, setSnapshot] = useState(null)
   const [loading, setLoading]   = useState(true)
   const [showDrivers, setShowDrivers]   = useState(true)
@@ -101,7 +104,7 @@ export default function LiveMap() {
   const defaultCenter = [14.6937, -17.4441]
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: 'calc(100vh - 56px)' }}>
+    <div style={pageWrap}>
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12, marginBottom: 16, flexShrink: 0 }}>
         <div>
@@ -144,8 +147,9 @@ export default function LiveMap() {
         </div>
       </div>
 
+      <div style={pageScroll}>
       {/* Map */}
-      <div style={{ flex: 1, borderRadius: 'var(--radius)', overflow: 'hidden', border: '1px solid var(--border)' }}>
+      <div style={{ height: isMobile ? 320 : 480, borderRadius: 'var(--radius)', overflow: 'hidden', border: '1px solid var(--border)', marginBottom: 12 }}>
         {loading ? (
           <div style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--surface)', color: 'var(--text-muted)' }}>
             Chargement de la carte…
@@ -226,11 +230,12 @@ export default function LiveMap() {
       </div>
 
       {/* Légende */}
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px 20px', marginTop: 12, fontSize: 12, color: 'var(--text-muted)', flexShrink: 0 }}>
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px 20px', fontSize: 12, color: 'var(--text-muted)' }}>
         <span>🏍 Driver disponible</span>
         <span>📦 Point de pickup</span>
         <span>🏁 Point de livraison</span>
         <span style={{ color: '#38bdf8' }}>— — Trajet estimé</span>
+      </div>
       </div>
     </div>
   )

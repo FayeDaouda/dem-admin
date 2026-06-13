@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react'
 import api from '../lib/api'
 import Badge from '../components/Badge'
 import { RefreshCw, Search } from 'lucide-react'
-import { glass, glassInput, pageWrap, pageScroll, stickyTh } from '../lib/glassStyles'
+import { glass, glassInput, pageWrap, pageScroll, stickyTh, stickyCol, stickyThCol } from '../lib/glassStyles'
 
 export default function Orders() {
   const [orders, setOrders]     = useState([])
@@ -107,8 +107,8 @@ export default function Orders() {
           <table style={tableStyle}>
             <thead>
               <tr>
-                {['ID', 'Type', 'Statut', 'Client', 'Driver', 'Prix', 'Paiement', 'Date'].map(h => (
-                  <th key={h} style={{ ...thStyle, ...stickyTh }}>{h}</th>
+                {['ID', 'Type', 'Statut', 'Client', 'Driver', 'Prix', 'Paiement', 'Date'].map((h, i) => (
+                  <th key={h} style={{ ...thStyle, ...(i === 0 ? stickyThCol : stickyTh) }}>{h}</th>
                 ))}
               </tr>
             </thead>
@@ -119,7 +119,7 @@ export default function Orders() {
                   style={{ borderBottom: '1px solid var(--border)', cursor: 'pointer' }}
                   onClick={() => setDetail(o)}
                 >
-                  <td style={tdStyle}><code style={{ fontSize: 11, color: 'var(--text-muted)' }}>{o.id.slice(0,8)}</code></td>
+                  <td style={{ ...tdStyle, ...stickyCol }}><code style={{ fontSize: 11, color: 'var(--text-muted)' }}>{o.id.slice(0,8)}</code></td>
                   <td style={tdStyle}><Badge status={o.orderType} /></td>
                   <td style={tdStyle}><Badge status={o.status} /></td>
                   <td style={tdStyle}>{o.client?.name ?? o.client?.phone ?? '—'}</td>
@@ -204,7 +204,7 @@ function Row({ label, value }) {
 }
 
 const card       = { ...glass, padding: '20px 24px' }
-const tableStyle = { width: '100%', borderCollapse: 'collapse' }
+const tableStyle = { width: '100%', minWidth: 760, borderCollapse: 'collapse' }
 const thStyle    = { textAlign: 'left', padding: '8px 10px', color: 'var(--text-muted)', fontSize: 12, fontWeight: 600, borderBottom: '1px solid rgba(0,119,182,0.12)' }
 const tdStyle    = { padding: '10px 10px', verticalAlign: 'middle' }
 const btnOutline = { display: 'flex', alignItems: 'center', gap: 6, padding: '7px 14px', borderRadius: 'var(--radius-sm)', border: '1px solid rgba(0,119,182,0.25)', background: 'rgba(255,255,255,0.5)', color: 'var(--text-muted)', fontSize: 13, cursor: 'pointer' }

@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import api from '../lib/api'
 import { RefreshCw, Plus, Pencil, Trash2, X, Search, CheckCircle } from 'lucide-react'
-import { glass, glassInput, pageWrap, pageScroll, stickyTh } from '../lib/glassStyles'
+import { glass, glassInput, pageWrap, pageScroll, stickyTh, stickyCol, stickyThCol } from '../lib/glassStyles'
 
 // ── Modal Créer / Modifier ────────────────────────────────────────────────────
 function ChefFormModal({ initial, onClose, onSaved }) {
@@ -203,10 +203,10 @@ export default function ChefsDeFlotte() {
           <table style={tableStyle}>
             <thead>
               <tr>
-                {['Chef de flotte', 'Téléphone', 'Société', 'Flotte', 'Statut', 'Inscription', 'Actions'].map(h => (
+                {['Chef de flotte', 'Téléphone', 'Société', 'Flotte', 'Statut', 'Inscription', 'Actions'].map((h, i) => (
                   <th
                     key={h}
-                    style={{ ...thStyle, ...stickyTh, ...(h === 'Inscription' ? { cursor: 'pointer', userSelect: 'none' } : {}) }}
+                    style={{ ...thStyle, ...(i === 0 ? stickyThCol : stickyTh), ...(h === 'Inscription' ? { cursor: 'pointer', userSelect: 'none' } : {}) }}
                     onClick={h === 'Inscription' ? () => setSortDate(s => s === 'desc' ? 'asc' : s === 'asc' ? null : 'desc') : undefined}
                     title={h === 'Inscription' ? 'Trier par date d\'inscription' : undefined}
                   >
@@ -220,7 +220,7 @@ export default function ChefsDeFlotte() {
                 const status = chefStatusInfo(c)
                 return (
                 <tr key={c.id} style={{ borderBottom: '1px solid var(--border)', cursor: 'pointer' }} onClick={() => navigate(`/chefs-de-flotte/${c.id}`)}>
-                  <td style={tdStyle}>
+                  <td style={{ ...tdStyle, ...stickyCol, cursor: 'pointer' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                       <div style={{ width: 34, height: 34, borderRadius: '50%', background: 'linear-gradient(135deg,rgba(124,58,237,.15),rgba(6,113,186,.15))', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, color: '#7c3aed', fontSize: 13, flexShrink: 0 }}>
                         {c.avatar ? <img src={c.avatar} alt="" style={{ width: 34, height: 34, borderRadius: '50%', objectFit: 'cover' }} /> : (c.name?.trim() || c.phone || '?')[0].toUpperCase()}

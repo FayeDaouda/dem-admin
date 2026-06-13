@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import fleetApi from '../../lib/fleetApi'
 import { RefreshCw, Plus, X, Star, Eye } from 'lucide-react'
-import { glass, glassSolid, pageWrap, pageScroll, stickyTh } from '../../lib/glassStyles'
+import { glass, glassSolid, pageWrap, pageScroll, stickyTh, stickyCol, stickyThCol } from '../../lib/glassStyles'
 
 const STATUS_TABS = [
   ['all',       'Tous'],
@@ -438,8 +438,8 @@ export default function FleetDrivers() {
             <table style={tableStyle}>
               <thead>
                 <tr>
-                  {['Livreur', 'Téléphone', 'Véhicule', 'Statut', 'Note', 'Courses livrées', 'Inscription', ''].map(h => (
-                    <th key={h} style={{ ...thStyle, ...stickyTh }}>{h}</th>
+                  {['Livreur', 'Téléphone', 'Véhicule', 'Statut', 'Note', 'Courses livrées', 'Inscription', ''].map((h, i) => (
+                    <th key={h} style={{ ...thStyle, ...(i === 0 ? stickyThCol : stickyTh) }}>{h}</th>
                   ))}
                 </tr>
               </thead>
@@ -448,7 +448,7 @@ export default function FleetDrivers() {
                   const status = driverStatusLabel(d)
                   return (
                     <tr key={d.id} style={{ borderBottom: '1px solid var(--border)' }}>
-                      <td style={tdStyle}>
+                      <td style={{ ...tdStyle, ...stickyCol }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                           <div style={{ width: 34, height: 34, borderRadius: '50%', background: 'linear-gradient(135deg,rgba(124,58,237,.15),rgba(6,113,186,.15))', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, color: '#7c3aed', fontSize: 13, flexShrink: 0 }}>
                             {d.avatar ? <img src={d.avatar} alt="" style={{ width: 34, height: 34, borderRadius: '50%', objectFit: 'cover' }} /> : (d.name?.trim() || d.phone || '?')[0].toUpperCase()}

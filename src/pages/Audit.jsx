@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { RefreshCw, Search, Shield } from 'lucide-react'
 import api from '../lib/api'
-import { glass, glassInput, pageWrap, pageScroll, stickyTh } from '../lib/glassStyles'
+import { glass, glassInput, pageWrap, pageScroll, stickyTh, stickyCol, stickyThCol } from '../lib/glassStyles'
 
 // ── Couleurs par catégorie d'action ──────────────────────────────────────────
 function actionColor(action = '') {
@@ -104,11 +104,11 @@ export default function Audit() {
             Aucun log{search ? ' pour ce filtre' : ''}
           </div>
         ) : (
-          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+          <table style={{ width: '100%', minWidth: 680, borderCollapse: 'collapse' }}>
             <thead>
               <tr>
-                {['Date & heure', 'Action', 'Admin', 'Type cible', 'Cible', 'Détails'].map(h => (
-                  <th key={h} style={{ ...thStyle, ...stickyTh }}>{h}</th>
+                {['Date & heure', 'Action', 'Admin', 'Type cible', 'Cible', 'Détails'].map((h, i) => (
+                  <th key={h} style={{ ...thStyle, ...(i === 0 ? stickyThCol : stickyTh) }}>{h}</th>
                 ))}
               </tr>
             </thead>
@@ -121,7 +121,7 @@ export default function Audit() {
                     onClick={() => setDetail(log)}
                     style={{ borderBottom: '1px solid var(--border)', cursor: details ? 'pointer' : 'default' }}
                   >
-                    <td style={{ ...tdStyle, whiteSpace: 'nowrap', color: 'var(--text-muted)', fontSize: 12 }}>
+                    <td style={{ ...tdStyle, ...stickyCol, whiteSpace: 'nowrap', color: 'var(--text-muted)', fontSize: 12 }}>
                       {new Date(log.createdAt).toLocaleString('fr-FR', {
                         day: '2-digit', month: '2-digit',
                         hour: '2-digit', minute: '2-digit', second: '2-digit',

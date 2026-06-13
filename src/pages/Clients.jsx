@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import api from '../lib/api'
 import { RefreshCw, Eye, X, Plus, Pencil, Trash2, Search } from 'lucide-react'
-import { glass, glassInput, pageWrap, pageScroll, stickyTh } from '../lib/glassStyles'
+import { glass, glassInput, pageWrap, pageScroll, stickyTh, stickyCol, stickyThCol } from '../lib/glassStyles'
 
 // ── Modal Créer / Modifier ────────────────────────────────────────────────────
 function ClientFormModal({ initial, onClose, onSaved }) {
@@ -283,11 +283,11 @@ export default function Clients() {
           <table style={tableStyle}>
             <thead>
               <tr>
-                {['Client', 'Téléphone', 'Courses', 'Inscription', 'Statut', 'Actions'].map(h => (
+                {['Client', 'Téléphone', 'Courses', 'Inscription', 'Statut', 'Actions'].map((h, i) => (
                   <th
                     key={h}
                     style={{
-                      ...thStyle, ...stickyTh,
+                      ...thStyle, ...(i === 0 ? stickyThCol : stickyTh),
                       ...(h === 'Courses' ? { cursor: 'pointer', userSelect: 'none' } : {}),
                     }}
                     onClick={h === 'Courses' ? () => updateFilter(setSortByCourses)(s => !s) : undefined}
@@ -301,7 +301,7 @@ export default function Clients() {
             <tbody>
               {clients.map(c => (
                 <tr key={c.id} style={{ borderBottom: '1px solid var(--border)' }}>
-                  <td style={tdStyle}>
+                  <td style={{ ...tdStyle, ...stickyCol }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                       <div style={{ width: 34, height: 34, borderRadius: '50%', overflow: 'hidden', background: 'linear-gradient(135deg,rgba(12,184,222,.15),rgba(6,113,186,.15))', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                         {c.avatar
@@ -383,7 +383,7 @@ const overlay      = { position: 'fixed', inset: 0, background: 'rgba(0,40,80,.4
 const infoBox      = { background: 'var(--surface2)', borderRadius: 10, padding: '12px 14px' }
 const sectionLabel = { fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '.5px', marginBottom: 8 }
 const card         = { ...glass, padding: '20px 24px' }
-const tableStyle   = { width: '100%', borderCollapse: 'collapse' }
+const tableStyle   = { width: '100%', minWidth: 680, borderCollapse: 'collapse' }
 const thStyle      = { textAlign: 'left', padding: '8px 10px', color: 'var(--text-muted)', fontSize: 12, fontWeight: 600, borderBottom: '1px solid rgba(0,119,182,0.12)' }
 const tdStyle      = { padding: '10px 10px', verticalAlign: 'middle' }
 const labelStyle   = { display: 'block', fontSize: 12, fontWeight: 600, color: 'var(--text-muted)', marginBottom: 5 }
