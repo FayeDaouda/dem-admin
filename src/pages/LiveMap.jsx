@@ -103,14 +103,14 @@ export default function LiveMap() {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: 'calc(100vh - 56px)' }}>
       {/* Header */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16, flexShrink: 0 }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12, marginBottom: 16, flexShrink: 0 }}>
         <div>
           <h1 style={{ fontSize: 22, fontWeight: 700 }}>Carte en temps réel</h1>
           <p style={{ color: 'var(--text-muted)', fontSize: 12, marginTop: 2 }}>
             {drivers.length} driver{drivers.length !== 1 ? 's' : ''} en ligne · {orders.length} course{orders.length !== 1 ? 's' : ''} active{orders.length !== 1 ? 's' : ''}
           </p>
         </div>
-        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
           {[
             ['Drivers', showDrivers, setShowDrivers, '#6366f1'],
             ['Courses', showOrders,  setShowOrders,  '#f59e0b'],
@@ -226,7 +226,7 @@ export default function LiveMap() {
       </div>
 
       {/* Légende */}
-      <div style={{ display: 'flex', gap: 20, marginTop: 12, fontSize: 12, color: 'var(--text-muted)', flexShrink: 0 }}>
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px 20px', marginTop: 12, fontSize: 12, color: 'var(--text-muted)', flexShrink: 0 }}>
         <span>🏍 Driver disponible</span>
         <span>📦 Point de pickup</span>
         <span>🏁 Point de livraison</span>

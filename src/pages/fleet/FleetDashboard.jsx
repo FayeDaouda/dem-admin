@@ -46,7 +46,7 @@ export default function FleetDashboard() {
 
   return (
     <div style={pageWrap}>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24, flexShrink: 0 }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12, marginBottom: 24, flexShrink: 0 }}>
         <div>
           <h1 style={{ fontSize: 22, fontWeight: 700 }}>Dashboard</h1>
           <div style={{ fontSize: 13, color: 'var(--text-muted)', marginTop: 2 }}>
@@ -65,12 +65,12 @@ export default function FleetDashboard() {
           <>
             {stats.isFleetReady ? (
               <div style={{ ...glass, padding: '14px 18px', marginBottom: 18, display: 'flex', alignItems: 'center', gap: 10, color: '#22c55e' }}>
-                <ShieldCheck size={18} />
+                <ShieldCheck size={18} style={{ flexShrink: 0 }} />
                 <span style={{ fontSize: 13, fontWeight: 600 }}>Votre flotte est prête (≥ {stats.fleetMin} livreurs actifs).</span>
               </div>
             ) : (
               <div style={{ ...glass, padding: '14px 18px', marginBottom: 18, display: 'flex', alignItems: 'center', gap: 10, color: '#f59e0b' }}>
-                <AlertTriangle size={18} />
+                <AlertTriangle size={18} style={{ flexShrink: 0 }} />
                 <span style={{ fontSize: 13, fontWeight: 600 }}>
                   Il vous faut au moins {stats.fleetMin} livreurs actifs ({stats.activeCount}/{stats.fleetMin}) pour activer votre flotte.
                 </span>

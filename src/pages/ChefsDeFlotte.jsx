@@ -165,9 +165,9 @@ export default function ChefsDeFlotte() {
 
   return (
     <div style={pageWrap}>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24, flexShrink: 0 }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12, marginBottom: 24, flexShrink: 0 }}>
         <h1 style={{ fontSize: 22, fontWeight: 700 }}>Chefs de flotte</h1>
-        <div style={{ display: 'flex', gap: 8 }}>
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
           <button onClick={fetch} style={btnOutline}><RefreshCw size={14} /> Actualiser</button>
           <button onClick={() => setFormTarget({})} style={btnPrimary}><Plus size={14} /> Nouveau</button>
         </div>
@@ -275,7 +275,7 @@ export default function ChefsDeFlotte() {
 
 const overlay      = { position: 'fixed', inset: 0, background: 'rgba(0,40,80,.45)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100 }
 const card         = { ...glass, padding: '20px 24px' }
-const tableStyle   = { width: '100%', borderCollapse: 'collapse' }
+const tableStyle   = { width: '100%', minWidth: 760, borderCollapse: 'collapse' }
 const thStyle      = { textAlign: 'left', padding: '8px 10px', color: 'var(--text-muted)', fontSize: 12, fontWeight: 600, borderBottom: '1px solid rgba(0,119,182,0.12)' }
 const tdStyle      = { padding: '10px 10px', verticalAlign: 'middle' }
 const labelStyle   = { display: 'block', fontSize: 12, fontWeight: 600, color: 'var(--text-muted)', marginBottom: 5 }

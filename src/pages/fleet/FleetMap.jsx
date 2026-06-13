@@ -5,6 +5,7 @@ import 'leaflet/dist/leaflet.css'
 import fleetApi from '../../lib/fleetApi'
 import { RefreshCw } from 'lucide-react'
 import { glass, pageWrap, pageScroll } from '../../lib/glassStyles'
+import { useResponsive } from '../../lib/useResponsive'
 
 delete L.Icon.Default.prototype._getIconUrl
 L.Icon.Default.mergeOptions({
@@ -65,6 +66,7 @@ function AutoFit({ points }) {
 const DAKAR_CENTER = [14.6937, -17.4441]
 
 export default function FleetMap() {
+  const { isMobile } = useResponsive()
   const [drivers, setDrivers] = useState([])
   const [loading, setLoading] = useState(true)
 
@@ -98,7 +100,7 @@ export default function FleetMap() {
 
   return (
     <div style={pageWrap}>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16, flexShrink: 0 }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12, marginBottom: 16, flexShrink: 0 }}>
         <div>
           <h1 style={{ fontSize: 22, fontWeight: 700 }}>Suivi des livreurs</h1>
           <p style={{ color: 'var(--text-muted)', fontSize: 12, marginTop: 2 }}>
@@ -109,7 +111,7 @@ export default function FleetMap() {
       </div>
 
       <div style={pageScroll}>
-        <div style={{ ...glass, padding: 0, height: 420, overflow: 'hidden', marginBottom: 20, borderRadius: 'var(--radius)' }}>
+        <div style={{ ...glass, padding: 0, height: isMobile ? 280 : 420, overflow: 'hidden', marginBottom: 20, borderRadius: 'var(--radius)' }}>
           {loading ? (
             <div style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)' }}>
               Chargement de la carte…
@@ -183,10 +185,10 @@ export default function FleetMap() {
               {drivers.map(d => {
                 const state = driverState(d)
                 return (
-                  <div key={d.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 0', borderBottom: '1px solid var(--border)' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <div key={d.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8, padding: '10px 0', borderBottom: '1px solid var(--border)' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, flex: '1 1 180px', minWidth: 0 }}>
                       <span style={{ width: 9, height: 9, borderRadius: '50%', background: STATE_COLOR[state], flexShrink: 0 }} />
-                      <div>
+                      <div style={{ minWidth: 0 }}>
                         <div style={{ fontWeight: 600, fontSize: 13 }}>{d.name?.trim() || '—'}</div>
                         <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>{d.phone} · {d.vehicleType ?? '—'}</div>
                       </div>

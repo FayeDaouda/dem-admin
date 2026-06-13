@@ -60,7 +60,7 @@ export default function FleetExtension() {
 
   return (
     <div style={pageWrap}>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24, flexShrink: 0 }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12, marginBottom: 24, flexShrink: 0 }}>
         <h1 style={{ fontSize: 22, fontWeight: 700 }}>Extension de flotte</h1>
         <button onClick={fetchAll} style={btnOutline}><RefreshCw size={14} /> Actualiser</button>
       </div>
@@ -126,7 +126,7 @@ export default function FleetExtension() {
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                   {requests.map(r => (
                     <div key={r.id} style={{ borderBottom: '1px solid var(--border)', paddingBottom: 10 }}>
-                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
                         <span style={{ fontWeight: 700, fontSize: 14 }}>{r.requestedSize} livreurs</span>
                         <span style={{ fontSize: 12, fontWeight: 600, color: statusColor(r.status) }}>{statusLabel(r.status)}</span>
                       </div>
