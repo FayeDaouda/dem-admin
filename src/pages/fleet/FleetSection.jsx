@@ -5,6 +5,7 @@ import FleetLogin from './FleetLogin'
 import FleetSetPassword from './FleetSetPassword'
 import FleetDashboard from './FleetDashboard'
 import FleetDrivers from './FleetDrivers'
+import FleetMap from './FleetMap'
 import FleetExtension from './FleetExtension'
 
 const PageLoader = () => (
@@ -36,6 +37,7 @@ function FleetRoutes() {
       <Route path="set-password" element={<FleetSetPassword />} />
       <Route path="" element={<FleetProtectedRoute><FleetDashboard /></FleetProtectedRoute>} />
       <Route path="drivers" element={<FleetProtectedRoute><FleetDrivers /></FleetProtectedRoute>} />
+      <Route path="map" element={<FleetProtectedRoute><FleetMap /></FleetProtectedRoute>} />
       <Route path="extension" element={<FleetProtectedRoute><FleetExtension /></FleetProtectedRoute>} />
       <Route path="*" element={<Navigate to="/fleet" replace />} />
     </Routes>
