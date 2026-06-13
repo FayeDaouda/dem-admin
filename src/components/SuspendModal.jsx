@@ -31,7 +31,7 @@ const DRIVER_REASONS = [
 const AMBASSADOR_REASONS = [
   {
     label: 'Documents d\'entreprise manquants ou invalides',
-    fix: 'Mettez à jour vos documents (NINEA, RCCM, CNI) dans votre profil ambassadeur.',
+    fix: 'Mettez à jour vos documents (NINEA, RCCM, CNI) dans votre profil chef de flotte.',
   },
   {
     label: 'Flotte non opérationnelle (< 3 livreurs actifs)',
@@ -43,7 +43,7 @@ const AMBASSADOR_REASONS = [
   },
   {
     label: 'Non-respect des règles de gestion de flotte',
-    fix: 'Relisez les conditions d\'utilisation de l\'espace ambassadeur DEM.',
+    fix: 'Relisez les conditions d\'utilisation de l\'espace chef de flotte DEM.',
   },
   {
     label: 'Informations de profil incorrectes',

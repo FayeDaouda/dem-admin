@@ -36,7 +36,7 @@ function makeIcon(color, label) {
   })
 }
 
-const DRIVER_ICON  = makeIcon('#6366f1', '🚗')
+const DRIVER_ICON  = makeIcon('#6366f1', '🏍')
 const PICKUP_ICON  = makeIcon('#f59e0b', '📦')
 const DELIVERY_ICON = makeIcon('#22c55e', '🏁')
 
@@ -157,8 +157,8 @@ export default function LiveMap() {
             style={{ height: '100%', width: '100%' }}
           >
             <TileLayer
-              attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-              url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+              attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>'
+              url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png"
             />
 
             {allPoints.length > 0 && <AutoFit points={allPoints} />}
@@ -227,7 +227,7 @@ export default function LiveMap() {
 
       {/* Légende */}
       <div style={{ display: 'flex', gap: 20, marginTop: 12, fontSize: 12, color: 'var(--text-muted)', flexShrink: 0 }}>
-        <span>🚗 Driver disponible</span>
+        <span>🏍 Driver disponible</span>
         <span>📦 Point de pickup</span>
         <span>🏁 Point de livraison</span>
         <span style={{ color: '#38bdf8' }}>— — Trajet estimé</span>

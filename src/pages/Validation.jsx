@@ -80,7 +80,7 @@ export default function Validation() {
       <h1 style={{ fontSize: 22, fontWeight: 700, marginBottom: 20, flexShrink: 0 }}>Validation</h1>
       <div style={{ display:'flex', gap:4, marginBottom:24, background:'rgba(255,255,255,.45)', borderRadius:'var(--radius)', padding:4, width:'fit-content', flexShrink: 0 }}>
         <button style={TAB(tab === 'ambassadors')} onClick={() => setTab('ambassadors')}>
-          <span style={{ display:'flex', alignItems:'center', gap:6 }}><Shield size={13} />Ambassadeurs</span>
+          <span style={{ display:'flex', alignItems:'center', gap:6 }}><Shield size={13} />Chefs de flotte</span>
         </button>
         <button style={TAB(tab === 'drivers')} onClick={() => setTab('drivers')}>
           <span style={{ display:'flex', alignItems:'center', gap:6 }}><Truck size={13} />Livreurs en attente</span>
@@ -98,7 +98,7 @@ export default function Validation() {
   )
 }
 
-// ── Tab Ambassadeurs ──────────────────────────────────────────────────────────
+// ── Tab Chefs de flotte ────────────────────────────────────────────────────────
 function AmbassadorsTab() {
   const [list,     setList]     = useState([])
   const [loading,       setLoading]       = useState(true)
@@ -162,7 +162,7 @@ function AmbassadorsTab() {
       </div>
 
       {loading ? <div style={{ color:'var(--text-muted)' }}>Chargement…</div>
-      : list.length === 0 ? <div style={{ ...card, color:'var(--text-muted)', textAlign:'center', padding:32 }}>Aucun ambassadeur.</div>
+      : list.length === 0 ? <div style={{ ...card, color:'var(--text-muted)', textAlign:'center', padding:32 }}>Aucun chef de flotte.</div>
       : list.map(am => {
         const isOpen = expanded === am.id
         return (
@@ -359,8 +359,8 @@ function DriversTab() {
                   <div style={{ display:'flex', alignItems:'flex-start', gap:10, background:'rgba(245,158,11,.08)', border:'1px solid rgba(245,158,11,.25)', borderRadius:10, padding:'10px 14px' }}>
                     <AlertTriangle size={16} style={{ color:'#b45309', flexShrink:0, marginTop:1 }} />
                     <div style={{ fontSize:13, color:'#92400e' }}>
-                      <strong>Activation bloquée</strong> — L'ambassadeur <em>{d.managedBy?.name ?? ''}</em> n'est pas encore validé ({d.managedBy?.chefDeFlotteStatus ?? '—'}).
-                      Validez d'abord l'ambassadeur dans l'onglet <strong>Ambassadeurs</strong>.
+                      <strong>Activation bloquée</strong> — Le chef de flotte <em>{d.managedBy?.name ?? ''}</em> n'est pas encore validé ({d.managedBy?.chefDeFlotteStatus ?? '—'}).
+                      Validez d'abord le chef de flotte dans l'onglet <strong>Chefs de flotte</strong>.
                     </div>
                   </div>
                 )}
@@ -403,7 +403,7 @@ function DriversTab() {
                       style={{ ...btnAccept, ...(!canValidate ? btnDisabled : {}) }}
                       disabled={acting===d.id || !canValidate}
                       onClick={() => canValidate && handleValidate(d.id, true)}
-                      title={!canValidate ? (amNotActive ? 'Validez d\'abord l\'ambassadeur' : 'Assurance expirée') : ''}
+                      title={!canValidate ? (amNotActive ? 'Validez d\'abord le chef de flotte' : 'Assurance expirée') : ''}
                     >
                       <CheckCircle size={13} /> Valider
                     </button>

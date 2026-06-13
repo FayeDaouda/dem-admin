@@ -59,7 +59,7 @@ export default function AmbassadorDetailModal({ ambassadorId, onClose }) {
 
         {/* ── Barre du haut ── */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '18px 24px', borderBottom: '1px solid rgba(0,119,182,.10)', flexShrink: 0 }}>
-          <div style={{ flex: 1, fontWeight: 700, fontSize: 16 }}>Détail ambassadeur</div>
+          <div style={{ flex: 1, fontWeight: 700, fontSize: 16 }}>Détail chef de flotte</div>
           {!loading && am && (
             <button onClick={() => { setLoading(true); api.get(`/admin/chefs-de-flotte/${ambassadorId}`).then(r => { setAm(r.data); setLoading(false) }) }}
               style={btnIcon} title="Actualiser">
@@ -105,7 +105,7 @@ export default function AmbassadorDetailModal({ ambassadorId, onClose }) {
 
             {/* Documents AM */}
             <div style={{ ...infoBox, marginBottom: 20 }}>
-              <div style={sectionLabel}>Documents ambassadeur</div>
+              <div style={sectionLabel}>Documents chef de flotte</div>
               <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
                 <DocThumb url={am.cniRecto} label="CNI recto" />
                 <DocThumb url={am.cniVerso} label="CNI verso" />

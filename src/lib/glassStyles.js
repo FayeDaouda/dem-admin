@@ -7,6 +7,13 @@ export const glass = {
   boxShadow: '0 8px 32px rgba(0,119,182,0.10), 0 1px 4px rgba(0,0,0,0.04)',
 }
 
+// Variante opaque (fond blanc plein) pour les popups/dropdowns qui doivent
+// rester parfaitement lisibles au-dessus d'un contenu chargé.
+export const glassSolid = {
+  ...glass,
+  background: '#ffffff',
+}
+
 export const glassModal = {
   ...glass,
   padding: '28px 32px',

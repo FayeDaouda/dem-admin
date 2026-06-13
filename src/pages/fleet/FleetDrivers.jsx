@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import fleetApi from '../../lib/fleetApi'
 import { RefreshCw, Plus, X, Star, Eye } from 'lucide-react'
-import { glass, pageWrap, pageScroll, stickyTh } from '../../lib/glassStyles'
+import { glass, glassSolid, pageWrap, pageScroll, stickyTh } from '../../lib/glassStyles'
 
 const STATUS_TABS = [
   ['all',       'Tous'],
@@ -255,7 +255,7 @@ function DriverDetailModal({ driverId, onClose, onUpdated }) {
 
   return (
     <div style={overlay} onClick={onClose}>
-      <div style={{ ...glass, width: 960, maxWidth: '96vw', borderRadius: 16, padding: 24, maxHeight: '94vh', overflowY: 'auto' }} onClick={e => e.stopPropagation()}>
+      <div style={{ ...glassSolid, width: 960, maxWidth: '96vw', borderRadius: 16, padding: 24, maxHeight: '94vh', overflowY: 'auto' }} onClick={e => e.stopPropagation()}>
         {loading ? (
           <div style={{ color: 'var(--text-muted)', padding: 20, textAlign: 'center' }}>Chargement…</div>
         ) : loadError || !driver ? (

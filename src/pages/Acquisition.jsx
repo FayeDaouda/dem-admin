@@ -47,7 +47,7 @@ const TABS = [
   { id: 'referrals',      label: 'Parrainage',       icon: GitBranch },
   { id: 'badges',         label: 'Badges clients',   icon: Award },
   { id: 'badges-drivers', label: 'Badges drivers',   icon: Truck },
-  { id: 'ambassadeurs',   label: 'Ambassadeurs',     icon: Award },
+  { id: 'ambassadeurs',   label: 'Chefs de flotte',  icon: Award },
   { id: 'fees',           label: 'Frais',            icon: DollarSign },
 ]
 
@@ -464,7 +464,7 @@ function ReferralsTab() {
   )
 }
 
-// ── Tab Ambassadeurs ──────────────────────────────────────────────────────────
+// ── Tab Chefs de flotte ────────────────────────────────────────────────────────
 function AmbassadeursTab() {
   const [data,     setData]     = useState(null)
   const [loading,  setLoading]  = useState(true)
@@ -494,7 +494,7 @@ function AmbassadeursTab() {
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
       {/* Stats globales */}
       <div style={{ display: 'flex', gap: 12 }}>
-        <StatBox label="Ambassadeurs actifs"     value={ambassadors.length}           color="#B8860B" />
+        <StatBox label="Chefs de flotte actifs"  value={ambassadors.length}           color="#B8860B" />
         <StatBox label="Drivers recrutés"        value={totalDrivers}                 color="var(--primary)" />
         <StatBox label="Courses livrées (réseau)" value={totalDelivered.toLocaleString()} color="var(--success)" />
       </div>
@@ -502,7 +502,7 @@ function AmbassadeursTab() {
       {ambassadors.length === 0 ? (
         <Card>
           <div style={{ color: 'var(--text-muted)', textAlign: 'center', padding: '32px 0', fontSize: 13 }}>
-            Aucun ambassadeur désigné. Activez le statut depuis la page Drivers.
+            Aucun chef de flotte désigné. Activez le statut depuis la page Drivers.
           </div>
         </Card>
       ) : ambassadors.map(a => {
@@ -511,7 +511,7 @@ function AmbassadeursTab() {
 
         return (
           <Card key={a.id} style={{ padding: '14px 18px' }}>
-            {/* En-tête ambassadeur */}
+            {/* En-tête chef de flotte */}
             <div
               onClick={() => setExpanded(isOpen ? null : a.id)}
               style={{ display: 'flex', alignItems: 'center', gap: 12, cursor: 'pointer' }}
@@ -531,7 +531,7 @@ function AmbassadeursTab() {
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                   <span style={{ fontWeight: 700, fontSize: 14 }}>{a.name ?? '—'}</span>
                   <span style={{ background: '#FFF8E1', color: '#B8860B', fontSize: 11, fontWeight: 700, padding: '1px 8px', borderRadius: 20 }}>
-                    🏅 Ambassadeur
+                    🏅 Chef de flotte
                   </span>
                   {!a.isActive && (
                     <span style={{ background: '#fee2e2', color: '#ef4444', fontSize: 11, fontWeight: 700, padding: '1px 8px', borderRadius: 20 }}>

@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { Bell, Check } from 'lucide-react'
 import fleetApi from '../lib/fleetApi'
-import { glass } from '../lib/glassStyles'
+import { glassSolid } from '../lib/glassStyles'
 
 function timeAgo(dateStr) {
   const diff = Math.max(0, Date.now() - new Date(dateStr).getTime())
@@ -90,7 +90,7 @@ export default function FleetNotifications() {
 
       {open && (
         <div style={{
-          ...glass, position: 'absolute', top: 44, right: 0, width: 340, maxWidth: '90vw',
+          ...glassSolid, position: 'absolute', top: 44, right: 0, width: 340, maxWidth: '90vw',
           borderRadius: 14, overflow: 'hidden', zIndex: 250, display: 'flex', flexDirection: 'column',
         }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 14px', borderBottom: '1px solid rgba(0,119,182,.12)' }}>
