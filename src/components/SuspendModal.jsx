@@ -51,7 +51,13 @@ const AMBASSADOR_REASONS = [
   },
 ]
 
-export default function SuspendModal({ target, onConfirm, onClose, loading }) {
+export default function SuspendModal({
+  target, onConfirm, onClose, loading,
+  title = 'Motif de suspension',
+  description = 'Cochez les raisons applicables — elles seront envoyées par notification.',
+  confirmLabel = 'Confirmer la suspension',
+  loadingLabel = 'Suspension…',
+}) {
   const reasons = target === 'ambassador' ? AMBASSADOR_REASONS : DRIVER_REASONS
   const [checked, setChecked]   = useState([])
   const [custom, setCustom]     = useState('')
@@ -85,9 +91,9 @@ export default function SuspendModal({ target, onConfirm, onClose, loading }) {
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 20 }}>
           <span style={{ fontSize: 22 }}>⚠️</span>
           <div>
-            <div style={{ fontWeight: 700, fontSize: 16 }}>Motif de suspension</div>
+            <div style={{ fontWeight: 700, fontSize: 16 }}>{title}</div>
             <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2 }}>
-              Cochez les raisons applicables — elles seront envoyées par notification.
+              {description}
             </div>
           </div>
         </div>
@@ -156,7 +162,7 @@ export default function SuspendModal({ target, onConfirm, onClose, loading }) {
             disabled={!canSubmit || loading}
             style={{ ...btnDanger, opacity: (!canSubmit || loading) ? 0.5 : 1 }}
           >
-            {loading ? 'Suspension…' : 'Confirmer la suspension'}
+            {loading ? loadingLabel : confirmLabel}
           </button>
         </div>
       </div>

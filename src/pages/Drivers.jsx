@@ -247,6 +247,8 @@ export default function Drivers() {
   const [formTarget, setFormTarget]     = useState(null)
   const [suspendTarget, setSuspendTarget] = useState(null)
   const [suspending, setSuspending]     = useState(false)
+  const [rejectTarget, setRejectTarget] = useState(null)
+  const [rejecting, setRejecting]       = useState(false)
   const [phoneReqs, setPhoneReqs]       = useState([])
   const [phoneLoading, setPhoneLoading] = useState(true)
   const [resolving, setResolving]       = useState(null)
@@ -315,6 +317,31 @@ export default function Drivers() {
       fetch()
     } catch (e) {
       alert(e.response?.data?.message ?? 'Erreur.')
+    }
+  }
+
+  async function activateFleetDriver(driver) {
+    if (!confirm(`Activer ${driver.name ?? driver.phone} ? Ce livreur pourra commencer à accepter des courses.`)) return
+    try {
+      await api.patch(`/admin/drivers/${driver.id}/validate`, { approve: true })
+      fetch()
+    } catch (e) {
+      alert(e.response?.data?.message ?? 'Erreur.')
+    }
+  }
+
+  async function handleRejectConfirm(reason, fix) {
+    if (!rejectTarget) return
+    setRejecting(true)
+    const fullReason = [reason, fix ? `À corriger : ${fix}` : ''].filter(Boolean).join('\n')
+    try {
+      await api.patch(`/admin/drivers/${rejectTarget.id}/validate`, { approve: false, reason: fullReason })
+      setRejectTarget(null)
+      fetch()
+    } catch (e) {
+      alert(e.response?.data?.message ?? 'Erreur.')
+    } finally {
+      setRejecting(false)
     }
   }
 
@@ -567,9 +594,13 @@ export default function Drivers() {
                   <td style={tdStyle}>{d.phone}</td>
                   <td style={tdStyle}>{d.vehicleType ?? '—'}</td>
                   <td style={tdStyle}>
-                    {d.isActive
-                      ? <span style={{ color: 'var(--success)' }}>✓ Actif</span>
-                      : <span style={{ color: 'var(--danger)' }}>Suspendu</span>}
+                    {d.chefDeFlotteStatus === 'PENDING'
+                      ? <span style={{ color: '#f59e0b' }}>⏳ En attente</span>
+                      : d.chefDeFlotteStatus === 'REJECTED'
+                        ? <span style={{ color: 'var(--danger)' }}>✗ Refusé</span>
+                        : d.isActive
+                          ? <span style={{ color: 'var(--success)' }}>✓ Actif</span>
+                          : <span style={{ color: 'var(--danger)' }}>Suspendu</span>}
                   </td>
                   <td style={tdStyle}>
                     {d.isVerified
@@ -587,10 +618,16 @@ export default function Drivers() {
                       <button onClick={() => setFormTarget(d)} style={btnSmall} title="Modifier">
                         <Pencil size={13} />
                       </button>
-                      {d.isActive
-                        ? <button onClick={() => setSuspendTarget(d)} style={{ ...btnSmall, color: 'var(--danger)', borderColor: 'var(--danger)' }}>Suspendre</button>
-                        : <button onClick={() => activateDriver(d)} style={{ ...btnSmall, color: 'var(--success)', borderColor: 'var(--success)' }}>Réactiver</button>
-                      }
+                      {d.chefDeFlotteStatus === 'PENDING' ? (
+                        <>
+                          <button onClick={() => activateFleetDriver(d)} style={{ ...btnSmall, color: 'var(--success)', borderColor: 'var(--success)' }}>Activer</button>
+                          <button onClick={() => setRejectTarget(d)} style={{ ...btnSmall, color: 'var(--danger)', borderColor: 'var(--danger)' }}>Refuser</button>
+                        </>
+                      ) : d.isActive ? (
+                        <button onClick={() => setSuspendTarget(d)} style={{ ...btnSmall, color: 'var(--danger)', borderColor: 'var(--danger)' }}>Suspendre</button>
+                      ) : (
+                        <button onClick={() => activateDriver(d)} style={{ ...btnSmall, color: 'var(--success)', borderColor: 'var(--success)' }}>Réactiver</button>
+                      )}
                       <button onClick={() => deleteDriver(d)} style={{ ...btnSmall, color: 'var(--danger)', borderColor: 'var(--danger)' }} title="Supprimer">
                         <Trash2 size={13} />
                       </button>
@@ -611,6 +648,19 @@ export default function Drivers() {
           onConfirm={handleSuspendConfirm}
           onClose={() => setSuspendTarget(null)}
           loading={suspending}
+        />
+      )}
+
+      {/* Modal refus driver (nouveau livreur de flotte en attente) */}
+      {rejectTarget && (
+        <SuspendModal
+          target="driver"
+          title="Motif de refus"
+          confirmLabel="Confirmer le refus"
+          loadingLabel="Refus…"
+          onConfirm={handleRejectConfirm}
+          onClose={() => setRejectTarget(null)}
+          loading={rejecting}
         />
       )}
 

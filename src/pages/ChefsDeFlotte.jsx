@@ -1,7 +1,55 @@
 import { useState, useEffect, useCallback } from 'react'
 import api from '../lib/api'
-import { RefreshCw, Eye, Plus, Pencil, Trash2, X, Search, CheckCircle } from 'lucide-react'
+import { RefreshCw, Eye, Plus, Pencil, Trash2, X, Search, CheckCircle, XCircle, ChevronDown, ChevronUp } from 'lucide-react'
 import { glass, glassInput, pageWrap, pageScroll, stickyTh } from '../lib/glassStyles'
+import SuspendModal from '../components/SuspendModal'
+
+const DOC_LIST = [
+  { key: 'idCardFront',    label: 'CNI recto' },
+  { key: 'idCardBack',     label: 'CNI verso' },
+  { key: 'licenseFront',   label: 'Permis recto' },
+  { key: 'licenseBack',    label: 'Permis verso' },
+  { key: 'vehiclePhoto',   label: 'Photo véhicule' },
+  { key: 'carteGrise',     label: 'Carte grise recto' },
+  { key: 'carteGriseBack', label: 'Carte grise verso' },
+  { key: 'assurance',      label: 'Assurance' },
+  { key: 'casquePhoto',    label: 'Casque' },
+]
+
+// ── Vignette document (zoomable) ───────────────────────────────────────────────
+function DocThumb({ url, label }) {
+  const [zoomed, setZoomed] = useState(false)
+  if (!url) return (
+    <div style={{ width: 70, height: 56, borderRadius: 8, background: 'rgba(0,119,182,.06)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 2 }}>
+      <span style={{ fontSize: 16 }}>📄</span>
+      <span style={{ fontSize: 8, color: 'var(--text-muted)', textAlign: 'center', padding: '0 4px' }}>{label}</span>
+    </div>
+  )
+  return (
+    <>
+      <div style={{ position: 'relative', cursor: 'pointer' }} onClick={() => setZoomed(true)} title={label}>
+        <img src={url} alt={label} style={{ width: 70, height: 56, objectFit: 'cover', borderRadius: 8, border: '1px solid rgba(0,119,182,.15)', display: 'block' }} />
+        <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, background: 'rgba(0,0,0,.45)', borderBottomLeftRadius: 8, borderBottomRightRadius: 8, padding: '2px 4px', textAlign: 'center' }}>
+          <span style={{ fontSize: 8, color: '#fff' }}>{label}</span>
+        </div>
+      </div>
+      {zoomed && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.75)', zIndex: 300, display: 'flex', alignItems: 'center', justifyContent: 'center' }} onClick={() => setZoomed(false)}>
+          <img src={url} alt={label} style={{ maxWidth: '90vw', maxHeight: '85vh', borderRadius: 12 }} />
+        </div>
+      )}
+    </>
+  )
+}
+
+// ── Statut d'un livreur géré ─────────────────────────────────────────────────
+function driverStatusInfo(d) {
+  if (d.chefDeFlotteStatus === 'PENDING')  return { text: '⏳ En attente', color: '#f59e0b' }
+  if (d.chefDeFlotteStatus === 'REJECTED') return { text: '✗ Refusé',     color: '#ef4444' }
+  if (d.chefDeFlotteStatus === 'ACTIVE' && !d.isActive) return { text: '⚠ Suspendu', color: '#ef4444' }
+  if (d.chefDeFlotteStatus === 'ACTIVE')   return { text: '✓ Actif',       color: '#22c55e' }
+  return { text: d.chefDeFlotteStatus ?? '—', color: '#888' }
+}
 
 // ── Modal Créer / Modifier ────────────────────────────────────────────────────
 function ChefFormModal({ initial, onClose, onSaved }) {
@@ -86,18 +134,54 @@ function ChefFormModal({ initial, onClose, onSaved }) {
 function ChefDetailModal({ chef, onClose }) {
   const [detail, setDetail] = useState(null)
   const [loading, setLoading] = useState(true)
+  const [expandedDriver, setExpandedDriver] = useState(null)
+  const [actingId, setActingId] = useState(null)
+  const [rejectDriver, setRejectDriver] = useState(null)
+  const [rejecting, setRejecting] = useState(false)
+
+  const refetch = useCallback(() => {
+    return api.get(`/admin/chefs-de-flotte/${chef.id}`)
+      .then(r => setDetail(r.data))
+      .catch(() => {})
+  }, [chef.id])
 
   useEffect(() => {
-    api.get(`/admin/chefs-de-flotte/${chef.id}`)
-      .then(r => { setDetail(r.data); setLoading(false) })
-      .catch(() => setLoading(false))
-  }, [chef.id])
+    refetch().finally(() => setLoading(false))
+  }, [refetch])
 
   const d = detail ?? chef
 
+  async function validateDriver(driver, approve) {
+    setActingId(driver.id)
+    try {
+      await api.patch(`/admin/drivers/${driver.id}/validate`, { approve })
+      await refetch()
+    } catch (e) {
+      alert(e.response?.data?.message ?? 'Erreur.')
+    } finally {
+      setActingId(null)
+    }
+  }
+
+  async function handleRejectConfirm(reason, fix) {
+    if (!rejectDriver) return
+    setRejecting(true)
+    const fullReason = [reason, fix ? `À corriger : ${fix}` : ''].filter(Boolean).join('\n')
+    try {
+      await api.patch(`/admin/drivers/${rejectDriver.id}/validate`, { approve: false, reason: fullReason })
+      setRejectDriver(null)
+      await refetch()
+    } catch (e) {
+      alert(e.response?.data?.message ?? 'Erreur.')
+    } finally {
+      setRejecting(false)
+    }
+  }
+
   return (
+    <>
     <div style={overlay} onClick={onClose}>
-      <div style={{ ...glass, width: 500, maxWidth: '92vw', borderRadius: 16, overflow: 'hidden', maxHeight: '90vh', display: 'flex', flexDirection: 'column' }} onClick={e => e.stopPropagation()}>
+      <div style={{ ...glass, width: 560, maxWidth: '92vw', borderRadius: 16, overflow: 'hidden', maxHeight: '90vh', display: 'flex', flexDirection: 'column' }} onClick={e => e.stopPropagation()}>
         {/* Header gradient */}
         <div style={{ background: 'linear-gradient(135deg,#0CB8DE,#0671BA,#04317C)', padding: '24px 20px 20px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10, position: 'relative' }}>
           <button onClick={onClose} style={{ position: 'absolute', top: 12, right: 12, background: 'rgba(255,255,255,.15)', border: 'none', borderRadius: 8, width: 28, height: 28, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff' }}>
@@ -126,6 +210,7 @@ function ChefDetailModal({ chef, onClose }) {
                   {[
                     ['Société',       d.companyName ?? '—'],
                     ['NINEA',         d.ninea ?? '—'],
+                    ['RCCM',          d.rccm ?? '—'],
                     ['Flotte max.',   d.fleetMaxSize ?? '—'],
                     ['Livreurs',      d._count?.managedDrivers ?? 0],
                     ['Inscrit le',    d.createdAt ? new Date(d.createdAt).toLocaleDateString('fr-FR') : '—'],
@@ -137,28 +222,87 @@ function ChefDetailModal({ chef, onClose }) {
                     </div>
                   ))}
                 </div>
+                {d.chefDeFlotteStatus === 'REJECTED' && d.rejectionReason && (
+                  <div style={{ ...errorStyle, marginTop: 10 }}>Motif de refus : {d.rejectionReason}</div>
+                )}
+                {!d.isActive && d.suspensionReason && (
+                  <div style={{ ...errorStyle, marginTop: 10 }}>Motif de suspension : {d.suspensionReason}</div>
+                )}
               </div>
 
-              {detail?.managedDrivers?.length > 0 && (
-                <div style={{ ...infoBox, marginTop: 14 }}>
-                  <div style={sectionLabel}>Livreurs gérés ({detail.managedDrivers.length})</div>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                    {detail.managedDrivers.slice(0, 8).map(dr => (
-                      <div key={dr.id} style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 12 }}>
-                        <span style={{ width: 8, height: 8, borderRadius: '50%', flexShrink: 0, background: dr.isActive ? '#22c55e' : '#f59e0b' }} />
-                        <span style={{ flex: 1, fontWeight: 600 }}>{dr.name ?? '—'}</span>
-                        <span style={{ color: 'var(--text-muted)' }}>{dr.phone}</span>
-                        <span style={{ color: 'var(--text-muted)' }}>{dr.vehicleType}</span>
-                      </div>
-                    ))}
+              <div style={{ ...infoBox, marginTop: 14 }}>
+                <div style={sectionLabel}>Livreurs ajoutés ({detail?.managedDrivers?.length ?? 0})</div>
+                {!detail?.managedDrivers?.length ? (
+                  <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>Aucun livreur ajouté pour le moment.</div>
+                ) : (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                    {detail.managedDrivers.map(dr => {
+                      const status = driverStatusInfo(dr)
+                      const scores = dr.ratingsReceived?.map(r => r.score) ?? []
+                      const avgRating = scores.length > 0 ? Math.round((scores.reduce((s, r) => s + r, 0) / scores.length) * 10) / 10 : null
+                      const expanded = expandedDriver === dr.id
+                      return (
+                        <div key={dr.id} style={{ border: '1px solid rgba(0,119,182,.12)', borderRadius: 10, padding: '10px 12px' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                            <span style={{ width: 8, height: 8, borderRadius: '50%', flexShrink: 0, background: status.color }} />
+                            <div style={{ flex: 1, minWidth: 0 }}>
+                              <div style={{ fontWeight: 600, fontSize: 13 }}>{dr.name?.trim() || '—'}</div>
+                              <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 1 }}>
+                                {dr.phone} · {dr.vehicleType}{dr.vehiclePlate ? ` · ${dr.vehiclePlate}` : ''} · {dr._count?.ordersAsDriver ?? 0} courses{avgRating != null ? ` · ★ ${avgRating}` : ''}
+                              </div>
+                            </div>
+                            <span style={{ fontSize: 11, fontWeight: 600, color: status.color, whiteSpace: 'nowrap' }}>{status.text}</span>
+                            {dr.chefDeFlotteStatus === 'PENDING' && (
+                              <>
+                                <button onClick={() => validateDriver(dr, true)} disabled={actingId === dr.id} style={{ ...btnIcon, color: 'var(--success)' }} title="Valider">
+                                  <CheckCircle size={15} />
+                                </button>
+                                <button onClick={() => setRejectDriver(dr)} disabled={actingId === dr.id} style={{ ...btnIcon, color: 'var(--danger)' }} title="Refuser">
+                                  <XCircle size={15} />
+                                </button>
+                              </>
+                            )}
+                            <button onClick={() => setExpandedDriver(expanded ? null : dr.id)} style={btnIcon} title="Documents">
+                              {expanded ? <ChevronUp size={15} /> : <ChevronDown size={15} />}
+                            </button>
+                          </div>
+
+                          {expanded && (
+                            <div style={{ marginTop: 10, paddingTop: 10, borderTop: '1px solid rgba(0,119,182,.08)' }}>
+                              {dr.chefDeFlotteStatus === 'REJECTED' && dr.rejectionReason && (
+                                <div style={{ ...errorStyle, marginBottom: 10 }}>Motif de refus : {dr.rejectionReason}</div>
+                              )}
+                              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                                {DOC_LIST.map(({ key, label }) => (
+                                  <DocThumb key={key} url={dr[key]} label={label} />
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      )
+                    })}
                   </div>
-                </div>
-              )}
+                )}
+              </div>
             </>
           )}
         </div>
       </div>
     </div>
+
+    {rejectDriver && (
+      <SuspendModal
+        target="driver"
+        title="Motif de refus"
+        confirmLabel="Confirmer le refus"
+        loadingLabel="Refus…"
+        onConfirm={handleRejectConfirm}
+        onClose={() => setRejectDriver(null)}
+        loading={rejecting}
+      />
+    )}
+    </>
   )
 }
 

@@ -4,6 +4,7 @@ import { useFleetAuth } from '../contexts/FleetAuthContext'
 import { LayoutDashboard, Truck, TrendingUp, MapPin, LogOut, Menu, X } from 'lucide-react'
 import logoSrc from '../assets/logo-dem.svg'
 import { useResponsive } from '../lib/useResponsive'
+import FleetNotifications from './FleetNotifications'
 
 const NAV = [
   { to: '/fleet',           icon: LayoutDashboard, label: 'Dashboard' },
@@ -146,18 +147,19 @@ export default function FleetLayout({ children }) {
         display: 'flex',
         flexDirection: 'column',
       }}>
-        {(isMobile || isTablet) && (
-          <div style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: 12,
-            padding: '10px 16px',
-            background: 'rgba(255,255,255,0.55)',
-            backdropFilter: 'blur(16px)',
-            WebkitBackdropFilter: 'blur(16px)',
-            borderBottom: '1px solid rgba(255,255,255,0.7)',
-            position: 'sticky', top: 0, zIndex: 100,
-          }}>
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          gap: 12,
+          padding: '10px 16px',
+          background: 'rgba(255,255,255,0.55)',
+          backdropFilter: 'blur(16px)',
+          WebkitBackdropFilter: 'blur(16px)',
+          borderBottom: '1px solid rgba(255,255,255,0.7)',
+          position: 'sticky', top: 0, zIndex: 100,
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
             {isMobile && (
               <button
                 onClick={() => setMobileOpen(v => !v)}
@@ -166,9 +168,10 @@ export default function FleetLayout({ children }) {
                 {mobileOpen ? <X size={22} /> : <Menu size={22} />}
               </button>
             )}
-            <img src={logoSrc} alt="DEM" style={{ height: 32, width: 'auto' }} />
+            {(isMobile || isTablet) && <img src={logoSrc} alt="DEM" style={{ height: 32, width: 'auto' }} />}
           </div>
-        )}
+          <FleetNotifications />
+        </div>
 
         <div style={{ padding: isMobile ? '16px 14px' : isTablet ? '20px 20px' : '28px 32px', flex: 1, minHeight: 0, overflowY: 'auto' }}>
           {children}
