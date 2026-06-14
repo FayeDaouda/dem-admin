@@ -7,6 +7,7 @@ import FleetDashboard from './FleetDashboard'
 import FleetDrivers from './FleetDrivers'
 import FleetMap from './FleetMap'
 import FleetExtension from './FleetExtension'
+import FleetAlerts from './FleetAlerts'
 
 const PageLoader = () => (
   <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)' }}>
@@ -38,6 +39,7 @@ function FleetRoutes() {
       <Route path="" element={<FleetProtectedRoute><FleetDashboard /></FleetProtectedRoute>} />
       <Route path="drivers" element={<FleetProtectedRoute><FleetDrivers /></FleetProtectedRoute>} />
       <Route path="map" element={<FleetProtectedRoute><FleetMap /></FleetProtectedRoute>} />
+      <Route path="alerts" element={<FleetProtectedRoute><FleetAlerts /></FleetProtectedRoute>} />
       <Route path="extension" element={<FleetProtectedRoute><FleetExtension /></FleetProtectedRoute>} />
       <Route path="*" element={<Navigate to="/fleet" replace />} />
     </Routes>

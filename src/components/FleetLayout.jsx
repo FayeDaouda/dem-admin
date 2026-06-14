@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { NavLink, useNavigate, useLocation } from 'react-router-dom'
 import { useFleetAuth } from '../contexts/FleetAuthContext'
-import { LayoutDashboard, Truck, TrendingUp, MapPin, LogOut, Menu, X } from 'lucide-react'
+import { LayoutDashboard, Truck, TrendingUp, MapPin, Bell, LogOut, Menu, X } from 'lucide-react'
 import logoSrc from '../assets/logo-dem.svg'
 import { useResponsive } from '../lib/useResponsive'
 import FleetNotifications from './FleetNotifications'
@@ -10,6 +10,7 @@ const NAV = [
   { to: '/fleet',           icon: LayoutDashboard, label: 'Dashboard' },
   { to: '/fleet/drivers',   icon: Truck,           label: 'Mes livreurs' },
   { to: '/fleet/map',       icon: MapPin,          label: 'Suivi livreurs' },
+  { to: '/fleet/alerts',    icon: Bell,            label: 'Alertes' },
   { to: '/fleet/extension', icon: TrendingUp,      label: 'Extension de flotte' },
 ]
 

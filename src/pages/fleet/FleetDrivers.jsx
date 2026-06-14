@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import fleetApi from '../../lib/fleetApi'
-import { RefreshCw, Plus, X, Star, Eye } from 'lucide-react'
+import { RefreshCw, Plus, X, Star, Eye, Pencil, Check } from 'lucide-react'
 import { glass, glassSolid, pageWrap, pageScroll, stickyTh, stickyCol, stickyThCol } from '../../lib/glassStyles'
 
 const STATUS_TABS = [
@@ -21,6 +21,17 @@ const DOC_LIST = [
   { key: 'carteGriseBack', label: 'Carte grise verso' },
   { key: 'assurance',      label: 'Assurance' },
   { key: 'casquePhoto',    label: 'Casque' },
+]
+
+const ONLINE_STATE_LABEL = { busy: 'En course', available: 'Disponible', offline: 'Hors ligne' }
+const ONLINE_STATE_COLOR = { busy: '#7c3aed', available: '#22c55e', offline: '#94a3b8' }
+
+const STATS_PERIOD_TABS = [
+  ['total',     'Total'],
+  ['today',     "Aujourd'hui"],
+  ['week',      '7 j'],
+  ['month',     '30 j'],
+  ['sixMonths', '6 mois'],
 ]
 
 function driverStatusLabel(d) {
@@ -203,6 +214,11 @@ function DriverDetailModal({ driverId, onClose, onUpdated }) {
   const [saveError, setSaveError] = useState('')
   const [saved, setSaved]     = useState(false)
   const [resubmitting, setResubmitting] = useState(false)
+  const [editingName, setEditingName] = useState(false)
+  const [nameValue, setNameValue]     = useState('')
+  const [savingName, setSavingName]   = useState(false)
+  const [statusActing, setStatusActing] = useState(false)
+  const [statsPeriod, setStatsPeriod] = useState('total')
 
   const fetchDetail = useCallback(async () => {
     setLoading(true); setLoadError('')
@@ -251,6 +267,45 @@ function DriverDetailModal({ driverId, onClose, onUpdated }) {
     } finally { setResubmitting(false) }
   }
 
+  async function saveName() {
+    if (!nameValue.trim()) { setSaveError('Le nom est obligatoire.'); return }
+    setSavingName(true); setSaveError('')
+    try {
+      await fleetApi.patch(`/chefs-de-flotte/me/drivers/${driverId}`, { name: nameValue.trim() })
+      setEditingName(false)
+      await fetchDetail()
+      onUpdated?.()
+    } catch (e) {
+      setSaveError(e.response?.data?.message ?? 'Erreur.')
+    } finally { setSavingName(false) }
+  }
+
+  async function toggleSuspend() {
+    setSaveError('')
+    if (driver.isActive) {
+      const reason = prompt('Motif de la suspension (optionnel) :')
+      if (reason === null) return
+      setStatusActing(true)
+      try {
+        await fleetApi.patch(`/chefs-de-flotte/me/drivers/${driverId}/suspend`, { reason: reason || undefined })
+        await fetchDetail()
+        onUpdated?.()
+      } catch (e) {
+        setSaveError(e.response?.data?.message ?? 'Erreur.')
+      } finally { setStatusActing(false) }
+    } else {
+      if (!confirm('Réactiver ce livreur ?')) return
+      setStatusActing(true)
+      try {
+        await fleetApi.patch(`/chefs-de-flotte/me/drivers/${driverId}/activate`)
+        await fetchDetail()
+        onUpdated?.()
+      } catch (e) {
+        setSaveError(e.response?.data?.message ?? 'Erreur.')
+      } finally { setStatusActing(false) }
+    }
+  }
+
   const status = driver ? driverStatusLabel(driver) : null
 
   return (
@@ -275,7 +330,30 @@ function DriverDetailModal({ driverId, onClose, onUpdated }) {
                   : (driver.name?.trim() || driver.phone || '?')[0].toUpperCase()}
               </div>
               <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontWeight: 700, fontSize: 16 }}>{driver.name?.trim() || '—'}</div>
+                {editingName ? (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 2 }}>
+                    <input
+                      type="text"
+                      value={nameValue}
+                      onChange={e => setNameValue(e.target.value)}
+                      style={{ ...inputStyle, fontSize: 14, padding: '4px 8px', fontWeight: 700, width: 180 }}
+                      autoFocus
+                    />
+                    <button onClick={saveName} disabled={savingName} style={btnIcon} title="Enregistrer">
+                      <Check size={16} color="var(--success)" />
+                    </button>
+                    <button onClick={() => setEditingName(false)} style={btnIcon} title="Annuler">
+                      <X size={16} />
+                    </button>
+                  </div>
+                ) : (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <div style={{ fontWeight: 700, fontSize: 16 }}>{driver.name?.trim() || '—'}</div>
+                    <button onClick={() => { setNameValue(driver.name ?? ''); setEditingName(true) }} style={btnIcon} title="Modifier le nom">
+                      <Pencil size={13} />
+                    </button>
+                  </div>
+                )}
                 <div style={{ color: 'var(--text-muted)', fontSize: 13 }}>{driver.phone}</div>
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4 }}>
@@ -294,16 +372,40 @@ function DriverDetailModal({ driverId, onClose, onUpdated }) {
               </div>
             )}
 
+            {driver.chefDeFlotteStatus === 'ACTIVE' && !driver.isActive && (
+              <div style={{ ...errorStyle, marginBottom: 14 }}>
+                ⚠ Ce livreur est suspendu.{driver.suspensionReason && ` Motif : ${driver.suspensionReason}`}
+              </div>
+            )}
+
             {/* Corps en deux colonnes */}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))', gap: 16 }}>
               <div>
                 {/* Chiffres */}
                 <div style={{ marginBottom: 16 }}>
-                  <div style={sectionTitle}>Chiffres</div>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8, marginBottom: 8 }}>
+                    <div style={sectionTitle}>Chiffres</div>
+                    <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
+                      {STATS_PERIOD_TABS.map(([key, label]) => (
+                        <button
+                          key={key}
+                          onClick={() => setStatsPeriod(key)}
+                          style={{
+                            padding: '3px 9px', borderRadius: 'var(--radius-sm)', fontSize: 11, fontWeight: 600,
+                            border: '1px solid rgba(0,119,182,0.25)', cursor: 'pointer',
+                            background: statsPeriod === key ? 'var(--primary)' : 'rgba(255,255,255,0.5)',
+                            color: statsPeriod === key ? '#fff' : 'var(--text-muted)',
+                          }}
+                        >
+                          {label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 10 }}>
                     {[
-                      ['Courses livrées', driver.deliveredCourses ?? 0, 'var(--success, #22c55e)'],
-                      ['Total généré',    `${(driver.totalEarned ?? 0).toLocaleString()} F`, 'var(--primary)'],
+                      ['Courses livrées', statsPeriod === 'total' ? (driver.deliveredCourses ?? 0) : (driver.statsByPeriod?.[statsPeriod]?.courses ?? 0), 'var(--success, #22c55e)'],
+                      ['Total généré',    `${(statsPeriod === 'total' ? (driver.totalEarned ?? 0) : (driver.statsByPeriod?.[statsPeriod]?.earnings ?? 0)).toLocaleString()} F`, 'var(--primary)'],
                       ['Courses en cours', driver.pendingCourses ?? 0, '#f59e0b'],
                       ['Note moyenne',     driver.avgRating != null ? `★ ${driver.avgRating}` : '—', '#f59e0b'],
                     ].map(([label, val, color]) => (
@@ -376,6 +478,17 @@ function DriverDetailModal({ driverId, onClose, onUpdated }) {
                   {resubmitting ? 'Envoi…' : 'Resoumettre pour validation'}
                 </button>
               )}
+              {driver.chefDeFlotteStatus === 'ACTIVE' && (
+                driver.isActive ? (
+                  <button onClick={toggleSuspend} disabled={statusActing} style={{ ...btnOutline, flex: 1, color: 'var(--danger)', borderColor: 'var(--danger)' }}>
+                    {statusActing ? '…' : 'Suspendre'}
+                  </button>
+                ) : (
+                  <button onClick={toggleSuspend} disabled={statusActing} style={{ ...btnOutline, flex: 1, color: 'var(--success)', borderColor: 'var(--success)' }}>
+                    {statusActing ? '…' : 'Réactiver'}
+                  </button>
+                )
+              )}
             </div>
           </>
         )}
@@ -438,7 +551,7 @@ export default function FleetDrivers() {
             <table style={tableStyle}>
               <thead>
                 <tr>
-                  {['Livreur', 'Téléphone', 'Véhicule', 'Statut', 'Note', 'Courses livrées', 'Inscription', ''].map((h, i) => (
+                  {['Livreur', 'Téléphone', 'Véhicule', 'Statut', 'Activité', 'Note', 'Courses livrées', 'Inscription', ''].map((h, i) => (
                     <th key={h} style={{ ...thStyle, ...(i === 0 ? stickyThCol : stickyTh) }}>{h}</th>
                   ))}
                 </tr>
@@ -463,6 +576,14 @@ export default function FleetDrivers() {
                         {d.chefDeFlotteStatus === 'REJECTED' && d.rejectionReason && (
                           <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>{d.rejectionReason}</div>
                         )}
+                      </td>
+                      <td style={tdStyle}>
+                        {d.onlineState ? (
+                          <span style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, fontWeight: 600, color: ONLINE_STATE_COLOR[d.onlineState] }}>
+                            <span style={{ width: 8, height: 8, borderRadius: '50%', background: ONLINE_STATE_COLOR[d.onlineState], flexShrink: 0 }} />
+                            {ONLINE_STATE_LABEL[d.onlineState]}
+                          </span>
+                        ) : <span style={{ color: 'var(--text-muted)', fontSize: 12 }}>—</span>}
                       </td>
                       <td style={tdStyle}>
                         {d.avgRating != null ? (
@@ -509,7 +630,7 @@ export default function FleetDrivers() {
 
 const overlay     = { position: 'fixed', inset: 0, background: 'rgba(0,40,80,.45)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100 }
 const card        = { ...glass, padding: '20px 24px' }
-const tableStyle  = { width: '100%', minWidth: 820, borderCollapse: 'collapse' }
+const tableStyle  = { width: '100%', minWidth: 920, borderCollapse: 'collapse' }
 const thStyle     = { textAlign: 'left', padding: '8px 10px', color: 'var(--text-muted)', fontSize: 12, fontWeight: 600, borderBottom: '1px solid rgba(0,119,182,0.12)' }
 const tdStyle     = { padding: '10px 10px', verticalAlign: 'middle' }
 const labelStyle  = { display: 'block', fontSize: 12, fontWeight: 600, color: 'var(--text-muted)', marginBottom: 5 }

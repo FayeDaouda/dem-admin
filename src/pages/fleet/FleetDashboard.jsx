@@ -1,12 +1,23 @@
 import { useState, useEffect, useCallback } from 'react'
+import { useNavigate } from 'react-router-dom'
 import fleetApi from '../../lib/fleetApi'
 import { useFleetAuth } from '../../contexts/FleetAuthContext'
-import { Truck, CheckCircle, Clock, XCircle, Package, ShieldCheck, AlertTriangle, RefreshCw } from 'lucide-react'
+import { Radio, Navigation, Wallet, WifiOff, Bell, ShieldCheck, AlertTriangle, RefreshCw, Package } from 'lucide-react'
 import { glass, pageWrap, pageScroll } from '../../lib/glassStyles'
 
-function StatCard({ icon: Icon, label, value, sub, color = 'var(--primary)' }) {
+const PERIOD_TABS = [
+  ['today',     "Aujourd'hui"],
+  ['week',      '7 jours'],
+  ['month',     '30 jours'],
+  ['sixMonths', '6 mois'],
+]
+
+function StatCard({ icon: Icon, label, value, sub, color = 'var(--primary)', onClick }) {
   return (
-    <div style={{ ...glass, padding: '18px 20px', display: 'flex', alignItems: 'center', gap: 14 }}>
+    <div
+      onClick={onClick}
+      style={{ ...glass, padding: '18px 20px', display: 'flex', alignItems: 'center', gap: 14, cursor: onClick ? 'pointer' : 'default' }}
+    >
       <div style={{
         width: 42, height: 42,
         borderRadius: 'var(--radius-sm)',
@@ -26,9 +37,11 @@ function StatCard({ icon: Icon, label, value, sub, color = 'var(--primary)' }) {
 }
 
 export default function FleetDashboard() {
+  const navigate = useNavigate()
   const { fleetUser } = useFleetAuth()
   const [stats, setStats]     = useState(null)
   const [loading, setLoading] = useState(true)
+  const [period, setPeriod]   = useState('today')
 
   const fetchStats = useCallback(async () => {
     setLoading(true)
@@ -78,11 +91,37 @@ export default function FleetDashboard() {
             )}
 
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 16 }}>
-              <StatCard icon={Truck}       label="Taille de la flotte"   value={`${stats.fleetSize} / ${stats.fleetMax}`} color="#0077b6" />
-              <StatCard icon={CheckCircle} label="Livreurs actifs"       value={stats.activeCount}   color="#22c55e" />
-              <StatCard icon={Clock}       label="En attente"            value={stats.pendingCount}  color="#f59e0b" />
-              <StatCard icon={XCircle}     label="Refusés"               value={stats.rejectedCount} color="#ef4444" />
-              <StatCard icon={Package}     label="Courses livrées"       value={stats.totalCourses}  color="#7c3aed" />
+              <StatCard icon={Radio}      label="Livreurs en ligne"              value={`${stats.onlineCount} / ${stats.fleetSize}`} color="#22c55e" />
+              <StatCard icon={Navigation} label="Courses en cours"               value={stats.coursesInProgress} color="#7c3aed" />
+              <StatCard icon={Wallet}     label="Gains de la flotte (aujourd'hui)" value={`${stats.earningsToday.toLocaleString()} F`} color="#0077b6" />
+              <StatCard icon={WifiOff}    label="Livreurs hors ligne"            value={stats.offlineCount} color="#94a3b8" />
+              <StatCard icon={Bell}       label="Alertes en cours"               value={stats.alertsCount} color="#ef4444" onClick={() => navigate('/fleet/alerts')} />
+            </div>
+
+            <div style={{ ...glass, padding: 18, marginTop: 16 }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 10, marginBottom: 16 }}>
+                <div style={{ fontSize: 15, fontWeight: 700 }}>Activité de la flotte</div>
+                <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                  {PERIOD_TABS.map(([key, label]) => (
+                    <button
+                      key={key}
+                      onClick={() => setPeriod(key)}
+                      style={{
+                        padding: '6px 12px', borderRadius: 'var(--radius-sm)', fontSize: 12, fontWeight: 600,
+                        border: '1px solid rgba(0,119,182,0.25)', cursor: 'pointer',
+                        background: period === key ? 'var(--primary)' : 'rgba(255,255,255,0.5)',
+                        color: period === key ? '#fff' : 'var(--text-muted)',
+                      }}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 16 }}>
+                <StatCard icon={Package} label="Courses livrées"      value={stats.statsByPeriod[period].courses} color="#22c55e" />
+                <StatCard icon={Wallet}  label="Gains de la flotte"    value={`${stats.statsByPeriod[period].earnings.toLocaleString()} F`} color="#0077b6" />
+              </div>
             </div>
           </>
         )}
