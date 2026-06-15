@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import api from '../lib/api'
 import { glass, glassInput, pageWrap, pageScroll } from '../lib/glassStyles'
-import { RefreshCw, CheckCircle, XCircle, ChevronDown, ChevronUp, Shield, Truck, Layers, AlertTriangle } from 'lucide-react'
+import { RefreshCw, CheckCircle, XCircle, ChevronDown, ChevronUp, Shield, Truck, Layers, AlertTriangle, Briefcase } from 'lucide-react'
 import SuspendModal from '../components/SuspendModal'
 import AmbassadorDetailModal from '../components/AmbassadorDetailModal'
 
@@ -88,11 +88,15 @@ export default function Validation() {
         <button style={TAB(tab === 'fleet')} onClick={() => setTab('fleet')}>
           <span style={{ display:'flex', alignItems:'center', gap:6 }}><Layers size={13} />Extensions flotte</span>
         </button>
+        <button style={TAB(tab === 'dem-pro')} onClick={() => setTab('dem-pro')}>
+          <span style={{ display:'flex', alignItems:'center', gap:6 }}><Briefcase size={13} />DEM Pro</span>
+        </button>
       </div>
       <div style={pageScroll}>
         {tab === 'ambassadors' && <AmbassadorsTab />}
         {tab === 'drivers'     && <DriversTab />}
         {tab === 'fleet'       && <FleetTab />}
+        {tab === 'dem-pro'     && <DemProTab />}
       </div>
     </div>
   )
@@ -412,6 +416,138 @@ function DriversTab() {
                     </button>
                   </div>
                 </div>
+              </div>
+            )}
+          </div>
+        )
+      })}
+    </div>
+  )
+}
+
+// ── Tab DEM Pro ────────────────────────────────────────────────────────────────
+const SECTOR_LABELS = {
+  commerce:     'Commerce',
+  restauration: 'Restauration',
+  services:     'Services',
+  artisanat:    'Artisanat',
+  autre:        'Autre',
+}
+const VOLUME_LABELS = {
+  low:    '1 à 4 livraisons / semaine',
+  medium: '5 à 8 livraisons / semaine',
+  high:   '9 ou plus / semaine',
+}
+
+function DemProTab() {
+  const [list,     setList]     = useState([])
+  const [loading,  setLoading]  = useState(true)
+  const [filter,   setFilter]   = useState('PENDING')
+  const [expanded, setExpanded] = useState(null)
+  const [reason,   setReason]   = useState('')
+  const [acting,   setActing]   = useState(null)
+
+  const load = useCallback(async () => {
+    setLoading(true)
+    try {
+      const res = await api.get('/admin/dem-pro', { params: { status: filter } })
+      setList(res.data.accounts ?? [])
+    } catch (e) { console.error(e) }
+    finally { setLoading(false) }
+  }, [filter])
+
+  useEffect(() => { load() }, [load])
+
+  async function handleValidate(id, approve) {
+    if (!approve && !reason.trim()) { alert('Saisissez un motif de refus.'); return }
+    setActing(id)
+    try {
+      await api.patch(`/admin/dem-pro/${id}/validate`, { approve, reason: reason.trim() || undefined })
+      setReason('')
+      setExpanded(null)
+      load()
+    } catch (e) { alert(e.response?.data?.message ?? 'Erreur.') }
+    finally { setActing(null) }
+  }
+
+  return (
+    <div style={{ display:'flex', flexDirection:'column', gap:12 }}>
+      {/* Filtres */}
+      <div style={{ display:'flex', gap:8, marginBottom:4, flexWrap:'wrap' }}>
+        {[['PENDING','En attente'],['ACTIVE','Actifs'],['REJECTED','Refusés'],['all','Tous']].map(([s, label]) => (
+          <button key={s} onClick={() => setFilter(s)} style={{
+            padding:'5px 14px', borderRadius:20, border:'1px solid rgba(0,119,182,.25)',
+            background: filter===s ? 'var(--primary)' : 'rgba(255,255,255,.5)',
+            color: filter===s ? '#fff' : 'var(--text-muted)', fontSize:12, fontWeight:600, cursor:'pointer',
+          }}>{label}</button>
+        ))}
+        <button onClick={load} style={{ marginLeft:'auto', display:'flex', alignItems:'center', gap:6, padding:'5px 12px', borderRadius:8, border:'1px solid rgba(0,119,182,.2)', background:'rgba(255,255,255,.5)', color:'var(--text-muted)', fontSize:12, cursor:'pointer' }}>
+          <RefreshCw size={12} /> Actualiser
+        </button>
+      </div>
+
+      {loading ? <div style={{ color:'var(--text-muted)' }}>Chargement…</div>
+      : list.length === 0 ? <div style={{ ...card, color:'var(--text-muted)', textAlign:'center', padding:32 }}>Aucun compte DEM Pro.</div>
+      : list.map(pro => {
+        const isOpen = expanded === pro.id
+        return (
+          <div key={pro.id} style={card}>
+            {/* Ligne résumé */}
+            <div style={{ display:'flex', alignItems:'center', gap:12 }}>
+              <div style={{ width:42, height:42, borderRadius:'50%', background:'rgba(0,180,216,.12)', display:'flex', alignItems:'center', justifyContent:'center', fontWeight:800, color:'var(--primary)', fontSize:15, flexShrink:0 }}>
+                {(pro.proBusinessName ?? pro.name ?? '?')[0].toUpperCase()}
+              </div>
+              <div style={{ flex:1, minWidth:0 }}>
+                <div style={{ fontWeight:700, fontSize:14 }}>{pro.proBusinessName ?? '—'}</div>
+                <div style={{ fontSize:12, color:'var(--text-muted)', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>
+                  {pro.name ?? '—'} · {pro.phone}
+                </div>
+              </div>
+              <StatusBadge status={pro.proStatus} />
+              <button onClick={() => { setExpanded(isOpen ? null : pro.id); setReason('') }}
+                style={{ background:'none', border:'none', cursor:'pointer', color:'var(--text-muted)', flexShrink:0 }}>
+                {isOpen ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
+              </button>
+            </div>
+
+            {/* Détail dépliable */}
+            {isOpen && (
+              <div style={{ marginTop:16, borderTop:'1px solid rgba(0,0,0,.06)', paddingTop:14, display:'flex', flexDirection:'column', gap:14 }}>
+
+                {/* Infos entreprise */}
+                <div style={{ display:'flex', gap:16, flexWrap:'wrap', fontSize:12 }}>
+                  <span><strong>Secteur :</strong> {SECTOR_LABELS[pro.proSector] ?? pro.proSector ?? '—'}</span>
+                  <span><strong>Volume :</strong> {VOLUME_LABELS[pro.proWeeklyVolume] ?? pro.proWeeklyVolume ?? '—'}</span>
+                  {pro.email && <span><strong>Email :</strong> {pro.email}</span>}
+                  <span><strong>Inscrit le :</strong> {new Date(pro.createdAt).toLocaleDateString('fr-FR')}</span>
+                </div>
+
+                {/* Actions PENDING */}
+                {pro.proStatus === 'PENDING' && (
+                  <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
+                    <input
+                      placeholder="Motif de refus (obligatoire si refus)"
+                      value={reason}
+                      onChange={e => setReason(e.target.value)}
+                      style={{ ...glassInput, maxWidth:400 }}
+                    />
+                    <div style={{ display:'flex', gap:10 }}>
+                      <button style={btnAccept} disabled={acting===pro.id} onClick={() => handleValidate(pro.id, true)}>
+                        <CheckCircle size={13} /> Valider
+                      </button>
+                      <button style={btnRefuse} disabled={acting===pro.id} onClick={() => handleValidate(pro.id, false)}>
+                        <XCircle size={13} /> Refuser
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {/* Motif refus */}
+                {pro.proStatus === 'REJECTED' && pro.rejectionReason && (
+                  <div style={{ fontSize:12, color:'#dc2626', background:'rgba(239,68,68,.06)', padding:'8px 12px', borderRadius:8 }}>
+                    <strong>Motif :</strong> {pro.rejectionReason}
+                  </div>
+                )}
               </div>
             )}
           </div>
