@@ -11,6 +11,7 @@ export default function Payments() {
   const [orders, setOrders]   = useState([])
   const [loading, setLoading] = useState(true)
   const [filter, setFilter]   = useState('PENDING') // PENDING | DISPUTED | all
+  const [period, setPeriod]   = useState('all')      // all | today | week | month
   const [modal, setModal]     = useState(null) // { order }
   const [form, setForm]       = useState({ paymentStatus: 'PAID', paymentMethod: 'CASH', disputeNotes: '' })
   const [saving, setSaving]   = useState(false)
@@ -18,7 +19,9 @@ export default function Payments() {
   const fetch = useCallback(async () => {
     setLoading(true)
     try {
-      const params = filter !== 'all' ? { paymentStatus: filter } : {}
+      const params = {}
+      if (filter !== 'all') params.paymentStatus = filter
+      if (period !== 'all') params.period = period
       const res = await api.get('/admin/payments/unpaid', { params })
       setOrders(res.data?.orders ?? res.data ?? [])
     } catch (e) {
@@ -26,7 +29,7 @@ export default function Payments() {
     } finally {
       setLoading(false)
     }
-  }, [filter])
+  }, [filter, period])
 
   useEffect(() => { fetch() }, [fetch])
 
@@ -79,7 +82,7 @@ export default function Payments() {
       )}
 
       {/* Filtres */}
-      <div style={{ display: 'flex', gap: 8, marginBottom: 20, flexShrink: 0 }}>
+      <div style={{ display: 'flex', gap: 8, marginBottom: 12, flexShrink: 0, flexWrap: 'wrap' }}>
         {[['PENDING', 'En attente'], ['DISPUTED', 'Litiges'], ['all', 'Tout']].map(([val, label]) => (
           <button
             key={val}
@@ -90,6 +93,27 @@ export default function Payments() {
               border: '1px solid var(--border)',
               background: filter === val ? 'var(--primary)' : 'transparent',
               color: filter === val ? '#fff' : 'var(--text-muted)',
+              fontSize: 13,
+              cursor: 'pointer',
+            }}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+
+      {/* Filtres période */}
+      <div style={{ display: 'flex', gap: 8, marginBottom: 20, flexShrink: 0, flexWrap: 'wrap' }}>
+        {[['all', 'Toutes les dates'], ['today', "Aujourd'hui"], ['week', '7 derniers jours'], ['month', '30 derniers jours']].map(([val, label]) => (
+          <button
+            key={val}
+            onClick={() => setPeriod(val)}
+            style={{
+              padding: '6px 14px',
+              borderRadius: 20,
+              border: '1px solid var(--border)',
+              background: period === val ? '#f59e0b' : 'transparent',
+              color: period === val ? '#fff' : 'var(--text-muted)',
               fontSize: 13,
               cursor: 'pointer',
             }}
@@ -110,7 +134,7 @@ export default function Payments() {
           <table style={tableStyle}>
             <thead>
               <tr>
-                {['ID', 'Type', 'Client', 'Driver', 'Prix', 'Statut paiement', 'Note litige', 'Action'].map(h => (
+                {['ID', 'Type', 'Client', 'Livreur', 'Prix', 'Statut paiement', 'Note litige', 'Action'].map(h => (
                   <th key={h} style={{ ...thStyle, ...stickyTh }}>{h}</th>
                 ))}
               </tr>

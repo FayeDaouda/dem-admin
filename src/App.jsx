@@ -15,6 +15,7 @@ import Incidents    from './pages/Incidents'
 import Audit        from './pages/Audit'
 import ChefsDeFlotte from './pages/ChefsDeFlotte'
 import ChefDetailPage from './pages/ChefDetailPage'
+import DemPro from './pages/DemPro'
 
 const LiveMap     = lazy(() => import('./pages/LiveMap'))
 const FleetSection = lazy(() => import('./pages/fleet/FleetSection'))
@@ -52,6 +53,7 @@ function AppRoutes() {
       <Route path="/incidents"   element={<ProtectedRoute><Incidents /></ProtectedRoute>} />
       <Route path="/audit"       element={<ProtectedRoute><Audit /></ProtectedRoute>} />
       <Route path="/validation"      element={<ProtectedRoute><Validation /></ProtectedRoute>} />
+      <Route path="/dem-pro"          element={<ProtectedRoute><DemPro /></ProtectedRoute>} />
       <Route path="/chefs-de-flotte" element={<ProtectedRoute><ChefsDeFlotte /></ProtectedRoute>} />
       <Route path="/chefs-de-flotte/:id" element={<ProtectedRoute><ChefDetailPage /></ProtectedRoute>} />
       <Route path="/fleet/*" element={<FleetSection />} />

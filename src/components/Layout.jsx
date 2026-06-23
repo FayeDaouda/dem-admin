@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { NavLink, useNavigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import {
-  LayoutDashboard, CreditCard, Package, Users, Settings, LogOut, Truck, Map, Menu, X, TrendingUp, ShieldCheck, AlertTriangle, ScrollText, UserCog,
+  LayoutDashboard, CreditCard, Package, Users, Settings, LogOut, Truck, Map, Menu, X, TrendingUp, ShieldCheck, AlertTriangle, ScrollText, UserCog, Briefcase,
 } from 'lucide-react'
 import logoSrc from '../assets/logo-dem.svg'
 import { useResponsive } from '../lib/useResponsive'
@@ -13,8 +13,9 @@ const NAV = [
   { to: '/map',         icon: Map,             label: 'Carte live',   roles: ['SUPER','DEV'] },
   { to: '/payments',    icon: CreditCard,      label: 'Paiements',    roles: ['SUPER','FINANCE'] },
   { to: '/orders',      icon: Package,         label: 'Courses',      roles: ['SUPER','DEV','FINANCE'] },
-  { to: '/drivers',          icon: Truck,     label: 'Drivers',          roles: ['SUPER','DEV'] },
+  { to: '/drivers',          icon: Truck,     label: 'Livreurs',         roles: ['SUPER','DEV'] },
   { to: '/clients',          icon: Users,     label: 'Clients',          roles: ['SUPER','DEV'] },
+  { to: '/dem-pro',          icon: Briefcase, label: 'DEM Pro',          roles: ['SUPER'] },
   { to: '/chefs-de-flotte',  icon: UserCog,   label: 'Chefs de flotte',  roles: ['SUPER'] },
   { to: '/acquisition', icon: TrendingUp,      label: 'Acquisition',  roles: ['SUPER','MARKETING'] },
   { to: '/incidents',   icon: AlertTriangle,   label: 'Incidents',    roles: ['SUPER','DEV'] },

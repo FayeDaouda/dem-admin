@@ -105,7 +105,7 @@ export default function Dashboard() {
     s.on('admin:order:cancelled',  d => { addEvent('Commande annulée', d);    fetchAll() })
     s.on('admin:payment:confirmed',d => { addEvent('Paiement confirmé', d);   fetchAll() })
     s.on('admin:payment:disputed', d => { addEvent('⚠ Litige signalé', d);    fetchAll() })
-    s.on('admin:driver:flagged',   d => { addEvent('🚨 Driver signalé', d);   fetchAll() })
+    s.on('admin:driver:flagged',   d => { addEvent('🚨 Livreur signalé', d);  fetchAll() })
 
     return () => {
       ['admin:order:new','admin:order:accepted','admin:order:pickedup',
@@ -139,7 +139,7 @@ export default function Dashboard() {
         <StatCard icon={Package}      label="Total courses"     value={loading ? '…' : stats?.orders.total ?? 0}        color="var(--primary)" />
         <StatCard icon={TrendingUp}   label="En cours"          value={loading ? '…' : stats?.orders.active ?? 0}       color="var(--info)" />
         <StatCard icon={AlertTriangle}label="En attente"        value={loading ? '…' : stats?.orders.pending ?? 0}      color="var(--warning)" />
-        <StatCard icon={Truck}        label="Drivers dispo"     value={loading ? '…' : stats?.drivers.available ?? 0}   color="var(--success)"
+        <StatCard icon={Truck}        label="Livreurs dispo"     value={loading ? '…' : stats?.drivers.available ?? 0}   color="var(--success)"
                   sub={`/ ${stats?.drivers.total ?? 0} total`} />
         <StatCard icon={Users}        label="Clients"           value={loading ? '…' : stats?.clients.total ?? 0}       color="#a78bfa" />
         <StatCard icon={CreditCard}   label="Livreurs du jour"  value={loading ? '…' : `${(stats?.revenue?.driver?.today ?? 0).toLocaleString()} F`} color="var(--success)"
@@ -215,7 +215,7 @@ export default function Dashboard() {
           ) : (
             <table style={tableStyle}>
               <thead>
-                <tr>{['ID','Type','Statut','Client','Driver','Prix'].map(h => <th key={h} style={thStyle}>{h}</th>)}</tr>
+                <tr>{['ID','Type','Statut','Client','Livreur','Prix'].map(h => <th key={h} style={thStyle}>{h}</th>)}</tr>
               </thead>
               <tbody>
                 {activeOrders.map(o => (
@@ -298,7 +298,7 @@ export default function Dashboard() {
                 ],
               },
               {
-                label: 'Drivers',
+                label: 'Livreurs',
                 items: [
                   { k: 'Total',        v: health.drivers?.total     ?? 0 },
                   { k: 'En ligne',     v: health.drivers?.online    ?? 0 },
@@ -330,9 +330,9 @@ export default function Dashboard() {
 
       {/* Drivers disponibles */}
       <div style={card}>
-        <h2 style={cardTitle}>Drivers disponibles ({availDrivers.length})</h2>
+        <h2 style={cardTitle}>Livreurs disponibles ({availDrivers.length})</h2>
         {availDrivers.length === 0 ? (
-          <div style={{ color: 'var(--text-muted)', fontSize: 13 }}>Aucun driver en ligne.</div>
+          <div style={{ color: 'var(--text-muted)', fontSize: 13 }}>Aucun livreur en ligne.</div>
         ) : (
           <table style={tableStyle}>
             <thead>

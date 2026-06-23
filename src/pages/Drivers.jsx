@@ -401,7 +401,7 @@ export default function Drivers() {
   return (
     <div style={pageWrap}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24, flexShrink: 0 }}>
-        <h1 style={{ fontSize: 22, fontWeight: 700 }}>Drivers</h1>
+        <h1 style={{ fontSize: 22, fontWeight: 700 }}>Livreurs</h1>
         <div style={{ display: 'flex', gap: 8 }}>
           <button onClick={() => { fetch(); fetchPhoneRequests() }} style={btnOutline}>
             <RefreshCw size={14} /> Actualiser
@@ -439,7 +439,7 @@ export default function Drivers() {
               <table style={tableStyle}>
                 <thead>
                   <tr>
-                    {['Driver', 'Véhicule', 'Numéro actuel', '', 'Nouveau numéro', 'Actions'].map(h => (
+                    {['Livreur', 'Véhicule', 'Numéro actuel', '', 'Nouveau numéro', 'Actions'].map(h => (
                       <th key={h} style={thStyle}>{h}</th>
                     ))}
                   </tr>
@@ -495,7 +495,7 @@ export default function Drivers() {
 
       {/* ── Liste complète drivers ── */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 12, flexWrap: 'wrap', flexShrink: 0 }}>
-        <h2 style={{ fontSize: 15, fontWeight: 700 }}>Tous les drivers</h2>
+        <h2 style={{ fontSize: 15, fontWeight: 700 }}>Tous les livreurs</h2>
         <div style={{ display: 'flex', gap: 6, marginLeft: 'auto' }}>
           {[
             ['all',         'Tous'],

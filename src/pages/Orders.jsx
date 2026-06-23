@@ -107,7 +107,7 @@ export default function Orders() {
           <table style={tableStyle}>
             <thead>
               <tr>
-                {['ID', 'Type', 'Statut', 'Client', 'Driver', 'Prix', 'Paiement', 'Date'].map((h, i) => (
+                {['ID', 'Type', 'Statut', 'Client', 'Livreur', 'Prix', 'Paiement', 'Date'].map((h, i) => (
                   <th key={h} style={{ ...thStyle, ...(i === 0 ? stickyThCol : stickyTh) }}>{h}</th>
                 ))}
               </tr>
@@ -148,7 +148,7 @@ export default function Orders() {
               <Row label="Statut"        value={<Badge status={detail.status} />} />
               <Row label="Paiement"      value={<Badge status={detail.paymentStatus ?? 'PENDING'} />} />
               <Row label="Client"        value={detail.client?.name ?? detail.client?.phone} />
-              <Row label="Driver"        value={detail.driver?.name ?? '—'} />
+              <Row label="Livreur"       value={detail.driver?.name ?? '—'} />
               <Row label="Prix"          value={`${detail.price?.toLocaleString()} F`} />
               <Row label="Départ"        value={detail.pickupAddress} />
               <Row label="Arrivée"       value={detail.deliveryAddress} />

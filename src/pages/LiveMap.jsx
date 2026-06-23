@@ -115,7 +115,7 @@ export default function LiveMap() {
         </div>
         <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
           {[
-            ['Drivers', showDrivers, setShowDrivers, '#6366f1'],
+            ['Livreurs', showDrivers, setShowDrivers, '#6366f1'],
             ['Courses', showOrders,  setShowOrders,  '#f59e0b'],
             ['Trajets', showRoutes,  setShowRoutes,  '#38bdf8'],
           ].map(([label, active, setter, color]) => (
@@ -173,7 +173,7 @@ export default function LiveMap() {
                 <Marker key={d.id} position={[d.latitude, d.longitude]} icon={DRIVER_ICON}>
                   <Popup>
                     <div style={{ minWidth: 160 }}>
-                      <strong>{d.name ?? 'Driver'}</strong><br />
+                      <strong>{d.name ?? 'Livreur'}</strong><br />
                       <span style={{ color: '#666', fontSize: 12 }}>{d.phone}</span><br />
                       <span style={{ fontSize: 12 }}>{d.vehicleType ?? '—'}</span>
                     </div>
@@ -205,7 +205,7 @@ export default function LiveMap() {
                       <div style={{ minWidth: 180 }}>
                         <strong>Livraison</strong><br />
                         <span style={{ fontSize: 12, color: '#666' }}>{o.deliveryAddress}</span><br />
-                        {o.driver && <span style={{ fontSize: 12 }}>Driver : {o.driver.name}</span>}
+                        {o.driver && <span style={{ fontSize: 12 }}>Livreur : {o.driver.name}</span>}
                       </div>
                     </Popup>
                   </Marker>

@@ -253,7 +253,7 @@ function ForfaitTab({ notify }) {
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12 }}>
         <StatBox label="Total dû" value={`${totalOwed.toLocaleString()} F`} color={totalOwed > 0 ? '#ef4444' : '#22c55e'} />
         <StatBox label="Enregistrements" value={records} />
-        <StatBox label="Drivers concernés" value={drivers} />
+        <StatBox label="Livreurs concernés" value={drivers} />
       </div>
 
       {/* Déclenchement manuel */}
@@ -495,7 +495,7 @@ function AmbassadeursTab() {
       {/* Stats globales */}
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12 }}>
         <StatBox label="Chefs de flotte actifs"  value={ambassadors.length}           color="#B8860B" />
-        <StatBox label="Drivers recrutés"        value={totalDrivers}                 color="var(--primary)" />
+        <StatBox label="Livreurs recrutés"        value={totalDrivers}                 color="var(--primary)" />
         <StatBox label="Courses livrées (réseau)" value={totalDelivered.toLocaleString()} color="var(--success)" />
       </div>
 
@@ -567,14 +567,14 @@ function AmbassadeursTab() {
             {/* Tableau des drivers filleuls */}
             {isOpen && (
               <div style={{ marginTop: 16, borderTop: '1px solid rgba(0,0,0,.06)', paddingTop: 14 }}>
-                <Label>Drivers recrutés par {a.name}</Label>
+                <Label>Livreurs recrutés par {a.name}</Label>
                 {drivers.length === 0 ? (
-                  <div style={{ color: 'var(--text-muted)', fontSize: 13 }}>Aucun driver recruté pour l'instant.</div>
+                  <div style={{ color: 'var(--text-muted)', fontSize: 13 }}>Aucun livreur recruté pour l'instant.</div>
                 ) : (
                   <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
                     <thead>
                       <tr>
-                        {['Driver', 'Véhicule', 'Statut', 'Courses livrées', 'Rejoint le'].map(h => (
+                        {['Livreur', 'Véhicule', 'Statut', 'Courses livrées', 'Rejoint le'].map(h => (
                           <th key={h} style={{ textAlign: 'left', padding: '6px 8px', color: 'var(--text-muted)', fontSize: 11, fontWeight: 700, borderBottom: '1px solid rgba(0,0,0,.07)' }}>
                             {h}
                           </th>

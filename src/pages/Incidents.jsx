@@ -179,7 +179,7 @@ export default function Incidents() {
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
             <thead>
               <tr>
-                {['Sévérité', 'Type', 'Statut', 'Order ID', 'Driver', 'Hors-ligne', 'Ouvert le', 'Notes'].map(h => (
+                {['Sévérité', 'Type', 'Statut', 'Order ID', 'Livreur', 'Hors-ligne', 'Ouvert le', 'Notes'].map(h => (
                   <th key={h} style={{ ...thStyle, ...stickyTh }}>{h}</th>
                 ))}
               </tr>
@@ -228,7 +228,7 @@ export default function Incidents() {
             {/* Infos */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8, fontSize: 13, marginBottom: 20 }}>
               <Row label="Commande"   value={<code>{detail.orderId ?? '—'}</code>} />
-              <Row label="Driver"     value={detail.driverName  ?? '—'} />
+              <Row label="Livreur"    value={detail.driverName  ?? '—'} />
               <Row label="Téléphone"  value={detail.driverPhone ? <a href={`tel:${detail.driverPhone}`} style={{ color: '#0077b6' }}>{detail.driverPhone}</a> : '—'} />
               <Row label="Hors-ligne" value={detail.offlineMin != null ? `${detail.offlineMin} min` : '—'} />
               <Row label="Ouvert le"  value={new Date(detail.openedAt).toLocaleString('fr-FR')} />
