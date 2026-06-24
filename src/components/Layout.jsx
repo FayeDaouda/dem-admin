@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { NavLink, useNavigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import {
-  LayoutDashboard, CreditCard, Package, Users, LogOut, Bike, Map, Menu, X, ShieldCheck, AlertTriangle, ScrollText, UserCog, Briefcase, Headphones, UsersRound, SlidersHorizontal,
+  LayoutDashboard, CreditCard, Package, Users, LogOut, Bike, Map, Menu, X, TrendingUp, ShieldCheck, AlertTriangle, ScrollText, UserCog, Briefcase, Headphones, UsersRound, SlidersHorizontal,
 } from 'lucide-react'
 import logoSrc from '../assets/logo-dem.svg'
 import { useResponsive } from '../lib/useResponsive'
@@ -22,6 +22,7 @@ const NAV = [
   { to: '/service-client',   icon: Headphones,      label: 'Service client',  roles: ['SUPER','SERVICE_CLIENT'] },
   { to: '/audit',            icon: ScrollText,       label: 'Audit',          roles: ['SUPER','DEV'] },
   { to: '/incidents',        icon: AlertTriangle,    label: 'Incidents',      roles: ['SUPER','DEV','SERVICE_CLIENT'] },
+  { to: '/acquisition',     icon: TrendingUp,       label: 'Acquisition',    roles: ['SUPER','MARKETING'] },
   { to: '/equipes',          icon: UsersRound,       label: 'Equipes',        roles: ['SUPER'] },
 ]
 
