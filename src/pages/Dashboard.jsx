@@ -56,38 +56,39 @@ function StatCard({ icon: Icon, label, value, sub, color = 'var(--primary)', tre
       onClick={onClick}
       style={{
         ...glass,
-        padding: '16px 18px',
+        padding: '14px 14px 10px',
         display: 'flex',
         flexDirection: 'column',
-        gap: 10,
+        gap: 6,
         cursor: onClick ? 'pointer' : 'default',
         transition: 'all .2s',
         position: 'relative',
         overflow: 'hidden',
+        minHeight: 110,
       }}
-      onMouseEnter={e => { if (onClick) e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = '0 12px 40px rgba(0,119,182,0.18)' }}
+      onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = '0 12px 40px rgba(0,119,182,0.18)' }}
       onMouseLeave={e => { e.currentTarget.style.transform = 'none'; e.currentTarget.style.boxShadow = '' }}
     >
-      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <div style={{
-          width: 38, height: 38,
-          borderRadius: 10,
+          width: 32, height: 32,
+          borderRadius: 8,
           background: color + '18',
           display: 'flex', alignItems: 'center', justifyContent: 'center',
           flexShrink: 0,
         }}>
-          <Icon size={18} color={color} />
+          <Icon size={15} color={color} />
         </div>
         {trend}
       </div>
-      <div>
-        <div style={{ fontSize: 24, fontWeight: 800, lineHeight: 1.1, color: 'var(--text)' }}>{value}</div>
-        <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 3, fontWeight: 500 }}>{label}</div>
-        {sub && <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>{sub}</div>}
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+        <div style={{ fontSize: 20, fontWeight: 800, lineHeight: 1.1, color: 'var(--text)' }}>{value}</div>
+        <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2, fontWeight: 500, lineHeight: 1.2 }}>{label}</div>
+        {sub && <div style={{ fontSize: 10, color: 'var(--text-muted)', marginTop: 1 }}>{sub}</div>}
       </div>
       {sparkData && sparkKey && (
-        <div style={{ marginTop: 'auto', marginLeft: -18, marginRight: -18, marginBottom: -16 }}>
-          <MiniSparkline data={sparkData} dataKey={sparkKey} color={color} />
+        <div style={{ marginLeft: -14, marginRight: -14, marginBottom: -10 }}>
+          <MiniSparkline data={sparkData} dataKey={sparkKey} color={color} height={28} />
         </div>
       )}
     </div>
@@ -110,6 +111,98 @@ const STATUS_PIE = [
   { key: 'cancelled',     label: 'Annulées',    color: '#ef4444' },
 ]
 
+const PERIODS = [
+  { key: '7d',  label: '7 jours',  days: 7 },
+  { key: '30d', label: '30 jours', days: 30 },
+  { key: '6m',  label: '6 mois',   days: 180 },
+  { key: '1y',  label: '1 an',     days: 365 },
+]
+
+function KpiModal({ kpi, onClose }) {
+  const [period, setPeriod] = useState('30d')
+  const [data, setData]     = useState([])
+  const [mLoading, setMLoading] = useState(true)
+
+  const days = PERIODS.find(p => p.key === period)?.days ?? 30
+
+  useEffect(() => {
+    setMLoading(true)
+    api.get(`/admin/stats/timeseries?days=${days}`)
+      .then(r => {
+        setData(r.data.map(d => ({
+          ...d,
+          dateLabel: new Date(d.date + 'T00:00:00').toLocaleDateString('fr-FR', days <= 30 ? { day: 'numeric', month: 'short' } : { month: 'short', year: '2-digit' }),
+        })))
+      })
+      .catch(() => {})
+      .finally(() => setMLoading(false))
+  }, [days])
+
+  const total  = data.reduce((s, d) => s + (d[kpi.dataKey] ?? 0), 0)
+  const avg    = data.length > 0 ? Math.round(total / data.length) : 0
+  const max    = data.reduce((m, d) => Math.max(m, d[kpi.dataKey] ?? 0), 0)
+  const isMoney = kpi.unit === 'F'
+
+  const fmt = (v) => isMoney ? `${v.toLocaleString()} F` : v.toLocaleString()
+
+  return (
+    <div style={modalOverlay} onClick={onClose}>
+      <div style={{ ...glass, width: 680, maxWidth: '95vw', padding: 0, borderRadius: 16, overflow: 'hidden', maxHeight: '90vh', display: 'flex', flexDirection: 'column' }} onClick={e => e.stopPropagation()}>
+        <div style={{ padding: '20px 24px 16px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            <div style={{ width: 36, height: 36, borderRadius: 10, background: kpi.color + '18', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <kpi.icon size={18} color={kpi.color} />
+            </div>
+            <h2 style={{ fontSize: 16, fontWeight: 700, margin: 0 }}>{kpi.title}</h2>
+          </div>
+          <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', fontSize: 20 }}>✕</button>
+        </div>
+
+        <div style={{ padding: '16px 24px', overflowY: 'auto', flex: 1 }}>
+          {/* Filtres période */}
+          <div style={{ display: 'flex', gap: 6, marginBottom: 20 }}>
+            {PERIODS.map(p => (
+              <button key={p.key} onClick={() => setPeriod(p.key)} style={{
+                padding: '6px 16px', borderRadius: 20, fontSize: 12, fontWeight: 600, cursor: 'pointer',
+                border: period === p.key ? 'none' : '1px solid var(--border)',
+                background: period === p.key ? kpi.color : 'transparent',
+                color: period === p.key ? '#fff' : 'var(--text-muted)',
+                transition: 'all .15s',
+              }}>
+                {p.label}
+              </button>
+            ))}
+          </div>
+
+          {/* KPIs résumé */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 12, marginBottom: 20 }}>
+            {[['Total', total], ['Moyenne / jour', avg], ['Max journalier', max]].map(([label, val]) => (
+              <div key={label} style={{ background: 'var(--surface2)', borderRadius: 10, padding: '14px 16px', borderLeft: `3px solid ${kpi.color}` }}>
+                <div style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 600 }}>{label}</div>
+                <div style={{ fontSize: 20, fontWeight: 800, color: kpi.color, marginTop: 4 }}>{fmt(val)}</div>
+              </div>
+            ))}
+          </div>
+
+          {/* Graphique */}
+          {mLoading ? (
+            <div style={{ color: 'var(--text-muted)', textAlign: 'center', padding: 40 }}>Chargement...</div>
+          ) : (
+            <ResponsiveContainer width="100%" height={240}>
+              <BarChart data={data} margin={{ top: 0, right: 0, left: -10, bottom: 0 }}>
+                <XAxis dataKey="dateLabel" tick={{ fontSize: 10, fill: 'var(--text-muted)' }} axisLine={false} tickLine={false} interval={days > 60 ? Math.floor(days / 12) : 0} />
+                <YAxis tick={{ fontSize: 10, fill: 'var(--text-muted)' }} axisLine={false} tickLine={false} allowDecimals={false} />
+                <Tooltip contentStyle={TOOLTIP_STYLE} formatter={(v) => [fmt(v), kpi.title]} />
+                <Bar dataKey={kpi.dataKey} fill={kpi.color} radius={[3, 3, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}
+
 export default function Dashboard() {
   const [stats, setStats]       = useState(null)
   const [snapshot, setSnapshot] = useState(null)
@@ -117,6 +210,7 @@ export default function Dashboard() {
   const [events, setEvents]     = useState([])
   const [loading, setLoading]   = useState(true)
   const [health, setHealth]     = useState(null)
+  const [openKpi, setOpenKpi]   = useState(null)
 
   // Santé système — poll toutes les 30s indépendamment du reste
   useEffect(() => {
@@ -183,61 +277,43 @@ export default function Dashboard() {
   })).filter(d => d.value > 0) : []
 
   const { isMobile, isTablet } = useResponsive()
-  const statCols = isMobile ? 'repeat(2,1fr)' : isTablet ? 'repeat(3,1fr)' : 'repeat(4,1fr)'
   const chartCols = isMobile ? '1fr' : isTablet ? '1fr 1fr' : '1fr 1fr 300px'
   const livecols  = isMobile ? '1fr' : '1fr 320px'
 
   const todayTs    = timeseries[timeseries.length - 1]
   const yesterdayTs = timeseries[timeseries.length - 2]
 
+  const KPI_CARDS = [
+    { id: 'courses',    icon: Package,      color: '#0077b6', label: 'Total courses',    value: stats?.orders.total ?? 0,      title: 'Courses',          dataKey: 'orders',        unit: '', sparkKey: 'orders' },
+    { id: 'active',     icon: TrendingUp,   color: '#6366f1', label: 'En cours',         value: stats?.orders.active ?? 0,     title: 'Courses en cours', dataKey: 'orders',        unit: '' },
+    { id: 'pending',    icon: AlertTriangle, color: '#f59e0b', label: 'En attente',       value: stats?.orders.pending ?? 0,    title: 'Courses en attente', dataKey: 'orders',     unit: '' },
+    { id: 'drivers',    icon: Bike,         color: '#22c55e', label: 'Livreurs dispo',    value: stats?.drivers.available ?? 0, title: 'Livreurs',         dataKey: 'delivered',     unit: '', sub: `/ ${stats?.drivers.total ?? 0}` },
+    { id: 'clients',    icon: Users,        color: '#a78bfa', label: 'Clients',           value: stats?.clients.total ?? 0,     title: 'Clients',          dataKey: 'orders',        unit: '' },
+    { id: 'revDriver',  icon: CreditCard,   color: '#22c55e', label: 'Rev. livreurs',     value: `${(stats?.revenue?.driver?.today ?? 0).toLocaleString()} F`, title: 'Revenus livreurs', dataKey: 'driverRevenue', unit: 'F', sub: `Total ${((stats?.revenue?.driver?.total ?? 0) / 1000).toFixed(0)}k`, sparkKey: 'driverRevenue' },
+    { id: 'revDem',     icon: CreditCard,   color: '#f59e0b', label: 'Frais DEM',         value: `${(stats?.revenue?.dem?.today ?? 0).toLocaleString()} F`,    title: 'Frais DEM',        dataKey: 'demRevenue',    unit: 'F', sub: `Total ${((stats?.revenue?.dem?.total ?? 0) / 1000).toFixed(0)}k`, sparkKey: 'demRevenue' },
+  ]
+
   return (
     <div>
       <h1 style={{ fontSize: isMobile ? 18 : 22, fontWeight: 700, marginBottom: isMobile ? 16 : 24 }}>Dashboard</h1>
 
-      {/* ── Stat cards — row 1 ── */}
-      <div style={{ display: 'grid', gridTemplateColumns: statCols, gap: isMobile ? 8 : 12, marginBottom: isMobile ? 8 : 12 }}>
-        <StatCard
-          icon={Package} color="var(--primary)"
-          label="Total courses" value={loading ? '…' : stats?.orders.total ?? 0}
-          sparkData={timeseries} sparkKey="orders"
-          trend={<TrendBadge current={todayTs?.orders} previous={yesterdayTs?.orders} />}
-        />
-        <StatCard
-          icon={TrendingUp} color="#6366f1"
-          label="En cours" value={loading ? '…' : stats?.orders.active ?? 0}
-        />
-        <StatCard
-          icon={AlertTriangle} color="#f59e0b"
-          label="En attente" value={loading ? '…' : stats?.orders.pending ?? 0}
-        />
-        <StatCard
-          icon={Bike} color="#22c55e"
-          label="Livreurs disponibles" value={loading ? '…' : stats?.drivers.available ?? 0}
-          sub={`sur ${stats?.drivers.total ?? 0} inscrits`}
-        />
+      {/* ── 7 KPI cards — une seule ligne ── */}
+      <div style={{ display: 'grid', gridTemplateColumns: isMobile ? 'repeat(2,1fr)' : isTablet ? 'repeat(4,1fr)' : 'repeat(7,1fr)', gap: isMobile ? 8 : 10, marginBottom: isMobile ? 16 : 24 }}>
+        {KPI_CARDS.map(k => (
+          <StatCard
+            key={k.id}
+            icon={k.icon} color={k.color}
+            label={k.label} value={loading ? '…' : k.value}
+            sub={k.sub}
+            sparkData={k.sparkKey ? timeseries : null} sparkKey={k.sparkKey}
+            trend={k.sparkKey ? <TrendBadge current={todayTs?.[k.sparkKey]} previous={yesterdayTs?.[k.sparkKey]} /> : null}
+            onClick={() => setOpenKpi(k)}
+          />
+        ))}
       </div>
 
-      {/* ── Stat cards — row 2 ── */}
-      <div style={{ display: 'grid', gridTemplateColumns: isMobile ? 'repeat(2,1fr)' : 'repeat(3,1fr)', gap: isMobile ? 8 : 12, marginBottom: isMobile ? 16 : 24 }}>
-        <StatCard
-          icon={Users} color="#a78bfa"
-          label="Clients inscrits" value={loading ? '…' : stats?.clients.total ?? 0}
-        />
-        <StatCard
-          icon={CreditCard} color="#22c55e"
-          label="Revenus livreurs (jour)" value={loading ? '…' : `${(stats?.revenue?.driver?.today ?? 0).toLocaleString()} F`}
-          sub={`Cumul : ${((stats?.revenue?.driver?.total ?? 0) / 1000).toFixed(0)}k F`}
-          sparkData={timeseries} sparkKey="driverRevenue"
-          trend={<TrendBadge current={todayTs?.driverRevenue} previous={yesterdayTs?.driverRevenue} />}
-        />
-        <StatCard
-          icon={CreditCard} color="#f59e0b"
-          label="Frais DEM (jour)" value={loading ? '…' : `${(stats?.revenue?.dem?.today ?? 0).toLocaleString()} F`}
-          sub={`Cumul : ${((stats?.revenue?.dem?.total ?? 0) / 1000).toFixed(0)}k F`}
-          sparkData={timeseries} sparkKey="demRevenue"
-          trend={<TrendBadge current={todayTs?.demRevenue} previous={yesterdayTs?.demRevenue} />}
-        />
-      </div>
+      {/* Modal détail KPI */}
+      {openKpi && <KpiModal kpi={openKpi} onClose={() => setOpenKpi(null)} />}
 
       {/* ── Charts row ── */}
       <div style={{ display: 'grid', gridTemplateColumns: chartCols, gap: isMobile ? 10 : 16, marginBottom: isMobile ? 12 : 20 }}>
@@ -453,3 +529,4 @@ const cardTitle  = { fontSize: 14, fontWeight: 600, marginBottom: 14 }
 const tableStyle = { width: '100%', borderCollapse: 'collapse' }
 const thStyle    = { textAlign: 'left', padding: '6px 8px', color: 'var(--text-muted)', fontSize: 11, fontWeight: 600, borderBottom: '1px solid var(--border)' }
 const tdStyle    = { padding: '9px 8px', verticalAlign: 'middle', fontSize: 13 }
+const modalOverlay = { position: 'fixed', inset: 0, background: 'rgba(0,40,80,0.45)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 300 }
