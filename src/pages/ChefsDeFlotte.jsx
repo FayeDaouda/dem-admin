@@ -96,6 +96,37 @@ function chefStatusInfo(c) {
 }
 
 // ── Page principale ───────────────────────────────────────────────────────────
+function NetworkStats() {
+  const [data, setData] = useState(null)
+
+  useEffect(() => {
+    api.get('/admin/ambassadors')
+      .then(r => setData(r.data))
+      .catch(() => {})
+  }, [])
+
+  if (!data) return null
+
+  const ambassadors = data.ambassadors ?? []
+  const totalDrivers   = ambassadors.reduce((s, a) => s + a.referredCount, 0)
+  const totalDelivered = ambassadors.reduce((s, a) => s + a.totalDelivered, 0)
+
+  return (
+    <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginBottom: 20 }}>
+      {[
+        { label: 'Chefs actifs', value: ambassadors.length, color: '#B8860B' },
+        { label: 'Livreurs recrutes', value: totalDrivers, color: 'var(--primary)' },
+        { label: 'Courses livrees (reseau)', value: totalDelivered.toLocaleString(), color: 'var(--success)' },
+      ].map(s => (
+        <div key={s.label} style={{ ...glass, padding: '14px 18px', flex: '1 1 160px' }}>
+          <div style={{ fontSize: 10, color: 'var(--text-muted)', fontWeight: 700, letterSpacing: '.5px', marginBottom: 4 }}>{s.label}</div>
+          <div style={{ fontSize: 22, fontWeight: 800, color: s.color }}>{s.value}</div>
+        </div>
+      ))}
+    </div>
+  )
+}
+
 export default function ChefsDeFlotte() {
   const navigate = useNavigate()
   const [chefs, setChefs]       = useState([])
@@ -172,6 +203,8 @@ export default function ChefsDeFlotte() {
           <button onClick={() => setFormTarget({})} style={btnPrimary}><Plus size={14} /> Nouveau</button>
         </div>
       </div>
+
+      <NetworkStats />
 
       {/* Filtres statut */}
       <div style={{ display: 'flex', gap: 6, marginBottom: 16, flexWrap: 'wrap', flexShrink: 0 }}>

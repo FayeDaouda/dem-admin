@@ -42,9 +42,8 @@ const TAB_STYLE = (active) => ({
 })
 
 const TABS = [
-  { id: 'forfait',        label: 'Forfait',          icon: Zap },
+  { id: 'forfait',        label: 'Pass',             icon: Zap },
   { id: 'clients',        label: '100 Clients',      icon: Users },
-  { id: 'ambassadeurs',   label: 'Chefs de flotte',  icon: Award },
   { id: 'fees',           label: 'Frais',            icon: DollarSign },
 ]
 
@@ -106,9 +105,8 @@ export default function Acquisition() {
       </div>
 
       <div style={pageScroll}>
-        {tab === 'forfait'        && <ForfaitTab notify={notify} />}
+        {tab === 'forfait'        && <PassTab notify={notify} />}
         {tab === 'clients'        && <ClientsTab notify={notify} />}
-        {tab === 'ambassadeurs'   && <AmbassadeursTab />}
         {tab === 'fees'           && <FeesTab />}
       </div>
 
@@ -117,8 +115,8 @@ export default function Acquisition() {
   )
 }
 
-// ── Tab Forfait ───────────────────────────────────────────────────────────────
-function ForfaitTab({ notify }) {
+// ── Tab Pass ───────────────────────────────────────────────────────────────
+function PassTab({ notify }) {
   const [data,    setData]    = useState(null)
   const [loading, setLoading] = useState(true)
   const [amount,  setAmount]  = useState('')
@@ -149,7 +147,7 @@ function ForfaitTab({ notify }) {
   async function toggleActive() {
     try {
       await api.put('/admin/forfait/config', { active: !data.active })
-      notify(data.active ? 'Forfait désactivé' : 'Forfait activé ✓', !data.active)
+      notify(data.active ? 'Pass désactivé' : 'Pass activé ✓', !data.active)
       load()
     } catch (e) { notify(e.response?.data?.message ?? 'Erreur', false) }
   }
@@ -166,7 +164,7 @@ function ForfaitTab({ notify }) {
     setSaving(false)
   }
 
-  async function processForfait() {
+  async function processPass() {
     if (!window.confirm('Déclencher le prélèvement du jour pour tous les livreurs actifs ?')) return
     setProcessing(true)
     try {
@@ -257,7 +255,7 @@ function ForfaitTab({ notify }) {
           Le prélèvement automatique se fait à minuit (Dakar). Utilisez ce bouton en cas d'urgence ou de test.
         </p>
         <button
-          onClick={processForfait}
+          onClick={processPass}
           disabled={processing || !active}
           style={{
             display: 'flex', alignItems: 'center', gap: 8,
