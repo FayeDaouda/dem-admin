@@ -1,38 +1,95 @@
 import { useState, useEffect, useCallback } from 'react'
 import {
-  BarChart, Bar, LineChart, Line, PieChart, Pie, Cell,
+  BarChart, Bar, LineChart, Line, PieChart, Pie, Cell, AreaChart, Area,
   XAxis, YAxis, Tooltip, ResponsiveContainer, Legend,
 } from 'recharts'
 import { connectSocket, disconnectSocket } from '../lib/socket'
 import api from '../lib/api'
 import Badge from '../components/Badge'
-import { Package, Bike, AlertTriangle, TrendingUp, Users, CreditCard, Activity, Wifi } from 'lucide-react'
+import { Package, Bike, AlertTriangle, TrendingUp, Users, CreditCard, Activity, Wifi, ArrowUpRight, ArrowDownRight, Minus } from 'lucide-react'
 import { glass } from '../lib/glassStyles'
 import { useResponsive } from '../lib/useResponsive'
 
-function StatCard({ icon: Icon, label, value, sub, color = 'var(--primary)' }) {
+function TrendBadge({ current, previous }) {
+  if (previous == null || previous === 0) return null
+  const pct = Math.round(((current - previous) / previous) * 100)
+  if (pct === 0) return (
+    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 2, fontSize: 10, fontWeight: 700, color: '#94a3b8', background: '#94a3b818', padding: '1px 6px', borderRadius: 8 }}>
+      <Minus size={10} /> 0%
+    </span>
+  )
+  const up = pct > 0
   return (
-    <div style={{
-      ...glass,
-      padding: '18px 20px',
-      display: 'flex',
-      alignItems: 'center',
-      gap: 14,
+    <span style={{
+      display: 'inline-flex', alignItems: 'center', gap: 2,
+      fontSize: 10, fontWeight: 700,
+      color: up ? '#22c55e' : '#ef4444',
+      background: up ? '#22c55e14' : '#ef444414',
+      padding: '1px 6px', borderRadius: 8,
     }}>
-      <div style={{
-        width: 42, height: 42,
-        borderRadius: 'var(--radius-sm)',
-        background: color + '22',
-        display: 'flex', alignItems: 'center', justifyContent: 'center',
-        flexShrink: 0,
-      }}>
-        <Icon size={18} color={color} />
+      {up ? <ArrowUpRight size={10} /> : <ArrowDownRight size={10} />}
+      {up ? '+' : ''}{pct}%
+    </span>
+  )
+}
+
+function MiniSparkline({ data, dataKey, color, height = 32 }) {
+  if (!data || data.length < 2) return null
+  return (
+    <ResponsiveContainer width="100%" height={height}>
+      <AreaChart data={data} margin={{ top: 2, right: 0, left: 0, bottom: 0 }}>
+        <defs>
+          <linearGradient id={`grad-${dataKey}`} x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor={color} stopOpacity={0.3} />
+            <stop offset="100%" stopColor={color} stopOpacity={0} />
+          </linearGradient>
+        </defs>
+        <Area type="monotone" dataKey={dataKey} stroke={color} strokeWidth={1.5} fill={`url(#grad-${dataKey})`} dot={false} />
+      </AreaChart>
+    </ResponsiveContainer>
+  )
+}
+
+function StatCard({ icon: Icon, label, value, sub, color = 'var(--primary)', trend, sparkData, sparkKey, onClick }) {
+  return (
+    <div
+      onClick={onClick}
+      style={{
+        ...glass,
+        padding: '16px 18px',
+        display: 'flex',
+        flexDirection: 'column',
+        gap: 10,
+        cursor: onClick ? 'pointer' : 'default',
+        transition: 'all .2s',
+        position: 'relative',
+        overflow: 'hidden',
+      }}
+      onMouseEnter={e => { if (onClick) e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = '0 12px 40px rgba(0,119,182,0.18)' }}
+      onMouseLeave={e => { e.currentTarget.style.transform = 'none'; e.currentTarget.style.boxShadow = '' }}
+    >
+      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
+        <div style={{
+          width: 38, height: 38,
+          borderRadius: 10,
+          background: color + '18',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          flexShrink: 0,
+        }}>
+          <Icon size={18} color={color} />
+        </div>
+        {trend}
       </div>
       <div>
-        <div style={{ color: 'var(--text-muted)', fontSize: 12 }}>{label}</div>
-        <div style={{ fontSize: 22, fontWeight: 700, marginTop: 1 }}>{value}</div>
-        {sub && <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 1 }}>{sub}</div>}
+        <div style={{ fontSize: 24, fontWeight: 800, lineHeight: 1.1, color: 'var(--text)' }}>{value}</div>
+        <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 3, fontWeight: 500 }}>{label}</div>
+        {sub && <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>{sub}</div>}
       </div>
+      {sparkData && sparkKey && (
+        <div style={{ marginTop: 'auto', marginLeft: -18, marginRight: -18, marginBottom: -16 }}>
+          <MiniSparkline data={sparkData} dataKey={sparkKey} color={color} />
+        </div>
+      )}
     </div>
   )
 }
@@ -126,26 +183,60 @@ export default function Dashboard() {
   })).filter(d => d.value > 0) : []
 
   const { isMobile, isTablet } = useResponsive()
-  const statCols = isMobile ? 'repeat(2,1fr)' : isTablet ? 'repeat(3,1fr)' : 'repeat(7,1fr)'
+  const statCols = isMobile ? 'repeat(2,1fr)' : isTablet ? 'repeat(3,1fr)' : 'repeat(4,1fr)'
   const chartCols = isMobile ? '1fr' : isTablet ? '1fr 1fr' : '1fr 1fr 300px'
   const livecols  = isMobile ? '1fr' : '1fr 320px'
+
+  const todayTs    = timeseries[timeseries.length - 1]
+  const yesterdayTs = timeseries[timeseries.length - 2]
 
   return (
     <div>
       <h1 style={{ fontSize: isMobile ? 18 : 22, fontWeight: 700, marginBottom: isMobile ? 16 : 24 }}>Dashboard</h1>
 
-      {/* ── Stat cards ── */}
-      <div style={{ display: 'grid', gridTemplateColumns: statCols, gap: isMobile ? 8 : 12, marginBottom: isMobile ? 16 : 24 }}>
-        <StatCard icon={Package}      label="Total courses"     value={loading ? '…' : stats?.orders.total ?? 0}        color="var(--primary)" />
-        <StatCard icon={TrendingUp}   label="En cours"          value={loading ? '…' : stats?.orders.active ?? 0}       color="var(--info)" />
-        <StatCard icon={AlertTriangle}label="En attente"        value={loading ? '…' : stats?.orders.pending ?? 0}      color="var(--warning)" />
-        <StatCard icon={Bike}         label="Livreurs dispo"     value={loading ? '…' : stats?.drivers.available ?? 0}   color="var(--success)"
-                  sub={`/ ${stats?.drivers.total ?? 0} total`} />
-        <StatCard icon={Users}        label="Clients"           value={loading ? '…' : stats?.clients.total ?? 0}       color="#a78bfa" />
-        <StatCard icon={CreditCard}   label="Livreurs du jour"  value={loading ? '…' : `${(stats?.revenue?.driver?.today ?? 0).toLocaleString()} F`} color="var(--success)"
-                  sub={`Total : ${((stats?.revenue?.driver?.total ?? 0) / 1000).toFixed(0)}k F`} />
-        <StatCard icon={CreditCard}   label="Frais DEM du jour" value={loading ? '…' : `${(stats?.revenue?.dem?.today ?? 0).toLocaleString()} F`} color="var(--warning)"
-                  sub={`Total : ${((stats?.revenue?.dem?.total ?? 0) / 1000).toFixed(0)}k F`} />
+      {/* ── Stat cards — row 1 ── */}
+      <div style={{ display: 'grid', gridTemplateColumns: statCols, gap: isMobile ? 8 : 12, marginBottom: isMobile ? 8 : 12 }}>
+        <StatCard
+          icon={Package} color="var(--primary)"
+          label="Total courses" value={loading ? '…' : stats?.orders.total ?? 0}
+          sparkData={timeseries} sparkKey="orders"
+          trend={<TrendBadge current={todayTs?.orders} previous={yesterdayTs?.orders} />}
+        />
+        <StatCard
+          icon={TrendingUp} color="#6366f1"
+          label="En cours" value={loading ? '…' : stats?.orders.active ?? 0}
+        />
+        <StatCard
+          icon={AlertTriangle} color="#f59e0b"
+          label="En attente" value={loading ? '…' : stats?.orders.pending ?? 0}
+        />
+        <StatCard
+          icon={Bike} color="#22c55e"
+          label="Livreurs disponibles" value={loading ? '…' : stats?.drivers.available ?? 0}
+          sub={`sur ${stats?.drivers.total ?? 0} inscrits`}
+        />
+      </div>
+
+      {/* ── Stat cards — row 2 ── */}
+      <div style={{ display: 'grid', gridTemplateColumns: isMobile ? 'repeat(2,1fr)' : 'repeat(3,1fr)', gap: isMobile ? 8 : 12, marginBottom: isMobile ? 16 : 24 }}>
+        <StatCard
+          icon={Users} color="#a78bfa"
+          label="Clients inscrits" value={loading ? '…' : stats?.clients.total ?? 0}
+        />
+        <StatCard
+          icon={CreditCard} color="#22c55e"
+          label="Revenus livreurs (jour)" value={loading ? '…' : `${(stats?.revenue?.driver?.today ?? 0).toLocaleString()} F`}
+          sub={`Cumul : ${((stats?.revenue?.driver?.total ?? 0) / 1000).toFixed(0)}k F`}
+          sparkData={timeseries} sparkKey="driverRevenue"
+          trend={<TrendBadge current={todayTs?.driverRevenue} previous={yesterdayTs?.driverRevenue} />}
+        />
+        <StatCard
+          icon={CreditCard} color="#f59e0b"
+          label="Frais DEM (jour)" value={loading ? '…' : `${(stats?.revenue?.dem?.today ?? 0).toLocaleString()} F`}
+          sub={`Cumul : ${((stats?.revenue?.dem?.total ?? 0) / 1000).toFixed(0)}k F`}
+          sparkData={timeseries} sparkKey="demRevenue"
+          trend={<TrendBadge current={todayTs?.demRevenue} previous={yesterdayTs?.demRevenue} />}
+        />
       </div>
 
       {/* ── Charts row ── */}
