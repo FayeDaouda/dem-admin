@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import api from '../lib/api'
-import { RefreshCw, Eye, X, Plus, Pencil, Trash2, Search } from 'lucide-react'
+import { RefreshCw, Eye, X, Plus, Pencil, Trash2, Search, Phone, CheckCircle, XCircle } from 'lucide-react'
 import { glass, glassInput, pageWrap, pageScroll, stickyTh, stickyCol, stickyThCol } from '../lib/glassStyles'
 
 // ── Modal Créer / Modifier ────────────────────────────────────────────────────
@@ -174,6 +174,28 @@ export default function Clients() {
   const [hasOrders, setHasOrders]   = useState('')
   const [sortByCourses, setSortByCourses] = useState(false)
   const [page, setPage]             = useState(1)
+  const [phoneReqs, setPhoneReqs]   = useState([])
+  const [phoneLoading, setPhoneLoading] = useState(true)
+  const [resolving, setResolving]   = useState(null)
+
+  const fetchPhoneRequests = useCallback(async () => {
+    setPhoneLoading(true)
+    try {
+      const res = await api.get('/admin/clients/phone-requests')
+      setPhoneReqs(res.data?.requests ?? [])
+    } catch (e) { console.error(e) }
+    finally { setPhoneLoading(false) }
+  }, [])
+
+  async function resolvePhoneChange(clientId, approve) {
+    setResolving(clientId)
+    try {
+      await api.patch(`/admin/clients/${clientId}/phone-change`, { approve })
+      await fetchPhoneRequests()
+    } catch (e) {
+      alert(e.response?.data?.message ?? 'Erreur')
+    } finally { setResolving(null) }
+  }
 
   const fetch = useCallback(async () => {
     setLoading(true)
@@ -194,7 +216,7 @@ export default function Clients() {
     }
   }, [page, search, status, period, hasOrders, sortByCourses])
 
-  useEffect(() => { fetch() }, [fetch])
+  useEffect(() => { fetch(); fetchPhoneRequests() }, [fetch, fetchPhoneRequests])
 
   const totalPages = Math.max(1, Math.ceil(total / LIMIT))
   const hasFilters = !!(search || status || period || hasOrders)
@@ -242,6 +264,65 @@ export default function Clients() {
           </button>
         </div>
       </div>
+
+      {/* ── Demandes changement de numéro ── */}
+      {(phoneLoading || phoneReqs.length > 0) && (
+        <div style={{ marginBottom: 24, flexShrink: 0 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+            <Phone size={16} color="var(--warning)" />
+            <h2 style={{ fontSize: 15, fontWeight: 700, color: 'var(--text)' }}>
+              Demandes de changement de numero
+            </h2>
+            {!phoneLoading && (
+              <span style={{ background: 'rgba(245,158,11,0.15)', color: '#F59E0B', fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 20 }}>
+                {phoneReqs.length}
+              </span>
+            )}
+          </div>
+          <div style={card}>
+            {phoneLoading ? (
+              <div style={{ color: 'var(--text-muted)', padding: 20 }}>Chargement...</div>
+            ) : (
+              <table style={tableStyle}>
+                <thead>
+                  <tr>
+                    {['Client', 'Numero actuel', '', 'Nouveau numero', 'Date', 'Actions'].map(h => (
+                      <th key={h} style={thStyle}>{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {phoneReqs.map(r => (
+                    <tr key={r.id} style={{ borderBottom: '1px solid var(--border)' }}>
+                      <td style={tdStyle}><span style={{ fontWeight: 600 }}>{r.name ?? '—'}</span></td>
+                      <td style={tdStyle}><span style={{ fontFamily: 'monospace', fontSize: 13 }}>{r.phone}</span></td>
+                      <td style={{ ...tdStyle, color: 'var(--text-muted)', fontSize: 18, textAlign: 'center' }}>→</td>
+                      <td style={tdStyle}><span style={{ fontFamily: 'monospace', fontSize: 13, color: 'var(--primary)', fontWeight: 600 }}>{r.pendingPhone ?? '—'}</span></td>
+                      <td style={{ ...tdStyle, fontSize: 12, color: 'var(--text-muted)' }}>
+                        {r.phoneChangeRequestedAt ? new Date(r.phoneChangeRequestedAt).toLocaleDateString('fr-FR') : '—'}
+                      </td>
+                      <td style={tdStyle}>
+                        {resolving === r.id ? (
+                          <span style={{ color: 'var(--text-muted)', fontSize: 12 }}>En cours...</span>
+                        ) : (
+                          <div style={{ display: 'flex', gap: 8 }}>
+                            <button onClick={() => resolvePhoneChange(r.id, true)} style={{ ...btnSmall, color: 'var(--success)', borderColor: 'var(--success)' }}>
+                              <CheckCircle size={13} /> Approuver
+                            </button>
+                            <button onClick={() => resolvePhoneChange(r.id, false)} style={{ ...btnSmall, color: 'var(--danger)', borderColor: 'var(--danger)' }}>
+                              <XCircle size={13} /> Refuser
+                            </button>
+                          </div>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* ── Recherche & filtres ── */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16, flexWrap: 'wrap', flexShrink: 0 }}>
