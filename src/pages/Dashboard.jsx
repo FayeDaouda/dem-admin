@@ -6,9 +6,10 @@ import {
 import { connectSocket, disconnectSocket } from '../lib/socket'
 import api from '../lib/api'
 import Badge from '../components/Badge'
-import { Package, Truck, AlertTriangle, TrendingUp, Users, CreditCard, Activity, Wifi } from 'lucide-react'
-import { glass } from '../lib/glassStyles'
+import { Package, Truck, AlertTriangle, TrendingUp, Users, CreditCard, Activity, Wifi, UserPlus, Trash2, Power, XCircle } from 'lucide-react'
+import { glass, glassInput } from '../lib/glassStyles'
 import { useResponsive } from '../lib/useResponsive'
+import { useAuth } from '../contexts/AuthContext'
 
 function StatCard({ icon: Icon, label, value, sub, color = 'var(--primary)' }) {
   return (
@@ -53,13 +54,35 @@ const STATUS_PIE = [
   { key: 'cancelled',     label: 'Annulées',    color: '#ef4444' },
 ]
 
+const ROLE_COLORS = {
+  SUPER: '#f59e0b', DEV: '#6366f1', FINANCE: '#22c55e', MARKETING: '#ec4899', SERVICE_CLIENT: '#06b6d4',
+}
+const ROLE_LABELS_MAP = {
+  SUPER: 'Super Admin', DEV: 'Dev', FINANCE: 'Finance', MARKETING: 'Marketing', SERVICE_CLIENT: 'Service Client',
+}
+
 export default function Dashboard() {
+  const { user: currentUser } = useAuth()
+  const isSuperAdmin = !currentUser?.adminRole || currentUser.adminRole === 'SUPER'
+
   const [stats, setStats]       = useState(null)
   const [snapshot, setSnapshot] = useState(null)
   const [timeseries, setTimeseries] = useState([])
   const [events, setEvents]     = useState([])
   const [loading, setLoading]   = useState(true)
   const [health, setHealth]     = useState(null)
+
+  // Gestion comptes admin (SUPER only)
+  const [admins, setAdmins]           = useState([])
+  const [adminsLoading, setAdminsLoading] = useState(false)
+  const [showCreateForm, setShowCreateForm] = useState(false)
+  const [createForm, setCreateForm]   = useState({ name: '', email: '', phone: '', password: '', adminRole: 'SERVICE_CLIENT' })
+  const [createError, setCreateError] = useState('')
+  const [createSaving, setCreateSaving] = useState(false)
+  const [editTarget, setEditTarget]   = useState(null)
+  const [editForm, setEditForm]       = useState({ name: '', email: '', phone: '', adminRole: '', resetPassword: '' })
+  const [editError, setEditError]     = useState('')
+  const [editSaving, setEditSaving]   = useState(false)
 
   // Santé système — poll toutes les 30s indépendamment du reste
   useEffect(() => {
@@ -115,6 +138,72 @@ export default function Dashboard() {
       disconnectSocket()
     }
   }, [fetchAll])
+
+  // ── Gestion admins (SUPER) ──
+  const fetchAdmins = useCallback(async () => {
+    if (!isSuperAdmin) return
+    setAdminsLoading(true)
+    try {
+      const res = await api.get('/admin/admins')
+      setAdmins(res.data?.admins ?? [])
+    } catch (e) { console.error(e) }
+    finally { setAdminsLoading(false) }
+  }, [isSuperAdmin])
+
+  useEffect(() => { fetchAdmins() }, [fetchAdmins])
+
+  async function handleCreateAdmin(e) {
+    e.preventDefault()
+    setCreateError('')
+    setCreateSaving(true)
+    try {
+      const payload = { ...createForm }
+      if (!payload.email) delete payload.email
+      if (!payload.phone) delete payload.phone
+      await api.post('/admin/auth/create', payload)
+      setShowCreateForm(false)
+      setCreateForm({ name: '', email: '', phone: '', password: '', adminRole: 'SERVICE_CLIENT' })
+      fetchAdmins()
+    } catch (e) {
+      setCreateError(e.response?.data?.message ?? 'Erreur.')
+    } finally { setCreateSaving(false) }
+  }
+
+  function openEditAdmin(admin) {
+    setEditTarget(admin)
+    setEditForm({ name: admin.name ?? '', email: admin.email ?? '', phone: admin.phone ?? '', adminRole: admin.adminRole ?? 'SUPER', resetPassword: '' })
+    setEditError('')
+  }
+
+  async function handleUpdateAdmin(e) {
+    e.preventDefault()
+    setEditError('')
+    setEditSaving(true)
+    try {
+      const payload = { ...editForm }
+      if (!payload.resetPassword) delete payload.resetPassword
+      await api.patch(`/admin/admins/${editTarget.id}`, payload)
+      setEditTarget(null)
+      fetchAdmins()
+    } catch (e) {
+      setEditError(e.response?.data?.message ?? 'Erreur.')
+    } finally { setEditSaving(false) }
+  }
+
+  async function handleDeleteAdmin(admin) {
+    if (!confirm(`Supprimer definitivement le compte de ${admin.name ?? admin.email ?? admin.phone} ?`)) return
+    try {
+      await api.delete(`/admin/admins/${admin.id}`)
+      fetchAdmins()
+    } catch (e) { alert(e.response?.data?.message ?? 'Erreur.') }
+  }
+
+  async function handleToggleAdmin(admin) {
+    try {
+      await api.patch(`/admin/admins/${admin.id}/toggle`)
+      fetchAdmins()
+    } catch (e) { alert(e.response?.data?.message ?? 'Erreur.') }
+  }
 
   const activeOrders = snapshot?.activeOrders   ?? []
   const availDrivers = snapshot?.availableDrivers ?? []
@@ -328,7 +417,7 @@ export default function Dashboard() {
         </div>
       )}
 
-      {/* Drivers disponibles */}
+      {/* Livreurs disponibles */}
       <div style={card}>
         <h2 style={cardTitle}>Livreurs disponibles ({availDrivers.length})</h2>
         {availDrivers.length === 0 ? (
@@ -353,6 +442,203 @@ export default function Dashboard() {
           </table>
         )}
       </div>
+
+      {/* ── Gestion comptes admin (SUPER uniquement) ── */}
+      {isSuperAdmin && (
+        <div style={{ ...card, marginTop: isMobile ? 12 : 20 }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
+            <h2 style={{ ...cardTitle, marginBottom: 0 }}>Comptes administrateurs</h2>
+            <button
+              onClick={() => setShowCreateForm(v => !v)}
+              style={{
+                display: 'flex', alignItems: 'center', gap: 6,
+                padding: '6px 14px', borderRadius: 8, border: 'none', cursor: 'pointer',
+                background: showCreateForm ? 'var(--surface2)' : 'var(--primary)',
+                color: showCreateForm ? 'var(--text-muted)' : '#fff',
+                fontSize: 12, fontWeight: 600,
+              }}
+            >
+              {showCreateForm ? <XCircle size={13} /> : <UserPlus size={13} />}
+              {showCreateForm ? 'Annuler' : 'Nouveau compte'}
+            </button>
+          </div>
+
+          {/* Formulaire creation */}
+          {showCreateForm && (
+            <form onSubmit={handleCreateAdmin} style={{
+              background: 'var(--surface2)', borderRadius: 12, padding: '18px 20px', marginBottom: 16,
+              display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: 12,
+            }}>
+              <div>
+                <label style={adminLabelStyle}>Nom *</label>
+                <input value={createForm.name} onChange={e => setCreateForm(f => ({ ...f, name: e.target.value }))} placeholder="Awa Diallo" required style={adminInputStyle} />
+              </div>
+              <div>
+                <label style={adminLabelStyle}>Role *</label>
+                <select value={createForm.adminRole} onChange={e => setCreateForm(f => ({ ...f, adminRole: e.target.value }))} style={adminInputStyle}>
+                  {Object.entries(ROLE_LABELS_MAP).map(([k, v]) => (
+                    <option key={k} value={k}>{v}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label style={adminLabelStyle}>Telephone</label>
+                <input type="tel" value={createForm.phone} onChange={e => setCreateForm(f => ({ ...f, phone: e.target.value }))} placeholder="+221 7X XXX XX XX" style={adminInputStyle} />
+              </div>
+              <div>
+                <label style={adminLabelStyle}>Email</label>
+                <input type="email" value={createForm.email} onChange={e => setCreateForm(f => ({ ...f, email: e.target.value }))} placeholder="nom@dem.sn" style={adminInputStyle} />
+              </div>
+              <div>
+                <label style={adminLabelStyle}>Mot de passe par defaut *</label>
+                <input type="text" value={createForm.password} onChange={e => setCreateForm(f => ({ ...f, password: e.target.value }))} placeholder="dem12345" required minLength={8} style={adminInputStyle} />
+              </div>
+              <div style={{ display: 'flex', alignItems: 'flex-end', gap: 8 }}>
+                <button type="submit" disabled={createSaving} style={{
+                  flex: 1, padding: '9px', borderRadius: 8, border: 'none',
+                  background: 'var(--primary)', color: '#fff', fontWeight: 600, fontSize: 13, cursor: 'pointer',
+                }}>
+                  {createSaving ? 'Creation...' : 'Creer le compte'}
+                </button>
+              </div>
+              {createError && (
+                <div style={{ gridColumn: '1 / -1', color: '#ef4444', fontSize: 12, background: '#ef444410', padding: '8px 12px', borderRadius: 6 }}>
+                  {createError}
+                </div>
+              )}
+            </form>
+          )}
+
+          {/* Liste des admins */}
+          {adminsLoading ? (
+            <div style={{ color: 'var(--text-muted)', fontSize: 13 }}>Chargement...</div>
+          ) : (
+            <table style={tableStyle}>
+              <thead>
+                <tr>
+                  {['Nom', 'Contact', 'Role', 'Statut', 'Cree le', 'Actions'].map(h => (
+                    <th key={h} style={thStyle}>{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {admins.map(a => {
+                  const isMe = a.id === currentUser?.id
+                  const roleColor = ROLE_COLORS[a.adminRole] ?? '#888'
+                  return (
+                    <tr key={a.id} style={{ borderBottom: '1px solid var(--border)', opacity: a.isActive ? 1 : 0.5 }}>
+                      <td style={tdStyle}>
+                        <div style={{ fontWeight: 600 }}>{a.name ?? '—'}</div>
+                        {isMe && <span style={{ fontSize: 10, color: 'var(--primary)', fontWeight: 700 }}>VOUS</span>}
+                      </td>
+                      <td style={tdStyle}>
+                        <div style={{ fontSize: 12 }}>{a.email ?? '—'}</div>
+                        <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>{a.phone ?? ''}</div>
+                      </td>
+                      <td style={tdStyle}>
+                        <span style={{
+                          fontSize: 11, fontWeight: 700, padding: '2px 10px', borderRadius: 10,
+                          background: roleColor + '18', color: roleColor,
+                        }}>
+                          {ROLE_LABELS_MAP[a.adminRole] ?? a.adminRole}
+                        </span>
+                      </td>
+                      <td style={tdStyle}>
+                        <span style={{
+                          fontSize: 11, fontWeight: 600,
+                          color: a.isActive ? '#22c55e' : '#ef4444',
+                        }}>
+                          {a.isActive ? 'Actif' : 'Desactive'}
+                        </span>
+                      </td>
+                      <td style={{ ...tdStyle, fontSize: 11, color: 'var(--text-muted)' }}>
+                        {a.createdAt ? new Date(a.createdAt).toLocaleDateString('fr-FR') : '—'}
+                      </td>
+                      <td style={tdStyle}>
+                        {!isMe && (
+                          <div style={{ display: 'flex', gap: 6 }}>
+                            <button
+                              onClick={() => openEditAdmin(a)}
+                              title="Modifier"
+                              style={adminActionBtn('#0077b6')}
+                            >
+                              Modifier
+                            </button>
+                            <button
+                              onClick={() => handleToggleAdmin(a)}
+                              title={a.isActive ? 'Desactiver' : 'Activer'}
+                              style={adminActionBtn(a.isActive ? '#f59e0b' : '#22c55e')}
+                            >
+                              <Power size={12} /> {a.isActive ? 'Desactiver' : 'Activer'}
+                            </button>
+                            <button
+                              onClick={() => handleDeleteAdmin(a)}
+                              title="Supprimer"
+                              style={adminActionBtn('#ef4444')}
+                            >
+                              <Trash2 size={12} />
+                            </button>
+                          </div>
+                        )}
+                      </td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+          )}
+        </div>
+      )}
+
+      {/* ── Modal modifier admin ── */}
+      {editTarget && (
+        <div style={adminOverlay} onClick={() => setEditTarget(null)}>
+          <div style={{ ...glass, padding: '28px 32px', width: 440, maxWidth: '94vw', borderRadius: 16 }} onClick={e => e.stopPropagation()}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
+              <h2 style={{ fontSize: 16, fontWeight: 700, margin: 0 }}>Modifier le compte</h2>
+              <button onClick={() => setEditTarget(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', display: 'flex' }}>
+                <XCircle size={18} />
+              </button>
+            </div>
+            <form onSubmit={handleUpdateAdmin} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+              <div>
+                <label style={adminLabelStyle}>Nom</label>
+                <input value={editForm.name} onChange={e => setEditForm(f => ({ ...f, name: e.target.value }))} style={adminInputStyle} />
+              </div>
+              <div>
+                <label style={adminLabelStyle}>Email</label>
+                <input type="email" value={editForm.email} onChange={e => setEditForm(f => ({ ...f, email: e.target.value }))} style={adminInputStyle} />
+              </div>
+              <div>
+                <label style={adminLabelStyle}>Telephone</label>
+                <input type="tel" value={editForm.phone} onChange={e => setEditForm(f => ({ ...f, phone: e.target.value }))} style={adminInputStyle} />
+              </div>
+              <div>
+                <label style={adminLabelStyle}>Role</label>
+                <select value={editForm.adminRole} onChange={e => setEditForm(f => ({ ...f, adminRole: e.target.value }))} style={adminInputStyle}>
+                  {Object.entries(ROLE_LABELS_MAP).map(([k, v]) => (
+                    <option key={k} value={k}>{v}</option>
+                  ))}
+                </select>
+              </div>
+              <div style={{ borderTop: '1px solid var(--border)', paddingTop: 12 }}>
+                <label style={adminLabelStyle}>Reinitialiser le mot de passe (optionnel)</label>
+                <input type="text" value={editForm.resetPassword} onChange={e => setEditForm(f => ({ ...f, resetPassword: e.target.value }))} placeholder="Laisser vide pour ne pas changer" style={adminInputStyle} />
+                <div style={{ fontSize: 10, color: 'var(--text-muted)', marginTop: 4 }}>
+                  L'utilisateur devra changer ce mot de passe a sa prochaine connexion.
+                </div>
+              </div>
+              {editError && <div style={{ color: '#ef4444', fontSize: 12, background: '#ef444410', padding: '8px 12px', borderRadius: 6 }}>{editError}</div>}
+              <div style={{ display: 'flex', gap: 10, marginTop: 4 }}>
+                <button type="button" onClick={() => setEditTarget(null)} style={{ flex: 1, padding: '10px', borderRadius: 8, border: '1px solid var(--border)', background: 'transparent', cursor: 'pointer', fontSize: 13 }}>Annuler</button>
+                <button type="submit" disabled={editSaving} style={{ flex: 1, padding: '10px', borderRadius: 8, border: 'none', background: 'var(--primary)', color: '#fff', fontWeight: 600, cursor: 'pointer', fontSize: 13 }}>
+                  {editSaving ? 'Mise a jour...' : 'Enregistrer'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
@@ -362,3 +648,7 @@ const cardTitle  = { fontSize: 14, fontWeight: 600, marginBottom: 14 }
 const tableStyle = { width: '100%', borderCollapse: 'collapse' }
 const thStyle    = { textAlign: 'left', padding: '6px 8px', color: 'var(--text-muted)', fontSize: 11, fontWeight: 600, borderBottom: '1px solid var(--border)' }
 const tdStyle    = { padding: '9px 8px', verticalAlign: 'middle', fontSize: 13 }
+const adminLabelStyle = { display: 'block', fontSize: 11, fontWeight: 600, color: 'var(--text-muted)', marginBottom: 4 }
+const adminInputStyle = { ...glassInput, padding: '8px 10px', fontSize: 13 }
+const adminActionBtn = (color) => ({ display: 'flex', alignItems: 'center', gap: 4, padding: '4px 10px', borderRadius: 6, fontSize: 11, fontWeight: 600, cursor: 'pointer', border: `1px solid ${color}`, background: 'transparent', color })
+const adminOverlay = { position: 'fixed', inset: 0, background: 'rgba(0,40,80,0.45)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 300 }

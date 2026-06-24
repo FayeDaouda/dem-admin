@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { NavLink, useNavigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import {
-  LayoutDashboard, CreditCard, Package, Users, Settings, LogOut, Truck, Map, Menu, X, TrendingUp, ShieldCheck, AlertTriangle, ScrollText, UserCog, Briefcase,
+  LayoutDashboard, CreditCard, Package, Users, Settings, LogOut, Truck, Map, Menu, X, TrendingUp, ShieldCheck, AlertTriangle, ScrollText, UserCog, Briefcase, Headphones,
 } from 'lucide-react'
 import logoSrc from '../assets/logo-dem.svg'
 import { useResponsive } from '../lib/useResponsive'
@@ -10,25 +10,27 @@ import { useResponsive } from '../lib/useResponsive'
 // roles: undefined = tous les rôles. Sinon tableau des rôles autorisés (SUPER bypass toujours).
 const NAV = [
   { to: '/',            icon: LayoutDashboard, label: 'Dashboard'   },
+  { to: '/service-client', icon: Headphones,   label: 'Service client', roles: ['SUPER','SERVICE_CLIENT'] },
   { to: '/map',         icon: Map,             label: 'Carte live',   roles: ['SUPER','DEV'] },
   { to: '/payments',    icon: CreditCard,      label: 'Paiements',    roles: ['SUPER','FINANCE'] },
-  { to: '/orders',      icon: Package,         label: 'Courses',      roles: ['SUPER','DEV','FINANCE'] },
+  { to: '/orders',      icon: Package,         label: 'Courses',      roles: ['SUPER','DEV','FINANCE','SERVICE_CLIENT'] },
   { to: '/drivers',          icon: Truck,     label: 'Livreurs',         roles: ['SUPER','DEV'] },
-  { to: '/clients',          icon: Users,     label: 'Clients',          roles: ['SUPER','DEV'] },
+  { to: '/clients',          icon: Users,     label: 'Clients',          roles: ['SUPER','DEV','SERVICE_CLIENT'] },
   { to: '/dem-pro',          icon: Briefcase, label: 'DEM Pro',          roles: ['SUPER'] },
   { to: '/chefs-de-flotte',  icon: UserCog,   label: 'Chefs de flotte',  roles: ['SUPER'] },
   { to: '/acquisition', icon: TrendingUp,      label: 'Acquisition',  roles: ['SUPER','MARKETING'] },
-  { to: '/incidents',   icon: AlertTriangle,   label: 'Incidents',    roles: ['SUPER','DEV'] },
+  { to: '/incidents',   icon: AlertTriangle,   label: 'Incidents',    roles: ['SUPER','DEV','SERVICE_CLIENT'] },
   { to: '/audit',       icon: ScrollText,      label: 'Audit',        roles: ['SUPER','DEV'] },
   { to: '/validation',  icon: ShieldCheck,     label: 'Validation',   roles: ['SUPER'] },
   { to: '/config',      icon: Settings,        label: 'Tarifs',       roles: ['SUPER','DEV'] },
 ]
 
 const ROLE_LABELS = {
-  SUPER:     { label: 'Super Admin',     color: '#f59e0b' },
-  DEV:       { label: 'Dev Admin',       color: '#6366f1' },
-  FINANCE:   { label: 'Finance Admin',   color: '#22c55e' },
-  MARKETING: { label: 'Marketing Admin', color: '#ec4899' },
+  SUPER:          { label: 'Super Admin',     color: '#f59e0b' },
+  DEV:            { label: 'Dev Admin',       color: '#6366f1' },
+  FINANCE:        { label: 'Finance Admin',   color: '#22c55e' },
+  MARKETING:      { label: 'Marketing Admin', color: '#ec4899' },
+  SERVICE_CLIENT: { label: 'Service Client',  color: '#06b6d4' },
 }
 
 function canSeeNav(item, adminRole) {
@@ -82,7 +84,7 @@ export default function Layout({ children }) {
         {collapsed ? (
           <img src={logoSrc} alt="DEM" style={{ width: 36, height: 36, objectFit: 'contain', borderRadius: 8 }} />
         ) : (
-          <img src={logoSrc} alt="DEM" style={{ width: 120, height: 'auto', display: 'block' }} />
+          <img src={logoSrc} alt="DEM" style={{ width: 80, height: 'auto', display: 'block' }} />
         )}
       </div>
 

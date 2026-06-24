@@ -7,7 +7,6 @@ import { glass, glassInput } from '../lib/glassStyles'
 // ── Helpers ───────────────────────────────────────────────────────────────────
 const CONFIG_META = {
   base_fare_delivery: { label: 'Tarif de base – Livraison (F)', description: 'Montant fixe ajouté à chaque commande DELIVERY' },
-  base_fare_ride:     { label: 'Tarif de base – Course (F)',    description: 'Montant fixe ajouté à chaque commande RIDE' },
   price_per_km:       { label: 'Prix par kilomètre (F)',        description: 'Montant facturé par km de distance haversine' },
 }
 
@@ -147,7 +146,7 @@ function TarifsTab() {
               </button>
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10, fontSize: 13 }}>
-              {['DELIVERY', 'RIDE'].map(type => {
+              {['DELIVERY'].map(type => {
                 const base     = parseFloat(draft[`base_fare_${type.toLowerCase()}`] ?? 500)
                 const perKm    = parseFloat(draft['price_per_km'] ?? 200)
                 const coursePx = Math.round(base + 5 * perKm)

@@ -16,6 +16,7 @@ import Audit        from './pages/Audit'
 import ChefsDeFlotte from './pages/ChefsDeFlotte'
 import ChefDetailPage from './pages/ChefDetailPage'
 import DemPro from './pages/DemPro'
+import ServiceClient from './pages/ServiceClient'
 
 const LiveMap     = lazy(() => import('./pages/LiveMap'))
 const FleetSection = lazy(() => import('./pages/fleet/FleetSection'))
@@ -43,6 +44,7 @@ function AppRoutes() {
     <Routes>
       <Route path="/login" element={user ? <Navigate to="/" replace /> : <Login />} />
       <Route path="/" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+      <Route path="/service-client" element={<ProtectedRoute><ServiceClient /></ProtectedRoute>} />
       <Route path="/map" element={<ProtectedRoute><LiveMap /></ProtectedRoute>} />
       <Route path="/payments" element={<ProtectedRoute><Payments /></ProtectedRoute>} />
       <Route path="/orders"   element={<ProtectedRoute><Orders /></ProtectedRoute>} />
