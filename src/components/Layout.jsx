@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { NavLink, useNavigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import {
-  LayoutDashboard, CreditCard, Package, Users, Settings, LogOut, Truck, Map, Menu, X, TrendingUp, ShieldCheck, AlertTriangle, ScrollText, UserCog, Briefcase, Headphones,
+  LayoutDashboard, CreditCard, Package, Users, Settings, LogOut, Truck, Map, Menu, X, TrendingUp, ShieldCheck, AlertTriangle, ScrollText, UserCog, Briefcase, Headphones, UsersRound,
 } from 'lucide-react'
 import logoSrc from '../assets/logo-dem.svg'
 import { useResponsive } from '../lib/useResponsive'
@@ -22,6 +22,7 @@ const NAV = [
   { to: '/incidents',   icon: AlertTriangle,   label: 'Incidents',    roles: ['SUPER','DEV','SERVICE_CLIENT'] },
   { to: '/audit',       icon: ScrollText,      label: 'Audit',        roles: ['SUPER','DEV'] },
   { to: '/validation',  icon: ShieldCheck,     label: 'Validation',   roles: ['SUPER'] },
+  { to: '/equipes',     icon: UsersRound,      label: 'Equipes',      roles: ['SUPER'] },
   { to: '/config',      icon: Settings,        label: 'Tarifs',       roles: ['SUPER','DEV'] },
 ]
 
@@ -84,7 +85,7 @@ export default function Layout({ children }) {
         {collapsed ? (
           <img src={logoSrc} alt="DEM" style={{ width: 36, height: 36, objectFit: 'contain', borderRadius: 8 }} />
         ) : (
-          <img src={logoSrc} alt="DEM" style={{ width: 80, height: 'auto', display: 'block' }} />
+          <img src={logoSrc} alt="DEM" style={{ width: 56, height: 'auto', display: 'block' }} />
         )}
       </div>
 
