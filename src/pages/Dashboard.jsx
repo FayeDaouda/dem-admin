@@ -6,7 +6,7 @@ import {
 import { connectSocket, disconnectSocket } from '../lib/socket'
 import api from '../lib/api'
 import Badge from '../components/Badge'
-import { Package, Truck, AlertTriangle, TrendingUp, Users, CreditCard, Activity, Wifi } from 'lucide-react'
+import { Package, Bike, AlertTriangle, TrendingUp, Users, CreditCard, Activity, Wifi } from 'lucide-react'
 import { glass } from '../lib/glassStyles'
 import { useResponsive } from '../lib/useResponsive'
 
@@ -139,7 +139,7 @@ export default function Dashboard() {
         <StatCard icon={Package}      label="Total courses"     value={loading ? '…' : stats?.orders.total ?? 0}        color="var(--primary)" />
         <StatCard icon={TrendingUp}   label="En cours"          value={loading ? '…' : stats?.orders.active ?? 0}       color="var(--info)" />
         <StatCard icon={AlertTriangle}label="En attente"        value={loading ? '…' : stats?.orders.pending ?? 0}      color="var(--warning)" />
-        <StatCard icon={Truck}        label="Livreurs dispo"     value={loading ? '…' : stats?.drivers.available ?? 0}   color="var(--success)"
+        <StatCard icon={Bike}         label="Livreurs dispo"     value={loading ? '…' : stats?.drivers.available ?? 0}   color="var(--success)"
                   sub={`/ ${stats?.drivers.total ?? 0} total`} />
         <StatCard icon={Users}        label="Clients"           value={loading ? '…' : stats?.clients.total ?? 0}       color="#a78bfa" />
         <StatCard icon={CreditCard}   label="Livreurs du jour"  value={loading ? '…' : `${(stats?.revenue?.driver?.today ?? 0).toLocaleString()} F`} color="var(--success)"
