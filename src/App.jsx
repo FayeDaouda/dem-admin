@@ -18,6 +18,8 @@ import ChefDetailPage from './pages/ChefDetailPage'
 import DemPro from './pages/DemPro'
 import ServiceClient from './pages/ServiceClient'
 import Equipes from './pages/Equipes'
+import Badges from './pages/Badges'
+import Parrainage from './pages/Parrainage'
 
 const LiveMap     = lazy(() => import('./pages/LiveMap'))
 const FleetSection = lazy(() => import('./pages/fleet/FleetSection'))
@@ -53,6 +55,8 @@ function AppRoutes() {
       <Route path="/clients"  element={<ProtectedRoute><Clients /></ProtectedRoute>} />
       <Route path="/config"      element={<ProtectedRoute><Config /></ProtectedRoute>} />
       <Route path="/acquisition" element={<ProtectedRoute><Acquisition /></ProtectedRoute>} />
+      <Route path="/badges"     element={<ProtectedRoute><Badges /></ProtectedRoute>} />
+      <Route path="/parrainage" element={<ProtectedRoute><Parrainage /></ProtectedRoute>} />
       <Route path="/incidents"   element={<ProtectedRoute><Incidents /></ProtectedRoute>} />
       <Route path="/audit"       element={<ProtectedRoute><Audit /></ProtectedRoute>} />
       <Route path="/validation"      element={<ProtectedRoute><Validation /></ProtectedRoute>} />

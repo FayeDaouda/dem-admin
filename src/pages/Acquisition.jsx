@@ -44,9 +44,6 @@ const TAB_STYLE = (active) => ({
 const TABS = [
   { id: 'forfait',        label: 'Forfait',          icon: Zap },
   { id: 'clients',        label: '100 Clients',      icon: Users },
-  { id: 'referrals',      label: 'Parrainage',       icon: GitBranch },
-  { id: 'badges',         label: 'Badges clients',   icon: Award },
-  { id: 'badges-drivers', label: 'Badges livreurs',   icon: Truck },
   { id: 'ambassadeurs',   label: 'Chefs de flotte',  icon: Award },
   { id: 'fees',           label: 'Frais',            icon: DollarSign },
 ]
@@ -93,7 +90,7 @@ export default function Acquisition() {
       <div style={{ marginBottom: 24, flexShrink: 0 }}>
         <h1 style={{ fontSize: 22, fontWeight: 700 }}>Plan d'acquisition</h1>
         <p style={{ color: 'var(--text-muted)', fontSize: 13, marginTop: 4 }}>
-          Gestion du forfait, offre 100 clients, parrainage MLM et grille des frais.
+          Gestion du forfait, offre 100 clients, chefs de flotte et grille des frais.
         </p>
       </div>
 
@@ -111,9 +108,6 @@ export default function Acquisition() {
       <div style={pageScroll}>
         {tab === 'forfait'        && <ForfaitTab notify={notify} />}
         {tab === 'clients'        && <ClientsTab notify={notify} />}
-        {tab === 'referrals'      && <ReferralsTab />}
-        {tab === 'badges'         && <BadgesTab />}
-        {tab === 'badges-drivers' && <DriverBadgesTab />}
         {tab === 'ambassadeurs'   && <AmbassadeursTab />}
         {tab === 'fees'           && <FeesTab />}
       </div>
