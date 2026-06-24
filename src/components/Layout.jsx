@@ -2,28 +2,27 @@ import { useState, useEffect } from 'react'
 import { NavLink, useNavigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import {
-  LayoutDashboard, CreditCard, Package, Users, Settings, LogOut, Bike, Map, Menu, X, TrendingUp, ShieldCheck, AlertTriangle, ScrollText, UserCog, Briefcase, Headphones, UsersRound,
+  LayoutDashboard, CreditCard, Package, Users, LogOut, Bike, Map, Menu, X, ShieldCheck, AlertTriangle, ScrollText, UserCog, Briefcase, Headphones, UsersRound, SlidersHorizontal,
 } from 'lucide-react'
 import logoSrc from '../assets/logo-dem.svg'
 import { useResponsive } from '../lib/useResponsive'
 
 // roles: undefined = tous les rôles. Sinon tableau des rôles autorisés (SUPER bypass toujours).
 const NAV = [
-  { to: '/',            icon: LayoutDashboard, label: 'Dashboard'   },
-  { to: '/service-client', icon: Headphones,   label: 'Service client', roles: ['SUPER','SERVICE_CLIENT'] },
-  { to: '/map',         icon: Map,             label: 'Carte live',   roles: ['SUPER','DEV'] },
-  { to: '/payments',    icon: CreditCard,      label: 'Paiements',    roles: ['SUPER','FINANCE'] },
-  { to: '/orders',      icon: Package,         label: 'Courses',      roles: ['SUPER','DEV','FINANCE','SERVICE_CLIENT'] },
-  { to: '/drivers',          icon: Bike,      label: 'Livreurs',         roles: ['SUPER','DEV'] },
-  { to: '/clients',          icon: Users,     label: 'Clients',          roles: ['SUPER','DEV','SERVICE_CLIENT'] },
-  { to: '/dem-pro',          icon: Briefcase, label: 'DEM Pro',          roles: ['SUPER'] },
-  { to: '/chefs-de-flotte',  icon: UserCog,   label: 'Chefs de flotte',  roles: ['SUPER'] },
-  { to: '/acquisition', icon: TrendingUp,      label: 'Acquisition',  roles: ['SUPER','MARKETING'] },
-  { to: '/incidents',   icon: AlertTriangle,   label: 'Incidents',    roles: ['SUPER','DEV','SERVICE_CLIENT'] },
-  { to: '/audit',       icon: ScrollText,      label: 'Audit',        roles: ['SUPER','DEV'] },
-  { to: '/validation',  icon: ShieldCheck,     label: 'Validation',   roles: ['SUPER'] },
-  { to: '/equipes',     icon: UsersRound,      label: 'Equipes',      roles: ['SUPER'] },
-  { to: '/config',      icon: Settings,        label: 'Tarifs',       roles: ['SUPER','DEV'] },
+  { to: '/',                 icon: LayoutDashboard, label: 'Dashboard' },
+  { to: '/map',              icon: Map,             label: 'Carte live',      roles: ['SUPER','DEV'] },
+  { to: '/drivers',          icon: Bike,            label: 'Livreurs',        roles: ['SUPER','DEV'] },
+  { to: '/clients',          icon: Users,           label: 'Clients',         roles: ['SUPER','DEV','SERVICE_CLIENT'] },
+  { to: '/dem-pro',          icon: Briefcase,       label: 'DEM Pro',         roles: ['SUPER'] },
+  { to: '/orders',           icon: Package,         label: 'Courses',         roles: ['SUPER','DEV','FINANCE','SERVICE_CLIENT'] },
+  { to: '/chefs-de-flotte',  icon: UserCog,         label: 'Chefs de flotte', roles: ['SUPER'] },
+  { to: '/validation',       icon: ShieldCheck,     label: 'Validation',      roles: ['SUPER'] },
+  { to: '/config',           icon: SlidersHorizontal, label: 'Tarifs',        roles: ['SUPER','DEV'] },
+  { to: '/payments',         icon: CreditCard,      label: 'Paiements',       roles: ['SUPER','FINANCE'] },
+  { to: '/service-client',   icon: Headphones,      label: 'Service client',  roles: ['SUPER','SERVICE_CLIENT'] },
+  { to: '/audit',            icon: ScrollText,       label: 'Audit',          roles: ['SUPER','DEV'] },
+  { to: '/incidents',        icon: AlertTriangle,    label: 'Incidents',      roles: ['SUPER','DEV','SERVICE_CLIENT'] },
+  { to: '/equipes',          icon: UsersRound,       label: 'Equipes',        roles: ['SUPER'] },
 ]
 
 const ROLE_LABELS = {
