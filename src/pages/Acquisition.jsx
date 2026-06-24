@@ -46,7 +46,7 @@ const TABS = [
   { id: 'clients',        label: '100 Clients',      icon: Users },
   { id: 'referrals',      label: 'Parrainage',       icon: GitBranch },
   { id: 'badges',         label: 'Badges clients',   icon: Award },
-  { id: 'badges-drivers', label: 'Badges drivers',   icon: Truck },
+  { id: 'badges-drivers', label: 'Badges livreurs',   icon: Truck },
   { id: 'ambassadeurs',   label: 'Chefs de flotte',  icon: Award },
   { id: 'fees',           label: 'Frais',            icon: DollarSign },
 ]
@@ -173,11 +173,11 @@ function ForfaitTab({ notify }) {
   }
 
   async function processForfait() {
-    if (!window.confirm('Déclencher le prélèvement du jour pour tous les drivers actifs ?')) return
+    if (!window.confirm('Déclencher le prélèvement du jour pour tous les livreurs actifs ?')) return
     setProcessing(true)
     try {
       const res = await api.post('/admin/forfait/process')
-      notify(`${res.data.charged} driver(s) prélevé(s) ✓`)
+      notify(`${res.data.charged} livreur(s) prélevé(s) ✓`)
       load()
     } catch (e) { notify(e.response?.data?.message ?? 'Erreur', false) }
     setProcessing(false)
@@ -502,7 +502,7 @@ function AmbassadeursTab() {
       {ambassadors.length === 0 ? (
         <Card>
           <div style={{ color: 'var(--text-muted)', textAlign: 'center', padding: '32px 0', fontSize: 13 }}>
-            Aucun chef de flotte désigné. Activez le statut depuis la page Drivers.
+            Aucun chef de flotte actif pour le moment.
           </div>
         </Card>
       ) : ambassadors.map(a => {
@@ -919,7 +919,7 @@ function DriverBadgesTab() {
     <div style={{ maxWidth: 760 }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
         <p style={{ color: 'var(--text-muted)', fontSize: 13 }}>
-          Seuils de chaque niveau driver. Recalculés en temps réel dans l'app.
+          Seuils de chaque niveau livreur. Recalculés en temps réel dans l'app.
         </p>
         <div style={{ display: 'flex', gap: 8 }}>
           <button onClick={handleReset} style={btnOutline}><RotateCcw size={13} /> Défaut</button>
