@@ -250,8 +250,8 @@ export default function ChefsDeFlotte() {
                         {c.avatar ? <img src={c.avatar} alt="" style={{ width: 34, height: 34, borderRadius: '50%', objectFit: 'cover' }} /> : (c.name?.trim() || c.phone || '?')[0].toUpperCase()}
                       </div>
                       <div>
-                        <div style={{ fontWeight: 600 }}>{c.name?.trim() || '—'}</div>
-                        {c.companyName && <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>{c.companyName}</div>}
+                        <div style={{ fontWeight: 600 }}>{c.companyName?.trim() || '—'}</div>
+                        {c.name && <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>{c.name}</div>}
                       </div>
                     </div>
                   </td>
