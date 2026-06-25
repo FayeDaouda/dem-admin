@@ -227,7 +227,7 @@ export default function ChefsDeFlotte() {
           <table style={tableStyle}>
             <thead>
               <tr>
-                {['Chef de flotte', 'Téléphone', 'Flotte', 'Statut', 'Inscription', 'Actions'].map((h, i) => (
+                {['#', 'Chef de flotte', 'Téléphone', 'Flotte', 'Statut', 'Inscription', 'Actions'].map((h, i) => (
                   <th
                     key={h}
                     style={{ ...thStyle, ...(i === 0 ? stickyThCol : stickyTh), ...(h === 'Inscription' ? { cursor: 'pointer', userSelect: 'none' } : {}) }}
@@ -240,10 +240,11 @@ export default function ChefsDeFlotte() {
               </tr>
             </thead>
             <tbody>
-              {sorted.map(c => {
+              {sorted.map((c, idx) => {
                 const status = chefStatusInfo(c)
                 return (
                 <tr key={c.id} style={{ borderBottom: '1px solid var(--border)', cursor: 'pointer' }} onClick={() => navigate(`/chefs-de-flotte/${c.id}`)}>
+                  <td style={{ ...tdStyle, color: 'var(--text-muted)', fontSize: 12, width: 40, textAlign: 'center' }}>{idx + 1}</td>
                   <td style={{ ...tdStyle, ...stickyCol, cursor: 'pointer' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                       <div style={{ width: 34, height: 34, borderRadius: '50%', background: 'linear-gradient(135deg,rgba(124,58,237,.15),rgba(6,113,186,.15))', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, color: '#7c3aed', fontSize: 13, flexShrink: 0 }}>

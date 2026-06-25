@@ -107,13 +107,13 @@ export default function Audit() {
           <table style={{ width: '100%', minWidth: 680, borderCollapse: 'collapse' }}>
             <thead>
               <tr>
-                {['Date & heure', 'Action', 'Admin', 'Type cible', 'Cible', 'Détails'].map((h, i) => (
+                {['#', 'Date & heure', 'Action', 'Admin', 'Type cible', 'Cible', 'Détails'].map((h, i) => (
                   <th key={h} style={{ ...thStyle, ...(i === 0 ? stickyThCol : stickyTh) }}>{h}</th>
                 ))}
               </tr>
             </thead>
             <tbody>
-              {logs.map(log => {
+              {logs.map((log, idx) => {
                 const details = parseDetails(log.details)
                 return (
                   <tr
@@ -121,6 +121,7 @@ export default function Audit() {
                     onClick={() => setDetail(log)}
                     style={{ borderBottom: '1px solid var(--border)', cursor: details ? 'pointer' : 'default' }}
                   >
+                    <td style={{ ...tdStyle, color: 'var(--text-muted)', fontSize: 12, width: 40, textAlign: 'center' }}>{idx + 1}</td>
                     <td style={{ ...tdStyle, ...stickyCol, whiteSpace: 'nowrap', color: 'var(--text-muted)', fontSize: 12 }}>
                       {new Date(log.createdAt).toLocaleString('fr-FR', {
                         day: '2-digit', month: '2-digit',

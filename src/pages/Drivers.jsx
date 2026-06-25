@@ -549,7 +549,7 @@ export default function Drivers() {
           <table style={{ ...tableStyle, minWidth: 900 }}>
             <thead>
               <tr>
-                {['Nom', 'Badge', 'Courses', 'Téléphone', 'Véhicule', 'Statut', 'Vérifié', 'Actions'].map((h, i) => (
+                {['#', 'Nom', 'Badge', 'Courses', 'Téléphone', 'Véhicule', 'Statut', 'Vérifié', 'Actions'].map((h, i) => (
                   <th
                     key={h}
                     style={{
@@ -567,8 +567,9 @@ export default function Drivers() {
               </tr>
             </thead>
             <tbody>
-              {sortedDrivers.map(d => (
+              {sortedDrivers.map((d, idx) => (
                 <tr key={d.id} style={{ borderBottom: '1px solid var(--border)' }}>
+                  <td style={{ ...tdStyle, color: 'var(--text-muted)', fontSize: 12, width: 40, textAlign: 'center' }}>{idx + 1}</td>
                   <td style={{ ...tdStyle, ...stickyCol }}>
                     <div style={{ fontWeight: 600 }}>{d.name?.trim() || d.phone}</div>
                     <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', marginTop: 3 }}>

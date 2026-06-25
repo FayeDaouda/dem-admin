@@ -134,14 +134,15 @@ export default function Payments() {
           <table style={tableStyle}>
             <thead>
               <tr>
-                {['ID', 'Type', 'Client', 'Livreur', 'Prix', 'Statut paiement', 'Note litige', 'Action'].map(h => (
+                {['#', 'ID', 'Type', 'Client', 'Livreur', 'Prix', 'Statut paiement', 'Note litige', 'Action'].map(h => (
                   <th key={h} style={{ ...thStyle, ...stickyTh }}>{h}</th>
                 ))}
               </tr>
             </thead>
             <tbody>
-              {orders.map(o => (
+              {orders.map((o, idx) => (
                 <tr key={o.id} style={{ borderBottom: '1px solid var(--border)' }}>
+                  <td style={{ ...tdStyle, color: 'var(--text-muted)', fontSize: 12, width: 40, textAlign: 'center' }}>{idx + 1}</td>
                   <td style={tdStyle}><code style={{ fontSize: 11, color: 'var(--text-muted)' }}>{o.id.slice(0,8)}</code></td>
                   <td style={tdStyle}><Badge status={o.orderType} /></td>
                   <td style={tdStyle}>{o.client?.name ?? o.client?.phone ?? '—'}</td>

@@ -179,13 +179,13 @@ export default function Incidents() {
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
             <thead>
               <tr>
-                {['Sévérité', 'Type', 'Statut', 'Order ID', 'Livreur', 'Hors-ligne', 'Ouvert le', 'Notes'].map(h => (
+                {['#', 'Sévérité', 'Type', 'Statut', 'Order ID', 'Livreur', 'Hors-ligne', 'Ouvert le', 'Notes'].map(h => (
                   <th key={h} style={{ ...thStyle, ...stickyTh }}>{h}</th>
                 ))}
               </tr>
             </thead>
             <tbody>
-              {incidents.map(inc => (
+              {incidents.map((inc, idx) => (
                 <tr
                   key={inc.id}
                   onClick={() => openDetail(inc)}
@@ -195,6 +195,7 @@ export default function Incidents() {
                     background: inc.status === 'RESOLVED' ? 'transparent' : inc.severity === 'critical' ? '#ef444408' : 'transparent',
                   }}
                 >
+                  <td style={{ ...tdStyle, color: 'var(--text-muted)', fontSize: 12, width: 40, textAlign: 'center' }}>{idx + 1}</td>
                   <td style={tdStyle}><Chip cfg={SEVERITY_CFG[inc.severity]} /></td>
                   <td style={{ ...tdStyle, fontSize: 12 }}>{TYPE_LABELS[inc.type] ?? inc.type}</td>
                   <td style={tdStyle}><Chip cfg={STATUS_CFG[inc.status]} /></td>

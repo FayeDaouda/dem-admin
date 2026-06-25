@@ -107,18 +107,19 @@ export default function Orders() {
           <table style={tableStyle}>
             <thead>
               <tr>
-                {['ID', 'Type', 'Statut', 'Client', 'Livreur', 'Prix', 'Paiement', 'Date'].map((h, i) => (
+                {['#', 'ID', 'Type', 'Statut', 'Client', 'Livreur', 'Prix', 'Paiement', 'Date'].map((h, i) => (
                   <th key={h} style={{ ...thStyle, ...(i === 0 ? stickyThCol : stickyTh) }}>{h}</th>
                 ))}
               </tr>
             </thead>
             <tbody>
-              {filtered.map(o => (
+              {filtered.map((o, idx) => (
                 <tr
                   key={o.id}
                   style={{ borderBottom: '1px solid var(--border)', cursor: 'pointer' }}
                   onClick={() => setDetail(o)}
                 >
+                  <td style={{ ...tdStyle, color: 'var(--text-muted)', fontSize: 12, width: 40, textAlign: 'center' }}>{idx + 1}</td>
                   <td style={{ ...tdStyle, ...stickyCol }}><code style={{ fontSize: 11, color: 'var(--text-muted)' }}>{o.id.slice(0,8)}</code></td>
                   <td style={tdStyle}><Badge status={o.orderType} /></td>
                   <td style={tdStyle}><Badge status={o.status} /></td>

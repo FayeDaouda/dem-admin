@@ -99,14 +99,15 @@ export default function DemPro() {
             <table style={tableStyle}>
               <thead>
                 <tr>
-                  {['Nom', 'Telephone', 'Entreprise', 'Secteur', 'Volume', 'Statut', 'Inscrit le', 'Actions'].map(h => (
+                  {['#', 'Nom', 'Telephone', 'Entreprise', 'Secteur', 'Volume', 'Statut', 'Inscrit le', 'Actions'].map(h => (
                     <th key={h} style={{ ...thStyle, ...stickyTh }}>{h}</th>
                   ))}
                 </tr>
               </thead>
               <tbody>
-                {accounts.map(a => (
+                {accounts.map((a, idx) => (
                   <tr key={a.id} style={{ borderBottom: '1px solid var(--border)' }}>
+                    <td style={{ ...tdStyle, color: 'var(--text-muted)', fontSize: 12, width: 40, textAlign: 'center' }}>{idx + 1}</td>
                     <td style={tdStyle}><span style={{ fontWeight: 600 }}>{a.name ?? '—'}</span></td>
                     <td style={tdStyle}>{a.phone}</td>
                     <td style={tdStyle}>{a.proBusinessName ?? '—'}</td>

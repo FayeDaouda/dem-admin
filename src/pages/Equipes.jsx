@@ -217,17 +217,18 @@ export default function Equipes() {
             <table style={tableStyle}>
               <thead>
                 <tr>
-                  {['Nom', 'Contact', 'Role', 'Statut', 'Cree le', 'Actions'].map(h => (
+                  {['#', 'Nom', 'Contact', 'Role', 'Statut', 'Cree le', 'Actions'].map(h => (
                     <th key={h} style={{ ...thStyle, ...stickyTh }}>{h}</th>
                   ))}
                 </tr>
               </thead>
               <tbody>
-                {filtered.map(a => {
+                {filtered.map((a, idx) => {
                   const isMe = a.id === currentUser?.id
                   const roleColor = ROLE_COLORS[a.adminRole] ?? '#888'
                   return (
                     <tr key={a.id} style={{ borderBottom: '1px solid var(--border)', opacity: a.isActive ? 1 : 0.5 }}>
+                      <td style={{ ...tdStyle, color: 'var(--text-muted)', fontSize: 12, width: 40, textAlign: 'center' }}>{idx + 1}</td>
                       <td style={tdStyle}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                           <div style={{

@@ -308,18 +308,19 @@ export default function ServiceClient() {
                 <table style={tableStyle}>
                   <thead>
                     <tr>
-                      {['ID', 'Statut', 'Client', 'Livreur', 'Prix', 'Date'].map(h => (
+                      {['#', 'ID', 'Statut', 'Client', 'Livreur', 'Prix', 'Date'].map(h => (
                         <th key={h} style={{ ...thStyle, ...stickyTh }}>{h}</th>
                       ))}
                     </tr>
                   </thead>
                   <tbody>
-                    {filteredOrders.map(o => (
+                    {filteredOrders.map((o, idx) => (
                       <tr
                         key={o.id}
                         style={{ borderBottom: '1px solid var(--border)', cursor: 'pointer' }}
                         onClick={() => setOrderDetail(o)}
                       >
+                        <td style={{ ...tdStyle, color: 'var(--text-muted)', fontSize: 12, width: 40, textAlign: 'center' }}>{idx + 1}</td>
                         <td style={tdStyle}><code style={{ fontSize: 11, color: 'var(--text-muted)' }}>{o.id.slice(0, 8)}</code></td>
                         <td style={tdStyle}><StatusDot status={o.status} /></td>
                         <td style={tdStyle}>{o.client?.name ?? o.client?.phone ?? '—'}</td>
