@@ -1,8 +1,8 @@
 import { useState, useEffect, useCallback } from 'react'
 import api from '../lib/api'
 import Badge from '../components/Badge'
-import { RefreshCw, CheckCircle, XCircle, Pencil, Trash2, Ban, RotateCcw, X } from 'lucide-react'
-import { glass, glassModal, glassInput, pageWrap, pageScroll, stickyTh } from '../lib/glassStyles'
+import { RefreshCw, CheckCircle, XCircle, Pencil, Trash2, Ban, RotateCcw, X, Search } from 'lucide-react'
+import { glass, glassModal, glassInput, pageWrap, pageScroll, stickyTh, stickyThCol, stickyCol } from '../lib/glassStyles'
 
 const STATUS_FILTERS = [
   ['all',       'Tous'],
@@ -18,6 +18,13 @@ const SECTOR_LABELS = {
   services:     'Services',
   artisanat:    'Artisanat',
   autre:        'Autre',
+}
+const SECTOR_COLORS = {
+  commerce:     '#6366f1',
+  restauration: '#f59e0b',
+  services:     '#06b6d4',
+  artisanat:    '#ec4899',
+  autre:        '#8b5cf6',
 }
 
 const VOLUME_LABELS = {
@@ -119,27 +126,51 @@ function proStatusInfo(a) {
   return { text: a.proStatus ?? '—', color: '#888' }
 }
 
+// ── Stats cards ──────────────────────────────────────────────────────────────
+function ProStats({ accounts }) {
+  if (!accounts.length) return null
+  const active    = accounts.filter(a => a.proStatus === 'ACTIVE' && a.isActive).length
+  const pending   = accounts.filter(a => a.proStatus === 'PENDING').length
+  const totalOrders = accounts.reduce((s, a) => s + (a._count?.ordersAsClient ?? 0), 0)
+
+  return (
+    <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginBottom: 20 }}>
+      {[
+        { label: 'Total comptes', value: accounts.length, color: 'var(--primary)' },
+        { label: 'Actifs',        value: active,           color: 'var(--success)' },
+        { label: 'En attente',    value: pending,          color: '#f59e0b' },
+        { label: 'Commandes',     value: totalOrders,      color: '#6366f1' },
+      ].map(s => (
+        <div key={s.label} style={{ ...glass, padding: '14px 18px', flex: '1 1 140px' }}>
+          <div style={{ fontSize: 10, color: 'var(--text-muted)', fontWeight: 700, letterSpacing: '.5px', marginBottom: 4 }}>{s.label}</div>
+          <div style={{ fontSize: 22, fontWeight: 800, color: s.color }}>{s.value}</div>
+        </div>
+      ))}
+    </div>
+  )
+}
+
 // ── Page principale ─────────────────────────────────────────────────────────
 export default function DemPro() {
   const [accounts, setAccounts] = useState([])
   const [loading, setLoading]   = useState(true)
   const [filter, setFilter]     = useState('all')
-  const [modal, setModal]       = useState(null)   // { type: 'reject' | 'suspend', account }
+  const [search, setSearch]     = useState('')
+  const [modal, setModal]       = useState(null)
   const [editTarget, setEditTarget] = useState(null)
   const [saving, setSaving]     = useState(false)
 
   const fetch = useCallback(async () => {
     setLoading(true)
     try {
-      const params = filter !== 'all' ? { status: filter } : {}
-      const res = await api.get('/admin/dem-pro', { params })
+      const res = await api.get('/admin/dem-pro')
       setAccounts(res.data?.accounts ?? [])
     } catch (e) {
       console.error(e)
     } finally {
       setLoading(false)
     }
-  }, [filter])
+  }, [])
 
   useEffect(() => { fetch() }, [fetch])
 
@@ -179,27 +210,43 @@ export default function DemPro() {
     }
   }
 
+  const filtered = accounts
+    .filter(a => {
+      if (filter === 'all') return true
+      if (filter === 'SUSPENDED') return !a.isActive
+      return a.proStatus === filter
+    })
+    .filter(a => {
+      const q = search.trim().toLowerCase()
+      if (!q) return true
+      return (a.name ?? '').toLowerCase().includes(q)
+        || (a.phone ?? '').includes(q)
+        || (a.proBusinessName ?? '').toLowerCase().includes(q)
+    })
+
   return (
     <div style={pageWrap}>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24, flexShrink: 0 }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12, marginBottom: 24, flexShrink: 0 }}>
         <h1 style={{ fontSize: 22, fontWeight: 700 }}>DEM Pro</h1>
         <button onClick={fetch} style={btnOutline}>
           <RefreshCw size={14} /> Actualiser
         </button>
       </div>
 
+      <ProStats accounts={accounts} />
+
       {/* Filtres */}
-      <div style={{ display: 'flex', gap: 8, marginBottom: 20, flexWrap: 'wrap', flexShrink: 0 }}>
+      <div style={{ display: 'flex', gap: 6, marginBottom: 16, flexWrap: 'wrap', flexShrink: 0 }}>
         {STATUS_FILTERS.map(([val, label]) => (
           <button
             key={val}
             onClick={() => setFilter(val)}
             style={{
-              padding: '6px 14px', borderRadius: 20,
-              border: '1px solid var(--border)',
-              background: filter === val ? 'var(--primary)' : 'transparent',
+              padding: '4px 14px', borderRadius: 20,
+              border: '1px solid rgba(0,119,182,.25)',
+              background: filter === val ? 'var(--primary)' : 'rgba(255,255,255,.5)',
               color: filter === val ? '#fff' : 'var(--text-muted)',
-              fontSize: 13, fontWeight: 600, cursor: 'pointer',
+              fontSize: 12, fontWeight: 600, cursor: 'pointer',
             }}
           >
             {label}
@@ -207,34 +254,79 @@ export default function DemPro() {
         ))}
       </div>
 
+      {/* Recherche */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16, flexShrink: 0 }}>
+        <div style={{ position: 'relative', flex: '1 1 220px', maxWidth: 320 }}>
+          <Search size={14} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
+          <input
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            placeholder="Nom, téléphone ou entreprise…"
+            style={{ ...glassInput, paddingLeft: 36, width: '100%' }}
+          />
+        </div>
+      </div>
+
       {/* Table */}
       <div style={pageScroll}>
         <div style={card}>
           {loading ? (
             <div style={{ color: 'var(--text-muted)', padding: 20 }}>Chargement...</div>
-          ) : accounts.length === 0 ? (
-            <div style={{ color: 'var(--text-muted)', padding: 20 }}>Aucun compte DEM Pro.</div>
+          ) : filtered.length === 0 ? (
+            <div style={{ color: 'var(--text-muted)', padding: 20 }}>
+              Aucun compte DEM Pro{filter !== 'all' || search ? ' pour ce filtre' : ''}.
+            </div>
           ) : (
             <table style={tableStyle}>
               <thead>
                 <tr>
-                  {['#', 'Nom', 'Téléphone', 'Entreprise', 'Secteur', 'Volume', 'Statut', 'Inscrit le', 'Actions'].map(h => (
-                    <th key={h} style={{ ...thStyle, ...stickyTh }}>{h}</th>
+                  {['#', 'Entreprise', 'Téléphone', 'Secteur', 'Volume', 'Commandes', 'Statut', 'Inscription', 'Actions'].map((h, i) => (
+                    <th key={h} style={{ ...thStyle, ...(i === 1 ? stickyThCol : stickyTh) }}>{h}</th>
                   ))}
                 </tr>
               </thead>
               <tbody>
-                {accounts.map((a, idx) => {
+                {filtered.map((a, idx) => {
                   const status = proStatusInfo(a)
                   const isSuspended = !a.isActive && a.proStatus === 'ACTIVE'
+                  const sectorColor = SECTOR_COLORS[a.proSector] ?? '#888'
                   return (
-                  <tr key={a.id} style={{ borderBottom: '1px solid var(--border)' }}>
+                  <tr key={a.id} style={{ borderBottom: '1px solid var(--border)', opacity: isSuspended ? 0.6 : 1 }}>
                     <td style={{ ...tdStyle, color: 'var(--text-muted)', fontSize: 12, width: 40, textAlign: 'center' }}>{idx + 1}</td>
-                    <td style={tdStyle}><span style={{ fontWeight: 600 }}>{a.name ?? '—'}</span></td>
+                    <td style={{ ...tdStyle, ...stickyCol }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                        <div style={{
+                          width: 34, height: 34, borderRadius: '50%', overflow: 'hidden',
+                          background: 'linear-gradient(135deg,rgba(99,102,241,.15),rgba(6,113,186,.15))',
+                          display: 'flex', alignItems: 'center', justifyContent: 'center',
+                          fontWeight: 700, color: '#6366f1', fontSize: 13, flexShrink: 0,
+                        }}>
+                          {a.avatar
+                            ? <img src={a.avatar} alt="" style={{ width: 34, height: 34, borderRadius: '50%', objectFit: 'cover' }} />
+                            : (a.proBusinessName?.trim() || a.name?.trim() || a.phone || '?')[0].toUpperCase()
+                          }
+                        </div>
+                        <div>
+                          <div style={{ fontWeight: 600 }}>{a.proBusinessName?.trim() || '—'}</div>
+                          {a.name && <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>{a.name}</div>}
+                        </div>
+                      </div>
+                    </td>
                     <td style={tdStyle}>{a.phone}</td>
-                    <td style={tdStyle}>{a.proBusinessName ?? '—'}</td>
-                    <td style={tdStyle}>{SECTOR_LABELS[a.proSector] ?? a.proSector ?? '—'}</td>
-                    <td style={tdStyle}>{VOLUME_LABELS[a.proWeeklyVolume] ?? a.proWeeklyVolume ?? '—'}</td>
+                    <td style={tdStyle}>
+                      {a.proSector ? (
+                        <span style={{
+                          fontSize: 11, fontWeight: 600, padding: '2px 8px', borderRadius: 10,
+                          background: sectorColor + '18', color: sectorColor,
+                        }}>
+                          {SECTOR_LABELS[a.proSector] ?? a.proSector}
+                        </span>
+                      ) : '—'}
+                    </td>
+                    <td style={tdStyle}>{VOLUME_LABELS[a.proWeeklyVolume] ?? '—'}</td>
+                    <td style={{ ...tdStyle, textAlign: 'center', fontWeight: 600 }}>
+                      {a._count?.ordersAsClient ?? 0}
+                    </td>
                     <td style={tdStyle}>
                       <span style={{ fontSize: 12, fontWeight: 600, color: status.color }}>{status.text}</span>
                     </td>
@@ -361,7 +453,7 @@ export default function DemPro() {
 }
 
 const card       = { ...glass, padding: '20px 24px' }
-const tableStyle = { width: '100%', borderCollapse: 'collapse' }
+const tableStyle = { width: '100%', minWidth: 900, borderCollapse: 'collapse' }
 const thStyle    = { textAlign: 'left', padding: '8px 10px', color: 'var(--text-muted)', fontSize: 12, fontWeight: 600, borderBottom: '1px solid rgba(0,119,182,0.12)' }
 const tdStyle    = { padding: '10px 10px', verticalAlign: 'middle' }
 const btnOutline = { display: 'flex', alignItems: 'center', gap: 6, padding: '7px 14px', borderRadius: 'var(--radius-sm)', border: '1px solid rgba(0,119,182,0.25)', background: 'rgba(255,255,255,0.5)', color: 'var(--text-muted)', fontSize: 13, cursor: 'pointer' }
