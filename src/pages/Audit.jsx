@@ -121,7 +121,7 @@ export default function Audit() {
                     onClick={() => setDetail(log)}
                     style={{ borderBottom: '1px solid var(--border)', cursor: details ? 'pointer' : 'default' }}
                   >
-                    <td style={{ ...tdStyle, color: 'var(--text-muted)', fontSize: 12, width: 40, textAlign: 'center' }}>{idx + 1}</td>
+                    <td style={{ ...tdStyle, color: 'var(--text-muted)', fontSize: 12, width: 40, textAlign: 'center' }}>{(page - 1) * LIMIT + idx + 1}</td>
                     <td style={{ ...tdStyle, ...stickyCol, whiteSpace: 'nowrap', color: 'var(--text-muted)', fontSize: 12 }}>
                       {new Date(log.createdAt).toLocaleString('fr-FR', {
                         day: '2-digit', month: '2-digit',
