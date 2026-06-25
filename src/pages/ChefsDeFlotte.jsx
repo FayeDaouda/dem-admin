@@ -96,27 +96,18 @@ function chefStatusInfo(c) {
 }
 
 // ── Page principale ───────────────────────────────────────────────────────────
-function NetworkStats() {
-  const [data, setData] = useState(null)
+function NetworkStats({ chefs }) {
+  if (!chefs.length) return null
 
-  useEffect(() => {
-    api.get('/admin/ambassadors')
-      .then(r => setData(r.data))
-      .catch(() => {})
-  }, [])
-
-  if (!data) return null
-
-  const ambassadors = data.ambassadors ?? []
-  const totalDrivers   = ambassadors.reduce((s, a) => s + a.referredCount, 0)
-  const totalDelivered = ambassadors.reduce((s, a) => s + a.totalDelivered, 0)
+  const activeCount  = chefs.filter(c => c.chefDeFlotteStatus === 'ACTIVE' && c.isActive).length
+  const totalDrivers = chefs.reduce((s, c) => s + (c._count?.managedDrivers ?? 0), 0)
 
   return (
     <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginBottom: 20 }}>
       {[
-        { label: 'Chefs actifs', value: ambassadors.length, color: '#B8860B' },
-        { label: 'Livreurs recrutes', value: totalDrivers, color: 'var(--primary)' },
-        { label: 'Courses livrees (reseau)', value: totalDelivered.toLocaleString(), color: 'var(--success)' },
+        { label: 'Chefs actifs', value: activeCount, color: '#B8860B' },
+        { label: 'Livreurs gérés', value: totalDrivers, color: 'var(--primary)' },
+        { label: 'Total chefs', value: chefs.length, color: 'var(--success)' },
       ].map(s => (
         <div key={s.label} style={{ ...glass, padding: '14px 18px', flex: '1 1 160px' }}>
           <div style={{ fontSize: 10, color: 'var(--text-muted)', fontWeight: 700, letterSpacing: '.5px', marginBottom: 4 }}>{s.label}</div>
@@ -204,7 +195,7 @@ export default function ChefsDeFlotte() {
         </div>
       </div>
 
-      <NetworkStats />
+      <NetworkStats chefs={chefs} />
 
       {/* Filtres statut */}
       <div style={{ display: 'flex', gap: 6, marginBottom: 16, flexWrap: 'wrap', flexShrink: 0 }}>
