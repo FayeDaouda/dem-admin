@@ -227,7 +227,7 @@ export default function ChefsDeFlotte() {
           <table style={tableStyle}>
             <thead>
               <tr>
-                {['Chef de flotte', 'Téléphone', 'Société', 'Flotte', 'Statut', 'Inscription', 'Actions'].map((h, i) => (
+                {['Chef de flotte', 'Téléphone', 'Flotte', 'Statut', 'Inscription', 'Actions'].map((h, i) => (
                   <th
                     key={h}
                     style={{ ...thStyle, ...(i === 0 ? stickyThCol : stickyTh), ...(h === 'Inscription' ? { cursor: 'pointer', userSelect: 'none' } : {}) }}
@@ -249,11 +249,13 @@ export default function ChefsDeFlotte() {
                       <div style={{ width: 34, height: 34, borderRadius: '50%', background: 'linear-gradient(135deg,rgba(124,58,237,.15),rgba(6,113,186,.15))', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, color: '#7c3aed', fontSize: 13, flexShrink: 0 }}>
                         {c.avatar ? <img src={c.avatar} alt="" style={{ width: 34, height: 34, borderRadius: '50%', objectFit: 'cover' }} /> : (c.name?.trim() || c.phone || '?')[0].toUpperCase()}
                       </div>
-                      <span style={{ fontWeight: 600 }}>{c.name?.trim() || c.phone}</span>
+                      <div>
+                        <div style={{ fontWeight: 600 }}>{c.name?.trim() || '—'}</div>
+                        {c.companyName && <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>{c.companyName}</div>}
+                      </div>
                     </div>
                   </td>
                   <td style={tdStyle}>{c.phone}</td>
-                  <td style={{ ...tdStyle, color: 'var(--text-muted)', fontSize: 12 }}>{c.companyName ?? '—'}</td>
                   <td style={{ ...tdStyle, textAlign: 'center', fontWeight: 600 }}>
                     {c._count?.managedDrivers ?? 0}
                     <span style={{ color: 'var(--text-muted)', fontWeight: 400 }}> / {c.fleetMaxSize}</span>
