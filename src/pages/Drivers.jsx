@@ -233,7 +233,10 @@ function DocThumb({ url, label }) {
 }
 
 export default function Drivers() {
+  const LIMIT = 50
   const [drivers, setDrivers]           = useState([])
+  const [total, setTotal]               = useState(0)
+  const [page, setPage]                 = useState(1)
   const [loading, setLoading]           = useState(true)
   const [badgeTiers, setBadgeTiers]     = useState(null)
   const [fleetFilter, setFleetFilter]   = useState('all')
@@ -256,14 +259,15 @@ export default function Drivers() {
   const fetch = useCallback(async () => {
     setLoading(true)
     try {
-      const res = await api.get('/admin/drivers')
+      const res = await api.get('/admin/drivers', { params: { page, limit: LIMIT } })
       setDrivers(Array.isArray(res.data?.drivers) ? res.data.drivers : (Array.isArray(res.data) ? res.data : []))
+      setTotal(res.data?.total ?? 0)
     } catch (e) {
       console.error(e)
     } finally {
       setLoading(false)
     }
-  }, [])
+  }, [page])
 
   const fetchPhoneRequests = useCallback(async () => {
     setPhoneLoading(true)
@@ -569,7 +573,7 @@ export default function Drivers() {
             <tbody>
               {sortedDrivers.map((d, idx) => (
                 <tr key={d.id} style={{ borderBottom: '1px solid var(--border)' }}>
-                  <td style={{ ...tdStyle, color: 'var(--text-muted)', fontSize: 12, width: 40, textAlign: 'center' }}>{idx + 1}</td>
+                  <td style={{ ...tdStyle, color: 'var(--text-muted)', fontSize: 12, width: 40, textAlign: 'center' }}>{(page - 1) * LIMIT + idx + 1}</td>
                   <td style={{ ...tdStyle, ...stickyCol }}>
                     <div style={{ fontWeight: 600 }}>{d.name?.trim() || d.phone}</div>
                     <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', marginTop: 3 }}>
@@ -641,6 +645,20 @@ export default function Drivers() {
         )}
       </div>
       </div>
+
+      {/* Pagination */}
+      {(() => {
+        const totalPages = Math.max(1, Math.ceil(total / LIMIT))
+        return totalPages > 1 && (
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 12, marginTop: 16, flexShrink: 0 }}>
+            <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page <= 1} style={btnOutline}>← Préc.</button>
+            <span style={{ fontSize: 13, color: 'var(--text-muted)' }}>
+              Page {page} / {totalPages} — {total} livreurs
+            </span>
+            <button onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page >= totalPages} style={btnOutline}>Suiv. →</button>
+          </div>
+        )
+      })()}
 
       {/* Modal suspension driver */}
       {suspendTarget && (
