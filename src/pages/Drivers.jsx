@@ -240,6 +240,7 @@ export default function Drivers() {
   const [loading, setLoading]           = useState(true)
   const [badgeTiers, setBadgeTiers]     = useState(null)
   const [fleetFilter, setFleetFilter]   = useState('all')
+  const [chefFilter, setChefFilter]     = useState('all')
   const [search, setSearch]             = useState('')
   const [onlineFilter, setOnlineFilter] = useState('all')
   const [verifFilter, setVerifFilter]   = useState('all')
@@ -371,10 +372,17 @@ export default function Drivers() {
     }
   }
 
+  const chefs = [...new Map(
+    drivers.filter(d => d.managedBy).map(d => [d.managedBy.id, d.managedBy])
+  ).values()]
+
   const visibleDrivers = drivers
     .filter(d =>
       fleetFilter === 'fleet'       ? !!d.managedById :
       fleetFilter === 'independent' ? !d.managedById  : true
+    )
+    .filter(d =>
+      chefFilter === 'all' ? true : d.managedById === chefFilter
     )
     .filter(d =>
       onlineFilter === 'online'  ? d.isAvailable :
@@ -527,6 +535,12 @@ export default function Drivers() {
             style={{ ...glassInput, paddingLeft: 36, width: '100%' }}
           />
         </div>
+        <select value={chefFilter} onChange={e => setChefFilter(e.target.value)} style={{ ...glassInput, width: 200 }}>
+          <option value="all">Chef de flotte : Tous</option>
+          {chefs.map(c => (
+            <option key={c.id} value={c.id}>{c.companyName || c.name || c.phone}</option>
+          ))}
+        </select>
         <select value={onlineFilter} onChange={e => setOnlineFilter(e.target.value)} style={{ ...glassInput, width: 160 }}>
           <option value="all">Disponibilité : Tous</option>
           <option value="online">🟢 En ligne</option>
@@ -579,12 +593,12 @@ export default function Drivers() {
                     <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', marginTop: 3 }}>
                       <Badge status={d.isAvailable ? 'ONLINE' : 'OFFLINE'} />
                       {d.managedById && (
-                        <span style={{
+                        <span title={d.managedBy?.companyName || d.managedBy?.name || d.managedBy?.phone || ''} style={{
                           fontSize: 10, fontWeight: 700, padding: '1px 6px', borderRadius: 8,
                           background: d.managedBy?.chefDeFlotteStatus === 'ACTIVE' ? 'rgba(124,58,237,.10)' : 'rgba(245,158,11,.12)',
                           color:      d.managedBy?.chefDeFlotteStatus === 'ACTIVE' ? '#7c3aed' : '#b45309',
                         }}>
-                          AM {d.managedBy?.chefDeFlotteStatus === 'ACTIVE' ? '✓' : '⏳'}
+                          CF · {d.managedBy?.companyName || d.managedBy?.name || d.managedBy?.phone || '—'}
                         </span>
                       )}
                     </div>
