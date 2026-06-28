@@ -66,7 +66,7 @@ function AppRoutes() {
       <Route path="/dem-pro"          element={<ProtectedRoute><DemPro /></ProtectedRoute>} />
       <Route path="/chefs-de-flotte" element={<ProtectedRoute><ChefsDeFlotte /></ProtectedRoute>} />
       <Route path="/chefs-de-flotte/:id" element={<ProtectedRoute><ChefDetailPage /></ProtectedRoute>} />
-      <Route path="/fleet/*" element={<FleetSection />} />
+      <Route path="/fleet/*" element={<ProtectedRoute><FleetSection /></ProtectedRoute>} />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   )
