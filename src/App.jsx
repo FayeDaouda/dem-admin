@@ -20,6 +20,7 @@ import ServiceClient from './pages/ServiceClient'
 import Equipes from './pages/Equipes'
 import Badges from './pages/Badges'
 import Parrainage from './pages/Parrainage'
+import Broadcast from './pages/Broadcast'
 
 const LiveMap     = lazy(() => import('./pages/LiveMap'))
 const FleetSection = lazy(() => import('./pages/fleet/FleetSection'))
@@ -57,6 +58,7 @@ function AppRoutes() {
       <Route path="/acquisition" element={<ProtectedRoute><Acquisition /></ProtectedRoute>} />
       <Route path="/badges"     element={<ProtectedRoute><Badges /></ProtectedRoute>} />
       <Route path="/parrainage" element={<ProtectedRoute><Parrainage /></ProtectedRoute>} />
+      <Route path="/broadcast"  element={<ProtectedRoute><Broadcast /></ProtectedRoute>} />
       <Route path="/incidents"   element={<ProtectedRoute><Incidents /></ProtectedRoute>} />
       <Route path="/audit"       element={<ProtectedRoute><Audit /></ProtectedRoute>} />
       <Route path="/validation"      element={<ProtectedRoute><Validation /></ProtectedRoute>} />

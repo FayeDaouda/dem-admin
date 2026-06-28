@@ -376,6 +376,8 @@ export default function Drivers() {
     drivers.filter(d => d.managedBy).map(d => [d.managedBy.id, d.managedBy])
   ).values()]
 
+  const chefIndexMap = new Map(chefs.map((c, i) => [c.id, i + 1]))
+
   const visibleDrivers = drivers
     .filter(d =>
       fleetFilter === 'fleet'       ? !!d.managedById :
@@ -598,7 +600,7 @@ export default function Drivers() {
                           background: d.managedBy?.chefDeFlotteStatus === 'ACTIVE' ? 'rgba(124,58,237,.10)' : 'rgba(245,158,11,.12)',
                           color:      d.managedBy?.chefDeFlotteStatus === 'ACTIVE' ? '#7c3aed' : '#b45309',
                         }}>
-                          CF · {d.managedBy?.companyName || d.managedBy?.name || d.managedBy?.phone || '—'}
+                          CF.{chefIndexMap.get(d.managedById) ?? '?'}
                         </span>
                       )}
                     </div>
