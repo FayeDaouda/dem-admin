@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import api from '../lib/api'
-import { Send, Users, Bike, Briefcase, Bell } from 'lucide-react'
+import { Send, Users, Bike, Briefcase, Bell, FlaskConical } from 'lucide-react'
 import { glass, pageWrap } from '../lib/glassStyles'
 
 const TARGETS = [
@@ -36,6 +36,12 @@ export default function Broadcast() {
   const [result, setResult]   = useState(null)
   const [error, setError]     = useState('')
 
+  // Test
+  const [testPhone, setTestPhone] = useState('+221000000000')
+  const [testSending, setTestSending] = useState(false)
+  const [testResult, setTestResult]   = useState(null)
+  const [testError, setTestError]     = useState('')
+
   async function send() {
     if (!title.trim() || !body.trim()) {
       setError('Le titre et le message sont obligatoires.')
@@ -55,6 +61,28 @@ export default function Broadcast() {
       setError(e.response?.data?.message ?? 'Erreur lors de l\'envoi.')
     } finally {
       setSending(false)
+    }
+  }
+
+  async function sendTest() {
+    if (!title.trim() || !body.trim()) {
+      setTestError('Remplissez le titre et le message d\'abord.')
+      return
+    }
+    setTestSending(true)
+    setTestError('')
+    setTestResult(null)
+    try {
+      const { data } = await api.post('/admin/broadcast/test', {
+        phone: testPhone.trim(),
+        title: title.trim(),
+        body: body.trim(),
+      })
+      setTestResult(data)
+    } catch (e) {
+      setTestError(e.response?.data?.message ?? 'Erreur lors de l\'envoi test.')
+    } finally {
+      setTestSending(false)
     }
   }
 
@@ -189,6 +217,38 @@ export default function Broadcast() {
               </div>
             </div>
           )}
+          {/* Test unitaire */}
+          <div style={{ marginTop: 20 }}>
+            <label style={labelStyle}>Test unitaire</label>
+            <div style={{ ...glass, padding: '14px 16px', borderRadius: 14, border: '1px solid rgba(0,119,182,.15)' }}>
+              <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 8 }}>
+                Envoyer la notification à un seul numéro pour vérifier le rendu.
+              </div>
+              <input
+                value={testPhone}
+                onChange={e => setTestPhone(e.target.value)}
+                placeholder="+221000000000"
+                style={{ ...inputStyle, marginBottom: 10 }}
+              />
+              <button onClick={sendTest} disabled={testSending} style={{
+                width: '100%', padding: '10px 0', borderRadius: 8,
+                border: '1.5px solid var(--primary)', background: 'rgba(0,180,230,.06)',
+                color: 'var(--primary)', fontSize: 13, fontWeight: 700, cursor: 'pointer',
+                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+                opacity: testSending ? 0.7 : 1,
+              }}>
+                {testSending ? 'Envoi…' : <><FlaskConical size={14} /> Envoyer le test</>}
+              </button>
+              {testError && (
+                <div style={{ marginTop: 8, fontSize: 12, color: 'var(--danger)' }}>{testError}</div>
+              )}
+              {testResult && (
+                <div style={{ marginTop: 8, fontSize: 12, color: 'var(--success)' }}>
+                  Envoyé à {testResult.user?.name ?? testResult.user?.phone} ({testResult.user?.role})
+                </div>
+              )}
+            </div>
+          </div>
         </div>
       </div>
     </div>
