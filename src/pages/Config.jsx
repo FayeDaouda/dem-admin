@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import api from '../lib/api'
-import { Save, RotateCcw } from 'lucide-react'
+import { Save, RotateCcw, Plus, Trash2, Clock } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { glass, glassInput } from '../lib/glassStyles'
 
@@ -57,9 +57,11 @@ export default function Config() {
       <div style={{ display: 'flex', gap: 4, marginBottom: 24, background: 'rgba(255,255,255,.45)', borderRadius: 'var(--radius)', padding: 4, width: 'fit-content' }}>
         <button style={TAB(tab === 'tarifs')}      onClick={() => setTab('tarifs')}>Tarifs</button>
         <button style={TAB(tab === 'commissions')} onClick={() => setTab('commissions')}>Commissions</button>
+        <button style={TAB(tab === 'surge')}        onClick={() => setTab('surge')}>Heures de pointe</button>
       </div>
       {tab === 'tarifs'      && <TarifsTab />}
       {tab === 'commissions' && <CommissionsTab />}
+      {tab === 'surge'       && <SurgeTab />}
     </div>
   )
 }
@@ -308,6 +310,201 @@ function CommissionsTab() {
 
       <p style={{ color: 'var(--text-muted)', fontSize: 11, marginTop: 12 }}>
         Champs en bleu = modifications non sauvegardées. Phase 1 active : commission = 0 FCFA quelle que soit la grille.
+      </p>
+    </div>
+  )
+}
+
+// ── Tab Heures de pointe (Surge Pricing) ─────────────────────────────────────
+const DEFAULT_SURGE = { enabled: false, shifts: [] }
+
+function SurgeTab() {
+  const [server,  setServer]  = useState(null)   // valeur serveur (référence)
+  const [enabled, setEnabled] = useState(false)
+  const [shifts,  setShifts]  = useState([])
+  const [loading, setLoading] = useState(true)
+  const [saving,  setSaving]  = useState(false)
+  const [saved,   setSaved]   = useState(false)
+
+  const load = useCallback(async () => {
+    setLoading(true)
+    try {
+      const res = await api.get('/admin/config')
+      const row = (res.data ?? []).find(r => r.key === 'surge_config')
+      const val = row?.value ?? DEFAULT_SURGE
+      setServer(val)
+      setEnabled(val.enabled ?? false)
+      setShifts((val.shifts ?? []).map(s => ({ ...s })))
+    } catch (e) { console.error(e) }
+    finally { setLoading(false) }
+  }, [])
+
+  useEffect(() => { load() }, [load])
+
+  // ── Mutations locales ────────────────────────────────────────────
+  function updateShift(i, field, val) {
+    setShifts(prev => prev.map((s, idx) =>
+      idx === i ? { ...s, [field]: field === 'multiplier' ? parseFloat(val) || 1 : val } : s
+    ))
+  }
+  function addShift() {
+    setShifts(prev => [...prev, { start: '08:00', end: '10:00', multiplier: 1.2 }])
+  }
+  function removeShift(i) {
+    setShifts(prev => prev.filter((_, idx) => idx !== i))
+  }
+
+  // ── Sauvegarde ───────────────────────────────────────────────────
+  async function handleSave() {
+    setSaving(true)
+    try {
+      const value = { enabled, shifts }
+      await api.put('/admin/config', { updates: [{ key: 'surge_config', value }] })
+      setServer(value)
+      setSaved(true)
+      setTimeout(() => setSaved(false), 2500)
+    } catch (e) {
+      alert(e.response?.data?.message ?? 'Erreur lors de la sauvegarde.')
+    } finally { setSaving(false) }
+  }
+
+  const hasChanges = server && JSON.stringify({ enabled, shifts }) !== JSON.stringify(server)
+
+  if (loading) return <div style={{ color: 'var(--text-muted)' }}>Chargement...</div>
+
+  return (
+    <div style={{ maxWidth: 680 }}>
+      {/* Header + bouton sauvegarder */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
+        <p style={{ color: 'var(--text-muted)', fontSize: 13, maxWidth: 420 }}>
+          Multipliez le tarif selon les heures de forte demande. Le multiplicateur s'applique au prix total de la course.
+        </p>
+        <button onClick={handleSave} disabled={!hasChanges || saving} style={btnSave(hasChanges)}>
+          <Save size={14} />
+          {saved ? 'Sauvegarde OK' : saving ? 'Enregistrement...' : 'Sauvegarder'}
+        </button>
+      </div>
+
+      {/* Toggle activation */}
+      <div style={{ ...glass, padding: '20px 24px', marginBottom: 16, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <div>
+          <div style={{ fontWeight: 600, marginBottom: 4 }}>Surge pricing</div>
+          <div style={{ color: 'var(--text-muted)', fontSize: 12 }}>
+            {enabled ? 'Actif — les multiplicateurs sont appliques en temps reel' : 'Desactive — tarif normal applique'}
+          </div>
+        </div>
+        <button
+          onClick={() => setEnabled(v => !v)}
+          style={{
+            width: 48, height: 26, borderRadius: 13, border: 'none', cursor: 'pointer',
+            background: enabled ? 'var(--primary)' : 'rgba(0,0,0,.15)',
+            position: 'relative', transition: 'background .2s',
+          }}
+        >
+          <span style={{
+            position: 'absolute', top: 3, left: enabled ? 24 : 3,
+            width: 20, height: 20, borderRadius: '50%', background: '#fff',
+            transition: 'left .2s', boxShadow: '0 1px 3px rgba(0,0,0,.2)',
+          }} />
+        </button>
+      </div>
+
+      {/* Tableau des tranches horaires */}
+      <div style={{ ...glass, padding: 0, overflowX: 'auto' }}>
+        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+          <thead>
+            <tr style={{ background: 'rgba(0,119,182,.05)' }}>
+              {['Debut', 'Fin', 'Multiplicateur', ''].map(h => (
+                <th key={h} style={{ textAlign: 'left', padding: '12px 16px', fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', letterSpacing: '.5px', borderBottom: '1px solid rgba(0,0,0,.07)' }}>{h}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {shifts.length === 0 && (
+              <tr>
+                <td colSpan={4} style={{ padding: '24px 16px', textAlign: 'center', color: 'var(--text-muted)', fontSize: 13 }}>
+                  <Clock size={18} style={{ marginBottom: 6, opacity: .5 }} /><br />
+                  Aucune tranche horaire configuree. Cliquez sur "Ajouter une tranche" pour commencer.
+                </td>
+              </tr>
+            )}
+            {shifts.map((s, i) => {
+              const origShift = server?.shifts?.[i]
+              const startChanged = s.start !== origShift?.start
+              const endChanged   = s.end   !== origShift?.end
+              const multChanged  = s.multiplier !== origShift?.multiplier
+              return (
+                <tr key={i} style={{ borderBottom: i < shifts.length - 1 ? '1px solid rgba(0,0,0,.05)' : 'none' }}>
+                  <td style={{ padding: '10px 16px' }}>
+                    <input type="time" value={s.start}
+                      onChange={e => updateShift(i, 'start', e.target.value)}
+                      style={{ ...glassInput, width: 120, textAlign: 'center', fontWeight: 600,
+                        border: `1px solid ${startChanged ? 'var(--primary)' : 'rgba(0,119,182,.25)'}` }}
+                    />
+                  </td>
+                  <td style={{ padding: '10px 16px' }}>
+                    <input type="time" value={s.end}
+                      onChange={e => updateShift(i, 'end', e.target.value)}
+                      style={{ ...glassInput, width: 120, textAlign: 'center', fontWeight: 600,
+                        border: `1px solid ${endChanged ? 'var(--primary)' : 'rgba(0,119,182,.25)'}` }}
+                    />
+                  </td>
+                  <td style={{ padding: '10px 16px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                      <input type="number" step="0.1" min="1" value={s.multiplier}
+                        onChange={e => updateShift(i, 'multiplier', e.target.value)}
+                        style={{ ...glassInput, width: 80, textAlign: 'center', fontWeight: 700,
+                          color: 'var(--primary)',
+                          border: `1px solid ${multChanged ? 'var(--primary)' : 'rgba(0,119,182,.25)'}` }}
+                      />
+                      <span style={{ fontSize: 12, color: 'var(--text-muted)', fontWeight: 600 }}>x</span>
+                    </div>
+                  </td>
+                  <td style={{ padding: '10px 16px', textAlign: 'right' }}>
+                    <button onClick={() => removeShift(i)}
+                      style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#e74c3c', opacity: .7, padding: 4 }}
+                      title="Supprimer cette tranche">
+                      <Trash2 size={15} />
+                    </button>
+                  </td>
+                </tr>
+              )
+            })}
+          </tbody>
+        </table>
+      </div>
+
+      {/* Bouton ajouter */}
+      <button onClick={addShift} style={{ ...btnOutline, marginTop: 12 }}>
+        <Plus size={14} /> Ajouter une tranche
+      </button>
+
+      {/* Apercu */}
+      {shifts.length > 0 && (
+        <div style={{ ...glass, padding: '16px 20px', marginTop: 16 }}>
+          <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', marginBottom: 10, letterSpacing: '.5px' }}>APERCU</div>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+            {shifts.map((s, i) => (
+              <div key={i} style={{
+                background: enabled ? 'rgba(0,119,182,.08)' : 'var(--surface2)',
+                borderRadius: 'var(--radius-sm)', padding: '8px 14px', fontSize: 13,
+                border: `1px solid ${enabled ? 'rgba(0,119,182,.15)' : 'rgba(0,0,0,.06)'}`,
+              }}>
+                <span style={{ fontWeight: 600 }}>{s.start} - {s.end}</span>
+                <span style={{ marginLeft: 8, fontWeight: 800, color: enabled ? 'var(--primary)' : 'var(--text-muted)' }}>{s.multiplier}x</span>
+              </div>
+            ))}
+          </div>
+          {!enabled && (
+            <p style={{ color: '#e67e22', fontSize: 11, marginTop: 10, fontWeight: 500 }}>
+              Le surge pricing est desactive. Activez-le pour que ces tranches soient prises en compte.
+            </p>
+          )}
+        </div>
+      )}
+
+      <p style={{ color: 'var(--text-muted)', fontSize: 11, marginTop: 12 }}>
+        Champs en bleu = modifications non sauvegardees. Les multiplicateurs sont appliques au prix total de la course pendant les heures configurees.
       </p>
     </div>
   )

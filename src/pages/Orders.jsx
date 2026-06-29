@@ -9,6 +9,7 @@ export default function Orders() {
   const [loading, setLoading]   = useState(true)
   const [search, setSearch]     = useState('')
   const [detail, setDetail]     = useState(null)
+  const [statusFilter, setStatusFilter] = useState('all')
   const [cancelling, setCancelling]     = useState(false)
   const [paying, setPaying]             = useState(false)
   const [redispatching, setRedispatching] = useState(false)
@@ -69,7 +70,19 @@ export default function Orders() {
 
   useEffect(() => { fetch() }, [fetch])
 
+  const statusGroups = {
+    all:        null,
+    pending:    ['PENDING'],
+    active:     ['ACCEPTED', 'PICKED_UP'],
+    delivered:  ['DELIVERED'],
+    cancelled:  ['CANCELLED'],
+  }
+
   const filtered = orders.filter(o => {
+    // Filtre par statut
+    const group = statusGroups[statusFilter]
+    if (group && !group.includes(o.status)) return false
+    // Filtre par recherche
     const q = search.toLowerCase()
     return !q
       || o.id.includes(q)
@@ -97,6 +110,30 @@ export default function Orders() {
           placeholder="Rechercher par ID, client, driver, adresse…"
           style={{ ...inputStyle, paddingLeft: 36, width: '100%' }}
         />
+      </div>
+
+      {/* Filtres par statut */}
+      <div style={{ display: 'flex', gap: 8, marginBottom: 20, flexWrap: 'wrap', flexShrink: 0 }}>
+        {[
+          { key: 'all',       label: 'Toutes' },
+          { key: 'pending',   label: 'En attente' },
+          { key: 'active',    label: 'En cours' },
+          { key: 'delivered', label: 'Livrées' },
+          { key: 'cancelled', label: 'Annulées' },
+        ].map(f => (
+          <button
+            key={f.key}
+            onClick={() => setStatusFilter(f.key)}
+            style={{
+              ...btnOutline,
+              ...(statusFilter === f.key
+                ? { background: 'var(--primary)', color: '#fff', borderColor: 'var(--primary)' }
+                : {}),
+            }}
+          >
+            {f.label}
+          </button>
+        ))}
       </div>
 
       <div style={pageScroll}>
@@ -128,7 +165,7 @@ export default function Orders() {
                   <td style={{ ...tdStyle, fontWeight: 600 }}>{o.price?.toLocaleString()} F</td>
                   <td style={tdStyle}><Badge status={o.paymentStatus ?? 'PENDING'} /></td>
                   <td style={{ ...tdStyle, color: 'var(--text-muted)', fontSize: 12 }}>
-                    {o.createdAt ? new Date(o.createdAt).toLocaleDateString('fr-FR') : '—'}
+                    {o.createdAt ? new Date(o.createdAt).toLocaleString('fr-FR', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '—'}
                   </td>
                 </tr>
               ))}

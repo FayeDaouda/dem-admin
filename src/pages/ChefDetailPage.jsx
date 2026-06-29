@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import api from '../lib/api'
-import { ArrowLeft, CheckCircle, XCircle, ChevronDown, ChevronUp, Ban, RotateCcw } from 'lucide-react'
+import { ArrowLeft, CheckCircle, XCircle, ChevronDown, ChevronUp, Ban, RotateCcw, Trash2, UserPlus, Search, X } from 'lucide-react'
 import { glass, pageWrap, pageScroll } from '../lib/glassStyles'
 import SuspendModal from '../components/SuspendModal'
 
@@ -77,6 +77,11 @@ export default function ChefDetailPage() {
   const [actingId, setActingId] = useState(null)
   const [acting, setActing] = useState(false)
   const [reasonModal, setReasonModal] = useState(null) // { kind: 'chef-suspend'|'driver-reject'|'driver-suspend', target }
+  const [showAddDriver, setShowAddDriver] = useState(false)
+  const [searchPhone, setSearchPhone] = useState('')
+  const [searchResult, setSearchResult] = useState(null) // driver object or 'not-found'
+  const [searching, setSearching] = useState(false)
+  const [adding, setAdding] = useState(false)
 
   const refetch = useCallback(() => {
     return api.get(`/admin/chefs-de-flotte/${id}`)
@@ -144,6 +149,50 @@ export default function ChefDetailPage() {
       alert(e.response?.data?.message ?? 'Erreur.')
     } finally {
       setActing(false)
+    }
+  }
+
+  async function searchDriverByPhone() {
+    if (!searchPhone.trim()) return
+    setSearching(true)
+    setSearchResult(null)
+    try {
+      const r = await api.get('/admin/drivers', { params: { phone: searchPhone.trim() } })
+      const found = r.data?.drivers ?? r.data
+      const driver = Array.isArray(found) ? found[0] : found
+      setSearchResult(driver || 'not-found')
+    } catch {
+      setSearchResult('not-found')
+    } finally {
+      setSearching(false)
+    }
+  }
+
+  async function attachDriver(driverId) {
+    setAdding(true)
+    try {
+      await api.patch(`/admin/drivers/${driverId}`, { managedById: id })
+      setShowAddDriver(false)
+      setSearchPhone('')
+      setSearchResult(null)
+      await refetch()
+    } catch (e) {
+      alert(e.response?.data?.message ?? 'Erreur lors du rattachement.')
+    } finally {
+      setAdding(false)
+    }
+  }
+
+  async function detachDriver(driver) {
+    if (!confirm(`Retirer ${driver.name?.trim() || driver.phone} de cette flotte ?`)) return
+    setActingId(driver.id)
+    try {
+      await api.patch(`/admin/drivers/${driver.id}`, { managedById: null })
+      await refetch()
+    } catch (e) {
+      alert(e.response?.data?.message ?? 'Erreur lors du retrait.')
+    } finally {
+      setActingId(null)
     }
   }
 
@@ -253,7 +302,12 @@ export default function ChefDetailPage() {
 
         {/* Livreurs gérés */}
         <div style={{ ...infoBox, marginTop: 14, marginBottom: 14 }}>
-          <div style={sectionLabel}>Livreurs gérés ({drivers.length})</div>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+            <div style={{ ...sectionLabel, marginBottom: 0 }}>Livreurs gérés ({drivers.length})</div>
+            <button onClick={() => { setShowAddDriver(true); setSearchPhone(''); setSearchResult(null) }} style={{ ...btnSmall, color: 'var(--primary, #0077b6)' }}>
+              <UserPlus size={14} /> Ajouter un livreur
+            </button>
+          </div>
           {drivers.length === 0 ? (
             <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>Aucun livreur ajouté pour le moment.</div>
           ) : (
@@ -294,6 +348,9 @@ export default function ChefDetailPage() {
                           <RotateCcw size={15} />
                         </button>
                       )}
+                      <button onClick={() => detachDriver(dr)} disabled={actingId === dr.id} style={{ ...btnIcon, color: 'var(--danger, #ef4444)' }} title="Retirer de la flotte">
+                        <Trash2 size={15} />
+                      </button>
                       <button onClick={() => setExpandedDriver(expanded ? null : dr.id)} style={btnIcon} title="Documents">
                         {expanded ? <ChevronUp size={15} /> : <ChevronDown size={15} />}
                       </button>
@@ -346,6 +403,65 @@ export default function ChefDetailPage() {
           loading={acting}
         />
       )}
+
+      {/* Modal ajout livreur */}
+      {showAddDriver && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.55)', zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }} onClick={() => setShowAddDriver(false)}>
+          <div style={{ ...glass, padding: '20px 24px', borderRadius: 14, width: '100%', maxWidth: 420, position: 'relative' }} onClick={e => e.stopPropagation()}>
+            <button onClick={() => setShowAddDriver(false)} style={{ ...btnIcon, position: 'absolute', top: 12, right: 12 }} title="Fermer">
+              <X size={18} />
+            </button>
+            <div style={{ fontWeight: 700, fontSize: 16, marginBottom: 14 }}>Ajouter un livreur</div>
+            <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 12 }}>
+              Recherchez un livreur existant par son numero de telephone pour le rattacher a cette flotte.
+            </div>
+            <div style={{ display: 'flex', gap: 8, marginBottom: 14 }}>
+              <input
+                type="tel"
+                placeholder="Ex : 771234567"
+                value={searchPhone}
+                onChange={e => { setSearchPhone(e.target.value); setSearchResult(null) }}
+                onKeyDown={e => e.key === 'Enter' && searchDriverByPhone()}
+                style={{ flex: 1, padding: '8px 12px', borderRadius: 8, border: '1px solid rgba(0,119,182,.2)', fontSize: 13, outline: 'none', background: 'var(--surface2, #f8f9fa)' }}
+              />
+              <button onClick={searchDriverByPhone} disabled={searching || !searchPhone.trim()} style={{ ...btnOutline, padding: '8px 14px' }}>
+                <Search size={14} /> {searching ? 'Recherche...' : 'Chercher'}
+              </button>
+            </div>
+
+            {searchResult === 'not-found' && (
+              <div style={{ fontSize: 12, color: 'var(--danger, #ef4444)', background: 'rgba(239,68,68,.08)', borderRadius: 6, padding: '8px 10px' }}>
+                Aucun livreur trouve avec ce numero.
+              </div>
+            )}
+
+            {searchResult && searchResult !== 'not-found' && (
+              <div style={{ border: '1px solid rgba(0,119,182,.12)', borderRadius: 10, padding: '10px 12px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <div style={{ width: 36, height: 36, borderRadius: '50%', background: 'linear-gradient(135deg,rgba(124,58,237,.15),rgba(6,113,186,.15))', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, color: '#7c3aed', fontSize: 14, flexShrink: 0 }}>
+                    {(searchResult.name?.trim() || searchResult.phone || '?')[0].toUpperCase()}
+                  </div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontWeight: 600, fontSize: 13 }}>{searchResult.name?.trim() || '—'}</div>
+                    <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 1 }}>
+                      {searchResult.phone}{searchResult.vehicleType ? ` · ${searchResult.vehicleType}` : ''}
+                    </div>
+                  </div>
+                  {searchResult.managedById && searchResult.managedById !== id ? (
+                    <span style={{ fontSize: 11, color: 'var(--danger, #ef4444)', fontWeight: 600 }}>Deja dans une flotte</span>
+                  ) : searchResult.managedById === id ? (
+                    <span style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 600 }}>Deja dans cette flotte</span>
+                  ) : (
+                    <button onClick={() => attachDriver(searchResult.id)} disabled={adding} style={{ ...btnSmall, color: '#fff', background: 'var(--primary, #0077b6)', border: 'none' }}>
+                      {adding ? 'Ajout...' : 'Rattacher'}
+                    </button>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   )
 }
@@ -355,3 +471,4 @@ const sectionLabel = { fontSize: 11, fontWeight: 700, color: 'var(--text-muted)'
 const errorStyle   = { fontSize: 12, color: 'var(--danger)', background: 'rgba(239,68,68,.08)', borderRadius: 6, padding: '7px 10px', marginTop: 4 }
 const btnOutline   = { display: 'flex', alignItems: 'center', gap: 6, padding: '7px 14px', borderRadius: 'var(--radius-sm)', border: '1px solid rgba(0,119,182,0.25)', background: 'rgba(255,255,255,0.5)', color: 'var(--text-muted)', fontSize: 13, cursor: 'pointer' }
 const btnIcon      = { background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', display: 'flex', padding: 4, borderRadius: 6 }
+const btnSmall     = { display: 'inline-flex', alignItems: 'center', gap: 5, padding: '5px 12px', borderRadius: 'var(--radius-sm, 6px)', border: '1px solid rgba(0,119,182,0.2)', background: 'rgba(255,255,255,0.5)', fontSize: 12, fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap' }

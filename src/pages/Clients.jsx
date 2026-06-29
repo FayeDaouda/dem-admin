@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import api from '../lib/api'
-import { RefreshCw, Eye, X, Plus, Pencil, Trash2, Search, Phone, CheckCircle, XCircle } from 'lucide-react'
+import { RefreshCw, Eye, X, Plus, Pencil, Trash2, Search, Phone, CheckCircle, XCircle, Briefcase } from 'lucide-react'
 import { glass, glassInput, pageWrap, pageScroll, stickyTh, stickyCol, stickyThCol } from '../lib/glassStyles'
 
 // ── Modal Créer / Modifier ────────────────────────────────────────────────────
@@ -246,6 +246,22 @@ export default function Clients() {
     }
   }
 
+  async function upgradeToPro(client) {
+    const businessName = prompt(`Nom de l'entreprise pour ${client.name ?? client.phone} :`)
+    if (!businessName || !businessName.trim()) return
+    try {
+      await api.patch(`/admin/clients/${client.id}`, {
+        role: 'DEM_PRO',
+        proStatus: 'ACTIVE',
+        proBusinessName: businessName.trim(),
+      })
+      alert(`${client.name ?? client.phone} est maintenant DEM Pro.`)
+      fetch()
+    } catch (e) {
+      alert(e.response?.data?.message ?? 'Erreur lors de la conversion.')
+    }
+  }
+
   return (
     <div style={pageWrap}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24, flexShrink: 0 }}>
@@ -414,6 +430,15 @@ export default function Clients() {
                       <button onClick={() => setFormTarget(c)} style={btnSmall} title="Modifier">
                         <Pencil size={13} />
                       </button>
+                      {c.role === 'CLIENT' && (
+                        <button
+                          onClick={() => upgradeToPro(c)}
+                          style={{ ...btnSmall, color: '#7c3aed', borderColor: '#7c3aed' }}
+                          title="Convertir en DEM Pro"
+                        >
+                          <Briefcase size={13} /> Pro
+                        </button>
+                      )}
                       <button
                         onClick={() => toggleBan(c)}
                         style={{ ...btnSmall, color: c.isBanned ? 'var(--success)' : 'var(--warning)', borderColor: c.isBanned ? 'var(--success)' : 'var(--warning)' }}
