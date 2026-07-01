@@ -513,7 +513,7 @@ export default function Drivers() {
         <div style={{ display: 'flex', gap: 6, marginLeft: 'auto' }}>
           {[
             ['all',         'Tous'],
-            ['fleet',       '🏍 Flotte AM'],
+            ['fleet',       '🏍 Flotte'],
             ['independent', '👤 Indépendants'],
           ].map(([key, label]) => (
             <button key={key} onClick={() => setFleetFilter(key)} style={{
