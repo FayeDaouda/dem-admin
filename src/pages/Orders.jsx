@@ -161,7 +161,7 @@ export default function Orders() {
                   <td style={tdStyle}><Badge status={o.orderType} /></td>
                   <td style={tdStyle}><Badge status={o.status} /></td>
                   <td style={tdStyle}>{o.client?.name ?? o.client?.phone ?? '—'}</td>
-                  <td style={tdStyle}>{o.driver?.name ?? <span style={{ color: 'var(--text-muted)' }}>—</span>}</td>
+                  <td style={tdStyle}>{o.driver?.name ?? o.driver?.phone ?? <span style={{ color: 'var(--text-muted)' }}>—</span>}</td>
                   <td style={{ ...tdStyle, fontWeight: 600 }}>{o.price?.toLocaleString()} F</td>
                   <td style={tdStyle}><Badge status={o.paymentStatus ?? 'PENDING'} /></td>
                   <td style={{ ...tdStyle, color: 'var(--text-muted)', fontSize: 12 }}>
@@ -185,11 +185,16 @@ export default function Orders() {
               <Row label="Type"          value={<Badge status={detail.orderType} />} />
               <Row label="Statut"        value={<Badge status={detail.status} />} />
               <Row label="Paiement"      value={<Badge status={detail.paymentStatus ?? 'PENDING'} />} />
-              <Row label="Client"        value={detail.client?.name ?? detail.client?.phone} />
-              <Row label="Livreur"       value={detail.driver?.name ?? '—'} />
+              <Row label="Client"        value={detail.client?.name ?? detail.client?.phone ?? '—'} />
+              <Row label="Tél. client"   value={detail.client?.phone ?? '—'} />
+              <Row label="Livreur"       value={detail.driver?.name ?? detail.driver?.phone ?? '—'} />
+              <Row label="Tél. livreur"  value={detail.driver?.phone ?? '—'} />
               <Row label="Prix"          value={`${detail.price?.toLocaleString()} F`} />
               <Row label="Départ"        value={detail.pickupAddress} />
+              <Row label="Tél. pickup"   value={detail.senderPhone ?? detail.client?.phone ?? '—'} />
               <Row label="Arrivée"       value={detail.deliveryAddress} />
+              <Row label="Destinataire"  value={detail.receiverName ?? detail.receiverPhone ?? '—'} />
+              <Row label="Tél. destinataire" value={detail.receiverPhone ?? '—'} />
               {detail.disputeNotes && <Row label="Note litige" value={<span style={{ color: 'var(--danger)' }}>{detail.disputeNotes}</span>} />}
               <Row label="Créée le"      value={detail.createdAt ? new Date(detail.createdAt).toLocaleString('fr-FR') : '—'} />
             </div>
