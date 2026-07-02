@@ -162,7 +162,7 @@ export default function Orders() {
                   <td style={{ ...tdStyle, ...stickyCol }}><code style={{ fontSize: 11, color: 'var(--text-muted)' }}>{o.id.slice(0,8)}</code></td>
                   <td style={tdStyle}><Badge status={o.orderType} /></td>
                   <td style={tdStyle}><Badge status={o.status} /></td>
-                  <td style={tdStyle}>{firstNonEmpty(o.client?.name, o.client?.phone)}</td>
+                  <td style={tdStyle}>{firstNonEmpty(o.client?.name, o.clientName, o.client?.phone, o.clientPhone)}</td>
                   <td style={tdStyle}>{firstNonEmpty(o.driver?.name, o.driver?.phone)}</td>
                   <td style={{ ...tdStyle, fontWeight: 600 }}>{o.price?.toLocaleString()} F</td>
                   <td style={tdStyle}><Badge status={o.paymentStatus ?? 'PENDING'} /></td>
@@ -187,13 +187,13 @@ export default function Orders() {
               <Row label="Type"          value={<Badge status={detail.orderType} />} />
               <Row label="Statut"        value={<Badge status={detail.status} />} />
               <Row label="Paiement"      value={<Badge status={detail.paymentStatus ?? 'PENDING'} />} />
-              <Row label="Client"        value={firstNonEmpty(detail.client?.name, detail.client?.phone)} />
-              <Row label="Tél. client"   value={firstNonEmpty(detail.client?.phone)} />
+              <Row label="Client"        value={firstNonEmpty(detail.client?.name, detail.clientName, detail.client?.phone, detail.clientPhone)} />
+              <Row label="Tél. client"   value={firstNonEmpty(detail.client?.phone, detail.clientPhone)} />
               <Row label="Livreur"       value={firstNonEmpty(detail.driver?.name, detail.driver?.phone)} />
               <Row label="Tél. livreur"  value={firstNonEmpty(detail.driver?.phone)} />
               <Row label="Prix"          value={`${detail.price?.toLocaleString()} F`} />
               <Row label="Départ"        value={detail.pickupAddress} />
-              <Row label="Tél. pickup"   value={firstNonEmpty(detail.senderPhone, detail.client?.phone)} />
+              <Row label="Tél. pickup"   value={firstNonEmpty(detail.senderPhone, detail.client?.phone, detail.clientPhone)} />
               <Row label="Arrivée"       value={detail.deliveryAddress} />
               <Row label="Destinataire"  value={firstNonEmpty(detail.receiverName, detail.receiverPhone)} />
               <Row label="Tél. destinataire" value={firstNonEmpty(detail.receiverPhone)} />
