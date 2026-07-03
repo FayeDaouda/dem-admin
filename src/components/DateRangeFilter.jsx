@@ -1,4 +1,4 @@
-import { glassInput } from '../../../lib/glassStyles'
+import { glassInput } from '../lib/glassStyles'
 
 function isoDaysAgo(days) {
   const d = new Date()

@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { RefreshCw } from 'lucide-react'
 import api from '../../lib/api'
 import { glass } from '../../lib/glassStyles'
-import StatusBadge from './components/StatusBadge'
+import StatusBadge from '../../components/StatusBadge'
 
 const KIND_LABELS = {
   DEM_PRO_CREATE:   'Création compte DEM Pro',

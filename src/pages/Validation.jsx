@@ -568,6 +568,7 @@ const REQUEST_KIND_LABELS = {
   DEM_PRO_ACTIVATE: 'Réactivation compte DEM Pro',
   GESTE_FREE_RIDE:  'Course gratuite',
   GESTE_DISCOUNT:   'Remise',
+  TARIFF_CHANGE:    'Modification tarifaire',
 }
 
 function ServiceRequestsTab() {

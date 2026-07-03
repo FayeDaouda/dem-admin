@@ -4,6 +4,7 @@ import { useAuth } from '../contexts/AuthContext'
 import api from '../lib/api'
 import logoSrc from '../assets/logo-dem.svg'
 import { glassInput } from '../lib/glassStyles'
+import { homeRouteForRole } from '../lib/roleHome'
 
 export default function Login() {
   const { login } = useAuth()
@@ -43,7 +44,7 @@ export default function Login() {
         setPendingRole(result.adminRole)
         setMustChange(true)
       } else {
-        navigate(result.adminRole === 'MARKETING' ? '/marketing' : '/')
+        navigate(homeRouteForRole(result.adminRole))
       }
     } catch (err) {
       setError(err.response?.data?.message ?? err.message ?? 'Erreur de connexion.')
@@ -60,7 +61,7 @@ export default function Login() {
     setChangeSaving(true)
     try {
       await api.post('/admin/auth/change-password', { currentPassword: currentPwd, newPassword: newPwd })
-      navigate(pendingRole === 'MARKETING' ? '/marketing' : '/')
+      navigate(homeRouteForRole(pendingRole))
     } catch (err) {
       setChangeError(err.response?.data?.message ?? 'Erreur.')
     } finally {

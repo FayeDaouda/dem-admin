@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { NavLink, useNavigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import {
-  LayoutDashboard, CreditCard, Package, Users, LogOut, Bike, Map, Menu, X, TrendingUp, ShieldCheck, AlertTriangle, ScrollText, UserCog, Briefcase, Headphones, UsersRound, SlidersHorizontal, Award, GitBranch, Bell, Megaphone,
+  LayoutDashboard, CreditCard, Package, Users, LogOut, Bike, Map, Menu, X, TrendingUp, ShieldCheck, AlertTriangle, ScrollText, UserCog, Briefcase, Headphones, UsersRound, SlidersHorizontal, Award, GitBranch, Bell, Megaphone, Wallet,
 } from 'lucide-react'
 import logoSrc from '../assets/logo-dem.svg'
 import { useResponsive } from '../lib/useResponsive'
@@ -18,6 +18,7 @@ const NAV = [
   { to: '/chefs-de-flotte',  icon: UserCog,         label: 'Chefs de flotte', roles: ['SUPER'] },
   { to: '/validation',       icon: ShieldCheck,     label: 'Validation',      roles: ['SUPER'] },
   { to: '/config',           icon: SlidersHorizontal, label: 'Tarifs',        roles: ['SUPER','DEV'] },
+  { to: '/finance',          icon: Wallet,          label: 'Finance',         roles: ['SUPER','FINANCE'] },
   { to: '/payments',         icon: CreditCard,      label: 'Paiements',       roles: ['SUPER','FINANCE'] },
   { to: '/service-client',   icon: Headphones,      label: 'Service client',  roles: ['SUPER','SERVICE_CLIENT'] },
   { to: '/audit',            icon: ScrollText,       label: 'Audit',          roles: ['SUPER','DEV'] },

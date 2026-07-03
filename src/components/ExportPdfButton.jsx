@@ -2,8 +2,8 @@ import jsPDF from 'jspdf'
 import autoTable from 'jspdf-autotable'
 import { Download } from 'lucide-react'
 
-// props: { title, columns: [{header, key}], rows, filename }
-export default function ExportPdfButton({ title, columns, rows, filename }) {
+// props: { title, columns: [{header, key}], rows, filename, onExport? }
+export default function ExportPdfButton({ title, columns, rows, filename, onExport }) {
   function handleExport() {
     const doc = new jsPDF()
     doc.setFontSize(14)
@@ -18,6 +18,7 @@ export default function ExportPdfButton({ title, columns, rows, filename }) {
       headStyles: { fillColor: [0, 119, 182] },
     })
     doc.save(filename)
+    onExport?.()
   }
 
   return (

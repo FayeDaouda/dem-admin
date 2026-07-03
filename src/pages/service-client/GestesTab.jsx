@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react'
 import api from '../../lib/api'
 import { Search, Gift, Percent } from 'lucide-react'
 import { glass, glassInput } from '../../lib/glassStyles'
-import StatusBadge from './components/StatusBadge'
+import StatusBadge from '../../components/StatusBadge'
 import SubmitRequestModal from './components/SubmitRequestModal'
 
 const KIND_LABELS = { GESTE_FREE_RIDE: 'Course gratuite', GESTE_DISCOUNT: 'Remise' }

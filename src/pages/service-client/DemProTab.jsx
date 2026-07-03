@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react'
 import api from '../../lib/api'
 import { Phone, Plus } from 'lucide-react'
 import { glass, stickyTh, stickyCol, stickyThCol } from '../../lib/glassStyles'
-import StatusBadge from './components/StatusBadge'
+import StatusBadge from '../../components/StatusBadge'
 import ExportPdfButton from '../../components/ExportPdfButton'
 import SubmitRequestModal from './components/SubmitRequestModal'
 

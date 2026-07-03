@@ -1,6 +1,7 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { AuthProvider, useAuth } from './contexts/AuthContext'
 import { lazy, Suspense } from 'react'
+import { homeRouteForRole } from './lib/roleHome'
 import Layout      from './components/Layout'
 import Login       from './pages/Login'
 import Dashboard   from './pages/Dashboard'
@@ -18,6 +19,7 @@ import ChefDetailPage from './pages/ChefDetailPage'
 import DemPro from './pages/DemPro'
 import ServiceClient from './pages/service-client'
 import Marketing from './pages/marketing'
+import Finance from './pages/finance'
 import Equipes from './pages/Equipes'
 import Badges from './pages/Badges'
 import Parrainage from './pages/Parrainage'
@@ -47,10 +49,11 @@ function AppRoutes() {
   const { user } = useAuth()
   return (
     <Routes>
-      <Route path="/login" element={user ? <Navigate to={user.adminRole === 'MARKETING' ? '/marketing' : '/'} replace /> : <Login />} />
+      <Route path="/login" element={user ? <Navigate to={homeRouteForRole(user.adminRole)} replace /> : <Login />} />
       <Route path="/" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
       <Route path="/service-client" element={<ProtectedRoute><ServiceClient /></ProtectedRoute>} />
       <Route path="/marketing" element={<ProtectedRoute><Marketing /></ProtectedRoute>} />
+      <Route path="/finance" element={<ProtectedRoute><Finance /></ProtectedRoute>} />
       <Route path="/map" element={<ProtectedRoute><LiveMap /></ProtectedRoute>} />
       <Route path="/payments" element={<ProtectedRoute><Payments /></ProtectedRoute>} />
       <Route path="/orders"   element={<ProtectedRoute><Orders /></ProtectedRoute>} />
