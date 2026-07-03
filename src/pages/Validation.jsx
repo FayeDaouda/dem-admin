@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import api from '../lib/api'
 import { glass, glassInput, pageWrap, pageScroll } from '../lib/glassStyles'
-import { RefreshCw, CheckCircle, XCircle, ChevronDown, ChevronUp, Shield, Truck, Layers, AlertTriangle, Briefcase } from 'lucide-react'
+import { RefreshCw, CheckCircle, XCircle, ChevronDown, ChevronUp, Shield, Truck, Layers, AlertTriangle, Briefcase, ClipboardList } from 'lucide-react'
 import SuspendModal from '../components/SuspendModal'
 import AmbassadorDetailModal from '../components/AmbassadorDetailModal'
 
@@ -91,12 +91,16 @@ export default function Validation() {
         <button style={TAB(tab === 'dem-pro')} onClick={() => setTab('dem-pro')}>
           <span style={{ display:'flex', alignItems:'center', gap:6 }}><Briefcase size={13} />DEM Pro</span>
         </button>
+        <button style={TAB(tab === 'service-requests')} onClick={() => setTab('service-requests')}>
+          <span style={{ display:'flex', alignItems:'center', gap:6 }}><ClipboardList size={13} />Demandes Service Client</span>
+        </button>
       </div>
       <div style={pageScroll}>
-        {tab === 'ambassadors' && <AmbassadorsTab />}
-        {tab === 'drivers'     && <DriversTab />}
-        {tab === 'fleet'       && <FleetTab />}
-        {tab === 'dem-pro'     && <DemProTab />}
+        {tab === 'ambassadors'       && <AmbassadorsTab />}
+        {tab === 'drivers'           && <DriversTab />}
+        {tab === 'fleet'             && <FleetTab />}
+        {tab === 'dem-pro'           && <DemProTab />}
+        {tab === 'service-requests'  && <ServiceRequestsTab />}
       </div>
     </div>
   )
@@ -553,6 +557,116 @@ function DemProTab() {
           </div>
         )
       })}
+    </div>
+  )
+}
+
+// ── Tab Demandes Service Client (AdminRequest) ────────────────────────────────
+const REQUEST_KIND_LABELS = {
+  DEM_PRO_CREATE:   'Création compte DEM Pro',
+  DEM_PRO_SUSPEND:  'Suspension compte DEM Pro',
+  DEM_PRO_ACTIVATE: 'Réactivation compte DEM Pro',
+  GESTE_FREE_RIDE:  'Course gratuite',
+  GESTE_DISCOUNT:   'Remise',
+}
+
+function ServiceRequestsTab() {
+  const [list,    setList]    = useState([])
+  const [loading, setLoading] = useState(true)
+  const [filter,  setFilter]  = useState('PENDING')
+  const [acting,  setActing]  = useState(null)
+  const [notes,   setNotes]   = useState({})
+
+  const load = useCallback(async () => {
+    setLoading(true)
+    try {
+      const res = await api.get('/admin/requests', { params: filter === 'all' ? {} : { status: filter } })
+      setList(res.data.requests ?? [])
+    } catch (e) { console.error(e) }
+    finally { setLoading(false) }
+  }, [filter])
+
+  useEffect(() => { load() }, [load])
+
+  async function handleDecide(id, approve) {
+    setActing(id)
+    try {
+      const path = approve ? 'approve' : 'reject'
+      await api.patch(`/admin/requests/${id}/${path}`, { reviewNotes: notes[id] ?? undefined })
+      load()
+    } catch (e) { alert(e.response?.data?.message ?? 'Erreur.') }
+    finally { setActing(null) }
+  }
+
+  return (
+    <div style={{ display:'flex', flexDirection:'column', gap:12 }}>
+      <div style={{ display:'flex', gap:8, marginBottom:4, flexWrap:'wrap' }}>
+        {[['PENDING','En attente'],['APPROVED','Approuvées'],['REJECTED','Refusées'],['all','Toutes']].map(([s, label]) => (
+          <button key={s} onClick={() => setFilter(s)} style={{
+            padding:'5px 14px', borderRadius:20, border:'1px solid rgba(0,119,182,.25)',
+            background: filter===s ? 'var(--primary)' : 'rgba(255,255,255,.5)',
+            color: filter===s ? '#fff' : 'var(--text-muted)', fontSize:12, fontWeight:600, cursor:'pointer',
+          }}>{label}</button>
+        ))}
+        <button onClick={load} style={{ marginLeft:'auto', display:'flex', alignItems:'center', gap:6, padding:'5px 12px', borderRadius:8, border:'1px solid rgba(0,119,182,.2)', background:'rgba(255,255,255,.5)', color:'var(--text-muted)', fontSize:12, cursor:'pointer' }}>
+          <RefreshCw size={12} /> Actualiser
+        </button>
+      </div>
+
+      {loading ? <div style={{ color:'var(--text-muted)' }}>Chargement…</div>
+      : list.length === 0 ? <div style={{ ...card, color:'var(--text-muted)', textAlign:'center', padding:32 }}>Aucune demande.</div>
+      : list.map(r => (
+        <div key={r.id} style={card}>
+          <div style={{ display:'flex', alignItems:'center', gap:12, flexWrap:'wrap' }}>
+            <div style={{ flex:1, minWidth:200 }}>
+              <div style={{ fontWeight:700, fontSize:14 }}>{REQUEST_KIND_LABELS[r.kind] ?? r.kind}</div>
+              <div style={{ fontSize:12, color:'var(--text-muted)' }}>
+                Soumis par {r.submittedBy?.name ?? r.submittedBy?.email ?? '—'}
+                {r.targetUser && <> · Concerne : {r.targetUser.proBusinessName ?? r.targetUser.name ?? r.targetUser.phone}</>}
+                {' · '}{new Date(r.createdAt).toLocaleString('fr-FR')}
+              </div>
+            </div>
+            <StatusBadge status={r.status} />
+          </div>
+
+          {r.reason && (
+            <div style={{ marginTop:10, padding:'10px 14px', background:'rgba(0,0,0,.03)', borderRadius:8, fontSize:13, color:'var(--text-muted)', fontStyle:'italic' }}>
+              « {r.reason} »
+            </div>
+          )}
+
+          {r.payload && Object.keys(r.payload).length > 0 && (
+            <div style={{ marginTop:10, display:'flex', gap:14, flexWrap:'wrap', fontSize:12, color:'var(--text-muted)' }}>
+              {Object.entries(r.payload).map(([k, v]) => (
+                <span key={k}><strong>{k} :</strong> {String(v)}</span>
+              ))}
+            </div>
+          )}
+
+          {r.status === 'PENDING' && (
+            <div style={{ marginTop:12, display:'flex', gap:10, alignItems:'center', flexWrap:'wrap' }}>
+              <input
+                placeholder="Notes (optionnel)"
+                value={notes[r.id] ?? ''}
+                onChange={e => setNotes(n => ({ ...n, [r.id]: e.target.value }))}
+                style={{ ...glassInput, flex:1, maxWidth:300 }}
+              />
+              <button style={btnAccept} disabled={acting===r.id} onClick={() => handleDecide(r.id, true)}>
+                <CheckCircle size={13} /> Approuver
+              </button>
+              <button style={btnRefuse} disabled={acting===r.id} onClick={() => handleDecide(r.id, false)}>
+                <XCircle size={13} /> Refuser
+              </button>
+            </div>
+          )}
+
+          {r.status !== 'PENDING' && r.reviewNotes && (
+            <div style={{ marginTop:10, fontSize:12, color:'var(--text-muted)' }}>
+              <strong>Notes de revue :</strong> {r.reviewNotes}
+            </div>
+          )}
+        </div>
+      ))}
     </div>
   )
 }
