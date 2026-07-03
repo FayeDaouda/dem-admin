@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import api from '../../../lib/api'
 import { AlertTriangle, Star, Package, Briefcase, ClipboardList } from 'lucide-react'
-import StatCard from './StatCard'
+import StatCard from '../../../components/StatCard'
 
 export default function KpiRow({ reloadKey }) {
   const [kpis, setKpis] = useState(null)

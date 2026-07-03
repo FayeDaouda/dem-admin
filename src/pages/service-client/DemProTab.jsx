@@ -3,7 +3,7 @@ import api from '../../lib/api'
 import { Phone, Plus } from 'lucide-react'
 import { glass, stickyTh, stickyCol, stickyThCol } from '../../lib/glassStyles'
 import StatusBadge from './components/StatusBadge'
-import ExportPdfButton from './components/ExportPdfButton'
+import ExportPdfButton from '../../components/ExportPdfButton'
 import SubmitRequestModal from './components/SubmitRequestModal'
 
 const SECTOR_LABELS = { commerce: 'Commerce', restauration: 'Restauration', services: 'Services', artisanat: 'Artisanat', autre: 'Autre' }

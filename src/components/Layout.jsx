@@ -2,14 +2,14 @@ import { useState, useEffect } from 'react'
 import { NavLink, useNavigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import {
-  LayoutDashboard, CreditCard, Package, Users, LogOut, Bike, Map, Menu, X, TrendingUp, ShieldCheck, AlertTriangle, ScrollText, UserCog, Briefcase, Headphones, UsersRound, SlidersHorizontal, Award, GitBranch, Bell,
+  LayoutDashboard, CreditCard, Package, Users, LogOut, Bike, Map, Menu, X, TrendingUp, ShieldCheck, AlertTriangle, ScrollText, UserCog, Briefcase, Headphones, UsersRound, SlidersHorizontal, Award, GitBranch, Bell, Megaphone,
 } from 'lucide-react'
 import logoSrc from '../assets/logo-dem.svg'
 import { useResponsive } from '../lib/useResponsive'
 
 // roles: undefined = tous les rôles. Sinon tableau des rôles autorisés (SUPER bypass toujours).
 const NAV = [
-  { to: '/',                 icon: LayoutDashboard, label: 'Dashboard' },
+  { to: '/',                 icon: LayoutDashboard, label: 'Dashboard',       roles: ['SUPER','DEV','FINANCE','SERVICE_CLIENT'] },
   { to: '/map',              icon: Map,             label: 'Carte live',      roles: ['SUPER','DEV'] },
   { to: '/drivers',          icon: Bike,            label: 'Livreurs',        roles: ['SUPER','DEV'] },
   { to: '/clients',          icon: Users,           label: 'Clients',         roles: ['SUPER','DEV','SERVICE_CLIENT'] },
@@ -22,9 +22,10 @@ const NAV = [
   { to: '/service-client',   icon: Headphones,      label: 'Service client',  roles: ['SUPER','SERVICE_CLIENT'] },
   { to: '/audit',            icon: ScrollText,       label: 'Audit',          roles: ['SUPER','DEV'] },
   { to: '/incidents',        icon: AlertTriangle,    label: 'Incidents',      roles: ['SUPER','DEV','SERVICE_CLIENT'] },
+  { to: '/marketing',       icon: Megaphone,        label: 'Marketing',      roles: ['SUPER','MARKETING'] },
   { to: '/badges',          icon: Award,            label: 'Badges',         roles: ['SUPER','MARKETING'] },
   { to: '/parrainage',      icon: GitBranch,        label: 'Parrainage',     roles: ['SUPER','MARKETING'] },
-  { to: '/acquisition',     icon: TrendingUp,       label: 'Acquisition',    roles: ['SUPER','MARKETING'] },
+  { to: '/acquisition',     icon: TrendingUp,       label: 'Acquisition',    roles: ['SUPER'] },
   { to: '/broadcast',       icon: Bell,             label: 'Notification',   roles: ['SUPER','MARKETING'] },
   { to: '/equipes',          icon: UsersRound,       label: 'Equipes',        roles: ['SUPER'] },
 ]

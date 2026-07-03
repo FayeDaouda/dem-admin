@@ -17,6 +17,7 @@ import ChefsDeFlotte from './pages/ChefsDeFlotte'
 import ChefDetailPage from './pages/ChefDetailPage'
 import DemPro from './pages/DemPro'
 import ServiceClient from './pages/service-client'
+import Marketing from './pages/marketing'
 import Equipes from './pages/Equipes'
 import Badges from './pages/Badges'
 import Parrainage from './pages/Parrainage'
@@ -46,9 +47,10 @@ function AppRoutes() {
   const { user } = useAuth()
   return (
     <Routes>
-      <Route path="/login" element={user ? <Navigate to="/" replace /> : <Login />} />
+      <Route path="/login" element={user ? <Navigate to={user.adminRole === 'MARKETING' ? '/marketing' : '/'} replace /> : <Login />} />
       <Route path="/" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
       <Route path="/service-client" element={<ProtectedRoute><ServiceClient /></ProtectedRoute>} />
+      <Route path="/marketing" element={<ProtectedRoute><Marketing /></ProtectedRoute>} />
       <Route path="/map" element={<ProtectedRoute><LiveMap /></ProtectedRoute>} />
       <Route path="/payments" element={<ProtectedRoute><Payments /></ProtectedRoute>} />
       <Route path="/orders"   element={<ProtectedRoute><Orders /></ProtectedRoute>} />

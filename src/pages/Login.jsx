@@ -17,6 +17,7 @@ export default function Login() {
   // Changement mot de passe obligatoire
   const [mustChange, setMustChange]       = useState(false)
   const [currentPwd, setCurrentPwd]       = useState('')
+  const [pendingRole, setPendingRole]     = useState(null)
   const [newPwd, setNewPwd]               = useState('')
   const [confirmPwd, setConfirmPwd]       = useState('')
   const [changeError, setChangeError]     = useState('')
@@ -39,9 +40,10 @@ export default function Login() {
       const result = await login(identifier, password)
       if (result.mustChangePassword) {
         setCurrentPwd(password)
+        setPendingRole(result.adminRole)
         setMustChange(true)
       } else {
-        navigate('/')
+        navigate(result.adminRole === 'MARKETING' ? '/marketing' : '/')
       }
     } catch (err) {
       setError(err.response?.data?.message ?? err.message ?? 'Erreur de connexion.')
@@ -58,7 +60,7 @@ export default function Login() {
     setChangeSaving(true)
     try {
       await api.post('/admin/auth/change-password', { currentPassword: currentPwd, newPassword: newPwd })
-      navigate('/')
+      navigate(pendingRole === 'MARKETING' ? '/marketing' : '/')
     } catch (err) {
       setChangeError(err.response?.data?.message ?? 'Erreur.')
     } finally {

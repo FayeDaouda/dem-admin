@@ -1,4 +1,4 @@
-import { glass } from '../../../lib/glassStyles'
+import { glass } from '../lib/glassStyles'
 
 export default function StatCard({ icon: Icon, label, value, color = 'var(--primary)', sub }) {
   return (
