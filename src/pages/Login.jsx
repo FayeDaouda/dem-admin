@@ -1,10 +1,45 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { Eye, EyeOff } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
 import api from '../lib/api'
 import logoSrc from '../assets/logo-dem.svg'
 import { glassInput } from '../lib/glassStyles'
 import { homeRouteForRole } from '../lib/roleHome'
+
+// Politique mot de passe (identique au backend)
+const PASSWORD_PATTERN = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,}$/
+const PASSWORD_HINT = '8 caracteres minimum, avec une majuscule, une minuscule et un chiffre.'
+
+// Champ mot de passe avec bouton afficher / masquer
+function PasswordInput({ value, onChange, placeholder, autoComplete }) {
+  const [show, setShow] = useState(false)
+  return (
+    <div style={{ position: 'relative' }}>
+      <input
+        type={show ? 'text' : 'password'}
+        value={value}
+        onChange={onChange}
+        placeholder={placeholder}
+        autoComplete={autoComplete}
+        required
+        style={{ ...inputStyle, paddingRight: 42 }}
+      />
+      <button
+        type="button"
+        onClick={() => setShow(s => !s)}
+        title={show ? 'Masquer le mot de passe' : 'Afficher le mot de passe'}
+        style={{
+          position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)',
+          background: 'none', border: 'none', cursor: 'pointer', padding: 4,
+          color: '#5a7a96', display: 'flex', alignItems: 'center',
+        }}
+      >
+        {show ? <EyeOff size={17} /> : <Eye size={17} />}
+      </button>
+    </div>
+  )
+}
 
 export default function Login() {
   const { login } = useAuth()
@@ -24,14 +59,15 @@ export default function Login() {
   const [changeError, setChangeError]     = useState('')
   const [changeSaving, setChangeSaving]   = useState(false)
 
-  // Reset password via OTP
-  const [resetMode, setResetMode]         = useState(false)
-  const [resetStep, setResetStep]         = useState('phone') // phone | otp | done
-  const [resetPhone, setResetPhone]       = useState('')
-  const [resetCode, setResetCode]         = useState('')
-  const [resetNewPwd, setResetNewPwd]     = useState('')
-  const [resetError, setResetError]       = useState('')
-  const [resetLoading, setResetLoading]   = useState(false)
+  // Reset password via OTP (identifiant = email ou téléphone)
+  const [resetMode, setResetMode]           = useState(false)
+  const [resetStep, setResetStep]           = useState('identifier') // identifier | otp | done
+  const [resetIdentifier, setResetIdentifier] = useState('')
+  const [resetPhoneMasked, setResetPhoneMasked] = useState('')
+  const [resetCode, setResetCode]           = useState('')
+  const [resetNewPwd, setResetNewPwd]       = useState('')
+  const [resetError, setResetError]         = useState('')
+  const [resetLoading, setResetLoading]     = useState(false)
 
   async function handleSubmit(e) {
     e.preventDefault()
@@ -56,7 +92,7 @@ export default function Login() {
   async function handleChangePassword(e) {
     e.preventDefault()
     setChangeError('')
-    if (newPwd.length < 8) { setChangeError('Le mot de passe doit contenir au moins 8 caracteres.'); return }
+    if (!PASSWORD_PATTERN.test(newPwd)) { setChangeError(PASSWORD_HINT); return }
     if (newPwd !== confirmPwd) { setChangeError('Les mots de passe ne correspondent pas.'); return }
     setChangeSaving(true)
     try {
@@ -74,7 +110,8 @@ export default function Login() {
     setResetError('')
     setResetLoading(true)
     try {
-      await api.post('/admin/auth/request-reset', { phone: resetPhone })
+      const { data } = await api.post('/admin/auth/request-reset', { identifier: resetIdentifier.trim() })
+      setResetPhoneMasked(data.phoneMasked ?? '')
       setResetStep('otp')
     } catch (err) {
       setResetError(err.response?.data?.message ?? 'Erreur.')
@@ -86,10 +123,10 @@ export default function Login() {
   async function handleResetPassword(e) {
     e.preventDefault()
     setResetError('')
-    if (resetNewPwd.length < 8) { setResetError('Le mot de passe doit contenir au moins 8 caracteres.'); return }
+    if (!PASSWORD_PATTERN.test(resetNewPwd)) { setResetError(PASSWORD_HINT); return }
     setResetLoading(true)
     try {
-      await api.post('/admin/auth/reset-password', { phone: resetPhone, code: resetCode, newPassword: resetNewPwd })
+      await api.post('/admin/auth/reset-password', { identifier: resetIdentifier.trim(), code: resetCode, newPassword: resetNewPwd })
       setResetStep('done')
     } catch (err) {
       setResetError(err.response?.data?.message ?? 'Erreur.')
@@ -115,11 +152,12 @@ export default function Login() {
           <form onSubmit={handleChangePassword} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
             <div>
               <label style={labelStyle}>Nouveau mot de passe</label>
-              <input type="password" value={newPwd} onChange={e => setNewPwd(e.target.value)} placeholder="8 caracteres minimum" required style={inputStyle} />
+              <PasswordInput value={newPwd} onChange={e => setNewPwd(e.target.value)} placeholder="Nouveau mot de passe" autoComplete="new-password" />
+              <p style={hintStyle}>{PASSWORD_HINT}</p>
             </div>
             <div>
               <label style={labelStyle}>Confirmer le mot de passe</label>
-              <input type="password" value={confirmPwd} onChange={e => setConfirmPwd(e.target.value)} placeholder="Retapez le mot de passe" required style={inputStyle} />
+              <PasswordInput value={confirmPwd} onChange={e => setConfirmPwd(e.target.value)} placeholder="Retapez le mot de passe" autoComplete="new-password" />
             </div>
             {changeError && <div style={errorStyle}>{changeError}</div>}
             <button type="submit" disabled={changeSaving} style={btnStyle(changeSaving)}>
@@ -147,11 +185,14 @@ export default function Login() {
             </h2>
           </div>
 
-          {resetStep === 'phone' && (
+          {resetStep === 'identifier' && (
             <form onSubmit={handleRequestReset} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+              <p style={{ color: '#5a7a96', fontSize: 12, margin: 0, textAlign: 'center' }}>
+                Un code de verification sera envoye par SMS au numero associe a votre compte.
+              </p>
               <div>
-                <label style={labelStyle}>Numero de telephone</label>
-                <input type="tel" value={resetPhone} onChange={e => setResetPhone(e.target.value)} placeholder="+221 7X XXX XX XX" required style={inputStyle} />
+                <label style={labelStyle}>Email ou telephone</label>
+                <input type="text" value={resetIdentifier} onChange={e => setResetIdentifier(e.target.value)} placeholder="nom@dem.sn ou +221 7X XXX XX XX" required style={inputStyle} />
               </div>
               {resetError && <div style={errorStyle}>{resetError}</div>}
               <button type="submit" disabled={resetLoading} style={btnStyle(resetLoading)}>
@@ -166,7 +207,7 @@ export default function Login() {
           {resetStep === 'otp' && (
             <form onSubmit={handleResetPassword} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
               <p style={{ color: '#5a7a96', fontSize: 12, margin: 0, textAlign: 'center' }}>
-                Code envoye au {resetPhone}
+                Code envoye au {resetPhoneMasked || 'numero associe a votre compte'}
               </p>
               <div>
                 <label style={labelStyle}>Code OTP (6 chiffres)</label>
@@ -174,13 +215,14 @@ export default function Login() {
               </div>
               <div>
                 <label style={labelStyle}>Nouveau mot de passe</label>
-                <input type="password" value={resetNewPwd} onChange={e => setResetNewPwd(e.target.value)} placeholder="8 caracteres minimum" required style={inputStyle} />
+                <PasswordInput value={resetNewPwd} onChange={e => setResetNewPwd(e.target.value)} placeholder="Nouveau mot de passe" autoComplete="new-password" />
+                <p style={hintStyle}>{PASSWORD_HINT}</p>
               </div>
               {resetError && <div style={errorStyle}>{resetError}</div>}
               <button type="submit" disabled={resetLoading} style={btnStyle(resetLoading)}>
                 {resetLoading ? 'Verification...' : 'Reinitialiser le mot de passe'}
               </button>
-              <button type="button" onClick={() => { setResetStep('phone'); setResetError('') }} style={linkBtnStyle}>
+              <button type="button" onClick={() => { setResetStep('identifier'); setResetError('') }} style={linkBtnStyle}>
                 Renvoyer le code
               </button>
             </form>
@@ -190,7 +232,7 @@ export default function Login() {
             <div style={{ textAlign: 'center' }}>
               <div style={{ fontSize: 40, marginBottom: 12 }}>✓</div>
               <p style={{ color: '#22c55e', fontWeight: 600, marginBottom: 20 }}>Mot de passe mis a jour avec succes.</p>
-              <button onClick={() => { setResetMode(false); setResetStep('phone'); setResetError('') }} style={btnStyle(false)}>
+              <button onClick={() => { setResetMode(false); setResetStep('identifier'); setResetError('') }} style={btnStyle(false)}>
                 Se connecter
               </button>
             </div>
@@ -237,14 +279,11 @@ export default function Login() {
             <label htmlFor="password" style={labelStyle}>
               Mot de passe
             </label>
-            <input
-              id="password"
-              type="password"
+            <PasswordInput
               value={password}
               onChange={e => setPassword(e.target.value)}
               placeholder="••••••••"
-              required
-              style={inputStyle}
+              autoComplete="current-password"
             />
           </div>
 
@@ -285,6 +324,8 @@ const cardStyle = {
 }
 
 const labelStyle = { display: 'block', marginBottom: 7, fontSize: 13, fontWeight: 500, color: '#3a6080' }
+
+const hintStyle = { margin: '6px 0 0', fontSize: 11, color: '#5a7a96' }
 
 const inputStyle = {
   ...glassInput,
