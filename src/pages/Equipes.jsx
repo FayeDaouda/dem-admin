@@ -5,14 +5,16 @@ import { RefreshCw, UserPlus, Trash2, Power, XCircle, Pencil, Search } from 'luc
 import { glass, glassInput, pageWrap, pageScroll, stickyTh } from '../lib/glassStyles'
 
 const ROLE_COLORS = {
-  SUPER: '#f59e0b', DEV: '#6366f1', FINANCE: '#22c55e', MARKETING: '#ec4899', SERVICE_CLIENT: '#06b6d4',
+  SUPER: '#f59e0b', DEV: '#6366f1', FINANCE: '#22c55e', MARKETING: '#ec4899', SERVICE_CLIENT: '#06b6d4', ASSISTANCE_EXECUTIVE: '#a855f7',
 }
 const ROLE_LABELS = {
-  SUPER: 'Super Admin', DEV: 'Dev', FINANCE: 'Finance', MARKETING: 'Marketing', SERVICE_CLIENT: 'Service Client',
+  SUPER: 'Super Admin', DEV: 'Dev', FINANCE: 'Finance', MARKETING: 'Marketing', SERVICE_CLIENT: 'Service Client', ASSISTANCE_EXECUTIVE: 'Assistance Executive',
 }
 
 export default function Equipes() {
   const { user: currentUser } = useAuth()
+  // ASSISTANCE_EXECUTIVE : lecture seule sur les comptes admin — pas d'actions
+  const isSuper = !currentUser?.adminRole || currentUser.adminRole === 'SUPER'
 
   const [admins, setAdmins]               = useState([])
   const [loading, setLoading]             = useState(true)
@@ -127,9 +129,11 @@ export default function Equipes() {
         </div>
         <div style={{ display: 'flex', gap: 8 }}>
           <button onClick={fetch} style={btnOutline}><RefreshCw size={14} /> Actualiser</button>
-          <button onClick={() => setShowCreate(v => !v)} style={showCreate ? btnOutline : btnPrimary}>
-            {showCreate ? <><XCircle size={14} /> Annuler</> : <><UserPlus size={14} /> Nouveau compte</>}
-          </button>
+          {isSuper && (
+            <button onClick={() => setShowCreate(v => !v)} style={showCreate ? btnOutline : btnPrimary}>
+              {showCreate ? <><XCircle size={14} /> Annuler</> : <><UserPlus size={14} /> Nouveau compte</>}
+            </button>
+          )}
         </div>
       </div>
 
@@ -272,7 +276,7 @@ export default function Equipes() {
                         {a.createdAt ? new Date(a.createdAt).toLocaleDateString('fr-FR') : '—'}
                       </td>
                       <td style={tdStyle}>
-                        {!isMe ? (
+                        {isSuper && !isMe ? (
                           <div style={{ display: 'flex', gap: 6 }}>
                             <button onClick={() => openEdit(a)} title="Modifier" style={actionBtn('#0077b6')}>
                               <Pencil size={12} /> Modifier

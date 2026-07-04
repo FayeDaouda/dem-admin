@@ -8,35 +8,37 @@ import logoSrc from '../assets/logo-dem.svg'
 import { useResponsive } from '../lib/useResponsive'
 
 // roles: undefined = tous les rôles. Sinon tableau des rôles autorisés (SUPER bypass toujours).
+// ASSISTANCE_EXECUTIVE : proche du SUPER — pas d'Audit, pas de Paiements (écritures), pas de Marketing.
 const NAV = [
-  { to: '/',                 icon: LayoutDashboard, label: 'Dashboard',       roles: ['SUPER','DEV','FINANCE','SERVICE_CLIENT'] },
-  { to: '/map',              icon: Map,             label: 'Carte live',      roles: ['SUPER','DEV'] },
-  { to: '/drivers',          icon: Bike,            label: 'Livreurs',        roles: ['SUPER','DEV'] },
-  { to: '/clients',          icon: Users,           label: 'Clients',         roles: ['SUPER','DEV','SERVICE_CLIENT'] },
-  { to: '/dem-pro',          icon: Briefcase,       label: 'DEM Pro',         roles: ['SUPER'] },
-  { to: '/orders',           icon: Package,         label: 'Courses',         roles: ['SUPER','DEV','FINANCE','SERVICE_CLIENT'] },
-  { to: '/chefs-de-flotte',  icon: UserCog,         label: 'Chefs de flotte', roles: ['SUPER'] },
-  { to: '/validation',       icon: ShieldCheck,     label: 'Validation',      roles: ['SUPER'] },
-  { to: '/config',           icon: SlidersHorizontal, label: 'Tarifs',        roles: ['SUPER','DEV'] },
-  { to: '/finance',          icon: Wallet,          label: 'Finance',         roles: ['SUPER','FINANCE'] },
+  { to: '/',                 icon: LayoutDashboard, label: 'Dashboard',       roles: ['SUPER','DEV','FINANCE','SERVICE_CLIENT','ASSISTANCE_EXECUTIVE'] },
+  { to: '/map',              icon: Map,             label: 'Carte live',      roles: ['SUPER','DEV','ASSISTANCE_EXECUTIVE'] },
+  { to: '/drivers',          icon: Bike,            label: 'Livreurs',        roles: ['SUPER','DEV','ASSISTANCE_EXECUTIVE'] },
+  { to: '/clients',          icon: Users,           label: 'Clients',         roles: ['SUPER','DEV','SERVICE_CLIENT','ASSISTANCE_EXECUTIVE'] },
+  { to: '/dem-pro',          icon: Briefcase,       label: 'DEM Pro',         roles: ['SUPER','ASSISTANCE_EXECUTIVE'] },
+  { to: '/orders',           icon: Package,         label: 'Courses',         roles: ['SUPER','DEV','FINANCE','SERVICE_CLIENT','ASSISTANCE_EXECUTIVE'] },
+  { to: '/chefs-de-flotte',  icon: UserCog,         label: 'Chefs de flotte', roles: ['SUPER','ASSISTANCE_EXECUTIVE'] },
+  { to: '/validation',       icon: ShieldCheck,     label: 'Validation',      roles: ['SUPER','ASSISTANCE_EXECUTIVE'] },
+  { to: '/config',           icon: SlidersHorizontal, label: 'Tarifs',        roles: ['SUPER','DEV','ASSISTANCE_EXECUTIVE'] },
+  { to: '/finance',          icon: Wallet,          label: 'Finance',         roles: ['SUPER','FINANCE','ASSISTANCE_EXECUTIVE'] },
   { to: '/payments',         icon: CreditCard,      label: 'Paiements',       roles: ['SUPER','FINANCE'] },
   { to: '/service-client',   icon: Headphones,      label: 'Service client',  roles: ['SUPER','SERVICE_CLIENT'] },
   { to: '/audit',            icon: ScrollText,       label: 'Audit',          roles: ['SUPER','DEV'] },
-  { to: '/incidents',        icon: AlertTriangle,    label: 'Incidents',      roles: ['SUPER','DEV','SERVICE_CLIENT'] },
+  { to: '/incidents',        icon: AlertTriangle,    label: 'Incidents',      roles: ['SUPER','DEV','SERVICE_CLIENT','ASSISTANCE_EXECUTIVE'] },
   { to: '/marketing',       icon: Megaphone,        label: 'Marketing',      roles: ['SUPER','MARKETING'] },
   { to: '/badges',          icon: Award,            label: 'Badges',         roles: ['SUPER','MARKETING'] },
   { to: '/parrainage',      icon: GitBranch,        label: 'Parrainage',     roles: ['SUPER','MARKETING'] },
   { to: '/acquisition',     icon: TrendingUp,       label: 'Acquisition',    roles: ['SUPER'] },
   { to: '/broadcast',       icon: Bell,             label: 'Notification',   roles: ['SUPER','MARKETING'] },
-  { to: '/equipes',          icon: UsersRound,       label: 'Equipes',        roles: ['SUPER'] },
+  { to: '/equipes',          icon: UsersRound,       label: 'Equipes',        roles: ['SUPER','ASSISTANCE_EXECUTIVE'] },
 ]
 
 const ROLE_LABELS = {
-  SUPER:          { label: 'Super Admin',     color: '#f59e0b' },
-  DEV:            { label: 'Dev Admin',       color: '#6366f1' },
-  FINANCE:        { label: 'Finance Admin',   color: '#22c55e' },
-  MARKETING:      { label: 'Marketing Admin', color: '#ec4899' },
-  SERVICE_CLIENT: { label: 'Service Client',  color: '#06b6d4' },
+  SUPER:                { label: 'Super Admin',           color: '#f59e0b' },
+  DEV:                  { label: 'Dev Admin',             color: '#6366f1' },
+  FINANCE:              { label: 'Finance Admin',         color: '#22c55e' },
+  MARKETING:            { label: 'Marketing Admin',       color: '#ec4899' },
+  SERVICE_CLIENT:       { label: 'Service Client',        color: '#06b6d4' },
+  ASSISTANCE_EXECUTIVE: { label: 'Assistance Executive',  color: '#a855f7' },
 }
 
 function canSeeNav(item, adminRole) {
