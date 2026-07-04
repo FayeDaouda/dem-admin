@@ -59,15 +59,13 @@ export default function Login() {
   const [changeError, setChangeError]     = useState('')
   const [changeSaving, setChangeSaving]   = useState(false)
 
-  // Reset password via OTP (identifiant = email ou téléphone)
-  const [resetMode, setResetMode]           = useState(false)
-  const [resetStep, setResetStep]           = useState('identifier') // identifier | otp | done
+  // Mot de passe oublié : demande envoyée au Super Admin (identifiant = email ou téléphone)
+  const [resetMode, setResetMode]             = useState(false)
+  const [resetStep, setResetStep]             = useState('identifier') // identifier | sent
   const [resetIdentifier, setResetIdentifier] = useState('')
-  const [resetPhoneMasked, setResetPhoneMasked] = useState('')
-  const [resetCode, setResetCode]           = useState('')
-  const [resetNewPwd, setResetNewPwd]       = useState('')
-  const [resetError, setResetError]         = useState('')
-  const [resetLoading, setResetLoading]     = useState(false)
+  const [resetMessage, setResetMessage]       = useState('')
+  const [resetError, setResetError]           = useState('')
+  const [resetLoading, setResetLoading]       = useState(false)
 
   async function handleSubmit(e) {
     e.preventDefault()
@@ -111,23 +109,8 @@ export default function Login() {
     setResetLoading(true)
     try {
       const { data } = await api.post('/admin/auth/request-reset', { identifier: resetIdentifier.trim() })
-      setResetPhoneMasked(data.phoneMasked ?? '')
-      setResetStep('otp')
-    } catch (err) {
-      setResetError(err.response?.data?.message ?? 'Erreur.')
-    } finally {
-      setResetLoading(false)
-    }
-  }
-
-  async function handleResetPassword(e) {
-    e.preventDefault()
-    setResetError('')
-    if (!PASSWORD_PATTERN.test(resetNewPwd)) { setResetError(PASSWORD_HINT); return }
-    setResetLoading(true)
-    try {
-      await api.post('/admin/auth/reset-password', { identifier: resetIdentifier.trim(), code: resetCode, newPassword: resetNewPwd })
-      setResetStep('done')
+      setResetMessage(data.message ?? 'Demande envoyée au Super Admin.')
+      setResetStep('sent')
     } catch (err) {
       setResetError(err.response?.data?.message ?? 'Erreur.')
     } finally {
@@ -181,14 +164,15 @@ export default function Login() {
           <div style={{ textAlign: 'center', marginBottom: 24 }}>
             <img src={logoSrc} alt="DEM" style={{ width: 70, height: 70, objectFit: 'contain', borderRadius: 16, marginBottom: 10 }} />
             <h2 style={{ fontSize: 17, fontWeight: 700, color: '#1a3a52', marginBottom: 4 }}>
-              {resetStep === 'done' ? 'Mot de passe reinitialise' : 'Reinitialiser le mot de passe'}
+              {resetStep === 'sent' ? 'Demande envoyee' : 'Mot de passe oublie'}
             </h2>
           </div>
 
           {resetStep === 'identifier' && (
             <form onSubmit={handleRequestReset} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
               <p style={{ color: '#5a7a96', fontSize: 12, margin: 0, textAlign: 'center' }}>
-                Un code de verification sera envoye par SMS au numero associe a votre compte.
+                Une demande de reinitialisation sera envoyee au Super Admin.
+                Il reinitialisera votre mot de passe et vous communiquera le mot de passe par defaut.
               </p>
               <div>
                 <label style={labelStyle}>Email ou telephone</label>
@@ -196,7 +180,7 @@ export default function Login() {
               </div>
               {resetError && <div style={errorStyle}>{resetError}</div>}
               <button type="submit" disabled={resetLoading} style={btnStyle(resetLoading)}>
-                {resetLoading ? 'Envoi...' : 'Envoyer le code SMS'}
+                {resetLoading ? 'Envoi...' : 'Envoyer la demande'}
               </button>
               <button type="button" onClick={() => { setResetMode(false); setResetError('') }} style={linkBtnStyle}>
                 Retour a la connexion
@@ -204,36 +188,17 @@ export default function Login() {
             </form>
           )}
 
-          {resetStep === 'otp' && (
-            <form onSubmit={handleResetPassword} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-              <p style={{ color: '#5a7a96', fontSize: 12, margin: 0, textAlign: 'center' }}>
-                Code envoye au {resetPhoneMasked || 'numero associe a votre compte'}
-              </p>
-              <div>
-                <label style={labelStyle}>Code OTP (6 chiffres)</label>
-                <input type="text" maxLength={6} value={resetCode} onChange={e => setResetCode(e.target.value.replace(/\D/g, ''))} placeholder="123456" required style={{ ...inputStyle, textAlign: 'center', fontSize: 20, letterSpacing: 8 }} />
-              </div>
-              <div>
-                <label style={labelStyle}>Nouveau mot de passe</label>
-                <PasswordInput value={resetNewPwd} onChange={e => setResetNewPwd(e.target.value)} placeholder="Nouveau mot de passe" autoComplete="new-password" />
-                <p style={hintStyle}>{PASSWORD_HINT}</p>
-              </div>
-              {resetError && <div style={errorStyle}>{resetError}</div>}
-              <button type="submit" disabled={resetLoading} style={btnStyle(resetLoading)}>
-                {resetLoading ? 'Verification...' : 'Reinitialiser le mot de passe'}
-              </button>
-              <button type="button" onClick={() => { setResetStep('identifier'); setResetError('') }} style={linkBtnStyle}>
-                Renvoyer le code
-              </button>
-            </form>
-          )}
-
-          {resetStep === 'done' && (
+          {resetStep === 'sent' && (
             <div style={{ textAlign: 'center' }}>
               <div style={{ fontSize: 40, marginBottom: 12 }}>✓</div>
-              <p style={{ color: '#22c55e', fontWeight: 600, marginBottom: 20 }}>Mot de passe mis a jour avec succes.</p>
-              <button onClick={() => { setResetMode(false); setResetStep('identifier'); setResetError('') }} style={btnStyle(false)}>
-                Se connecter
+              <p style={{ color: '#22c55e', fontWeight: 600, marginBottom: 8 }}>Demande envoyee.</p>
+              <p style={{ color: '#5a7a96', fontSize: 12, marginBottom: 20 }}>{resetMessage}</p>
+              <p style={{ color: '#5a7a96', fontSize: 12, marginBottom: 20 }}>
+                Apres reinitialisation, connectez-vous avec le mot de passe par defaut :
+                vous devrez alors choisir un nouveau mot de passe.
+              </p>
+              <button onClick={() => { setResetMode(false); setResetStep('identifier'); setResetError(''); setResetIdentifier('') }} style={btnStyle(false)}>
+                Retour a la connexion
               </button>
             </div>
           )}

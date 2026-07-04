@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import api from '../lib/api'
 import { useAuth } from '../contexts/AuthContext'
-import { RefreshCw, UserPlus, Trash2, Power, XCircle, Pencil, Search } from 'lucide-react'
+import { RefreshCw, UserPlus, Trash2, Power, XCircle, Pencil, Search, KeyRound, Check } from 'lucide-react'
 import { glass, glassInput, pageWrap, pageScroll, stickyTh } from '../lib/glassStyles'
 
 const ROLE_COLORS = {
@@ -33,14 +33,22 @@ export default function Equipes() {
   const [editError, setEditError]         = useState('')
   const [editSaving, setEditSaving]       = useState(false)
 
+  // Demandes de reinitialisation de mot de passe (SUPER uniquement)
+  const [resetRequests, setResetRequests] = useState([])
+  const [resetBusy, setResetBusy]         = useState(null) // id de la demande en cours de traitement
+
   const fetch = useCallback(async () => {
     setLoading(true)
     try {
       const res = await api.get('/admin/admins')
       setAdmins(res.data?.admins ?? [])
+      if (isSuper) {
+        const rr = await api.get('/admin/password-resets')
+        setResetRequests(rr.data?.requests ?? [])
+      }
     } catch (e) { console.error(e) }
     finally { setLoading(false) }
-  }, [])
+  }, [isSuper])
 
   useEffect(() => { fetch() }, [fetch])
 
@@ -96,6 +104,27 @@ export default function Equipes() {
       await api.delete(`/admin/admins/${admin.id}`)
       fetch()
     } catch (e) { alert(e.response?.data?.message ?? 'Erreur.') }
+  }
+
+  async function handleApproveReset(req) {
+    const who = req.targetUser?.name ?? req.targetUser?.email ?? 'ce compte'
+    if (!confirm(`Reinitialiser le mot de passe de ${who} au mot de passe par defaut ?\nIl devra le changer a sa premiere connexion.`)) return
+    setResetBusy(req.id)
+    try {
+      const res = await api.patch(`/admin/password-resets/${req.id}/approve`)
+      alert(res.data?.message ?? 'Mot de passe reinitialise.')
+      fetch()
+    } catch (e) { alert(e.response?.data?.message ?? 'Erreur.') }
+    finally { setResetBusy(null) }
+  }
+
+  async function handleRejectReset(req) {
+    setResetBusy(req.id)
+    try {
+      await api.patch(`/admin/password-resets/${req.id}/reject`)
+      fetch()
+    } catch (e) { alert(e.response?.data?.message ?? 'Erreur.') }
+    finally { setResetBusy(null) }
   }
 
   // ── Filtrage ──
@@ -155,6 +184,41 @@ export default function Equipes() {
           )
         })}
       </div>
+
+      {/* Demandes de reinitialisation de mot de passe (SUPER) */}
+      {isSuper && resetRequests.length > 0 && (
+        <div style={{ ...glass, padding: '16px 20px', marginBottom: 16, flexShrink: 0, borderLeft: '3px solid #f59e0b' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+            <KeyRound size={15} color="#f59e0b" />
+            <h3 style={{ fontSize: 13, fontWeight: 700, margin: 0 }}>
+              Demandes de reinitialisation de mot de passe ({resetRequests.length})
+            </h3>
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            {resetRequests.map(req => (
+              <div key={req.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap', padding: '8px 12px', background: 'rgba(245,158,11,0.06)', borderRadius: 8 }}>
+                <div>
+                  <div style={{ fontWeight: 600, fontSize: 13 }}>{req.targetUser?.name ?? '—'}</div>
+                  <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>
+                    {req.targetUser?.email ?? req.targetUser?.phone} · demande du {new Date(req.createdAt).toLocaleString('fr-FR')}
+                  </div>
+                </div>
+                <div style={{ display: 'flex', gap: 6 }}>
+                  <button disabled={resetBusy === req.id} onClick={() => handleApproveReset(req)} style={actionBtn('#22c55e')}>
+                    <Check size={12} /> {resetBusy === req.id ? 'Traitement...' : 'Reinitialiser (mdp par defaut)'}
+                  </button>
+                  <button disabled={resetBusy === req.id} onClick={() => handleRejectReset(req)} style={actionBtn('#ef4444')}>
+                    <XCircle size={12} /> Refuser
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+          <p style={{ fontSize: 11, color: 'var(--text-muted)', margin: '10px 0 0' }}>
+            La reinitialisation applique le mot de passe par defaut. L'utilisateur devra choisir un nouveau mot de passe a sa premiere connexion.
+          </p>
+        </div>
+      )}
 
       {/* Formulaire creation */}
       {showCreate && (
