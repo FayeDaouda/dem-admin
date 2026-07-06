@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import api from '../lib/api'
+import { useAuth } from '../contexts/AuthContext'
 import Badge from '../components/Badge'
 import { RefreshCw, CheckCircle, XCircle, Pencil, Trash2, Ban, RotateCcw, X, Search } from 'lucide-react'
 import { glass, glassModal, glassInput, pageWrap, pageScroll, stickyTh, stickyThCol, stickyCol } from '../lib/glassStyles'
@@ -152,6 +153,10 @@ function ProStats({ accounts }) {
 
 // ── Page principale ─────────────────────────────────────────────────────────
 export default function DemPro() {
+  const { user } = useAuth()
+  // Actions (valider, suspendre, modifier, supprimer) : SUPER uniquement —
+  // SC / MARKETING / AE consultent en lecture seule
+  const isSuper = !user?.adminRole || user.adminRole === 'SUPER'
   const [accounts, setAccounts] = useState([])
   const [loading, setLoading]   = useState(true)
   const [filter, setFilter]     = useState('all')
@@ -334,34 +339,38 @@ export default function DemPro() {
                       {a.createdAt ? new Date(a.createdAt).toLocaleDateString('fr-FR') : '—'}
                     </td>
                     <td style={tdStyle}>
-                      <div style={{ display: 'flex', gap: 5 }}>
-                        {a.proStatus === 'PENDING' && (
-                          <>
-                            <button onClick={() => validate(a.id, true)} disabled={saving} style={{ ...btnSmall, color: 'var(--success)', borderColor: 'var(--success)' }} title="Valider">
-                              <CheckCircle size={13} />
+                      {isSuper ? (
+                        <div style={{ display: 'flex', gap: 5 }}>
+                          {a.proStatus === 'PENDING' && (
+                            <>
+                              <button onClick={() => validate(a.id, true)} disabled={saving} style={{ ...btnSmall, color: 'var(--success)', borderColor: 'var(--success)' }} title="Valider">
+                                <CheckCircle size={13} />
+                              </button>
+                              <button onClick={() => setModal({ type: 'reject', account: a })} style={{ ...btnSmall, color: 'var(--danger)', borderColor: 'var(--danger)' }} title="Refuser">
+                                <XCircle size={13} />
+                              </button>
+                            </>
+                          )}
+                          {a.proStatus === 'ACTIVE' && !isSuspended && (
+                            <button onClick={() => setModal({ type: 'suspend', account: a })} style={{ ...btnSmall, color: '#f59e0b', borderColor: '#f59e0b' }} title="Suspendre">
+                              <Ban size={13} />
                             </button>
-                            <button onClick={() => setModal({ type: 'reject', account: a })} style={{ ...btnSmall, color: 'var(--danger)', borderColor: 'var(--danger)' }} title="Refuser">
-                              <XCircle size={13} />
+                          )}
+                          {isSuspended && (
+                            <button onClick={() => toggleSuspend(a)} disabled={saving} style={{ ...btnSmall, color: 'var(--success)', borderColor: 'var(--success)' }} title="Réactiver">
+                              <RotateCcw size={13} />
                             </button>
-                          </>
-                        )}
-                        {a.proStatus === 'ACTIVE' && !isSuspended && (
-                          <button onClick={() => setModal({ type: 'suspend', account: a })} style={{ ...btnSmall, color: '#f59e0b', borderColor: '#f59e0b' }} title="Suspendre">
-                            <Ban size={13} />
+                          )}
+                          <button onClick={() => setEditTarget(a)} style={btnSmall} title="Modifier">
+                            <Pencil size={13} />
                           </button>
-                        )}
-                        {isSuspended && (
-                          <button onClick={() => toggleSuspend(a)} disabled={saving} style={{ ...btnSmall, color: 'var(--success)', borderColor: 'var(--success)' }} title="Réactiver">
-                            <RotateCcw size={13} />
+                          <button onClick={() => deleteAccount(a)} style={{ ...btnSmall, color: 'var(--danger)', borderColor: 'var(--danger)' }} title="Supprimer">
+                            <Trash2 size={13} />
                           </button>
-                        )}
-                        <button onClick={() => setEditTarget(a)} style={btnSmall} title="Modifier">
-                          <Pencil size={13} />
-                        </button>
-                        <button onClick={() => deleteAccount(a)} style={{ ...btnSmall, color: 'var(--danger)', borderColor: 'var(--danger)' }} title="Supprimer">
-                          <Trash2 size={13} />
-                        </button>
-                      </div>
+                        </div>
+                      ) : (
+                        <span style={{ color: 'var(--text-muted)', fontSize: 11 }}>Lecture seule</span>
+                      )}
                     </td>
                   </tr>
                   )

@@ -14,7 +14,7 @@ const NAV = [
   { to: '/map',              icon: Map,             label: 'Carte live',      roles: ['SUPER','DEV','ASSISTANCE_EXECUTIVE'] },
   { to: '/drivers',          icon: Bike,            label: 'Livreurs',        roles: ['SUPER','DEV','ASSISTANCE_EXECUTIVE'] },
   { to: '/clients',          icon: Users,           label: 'Clients',         roles: ['SUPER','DEV','SERVICE_CLIENT','ASSISTANCE_EXECUTIVE'] },
-  { to: '/dem-pro',          icon: Briefcase,       label: 'DEM Pro',         roles: ['SUPER','ASSISTANCE_EXECUTIVE'] },
+  { to: '/dem-pro',          icon: Briefcase,       label: 'DEM Pro',         roles: ['SUPER','ASSISTANCE_EXECUTIVE','SERVICE_CLIENT','MARKETING'] },
   { to: '/orders',           icon: Package,         label: 'Courses',         roles: ['SUPER','DEV','FINANCE','SERVICE_CLIENT','ASSISTANCE_EXECUTIVE'] },
   { to: '/chefs-de-flotte',  icon: UserCog,         label: 'Chefs de flotte', roles: ['SUPER','ASSISTANCE_EXECUTIVE'] },
   { to: '/validation',       icon: ShieldCheck,     label: 'Validation',      roles: ['SUPER','ASSISTANCE_EXECUTIVE'] },
