@@ -12,8 +12,8 @@ import { useResponsive } from '../lib/useResponsive'
 const NAV = [
   { to: '/',                 icon: LayoutDashboard, label: 'Dashboard',       roles: ['SUPER','DEV','FINANCE','SERVICE_CLIENT','ASSISTANCE_EXECUTIVE'] },
   { to: '/map',              icon: Map,             label: 'Carte live',      roles: ['SUPER','DEV','ASSISTANCE_EXECUTIVE'] },
-  { to: '/drivers',          icon: Bike,            label: 'Livreurs',        roles: ['SUPER','DEV','ASSISTANCE_EXECUTIVE'] },
-  { to: '/clients',          icon: Users,           label: 'Clients',         roles: ['SUPER','DEV','SERVICE_CLIENT','ASSISTANCE_EXECUTIVE'] },
+  { to: '/drivers',          icon: Bike,            label: 'Livreurs',        roles: ['SUPER','DEV','ASSISTANCE_EXECUTIVE','MARKETING'] },
+  { to: '/clients',          icon: Users,           label: 'Clients',         roles: ['SUPER','DEV','SERVICE_CLIENT','ASSISTANCE_EXECUTIVE','MARKETING'] },
   { to: '/dem-pro',          icon: Briefcase,       label: 'DEM Pro',         roles: ['SUPER','ASSISTANCE_EXECUTIVE','SERVICE_CLIENT','MARKETING'] },
   { to: '/orders',           icon: Package,         label: 'Courses',         roles: ['SUPER','DEV','FINANCE','SERVICE_CLIENT','ASSISTANCE_EXECUTIVE'] },
   { to: '/chefs-de-flotte',  icon: UserCog,         label: 'Chefs de flotte', roles: ['SUPER','ASSISTANCE_EXECUTIVE'] },
