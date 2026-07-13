@@ -1,11 +1,18 @@
 import { glass } from '../lib/glassStyles'
 
-export default function StatCard({ icon: Icon, label, value, color = 'var(--primary)', sub }) {
+export default function StatCard({ icon: Icon, label, value, color = 'var(--primary)', sub, onClick }) {
   return (
-    <div style={{
-      ...glass, padding: '16px 18px',
-      display: 'flex', alignItems: 'center', gap: 12, minWidth: 0,
-    }}>
+    <div
+      onClick={onClick}
+      style={{
+        ...glass, padding: '16px 18px',
+        display: 'flex', alignItems: 'center', gap: 12, minWidth: 0,
+        cursor: onClick ? 'pointer' : 'default',
+        transition: 'transform .15s, box-shadow .15s',
+      }}
+      onMouseEnter={onClick ? (e => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = '0 8px 24px rgba(0,0,0,0.10)' }) : undefined}
+      onMouseLeave={onClick ? (e => { e.currentTarget.style.transform = 'none'; e.currentTarget.style.boxShadow = '' }) : undefined}
+    >
       <div style={{
         width: 38, height: 38, borderRadius: 10,
         background: color + '18', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
