@@ -68,6 +68,22 @@ export default function AcquisitionTab() {
         <PeriodBox label="6 MOIS" value={data.newDrivers.sixMonths} />
       </div>
 
+      <h2 style={{ fontSize: 14, fontWeight: 700, marginBottom: 10 }}>Nouveaux DEM Pro</h2>
+      <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginBottom: 20 }}>
+        <PeriodBox label="AUJOURD'HUI" value={data.newDemPro.today} />
+        <PeriodBox label="7 JOURS" value={data.newDemPro.week} />
+        <PeriodBox label="30 JOURS" value={data.newDemPro.month} />
+        <PeriodBox label="6 MOIS" value={data.newDemPro.sixMonths} />
+      </div>
+
+      <h2 style={{ fontSize: 14, fontWeight: 700, marginBottom: 10 }}>Nouveaux chefs de flotte</h2>
+      <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginBottom: 20 }}>
+        <PeriodBox label="AUJOURD'HUI" value={data.newChefsDeFlotte.today} />
+        <PeriodBox label="7 JOURS" value={data.newChefsDeFlotte.week} />
+        <PeriodBox label="30 JOURS" value={data.newChefsDeFlotte.month} />
+        <PeriodBox label="6 MOIS" value={data.newChefsDeFlotte.sixMonths} />
+      </div>
+
       <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 16 }}>
         <div style={{ ...glass, padding: '18px 20px' }}>
           <h2 style={{ fontSize: 14, fontWeight: 600, marginBottom: 14 }}>Courbe de croissance — 30 derniers jours</h2>
