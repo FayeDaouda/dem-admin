@@ -69,6 +69,8 @@ function ClientBadgesTab() {
   const [referrers,  setReferrers]  = useState([])
   const [tiers,      setTiers]      = useState([])
   const [pending,    setPending]    = useState([])
+  const [clients,    setClients]    = useState([])
+  const [search,     setSearch]     = useState('')
   const [loading,    setLoading]    = useState(true)
   const [validating, setValidating] = useState(null)
   const [editModal,  setEditModal]  = useState(null)
@@ -80,12 +82,13 @@ function ClientBadgesTab() {
         api.get('/admin/client-badges/stats'),
         api.get('/admin/client-badges/top-referrers'),
         api.get('/admin/client-badges/tiers'),
-        api.get('/admin/clients', { params: { needsBadgeValidation: true } }).catch(() => ({ data: { clients: [] } })),
+        api.get('/admin/clients', { params: { limit: 1000 } }).catch(() => ({ data: { clients: [] } })),
       ])
       setStats(s.data)
       setReferrers(r.data.referrers ?? [])
       setTiers(t.data.tiers ?? [])
       const allClients = p.data.clients ?? []
+      setClients(allClients)
       setPending(allClients.filter(c => ['mbokk','djambar','buur','vip'].includes(c.clientBadge) && !c.clientBadgeValidated))
     } catch (e) { console.error(e) }
     finally { setLoading(false) }
@@ -106,6 +109,11 @@ function ClientBadgesTab() {
 
   const total = stats?.total ?? 0
   const dist  = stats?.distribution ?? []
+
+  const q = search.trim().toLowerCase()
+  const filteredClients = q
+    ? clients.filter(c => c.name?.toLowerCase().includes(q) || c.phone?.includes(q))
+    : clients
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
@@ -235,6 +243,56 @@ function ClientBadgesTab() {
         </div>
       )}
 
+      {/* Liste des clients avec badge actuel */}
+      <div style={{ ...glass, padding: '20px 24px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14, flexWrap: 'wrap', gap: 10 }}>
+          <div style={{ fontWeight: 700, fontSize: 15 }}>Liste des clients ({filteredClients.length})</div>
+          <input
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            placeholder="Rechercher par nom ou téléphone…"
+            style={{ ...glassInput, width: 240 }}
+          />
+        </div>
+        {filteredClients.length === 0 ? (
+          <div style={{ color: 'var(--text-muted)', fontSize: 13, textAlign: 'center', padding: 20 }}>Aucun client trouvé.</div>
+        ) : (
+          <div style={{ maxHeight: 480, overflowY: 'auto' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+              <thead>
+                <tr>{['Client', 'Téléphone', 'Badge actuel', 'Inscrit le'].map(h => (
+                  <th key={h} style={{ textAlign: 'left', padding: '6px 10px', color: 'var(--text-muted)', fontSize: 11, fontWeight: 600, borderBottom: '1px solid rgba(0,119,182,.10)', position: 'sticky', top: 0, background: 'var(--surface)' }}>{h}</th>
+                ))}</tr>
+              </thead>
+              <tbody>
+                {filteredClients.map(c => {
+                  const v = CLIENT_VISUALS[c.clientBadge] ?? null
+                  return (
+                    <tr key={c.id} style={{ borderBottom: '1px solid var(--border)' }}>
+                      <td style={{ padding: '8px 10px', fontWeight: 600, fontSize: 13 }}>{c.name ?? '—'}</td>
+                      <td style={{ padding: '8px 10px', fontSize: 13 }}>{c.phone}</td>
+                      <td style={{ padding: '8px 10px' }}>
+                        {v ? (
+                          <span style={{ background: v.bg, color: v.color, fontSize: 11, fontWeight: 700, padding: '3px 10px', borderRadius: 20, whiteSpace: 'nowrap' }}>
+                            {v.emoji} {v.name}
+                          </span>
+                        ) : (
+                          <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>Sans badge</span>
+                        )}
+                        {c.clientBadge && !c.clientBadgeValidated && ['mbokk','djambar','buur','vip'].includes(c.clientBadge) && (
+                          <span style={{ marginLeft: 6, fontSize: 10, fontWeight: 700, color: '#b45309' }}>⏳ non validé</span>
+                        )}
+                      </td>
+                      <td style={{ padding: '8px 10px', color: 'var(--text-muted)', fontSize: 12 }}>{c.createdAt ? new Date(c.createdAt).toLocaleDateString('fr-FR') : '—'}</td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+
       {/* Modal modification badges clients */}
       {editModal && (
         <div style={overlay} onClick={() => setEditModal(null)}>
@@ -308,13 +366,15 @@ function DriverBadgesTab() {
   const [saved,       setSaved]       = useState(false)
   const [editModal,   setEditModal]   = useState(null)
   const [driverStats, setDriverStats] = useState({})
+  const [driversList, setDriversList] = useState([])
+  const [search,      setSearch]      = useState('')
 
   const load = useCallback(async () => {
     setLoading(true)
     try {
       const [badgeRes, driversRes] = await Promise.all([
         api.get('/admin/badges/config'),
-        api.get('/admin/drivers').catch(() => ({ data: { drivers: [] } })),
+        api.get('/admin/drivers', { params: { limit: 1000 } }).catch(() => ({ data: { drivers: [] } })),
       ])
       const b = badgeRes.data.badges ?? DEFAULT_DRIVER_BADGES
       setBadges(b)
@@ -324,20 +384,22 @@ function DriverBadgesTab() {
       const counts = {}
       for (const tier of b) counts[tier.tier] = 0
       counts._none = 0
-      for (const d of drivers) {
-        let matched = false
+      const withBadge = drivers.map(d => {
+        let matchedTier = null
         for (const tier of b) {
           const okRating = tier.rating === 0 || (d.avgRating ?? 0) >= tier.rating
           if ((d.deliveredCourses ?? 0) >= tier.courses && (d.referralCount ?? 0) >= tier.referrals && okRating) {
-            counts[tier.tier]++
-            matched = true
+            matchedTier = tier.tier
             break
           }
         }
-        if (!matched) counts._none++
-      }
+        if (matchedTier) counts[matchedTier]++
+        else counts._none++
+        return { ...d, badgeTier: matchedTier }
+      })
       counts._total = drivers.length
       setDriverStats(counts)
+      setDriversList(withBadge)
     } catch {
       setBadges(DEFAULT_DRIVER_BADGES)
       setDraft(DEFAULT_DRIVER_BADGES.map(x => ({ ...x })))
@@ -373,6 +435,11 @@ function DriverBadgesTab() {
   if (loading || !draft) return <div style={{ color: 'var(--text-muted)', padding: 40, textAlign: 'center' }}>Chargement...</div>
 
   const totalDrivers = driverStats._total ?? 0
+
+  const q = search.trim().toLowerCase()
+  const filteredDrivers = q
+    ? driversList.filter(d => d.name?.toLowerCase().includes(q) || d.phone?.includes(q))
+    : driversList
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
@@ -421,6 +488,57 @@ function DriverBadgesTab() {
           </div>
           <div style={{ fontSize: 28, fontWeight: 800, color: 'var(--text-muted)' }}>{driverStats._none ?? 0}</div>
         </div>
+      </div>
+
+      {/* Liste des livreurs avec badge actuel */}
+      <div style={{ ...glass, padding: '20px 24px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14, flexWrap: 'wrap', gap: 10 }}>
+          <div style={{ fontWeight: 700, fontSize: 15 }}>Liste des livreurs ({filteredDrivers.length})</div>
+          <input
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            placeholder="Rechercher par nom ou téléphone…"
+            style={{ ...glassInput, width: 240 }}
+          />
+        </div>
+        {filteredDrivers.length === 0 ? (
+          <div style={{ color: 'var(--text-muted)', fontSize: 13, textAlign: 'center', padding: 20 }}>Aucun livreur trouvé.</div>
+        ) : (
+          <div style={{ maxHeight: 480, overflowY: 'auto' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+              <thead>
+                <tr>{['Livreur', 'Téléphone', 'Véhicule', 'Courses', 'Parrainages', 'Note', 'Badge actuel'].map(h => (
+                  <th key={h} style={{ textAlign: 'left', padding: '6px 10px', color: 'var(--text-muted)', fontSize: 11, fontWeight: 600, borderBottom: '1px solid rgba(0,119,182,.10)', position: 'sticky', top: 0, background: 'var(--surface)' }}>{h}</th>
+                ))}</tr>
+              </thead>
+              <tbody>
+                {filteredDrivers.map(d => {
+                  const v = DRIVER_VISUALS[d.badgeTier] ?? null
+                  const badgeName = draft.find(b => b.tier === d.badgeTier)?.name
+                  return (
+                    <tr key={d.id} style={{ borderBottom: '1px solid var(--border)' }}>
+                      <td style={{ padding: '8px 10px', fontWeight: 600, fontSize: 13 }}>{d.name ?? '—'}</td>
+                      <td style={{ padding: '8px 10px', fontSize: 13 }}>{d.phone}</td>
+                      <td style={{ padding: '8px 10px', fontSize: 13 }}>{d.vehicleType ?? '—'}</td>
+                      <td style={{ padding: '8px 10px', fontSize: 13 }}>{d.deliveredCourses ?? 0}</td>
+                      <td style={{ padding: '8px 10px', fontSize: 13 }}>{d.referralCount ?? 0}</td>
+                      <td style={{ padding: '8px 10px', fontSize: 13 }}>{d.avgRating ? d.avgRating.toFixed(1) : '—'}</td>
+                      <td style={{ padding: '8px 10px' }}>
+                        {v ? (
+                          <span style={{ background: v.bg, color: v.color, fontSize: 11, fontWeight: 700, padding: '3px 10px', borderRadius: 20, whiteSpace: 'nowrap' }}>
+                            {v.emoji} {badgeName}
+                          </span>
+                        ) : (
+                          <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>Sans badge</span>
+                        )}
+                      </td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
 
       {/* Modal modification badges livreurs */}
