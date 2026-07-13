@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { NavLink, useNavigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import {
-  LayoutDashboard, CreditCard, Package, Users, LogOut, Bike, Map, Menu, X, TrendingUp, ShieldCheck, AlertTriangle, ScrollText, UserCog, Briefcase, Headphones, UsersRound, SlidersHorizontal, Award, GitBranch, Bell, Megaphone, Wallet,
+  LayoutDashboard, CreditCard, Package, Users, LogOut, Bike, Map, Menu, X, TrendingUp, ShieldCheck, AlertTriangle, ScrollText, UserCog, Briefcase, Headphones, UsersRound, SlidersHorizontal, Award, GitBranch, Bell, Wallet,
 } from 'lucide-react'
 import logoSrc from '../assets/logo-dem.svg'
 import { useResponsive } from '../lib/useResponsive'
@@ -11,6 +11,7 @@ import { useResponsive } from '../lib/useResponsive'
 // ASSISTANCE_EXECUTIVE : proche du SUPER — pas d'Audit, pas de Paiements (écritures), pas de Marketing.
 const NAV = [
   { to: '/',                 icon: LayoutDashboard, label: 'Dashboard',       roles: ['SUPER','DEV','FINANCE','SERVICE_CLIENT','ASSISTANCE_EXECUTIVE'] },
+  { to: '/marketing',       icon: LayoutDashboard,  label: 'Dashboard',      roles: ['SUPER','MARKETING'] },
   { to: '/map',              icon: Map,             label: 'Carte live',      roles: ['SUPER','DEV','ASSISTANCE_EXECUTIVE'] },
   { to: '/drivers',          icon: Bike,            label: 'Livreurs',        roles: ['SUPER','DEV','ASSISTANCE_EXECUTIVE','MARKETING'] },
   { to: '/clients',          icon: Users,           label: 'Clients',         roles: ['SUPER','DEV','SERVICE_CLIENT','ASSISTANCE_EXECUTIVE','MARKETING'] },
@@ -24,7 +25,6 @@ const NAV = [
   { to: '/service-client',   icon: Headphones,      label: 'Service client',  roles: ['SUPER','SERVICE_CLIENT'] },
   { to: '/audit',            icon: ScrollText,       label: 'Audit',          roles: ['SUPER','DEV'] },
   { to: '/incidents',        icon: AlertTriangle,    label: 'Incidents',      roles: ['SUPER','DEV','SERVICE_CLIENT','ASSISTANCE_EXECUTIVE'] },
-  { to: '/marketing',       icon: Megaphone,        label: 'Marketing',      roles: ['SUPER','MARKETING'] },
   { to: '/badges',          icon: Award,            label: 'Badges',         roles: ['SUPER','MARKETING'] },
   { to: '/parrainage',      icon: GitBranch,        label: 'Parrainage',     roles: ['SUPER','MARKETING'] },
   { to: '/acquisition',     icon: TrendingUp,       label: 'Acquisition',    roles: ['SUPER'] },
