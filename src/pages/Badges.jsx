@@ -268,13 +268,17 @@ function BadgeUserListModal({ visual, onClose, users, columns, renderRow, matche
           <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', fontSize: 20 }}>✕</button>
         </div>
 
-        <div style={{ padding: '16px 24px', overflowY: 'auto', flex: 1 }}>
+        {/* Recherche — hors zone de scroll, toujours visible */}
+        <div style={{ padding: '16px 24px 0' }}>
           <input
             value={search}
             onChange={e => setSearch(e.target.value)}
             placeholder="Rechercher par nom ou téléphone…"
-            style={{ ...glassInput, width: '100%', marginBottom: 14 }}
+            style={{ ...glassInput, width: '100%' }}
           />
+        </div>
+
+        <div style={{ padding: '16px 24px', overflowY: 'auto', flex: 1 }}>
           {filtered.length === 0 ? (
             <div style={{ color: 'var(--text-muted)', fontSize: 13, textAlign: 'center', padding: 20 }}>Aucun utilisateur trouvé.</div>
           ) : (
