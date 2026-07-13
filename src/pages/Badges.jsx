@@ -118,10 +118,10 @@ function ClientBadgesTab() {
   return (
     <>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 12 }}>
+        <BadgeCard v={NONE_VISUAL} count={none} onClick={() => setSelected('none')} />
         {Object.entries(CLIENT_VISUALS).map(([id, v]) => (
           <BadgeCard key={id} v={v} count={counts[id]} onClick={() => setSelected(id)} />
         ))}
-        <BadgeCard v={NONE_VISUAL} count={none} onClick={() => setSelected('none')} />
       </div>
 
       {selected && (
@@ -206,6 +206,7 @@ function DriverBadgesTab() {
   return (
     <>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 12 }}>
+        <BadgeCard v={NONE_VISUAL} count={none} onClick={() => setSelected('none')} />
         {badgeTiers.map(tier => (
           <BadgeCard
             key={tier.tier}
@@ -214,7 +215,6 @@ function DriverBadgesTab() {
             onClick={() => setSelected(tier.tier)}
           />
         ))}
-        <BadgeCard v={NONE_VISUAL} count={none} onClick={() => setSelected('none')} />
       </div>
 
       {selected && (

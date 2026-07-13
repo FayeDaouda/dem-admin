@@ -113,15 +113,34 @@ export function NewClientsModal({ icon, color, onClose }) {
   )
 }
 
-// ── KPI : Taux rétention (mois) / Clients inactifs (+30j) ─────────────────────
+// ── KPI : Taux rétention (mois) / Clients actifs / Clients inactifs ──────────
 const RETENTION_PERIODS = [
+  { key: 7,  label: 'Semaine' },
+  { key: 15, label: '15 jours' },
   { key: 30, label: '30 jours' },
   { key: 60, label: '60 jours' },
   { key: 90, label: '90 jours' },
 ]
 
+// Utilisé par les KPI "Clients actifs" et "Clients inactifs" (mêmes données,
+// seuil d'activité différent de celui de "Taux de rétention").
+const ACTIVITY_PERIODS = [
+  { key: 7,   label: 'Semaine' },
+  { key: 30,  label: 'Mois' },
+  { key: 90,  label: '3 mois' },
+  { key: 180, label: '6 mois' },
+  { key: 365, label: '1 an' },
+]
+
+const RETENTION_TITLES = {
+  retention: 'Taux de rétention',
+  active:    'Clients actifs',
+  inactive:  'Clients inactifs',
+}
+
 export function RetentionModal({ icon, color, onClose, focus = 'retention' }) {
-  const [days, setDays] = useState(30)
+  const periods = focus === 'retention' ? RETENTION_PERIODS : ACTIVITY_PERIODS
+  const [days, setDays] = useState(7)
   const [data, setData] = useState(null)
   const [loading, setLoading] = useState(true)
 
@@ -132,8 +151,8 @@ export function RetentionModal({ icon, color, onClose, focus = 'retention' }) {
   }, [days])
 
   return (
-    <Shell icon={icon} color={color} title={focus === 'inactive' ? 'Clients inactifs' : 'Taux de rétention'} onClose={onClose}>
-      <PeriodTabs periods={RETENTION_PERIODS} active={days} onChange={setDays} color={color} />
+    <Shell icon={icon} color={color} title={RETENTION_TITLES[focus] ?? 'Taux de rétention'} onClose={onClose}>
+      <PeriodTabs periods={periods} active={days} onChange={setDays} color={color} />
       {loading ? (
         <div style={{ color: 'var(--text-muted)', textAlign: 'center', padding: 40 }}>Chargement...</div>
       ) : !data ? (
@@ -151,8 +170,8 @@ export function RetentionModal({ icon, color, onClose, focus = 'retention' }) {
             <StatBox label="FRÉQ. MOYENNE / CLIENT" value={data.avgOrderFrequency} color={color} />
           </div>
           <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 16, padding: '10px 14px', background: 'var(--surface2)', borderRadius: 8 }}>
-            Churn (clients perdus) : <strong style={{ color: 'var(--text)' }}>{data.churn.thisMonth}</strong> ce mois-ci
-            {' '}vs <strong style={{ color: 'var(--text)' }}>{data.churn.lastMonth}</strong> le mois dernier
+            Clients perdus : <strong style={{ color: 'var(--text)' }}>{data.churn.thisWeek}</strong> cette semaine
+            {' '}vs <strong style={{ color: 'var(--text)' }}>{data.churn.lastWeek}</strong> la semaine précédente
           </div>
         </>
       )}
@@ -161,10 +180,13 @@ export function RetentionModal({ icon, color, onClose, focus = 'retention' }) {
 }
 
 // ── KPI : Taux d'annulation (jour) ────────────────────────────────────────────
-const COURSE_PERIODS = [
-  { key: 7,  label: '7 jours' },
-  { key: 30, label: '30 jours' },
-  { key: 90, label: '3 mois' },
+const CANCELLATION_PERIODS = [
+  { key: 3,   label: '3 jours' },
+  { key: 15,  label: '15 jours' },
+  { key: 30,  label: '1 mois' },
+  { key: 90,  label: '3 mois' },
+  { key: 180, label: '6 mois' },
+  { key: 365, label: '1 an' },
 ]
 
 export function CancellationModal({ icon, color, onClose }) {
@@ -184,7 +206,7 @@ export function CancellationModal({ icon, color, onClose }) {
 
   return (
     <Shell icon={icon} color={color} title="Taux d'annulation" onClose={onClose}>
-      <PeriodTabs periods={COURSE_PERIODS} active={days} onChange={setDays} color={color} />
+      <PeriodTabs periods={CANCELLATION_PERIODS} active={days} onChange={setDays} color={color} />
       {loading ? (
         <div style={{ color: 'var(--text-muted)', textAlign: 'center', padding: 40 }}>Chargement...</div>
       ) : !data ? (
@@ -224,6 +246,12 @@ export function CancellationModal({ icon, color, onClose }) {
 }
 
 // ── KPI : Courses complétées (jour) ───────────────────────────────────────────
+const COMPLETED_PERIODS = [
+  { key: 7,  label: '7 jours' },
+  { key: 30, label: '30 jours' },
+  { key: 90, label: '3 mois' },
+]
+
 export function CompletedOrdersModal({ icon, color, onClose }) {
   const [days, setDays] = useState(30)
   const [data, setData] = useState(null)
@@ -240,7 +268,7 @@ export function CompletedOrdersModal({ icon, color, onClose }) {
 
   return (
     <Shell icon={icon} color={color} title="Courses complétées" onClose={onClose}>
-      <PeriodTabs periods={COURSE_PERIODS} active={days} onChange={setDays} color={color} />
+      <PeriodTabs periods={COMPLETED_PERIODS} active={days} onChange={setDays} color={color} />
       {loading ? (
         <div style={{ color: 'var(--text-muted)', textAlign: 'center', padding: 40 }}>Chargement...</div>
       ) : !data ? (
