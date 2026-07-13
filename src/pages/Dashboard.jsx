@@ -648,7 +648,7 @@ function StuckPendingOrdersModal({ kpi, onClose }) {
           {/* Résumé */}
           <div style={{ marginBottom: 20 }}>
             <div style={{ background: 'var(--surface2)', borderRadius: 10, padding: '14px 16px', borderLeft: `3px solid ${kpi.color}`, display: 'inline-block' }}>
-              <div style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 600 }}>Commandes en retard</div>
+              <div style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 600 }}>Commandes en attente</div>
               <div style={{ fontSize: 20, fontWeight: 800, color: kpi.color, marginTop: 4 }}>{total}</div>
             </div>
           </div>
