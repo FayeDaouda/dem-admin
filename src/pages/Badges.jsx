@@ -29,6 +29,8 @@ const DRIVER_VISUALS = {
   gainde:    { emoji: '🏅', color: '#B8860B', bg: 'rgba(184,134,11,.08)',  border: 'rgba(184,134,11,.25)' },
 }
 
+const NONE_VISUAL = { emoji: '🆕', color: '#7c849c', bg: 'rgba(124,132,156,.08)', border: 'rgba(124,132,156,.25)', name: 'Sans badge' }
+
 export function ClientBadgesPage() {
   return (
     <div style={pageWrap}>
@@ -57,13 +59,35 @@ export function DriverBadgesPage() {
   )
 }
 
+function BadgeCard({ v, count, onClick }) {
+  return (
+    <div
+      onClick={onClick}
+      style={{
+        ...glass, padding: '16px 18px', border: `1px solid ${v.border}`, cursor: 'pointer',
+        display: 'flex', alignItems: 'center', gap: 12, transition: 'transform .15s, box-shadow .15s',
+      }}
+      onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = '0 8px 24px rgba(0,0,0,0.10)' }}
+      onMouseLeave={e => { e.currentTarget.style.transform = 'none'; e.currentTarget.style.boxShadow = '' }}
+    >
+      <div style={{ width: 40, height: 40, borderRadius: 10, background: v.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20, flexShrink: 0 }}>
+        {v.emoji}
+      </div>
+      <div style={{ minWidth: 0 }}>
+        <div style={{ fontWeight: 700, fontSize: 13, color: v.color }}>{v.name}</div>
+        <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>{count} utilisateur{count !== 1 ? 's' : ''}</div>
+      </div>
+    </div>
+  )
+}
+
 // ══════════════════════════════════════════════════════════════════════════════
 //  BADGES CLIENTS
 // ══════════════════════════════════════════════════════════════════════════════
 function ClientBadgesTab() {
   const [clients, setClients] = useState([])
-  const [search,  setSearch]  = useState('')
   const [loading, setLoading] = useState(true)
+  const [selected, setSelected] = useState(null) // badge id sélectionné (ou 'none') pour la popup
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -78,60 +102,50 @@ function ClientBadgesTab() {
 
   if (loading) return <div style={{ color: 'var(--text-muted)', padding: 40, textAlign: 'center' }}>Chargement...</div>
 
-  const q = search.trim().toLowerCase()
-  const filteredClients = q
-    ? clients.filter(c => c.name?.toLowerCase().includes(q) || c.phone?.includes(q))
-    : clients
+  const counts = {}
+  for (const id of Object.keys(CLIENT_VISUALS)) counts[id] = 0
+  let none = 0
+  for (const c of clients) {
+    if (c.clientBadge && counts[c.clientBadge] !== undefined) counts[c.clientBadge]++
+    else none++
+  }
+
+  const selectedClients = selected
+    ? (selected === 'none' ? clients.filter(c => !c.clientBadge) : clients.filter(c => c.clientBadge === selected))
+    : []
+  const selectedVisual = selected === 'none' ? NONE_VISUAL : CLIENT_VISUALS[selected]
 
   return (
-    <div style={{ ...glass, padding: '20px 24px' }}>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14, flexWrap: 'wrap', gap: 10 }}>
-        <div style={{ fontWeight: 700, fontSize: 15 }}>Liste des clients ({filteredClients.length})</div>
-        <input
-          value={search}
-          onChange={e => setSearch(e.target.value)}
-          placeholder="Rechercher par nom ou téléphone…"
-          style={{ ...glassInput, width: 240 }}
-        />
+    <>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 12 }}>
+        {Object.entries(CLIENT_VISUALS).map(([id, v]) => (
+          <BadgeCard key={id} v={v} count={counts[id]} onClick={() => setSelected(id)} />
+        ))}
+        <BadgeCard v={NONE_VISUAL} count={none} onClick={() => setSelected('none')} />
       </div>
-      {filteredClients.length === 0 ? (
-        <div style={{ color: 'var(--text-muted)', fontSize: 13, textAlign: 'center', padding: 20 }}>Aucun client trouvé.</div>
-      ) : (
-        <div style={{ maxHeight: 600, overflowY: 'auto' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-            <thead>
-              <tr>{['Client', 'Téléphone', 'Badge actuel', 'Inscrit le'].map(h => (
-                <th key={h} style={{ textAlign: 'left', padding: '6px 10px', color: 'var(--text-muted)', fontSize: 11, fontWeight: 600, borderBottom: '1px solid rgba(0,119,182,.10)', position: 'sticky', top: 0, background: 'var(--surface)' }}>{h}</th>
-              ))}</tr>
-            </thead>
-            <tbody>
-              {filteredClients.map(c => {
-                const v = CLIENT_VISUALS[c.clientBadge] ?? null
-                return (
-                  <tr key={c.id} style={{ borderBottom: '1px solid var(--border)' }}>
-                    <td style={{ padding: '8px 10px', fontWeight: 600, fontSize: 13 }}>{c.name ?? '—'}</td>
-                    <td style={{ padding: '8px 10px', fontSize: 13 }}>{c.phone}</td>
-                    <td style={{ padding: '8px 10px' }}>
-                      {v ? (
-                        <span style={{ background: v.bg, color: v.color, fontSize: 11, fontWeight: 700, padding: '3px 10px', borderRadius: 20, whiteSpace: 'nowrap' }}>
-                          {v.emoji} {v.name}
-                        </span>
-                      ) : (
-                        <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>Sans badge</span>
-                      )}
-                      {c.clientBadge && !c.clientBadgeValidated && ['mbokk','djambar','buur','vip'].includes(c.clientBadge) && (
-                        <span style={{ marginLeft: 6, fontSize: 10, fontWeight: 700, color: '#b45309' }}>⏳ non validé</span>
-                      )}
-                    </td>
-                    <td style={{ padding: '8px 10px', color: 'var(--text-muted)', fontSize: 12 }}>{c.createdAt ? new Date(c.createdAt).toLocaleDateString('fr-FR') : '—'}</td>
-                  </tr>
-                )
-              })}
-            </tbody>
-          </table>
-        </div>
+
+      {selected && (
+        <BadgeUserListModal
+          visual={selectedVisual}
+          onClose={() => setSelected(null)}
+          users={selectedClients}
+          columns={['Client', 'Téléphone', 'Inscrit le']}
+          renderRow={c => (
+            <tr key={c.id} style={{ borderBottom: '1px solid var(--border)' }}>
+              <td style={{ padding: '8px 10px', fontWeight: 600, fontSize: 13 }}>
+                {c.name ?? '—'}
+                {c.clientBadge && !c.clientBadgeValidated && ['mbokk','djambar','buur','vip'].includes(c.clientBadge) && (
+                  <span style={{ marginLeft: 6, fontSize: 10, fontWeight: 700, color: '#b45309' }}>⏳ non validé</span>
+                )}
+              </td>
+              <td style={{ padding: '8px 10px', fontSize: 13 }}>{c.phone}</td>
+              <td style={{ padding: '8px 10px', color: 'var(--text-muted)', fontSize: 12 }}>{c.createdAt ? new Date(c.createdAt).toLocaleDateString('fr-FR') : '—'}</td>
+            </tr>
+          )}
+          matchesSearch={(c, q) => c.name?.toLowerCase().includes(q) || c.phone?.includes(q)}
+        />
       )}
-    </div>
+    </>
   )
 }
 
@@ -141,8 +155,8 @@ function ClientBadgesTab() {
 function DriverBadgesTab() {
   const [driversList, setDriversList] = useState([])
   const [badgeTiers,  setBadgeTiers]  = useState(DEFAULT_DRIVER_BADGES)
-  const [search,      setSearch]      = useState('')
   const [loading,     setLoading]     = useState(true)
+  const [selected,    setSelected]    = useState(null) // tier sélectionné (ou 'none') pour la popup
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -175,60 +189,104 @@ function DriverBadgesTab() {
 
   if (loading) return <div style={{ color: 'var(--text-muted)', padding: 40, textAlign: 'center' }}>Chargement...</div>
 
-  const q = search.trim().toLowerCase()
-  const filteredDrivers = q
-    ? driversList.filter(d => d.name?.toLowerCase().includes(q) || d.phone?.includes(q))
-    : driversList
+  const counts = {}
+  for (const tier of badgeTiers) counts[tier.tier] = 0
+  let none = 0
+  for (const d of driversList) {
+    if (d.badgeTier) counts[d.badgeTier]++
+    else none++
+  }
+
+  const selectedDrivers = selected
+    ? (selected === 'none' ? driversList.filter(d => !d.badgeTier) : driversList.filter(d => d.badgeTier === selected))
+    : []
+  const selectedTierName = badgeTiers.find(b => b.tier === selected)?.name
+  const selectedVisual = selected === 'none' ? NONE_VISUAL : { ...(DRIVER_VISUALS[selected] ?? {}), name: selectedTierName }
 
   return (
-    <div style={{ ...glass, padding: '20px 24px' }}>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14, flexWrap: 'wrap', gap: 10 }}>
-        <div style={{ fontWeight: 700, fontSize: 15 }}>Liste des livreurs ({filteredDrivers.length})</div>
-        <input
-          value={search}
-          onChange={e => setSearch(e.target.value)}
-          placeholder="Rechercher par nom ou téléphone…"
-          style={{ ...glassInput, width: 240 }}
-        />
+    <>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 12 }}>
+        {badgeTiers.map(tier => (
+          <BadgeCard
+            key={tier.tier}
+            v={{ ...(DRIVER_VISUALS[tier.tier] ?? { color: '#888', bg: 'var(--surface2)', border: 'var(--border)' }), emoji: tier.emoji, name: tier.name }}
+            count={counts[tier.tier] ?? 0}
+            onClick={() => setSelected(tier.tier)}
+          />
+        ))}
+        <BadgeCard v={NONE_VISUAL} count={none} onClick={() => setSelected('none')} />
       </div>
-      {filteredDrivers.length === 0 ? (
-        <div style={{ color: 'var(--text-muted)', fontSize: 13, textAlign: 'center', padding: 20 }}>Aucun livreur trouvé.</div>
-      ) : (
-        <div style={{ maxHeight: 600, overflowY: 'auto' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-            <thead>
-              <tr>{['Livreur', 'Téléphone', 'Véhicule', 'Courses', 'Parrainages', 'Note', 'Badge actuel'].map(h => (
-                <th key={h} style={{ textAlign: 'left', padding: '6px 10px', color: 'var(--text-muted)', fontSize: 11, fontWeight: 600, borderBottom: '1px solid rgba(0,119,182,.10)', position: 'sticky', top: 0, background: 'var(--surface)' }}>{h}</th>
-              ))}</tr>
-            </thead>
-            <tbody>
-              {filteredDrivers.map(d => {
-                const v = DRIVER_VISUALS[d.badgeTier] ?? null
-                const badgeName = badgeTiers.find(b => b.tier === d.badgeTier)?.name
-                return (
-                  <tr key={d.id} style={{ borderBottom: '1px solid var(--border)' }}>
-                    <td style={{ padding: '8px 10px', fontWeight: 600, fontSize: 13 }}>{d.name ?? '—'}</td>
-                    <td style={{ padding: '8px 10px', fontSize: 13 }}>{d.phone}</td>
-                    <td style={{ padding: '8px 10px', fontSize: 13 }}>{d.vehicleType ?? '—'}</td>
-                    <td style={{ padding: '8px 10px', fontSize: 13 }}>{d.deliveredCourses ?? 0}</td>
-                    <td style={{ padding: '8px 10px', fontSize: 13 }}>{d.referralCount ?? 0}</td>
-                    <td style={{ padding: '8px 10px', fontSize: 13 }}>{d.avgRating ? d.avgRating.toFixed(1) : '—'}</td>
-                    <td style={{ padding: '8px 10px' }}>
-                      {v ? (
-                        <span style={{ background: v.bg, color: v.color, fontSize: 11, fontWeight: 700, padding: '3px 10px', borderRadius: 20, whiteSpace: 'nowrap' }}>
-                          {v.emoji} {badgeName}
-                        </span>
-                      ) : (
-                        <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>Sans badge</span>
-                      )}
-                    </td>
-                  </tr>
-                )
-              })}
-            </tbody>
-          </table>
-        </div>
+
+      {selected && (
+        <BadgeUserListModal
+          visual={selectedVisual}
+          onClose={() => setSelected(null)}
+          users={selectedDrivers}
+          columns={['Livreur', 'Téléphone', 'Véhicule', 'Courses', 'Parrainages', 'Note']}
+          renderRow={d => (
+            <tr key={d.id} style={{ borderBottom: '1px solid var(--border)' }}>
+              <td style={{ padding: '8px 10px', fontWeight: 600, fontSize: 13 }}>{d.name ?? '—'}</td>
+              <td style={{ padding: '8px 10px', fontSize: 13 }}>{d.phone}</td>
+              <td style={{ padding: '8px 10px', fontSize: 13 }}>{d.vehicleType ?? '—'}</td>
+              <td style={{ padding: '8px 10px', fontSize: 13 }}>{d.deliveredCourses ?? 0}</td>
+              <td style={{ padding: '8px 10px', fontSize: 13 }}>{d.referralCount ?? 0}</td>
+              <td style={{ padding: '8px 10px', fontSize: 13 }}>{d.avgRating ? d.avgRating.toFixed(1) : '—'}</td>
+            </tr>
+          )}
+          matchesSearch={(d, q) => d.name?.toLowerCase().includes(q) || d.phone?.includes(q)}
+        />
       )}
+    </>
+  )
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+//  POPUP : liste des utilisateurs pour un badge donné, avec recherche
+// ══════════════════════════════════════════════════════════════════════════════
+function BadgeUserListModal({ visual, onClose, users, columns, renderRow, matchesSearch }) {
+  const [search, setSearch] = useState('')
+
+  const q = search.trim().toLowerCase()
+  const filtered = q ? users.filter(u => matchesSearch(u, q)) : users
+
+  return (
+    <div style={overlay} onClick={onClose}>
+      <div style={{ ...glass, width: 720, maxWidth: '95vw', padding: 0, borderRadius: 16, overflow: 'hidden', maxHeight: '85vh', display: 'flex', flexDirection: 'column' }} onClick={e => e.stopPropagation()}>
+        <div style={{ padding: '20px 24px 16px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            <div style={{ width: 36, height: 36, borderRadius: 10, background: visual.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18 }}>
+              {visual.emoji}
+            </div>
+            <h2 style={{ fontSize: 16, fontWeight: 700, margin: 0, color: visual.color }}>{visual.name} ({filtered.length})</h2>
+          </div>
+          <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', fontSize: 20 }}>✕</button>
+        </div>
+
+        <div style={{ padding: '16px 24px', overflowY: 'auto', flex: 1 }}>
+          <input
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            placeholder="Rechercher par nom ou téléphone…"
+            style={{ ...glassInput, width: '100%', marginBottom: 14 }}
+          />
+          {filtered.length === 0 ? (
+            <div style={{ color: 'var(--text-muted)', fontSize: 13, textAlign: 'center', padding: 20 }}>Aucun utilisateur trouvé.</div>
+          ) : (
+            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+              <thead>
+                <tr>{columns.map(h => (
+                  <th key={h} style={{ textAlign: 'left', padding: '6px 10px', color: 'var(--text-muted)', fontSize: 11, fontWeight: 600, borderBottom: '1px solid rgba(0,119,182,.10)', position: 'sticky', top: 0, background: 'var(--surface)' }}>{h}</th>
+                ))}</tr>
+              </thead>
+              <tbody>
+                {filtered.map(renderRow)}
+              </tbody>
+            </table>
+          )}
+        </div>
+      </div>
     </div>
   )
 }
+
+const overlay = { position: 'fixed', inset: 0, background: 'rgba(0,40,80,0.45)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 300 }
