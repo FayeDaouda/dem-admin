@@ -70,18 +70,18 @@ export default function AcquisitionTab() {
 
       <h2 style={{ fontSize: 14, fontWeight: 700, marginBottom: 10 }}>Nouveaux DEM Pro</h2>
       <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginBottom: 20 }}>
-        <PeriodBox label="AUJOURD'HUI" value={data.newDemPro.today} />
-        <PeriodBox label="7 JOURS" value={data.newDemPro.week} />
-        <PeriodBox label="30 JOURS" value={data.newDemPro.month} />
-        <PeriodBox label="6 MOIS" value={data.newDemPro.sixMonths} />
+        <PeriodBox label="AUJOURD'HUI" value={data.newDemPro?.today ?? 0} />
+        <PeriodBox label="7 JOURS" value={data.newDemPro?.week ?? 0} />
+        <PeriodBox label="30 JOURS" value={data.newDemPro?.month ?? 0} />
+        <PeriodBox label="6 MOIS" value={data.newDemPro?.sixMonths ?? 0} />
       </div>
 
       <h2 style={{ fontSize: 14, fontWeight: 700, marginBottom: 10 }}>Nouveaux chefs de flotte</h2>
       <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginBottom: 20 }}>
-        <PeriodBox label="AUJOURD'HUI" value={data.newChefsDeFlotte.today} />
-        <PeriodBox label="7 JOURS" value={data.newChefsDeFlotte.week} />
-        <PeriodBox label="30 JOURS" value={data.newChefsDeFlotte.month} />
-        <PeriodBox label="6 MOIS" value={data.newChefsDeFlotte.sixMonths} />
+        <PeriodBox label="AUJOURD'HUI" value={data.newChefsDeFlotte?.today ?? 0} />
+        <PeriodBox label="7 JOURS" value={data.newChefsDeFlotte?.week ?? 0} />
+        <PeriodBox label="30 JOURS" value={data.newChefsDeFlotte?.month ?? 0} />
+        <PeriodBox label="6 MOIS" value={data.newChefsDeFlotte?.sixMonths ?? 0} />
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 16 }}>
