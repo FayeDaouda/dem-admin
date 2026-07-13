@@ -148,7 +148,7 @@ function DriverBadgesTab() {
     setLoading(true)
     try {
       const [badgeRes, driversRes] = await Promise.all([
-        api.get('/admin/badges/config'),
+        api.get('/admin/badges/config').catch(() => ({ data: { badges: DEFAULT_DRIVER_BADGES } })),
         api.get('/admin/drivers', { params: { limit: 1000 } }).catch(() => ({ data: { drivers: [] } })),
       ])
       const b = badgeRes.data.badges ?? DEFAULT_DRIVER_BADGES
