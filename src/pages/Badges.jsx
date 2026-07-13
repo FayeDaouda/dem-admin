@@ -275,7 +275,7 @@ function BadgeUserListModal({ visual, onClose, users, columns, renderRow, matche
             <table style={{ width: '100%', borderCollapse: 'collapse' }}>
               <thead>
                 <tr>{columns.map(h => (
-                  <th key={h} style={{ textAlign: 'left', padding: '6px 10px', color: 'var(--text-muted)', fontSize: 11, fontWeight: 600, borderBottom: '1px solid rgba(0,119,182,.10)', position: 'sticky', top: 0, background: 'var(--surface)' }}>{h}</th>
+                  <th key={h} style={{ textAlign: 'left', padding: '6px 10px', color: 'var(--text-muted)', fontSize: 11, fontWeight: 600, borderBottom: '1px solid rgba(0,119,182,.10)', position: 'sticky', top: 0, background: '#ffffff' }}>{h}</th>
                 ))}</tr>
               </thead>
               <tbody>
