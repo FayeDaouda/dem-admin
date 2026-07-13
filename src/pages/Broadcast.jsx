@@ -1,6 +1,6 @@
-import { useState } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import api from '../lib/api'
-import { Send, Users, Bike, Briefcase, Bell, FlaskConical } from 'lucide-react'
+import { Send, Users, Bike, Briefcase, Bell, FlaskConical, Clock, Pencil, X } from 'lucide-react'
 import { glass, pageWrap } from '../lib/glassStyles'
 
 const TARGETS = [
@@ -9,6 +9,8 @@ const TARGETS = [
   { value: 'drivers',  label: 'Livreurs uniquement',   icon: Bike,      desc: 'Utilisateurs avec le rôle Livreur' },
   { value: 'dem_pro',  label: 'DEM Pro uniquement',    icon: Briefcase, desc: 'Comptes entreprise DEM Pro' },
 ]
+
+const TARGET_LABELS = { all: 'Tous', clients: 'Clients', drivers: 'Livreurs', dem_pro: 'DEM Pro' }
 
 const TEMPLATES = [
   {
@@ -28,6 +30,13 @@ const TEMPLATES = [
   },
 ]
 
+// Format attendu par <input type="datetime-local"> : YYYY-MM-DDTHH:mm (heure locale)
+function toDatetimeLocal(date) {
+  const d = new Date(date)
+  const pad = n => String(n).padStart(2, '0')
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
+}
+
 export default function Broadcast() {
   const [target, setTarget]   = useState('all')
   const [title, setTitle]     = useState('')
@@ -36,11 +45,31 @@ export default function Broadcast() {
   const [result, setResult]   = useState(null)
   const [error, setError]     = useState('')
 
+  // Programmation
+  const [scheduledAt, setScheduledAt] = useState('')
+  const [scheduling, setScheduling]   = useState(false)
+  const [scheduleError, setScheduleError] = useState('')
+  const [editingId, setEditingId]     = useState(null)
+  const [scheduledList, setScheduledList] = useState([])
+  const [loadingScheduled, setLoadingScheduled] = useState(true)
+  const [cancelingId, setCancelingId] = useState(null)
+
   // Test
   const [testPhone, setTestPhone] = useState('+221000000000')
   const [testSending, setTestSending] = useState(false)
   const [testResult, setTestResult]   = useState(null)
   const [testError, setTestError]     = useState('')
+
+  const loadScheduled = useCallback(async () => {
+    setLoadingScheduled(true)
+    try {
+      const { data } = await api.get('/admin/broadcast/scheduled', { params: { status: 'PENDING' } })
+      setScheduledList(data.scheduled ?? [])
+    } catch (e) { console.error(e) }
+    finally { setLoadingScheduled(false) }
+  }, [])
+
+  useEffect(() => { loadScheduled() }, [loadScheduled])
 
   async function send() {
     if (!title.trim() || !body.trim()) {
@@ -61,6 +90,67 @@ export default function Broadcast() {
       setError(e.response?.data?.message ?? 'Erreur lors de l\'envoi.')
     } finally {
       setSending(false)
+    }
+  }
+
+  async function scheduleOrUpdate() {
+    if (!title.trim() || !body.trim()) {
+      setScheduleError('Le titre et le message sont obligatoires.')
+      return
+    }
+    if (!scheduledAt) {
+      setScheduleError('Choisissez une date et une heure d\'envoi.')
+      return
+    }
+    const iso = new Date(scheduledAt).toISOString()
+
+    setScheduling(true)
+    setScheduleError('')
+    try {
+      if (editingId) {
+        await api.patch(`/admin/broadcast/scheduled/${editingId}`, { title: title.trim(), body: body.trim(), target, scheduledAt: iso })
+      } else {
+        await api.post('/admin/broadcast/scheduled', { title: title.trim(), body: body.trim(), target, scheduledAt: iso })
+      }
+      cancelEdit()
+      loadScheduled()
+    } catch (e) {
+      setScheduleError(e.response?.data?.message ?? 'Erreur lors de la programmation.')
+    } finally {
+      setScheduling(false)
+    }
+  }
+
+  function startEdit(item) {
+    setEditingId(item.id)
+    setTitle(item.title)
+    setBody(item.body)
+    setTarget(item.target)
+    setScheduledAt(toDatetimeLocal(item.scheduledAt))
+    setScheduleError('')
+    setResult(null)
+    setError('')
+  }
+
+  function cancelEdit() {
+    setEditingId(null)
+    setTitle('')
+    setBody('')
+    setScheduledAt('')
+    setScheduleError('')
+  }
+
+  async function cancelScheduled(id) {
+    if (!confirm('Annuler cette notification programmée ?')) return
+    setCancelingId(id)
+    try {
+      await api.patch(`/admin/broadcast/scheduled/${id}/cancel`)
+      if (editingId === id) cancelEdit()
+      loadScheduled()
+    } catch (e) {
+      alert(e.response?.data?.message ?? 'Erreur lors de l\'annulation.')
+    } finally {
+      setCancelingId(null)
     }
   }
 
@@ -110,6 +200,13 @@ export default function Broadcast() {
 
         {/* Colonne gauche : formulaire */}
         <div style={{ ...glass, padding: 24, borderRadius: 16 }}>
+          {editingId && (
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16, padding: '8px 12px', borderRadius: 8, background: 'rgba(0,180,230,.08)' }}>
+              <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--primary)' }}>Modification d'une notification programmée</span>
+              <button onClick={cancelEdit} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', display: 'flex' }}><X size={16} /></button>
+            </div>
+          )}
+
           {/* Cible */}
           <label style={labelStyle}>Cible</label>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 18 }}>
@@ -152,27 +249,29 @@ export default function Broadcast() {
             style={{ ...inputStyle, resize: 'vertical', marginBottom: 18 }}
           />
 
-          {/* Bouton envoyer */}
-          <button onClick={send} disabled={sending} style={{
-            width: '100%', padding: '12px 0', borderRadius: 10,
-            border: 'none', background: 'var(--primary)', color: '#fff',
-            fontSize: 14, fontWeight: 700, cursor: 'pointer',
-            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-            opacity: sending ? 0.7 : 1,
-          }}>
-            {sending
-              ? 'Envoi en cours…'
-              : <><Send size={16} /> Envoyer la notification</>}
-          </button>
+          {/* Bouton envoyer maintenant */}
+          {!editingId && (
+            <button onClick={send} disabled={sending} style={{
+              width: '100%', padding: '12px 0', borderRadius: 10,
+              border: 'none', background: 'var(--primary)', color: '#fff',
+              fontSize: 14, fontWeight: 700, cursor: 'pointer',
+              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+              opacity: sending ? 0.7 : 1, marginBottom: 14,
+            }}>
+              {sending
+                ? 'Envoi en cours…'
+                : <><Send size={16} /> Envoyer maintenant</>}
+            </button>
+          )}
 
           {error && (
-            <div style={{ marginTop: 12, padding: '8px 12px', borderRadius: 8, background: 'rgba(239,68,68,.08)', color: 'var(--danger)', fontSize: 13 }}>
+            <div style={{ marginBottom: 14, padding: '8px 12px', borderRadius: 8, background: 'rgba(239,68,68,.08)', color: 'var(--danger)', fontSize: 13 }}>
               {error}
             </div>
           )}
 
           {result && (
-            <div style={{ marginTop: 12, padding: '12px 14px', borderRadius: 10, background: 'rgba(16,185,129,.08)', border: '1px solid rgba(16,185,129,.2)' }}>
+            <div style={{ marginBottom: 14, padding: '12px 14px', borderRadius: 10, background: 'rgba(16,185,129,.08)', border: '1px solid rgba(16,185,129,.2)' }}>
               <div style={{ fontWeight: 700, color: 'var(--success)', marginBottom: 4 }}>Notification envoyée !</div>
               <div style={{ fontSize: 13, color: 'var(--text-muted)' }}>
                 {result.sent} envoyée{result.sent > 1 ? 's' : ''} sur {result.totalUsers} utilisateur{result.totalUsers > 1 ? 's' : ''}
@@ -180,6 +279,34 @@ export default function Broadcast() {
               </div>
             </div>
           )}
+
+          {/* Programmation */}
+          <div style={{ borderTop: '1px solid rgba(0,119,182,.12)', paddingTop: 16 }}>
+            <label style={labelStyle}>Programmer l'envoi</label>
+            <input
+              type="datetime-local"
+              value={scheduledAt}
+              min={toDatetimeLocal(new Date())}
+              onChange={e => setScheduledAt(e.target.value)}
+              style={{ ...inputStyle, marginBottom: 10 }}
+            />
+            <button onClick={scheduleOrUpdate} disabled={scheduling} style={{
+              width: '100%', padding: '12px 0', borderRadius: 10,
+              border: '1.5px solid var(--primary)', background: 'rgba(0,180,230,.06)', color: 'var(--primary)',
+              fontSize: 14, fontWeight: 700, cursor: 'pointer',
+              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+              opacity: scheduling ? 0.7 : 1,
+            }}>
+              {scheduling
+                ? 'Enregistrement…'
+                : <><Clock size={16} /> {editingId ? 'Mettre à jour' : 'Programmer'}</>}
+            </button>
+            {scheduleError && (
+              <div style={{ marginTop: 10, padding: '8px 12px', borderRadius: 8, background: 'rgba(239,68,68,.08)', color: 'var(--danger)', fontSize: 13 }}>
+                {scheduleError}
+              </div>
+            )}
+          </div>
         </div>
 
         {/* Colonne droite : templates */}
@@ -251,8 +378,44 @@ export default function Broadcast() {
           </div>
         </div>
       </div>
+
+      {/* Notifications programmées en attente */}
+      <div style={{ maxWidth: 900, marginTop: 24 }}>
+        <label style={labelStyle}>Notifications programmées</label>
+        <div style={{ ...glass, padding: 20, borderRadius: 16 }}>
+          {loadingScheduled ? (
+            <div style={{ color: 'var(--text-muted)', fontSize: 13, textAlign: 'center', padding: 12 }}>Chargement...</div>
+          ) : scheduledList.length === 0 ? (
+            <div style={{ color: 'var(--text-muted)', fontSize: 13, textAlign: 'center', padding: 12 }}>Aucune notification programmée pour le moment.</div>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              {scheduledList.map(item => (
+                <div key={item.id} style={{
+                  display: 'flex', alignItems: 'center', gap: 12, padding: '12px 14px', borderRadius: 12,
+                  background: 'rgba(255,255,255,.5)', border: '1px solid rgba(0,119,182,.12)',
+                }}>
+                  <Clock size={16} color="var(--primary)" style={{ flexShrink: 0 }} />
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontWeight: 700, fontSize: 13 }}>{item.title}</div>
+                    <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>
+                      {new Date(item.scheduledAt).toLocaleString('fr-FR')} · {TARGET_LABELS[item.target] ?? item.target}
+                    </div>
+                  </div>
+                  <button onClick={() => startEdit(item)} style={iconBtn} title="Modifier">
+                    <Pencil size={14} />
+                  </button>
+                  <button onClick={() => cancelScheduled(item.id)} disabled={cancelingId === item.id} style={{ ...iconBtn, color: 'var(--danger)' }} title="Annuler">
+                    <X size={14} />
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
     </div>
   )
 }
 
 const labelStyle = { display: 'block', fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', marginBottom: 6, textTransform: 'uppercase', letterSpacing: 0.5 }
+const iconBtn = { width: 30, height: 30, borderRadius: 8, border: '1px solid rgba(0,119,182,.2)', background: 'rgba(255,255,255,.6)', color: 'var(--text-muted)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }
