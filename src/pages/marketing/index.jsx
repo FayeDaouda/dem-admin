@@ -1,18 +1,16 @@
 import { useState } from 'react'
-import { RefreshCw, TrendingUp, Repeat, Package, Bike, Megaphone } from 'lucide-react'
+import { RefreshCw, TrendingUp, Repeat, Package, Megaphone } from 'lucide-react'
 import { pageWrap, pageScroll } from '../../lib/glassStyles'
 import MarketingKpiRow from './components/MarketingKpiRow'
 import AcquisitionTab from './AcquisitionTab'
 import RetentionTab from './RetentionTab'
 import CoursesTab from './CoursesTab'
-import DriversTab from './DriversTab'
 import CampaignsTab from './CampaignsTab'
 
 const TABS = [
   ['acquisition', 'Acquisition',        TrendingUp, AcquisitionTab],
   ['retention',   'Rétention',          Repeat,     RetentionTab],
   ['courses',     'Comportement courses', Package,  CoursesTab],
-  ['drivers',     'Livreurs',           Bike,       DriversTab],
   ['campaigns',   'Campagnes & alertes', Megaphone, CampaignsTab],
 ]
 

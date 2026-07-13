@@ -11,6 +11,10 @@ const DEFAULT_DRIVER_BADGES = [
   { tier: 'gainde',    name: 'DEM Gainde',     emoji: '🏅', courses: 500, referrals: 0,  rating: 4.2 },
 ]
 
+// Ordre d'affichage imposé (Sans badge en premier, puis progression des tiers)
+// — indépendant de l'ordre renvoyé par /admin/badges/config.
+const DRIVER_TIER_ORDER = ['xarit', 'mbokk', 'doorWarr', 'domouNdey', 'buur', 'gainde']
+
 const CLIENT_VISUALS = {
   classic: { emoji: '✅', color: '#00838F', bg: 'rgba(0,131,143,.08)', border: 'rgba(0,131,143,.25)',  name: 'DEM Classic' },
   xarit:   { emoji: '🤝', color: '#0288D1', bg: 'rgba(2,136,209,.08)', border: 'rgba(2,136,209,.25)',  name: 'DEM Xarit' },
@@ -189,6 +193,8 @@ function DriverBadgesTab() {
 
   if (loading) return <div style={{ color: 'var(--text-muted)', padding: 40, textAlign: 'center' }}>Chargement...</div>
 
+  const orderedBadgeTiers = [...badgeTiers].sort((a, b) => DRIVER_TIER_ORDER.indexOf(a.tier) - DRIVER_TIER_ORDER.indexOf(b.tier))
+
   const counts = {}
   for (const tier of badgeTiers) counts[tier.tier] = 0
   let none = 0
@@ -207,7 +213,7 @@ function DriverBadgesTab() {
     <>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 12 }}>
         <BadgeCard v={NONE_VISUAL} count={none} onClick={() => setSelected('none')} />
-        {badgeTiers.map(tier => (
+        {orderedBadgeTiers.map(tier => (
           <BadgeCard
             key={tier.tier}
             v={{ ...(DRIVER_VISUALS[tier.tier] ?? { color: '#888', bg: 'var(--surface2)', border: 'var(--border)' }), emoji: tier.emoji, name: tier.name }}

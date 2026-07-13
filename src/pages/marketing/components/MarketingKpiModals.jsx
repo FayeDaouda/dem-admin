@@ -115,21 +115,26 @@ export function NewClientsModal({ icon, color, onClose }) {
 
 // ── KPI : Taux rétention (mois) / Clients actifs / Clients inactifs ──────────
 const RETENTION_PERIODS = [
-  { key: 7,  label: 'Semaine' },
-  { key: 15, label: '15 jours' },
-  { key: 30, label: '30 jours' },
-  { key: 60, label: '60 jours' },
-  { key: 90, label: '90 jours' },
+  { key: 1,   label: 'Jour' },
+  { key: 3,   label: '3 jours' },
+  { key: 7,   label: 'Semaine' },
+  { key: 15,  label: '15 jours' },
+  { key: 30,  label: '1 mois' },
+  { key: 90,  label: '3 mois' },
+  { key: 180, label: '6 mois' },
 ]
 
 // Utilisé par les KPI "Clients actifs" et "Clients inactifs" (mêmes données,
 // seuil d'activité différent de celui de "Taux de rétention").
 const ACTIVITY_PERIODS = [
-  { key: 7,   label: 'Semaine' },
-  { key: 30,  label: 'Mois' },
-  { key: 90,  label: '3 mois' },
-  { key: 180, label: '6 mois' },
-  { key: 365, label: '1 an' },
+  { key: 0.25, label: '6h' },
+  { key: 1,    label: '24h' },
+  { key: 3,    label: '3 jours' },
+  { key: 7,    label: 'Semaine' },
+  { key: 30,   label: 'Mois' },
+  { key: 90,   label: '3 mois' },
+  { key: 180,  label: '6 mois' },
+  { key: 365,  label: '1 an' },
 ]
 
 const RETENTION_TITLES = {
@@ -143,6 +148,7 @@ export function RetentionModal({ icon, color, onClose, focus = 'retention' }) {
   const [days, setDays] = useState(7)
   const [data, setData] = useState(null)
   const [loading, setLoading] = useState(true)
+  const thresholdLabel = periods.find(p => p.key === days)?.label ?? `${days}J`
 
   useEffect(() => {
     setLoading(true)
@@ -161,8 +167,8 @@ export function RetentionModal({ icon, color, onClose, focus = 'retention' }) {
         <>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 12, marginBottom: 12 }}>
             <StatBox label="TAUX DE RÉTENTION" value={`${data.retentionRate}%`} color={color} />
-            <StatBox label={`ACTIFS (≤ ${days}J)`} value={data.activeClients} color="#22c55e" />
-            <StatBox label={`INACTIFS (> ${days}J)`} value={data.inactiveClients} color="#ef4444" />
+            <StatBox label={`ACTIFS (≤ ${thresholdLabel})`} value={data.activeClients} color="#22c55e" />
+            <StatBox label={`INACTIFS (> ${thresholdLabel})`} value={data.inactiveClients} color="#ef4444" />
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 12, marginBottom: 8 }}>
             <StatBox label="CLIENTS AVEC COMMANDES" value={data.clientsWithOrders} color={color} />
@@ -179,34 +185,36 @@ export function RetentionModal({ icon, color, onClose, focus = 'retention' }) {
   )
 }
 
-// ── KPI : Taux d'annulation (jour) ────────────────────────────────────────────
-const CANCELLATION_PERIODS = [
-  { key: 3,   label: '3 jours' },
-  { key: 15,  label: '15 jours' },
-  { key: 30,  label: '1 mois' },
-  { key: 90,  label: '3 mois' },
-  { key: 180, label: '6 mois' },
-  { key: 365, label: '1 an' },
+// ── KPI : Taux d'annulation / Courses complétées — filtres en heures ─────────
+const COURSE_TREND_PERIODS = [
+  { key: 2,    label: '2h' },
+  { key: 24,   label: 'Jour' },
+  { key: 72,   label: '3 jours' },
+  { key: 360,  label: '15 jours' },
+  { key: 720,  label: '1 mois' },
+  { key: 2160, label: '3 mois' },
+  { key: 4320, label: '6 mois' },
+  { key: 8760, label: '1 an' },
 ]
 
 export function CancellationModal({ icon, color, onClose }) {
-  const [days, setDays] = useState(30)
+  const [hours, setHours] = useState(720)
   const [data, setData] = useState(null)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     setLoading(true)
-    const from = new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString()
+    const from = new Date(Date.now() - hours * 60 * 60 * 1000).toISOString()
     api.get('/admin/marketing/courses', { params: { from } })
       .then(r => setData(r.data)).catch(() => setData(null)).finally(() => setLoading(false))
-  }, [days])
+  }, [hours])
 
   const trend = (data?.cancellationRateTrend ?? []).map(t => ({ ...t, dateLabel: new Date(t.date).toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit' }) }))
   const reasons = (data?.reasons ?? []).map(r => ({ ...r, label: REASON_LABELS[r.reason] ?? r.reason }))
 
   return (
     <Shell icon={icon} color={color} title="Taux d'annulation" onClose={onClose}>
-      <PeriodTabs periods={CANCELLATION_PERIODS} active={days} onChange={setDays} color={color} />
+      <PeriodTabs periods={COURSE_TREND_PERIODS} active={hours} onChange={setHours} color={color} />
       {loading ? (
         <div style={{ color: 'var(--text-muted)', textAlign: 'center', padding: 40 }}>Chargement...</div>
       ) : !data ? (
@@ -246,29 +254,23 @@ export function CancellationModal({ icon, color, onClose }) {
 }
 
 // ── KPI : Courses complétées (jour) ───────────────────────────────────────────
-const COMPLETED_PERIODS = [
-  { key: 7,  label: '7 jours' },
-  { key: 30, label: '30 jours' },
-  { key: 90, label: '3 mois' },
-]
-
 export function CompletedOrdersModal({ icon, color, onClose }) {
-  const [days, setDays] = useState(30)
+  const [hours, setHours] = useState(720)
   const [data, setData] = useState(null)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     setLoading(true)
-    const from = new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString()
+    const from = new Date(Date.now() - hours * 60 * 60 * 1000).toISOString()
     api.get('/admin/marketing/courses', { params: { from } })
       .then(r => setData(r.data)).catch(() => setData(null)).finally(() => setLoading(false))
-  }, [days])
+  }, [hours])
 
   const trend = (data?.completedTrend ?? []).map(t => ({ ...t, dateLabel: new Date(t.date).toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit' }) }))
 
   return (
     <Shell icon={icon} color={color} title="Courses complétées" onClose={onClose}>
-      <PeriodTabs periods={COMPLETED_PERIODS} active={days} onChange={setDays} color={color} />
+      <PeriodTabs periods={COURSE_TREND_PERIODS} active={hours} onChange={setHours} color={color} />
       {loading ? (
         <div style={{ color: 'var(--text-muted)', textAlign: 'center', padding: 40 }}>Chargement...</div>
       ) : !data ? (

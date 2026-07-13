@@ -33,7 +33,7 @@ export default function MarketingKpiRow({ reloadKey }) {
         <StatCard icon={XCircle}     label="Taux annulation (jour)"    value={loading ? '…' : `${kpis?.cancellationRateToday ?? 0}%`} color="#ef4444" onClick={() => setOpenModal('cancellation')} />
         <StatCard icon={CheckCircle} label="Courses complétées (jour)" value={v(kpis?.completedToday)} color="#22c55e" onClick={() => setOpenModal('completed')} />
         <StatCard icon={UserCheck}   label="Clients actifs"           value={v(kpis?.activeClients)} color="#22c55e" onClick={() => setOpenModal('active')} />
-        <StatCard icon={UserMinus}   label="Clients inactifs (+30j)"   value={v(kpis?.inactiveClients)} color="#f59e0b" onClick={() => setOpenModal('inactive')} />
+        <StatCard icon={UserMinus}   label="Clients inactifs"         value={v(kpis?.inactiveClients)} color="#f59e0b" onClick={() => setOpenModal('inactive')} />
         <StatCard
           icon={Bell}
           label="Dernière notification push"
