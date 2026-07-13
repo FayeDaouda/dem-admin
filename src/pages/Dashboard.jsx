@@ -6,7 +6,7 @@ import {
 import { connectSocket, disconnectSocket } from '../lib/socket'
 import api from '../lib/api'
 import Badge from '../components/Badge'
-import { Package, Bike, AlertTriangle, TrendingUp, Users, CreditCard, Activity, Wifi, ArrowUpRight, ArrowDownRight, Minus } from 'lucide-react'
+import { Package, Bike, AlertTriangle, TrendingUp, Users, CreditCard, Activity, Wifi, ArrowUpRight, ArrowDownRight, Minus, Briefcase } from 'lucide-react'
 import { glass } from '../lib/glassStyles'
 import { useResponsive } from '../lib/useResponsive'
 
@@ -112,11 +112,16 @@ const STATUS_PIE = [
 ]
 
 const PERIODS = [
-  { key: '7d',  label: '7 jours',  days: 7 },
-  { key: '30d', label: '30 jours', days: 30 },
-  { key: '6m',  label: '6 mois',   days: 180 },
-  { key: '1y',  label: '1 an',     days: 365 },
+  { key: 'today', label: "Aujourd'hui",     days: 1 },
+  { key: '3d',    label: '3 derniers jours', days: 3 },
+  { key: '7d',    label: '7 jours',         days: 7 },
+  { key: '30d',   label: '30 jours',        days: 30 },
+  { key: '3m',    label: '3 derniers mois', days: 90 },
+  { key: '6m',    label: '6 mois',          days: 180 },
+  { key: '1y',    label: '1 an',            days: 365 },
 ]
+
+const MAX_XTICKS = 8 // nb max de labels visibles sur l'axe X avant de sauter des ticks
 
 function KpiModal({ kpi, onClose }) {
   const [period, setPeriod] = useState('30d')
@@ -160,7 +165,7 @@ function KpiModal({ kpi, onClose }) {
 
         <div style={{ padding: '16px 24px', overflowY: 'auto', flex: 1 }}>
           {/* Filtres période */}
-          <div style={{ display: 'flex', gap: 6, marginBottom: 20 }}>
+          <div style={{ display: 'flex', gap: 6, marginBottom: 20, flexWrap: 'wrap' }}>
             {PERIODS.map(p => (
               <button key={p.key} onClick={() => setPeriod(p.key)} style={{
                 padding: '6px 16px', borderRadius: 20, fontSize: 12, fontWeight: 600, cursor: 'pointer',
@@ -188,14 +193,492 @@ function KpiModal({ kpi, onClose }) {
           {mLoading ? (
             <div style={{ color: 'var(--text-muted)', textAlign: 'center', padding: 40 }}>Chargement...</div>
           ) : (
-            <ResponsiveContainer width="100%" height={240}>
-              <BarChart data={data} margin={{ top: 0, right: 0, left: -10, bottom: 0 }}>
-                <XAxis dataKey="dateLabel" tick={{ fontSize: 10, fill: 'var(--text-muted)' }} axisLine={false} tickLine={false} interval={days > 60 ? Math.floor(days / 12) : 0} />
+            <ResponsiveContainer width="100%" height={260}>
+              <BarChart data={data} margin={{ top: 0, right: 0, left: -10, bottom: 24 }}>
+                <XAxis
+                  dataKey="dateLabel"
+                  tick={{ fontSize: 10, fill: 'var(--text-muted)' }}
+                  axisLine={false} tickLine={false}
+                  interval={data.length > MAX_XTICKS ? Math.ceil(data.length / MAX_XTICKS) - 1 : 0}
+                  angle={-35}
+                  textAnchor="end"
+                  height={40}
+                />
                 <YAxis tick={{ fontSize: 10, fill: 'var(--text-muted)' }} axisLine={false} tickLine={false} allowDecimals={false} />
                 <Tooltip contentStyle={TOOLTIP_STYLE} formatter={(v) => [fmt(v), kpi.title]} />
                 <Bar dataKey={kpi.dataKey} fill={kpi.color} radius={[3, 3, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+const ATTEMPT_PERIODS = [
+  { key: 24, label: '24h' },
+  { key: 48, label: '48h' },
+  { key: 72, label: '72h' },
+]
+
+function ClientAttemptsModal({ kpi, onClose }) {
+  const [hours, setHours] = useState(24)
+  const [data, setData]   = useState(null)
+  const [mLoading, setMLoading] = useState(true)
+
+  useEffect(() => {
+    setMLoading(true)
+    api.get(`/admin/stats/client-attempts?hours=${hours}`)
+      .then(r => setData(r.data))
+      .catch(() => setData(null))
+      .finally(() => setMLoading(false))
+  }, [hours])
+
+  const totalClients  = data?.totalClients  ?? 0
+  const totalAttempts = data?.totalAttempts ?? 0
+  const successRate   = totalAttempts > 0
+    ? Math.round((data.clients.reduce((s, c) => s + c.delivered, 0) / totalAttempts) * 100)
+    : 0
+
+  return (
+    <div style={modalOverlay} onClick={onClose}>
+      <div style={{ ...glass, width: 720, maxWidth: '95vw', padding: 0, borderRadius: 16, overflow: 'hidden', maxHeight: '90vh', display: 'flex', flexDirection: 'column' }} onClick={e => e.stopPropagation()}>
+        <div style={{ padding: '20px 24px 16px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            <div style={{ width: 36, height: 36, borderRadius: 10, background: kpi.color + '18', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <kpi.icon size={18} color={kpi.color} />
+            </div>
+            <h2 style={{ fontSize: 16, fontWeight: 700, margin: 0 }}>Clients ayant tenté de commander</h2>
+          </div>
+          <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', fontSize: 20 }}>✕</button>
+        </div>
+
+        <div style={{ padding: '16px 24px', overflowY: 'auto', flex: 1 }}>
+          {/* Filtres période */}
+          <div style={{ display: 'flex', gap: 6, marginBottom: 20 }}>
+            {ATTEMPT_PERIODS.map(p => (
+              <button key={p.key} onClick={() => setHours(p.key)} style={{
+                padding: '6px 16px', borderRadius: 20, fontSize: 12, fontWeight: 600, cursor: 'pointer',
+                border: hours === p.key ? 'none' : '1px solid var(--border)',
+                background: hours === p.key ? kpi.color : 'transparent',
+                color: hours === p.key ? '#fff' : 'var(--text-muted)',
+                transition: 'all .15s',
+              }}>
+                Dernières {p.label}
+              </button>
+            ))}
+          </div>
+
+          {/* Résumé */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 12, marginBottom: 20 }}>
+            {[['Clients uniques', totalClients], ['Tentatives totales', totalAttempts], ['Taux de succès', `${successRate}%`]].map(([label, val]) => (
+              <div key={label} style={{ background: 'var(--surface2)', borderRadius: 10, padding: '14px 16px', borderLeft: `3px solid ${kpi.color}` }}>
+                <div style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 600 }}>{label}</div>
+                <div style={{ fontSize: 20, fontWeight: 800, color: kpi.color, marginTop: 4 }}>{val}</div>
+              </div>
+            ))}
+          </div>
+
+          {/* Liste des clients */}
+          {mLoading ? (
+            <div style={{ color: 'var(--text-muted)', textAlign: 'center', padding: 40 }}>Chargement...</div>
+          ) : !data || data.clients.length === 0 ? (
+            <div style={{ color: 'var(--text-muted)', textAlign: 'center', padding: 40 }}>Aucun client n'a tenté de commander sur cette période.</div>
+          ) : (
+            <table style={tableStyle}>
+              <thead>
+                <tr>{['Client','Téléphone','Tentatives','Livrées','Annulées','Dernier statut','Dernière tentative'].map(h => <th key={h} style={thStyle}>{h}</th>)}</tr>
+              </thead>
+              <tbody>
+                {data.clients.map(c => (
+                  <tr key={c.clientId ?? c.phone} style={{ borderBottom: '1px solid var(--border)' }}>
+                    <td style={tdStyle}>{c.name}</td>
+                    <td style={tdStyle}>{c.phone ?? '—'}</td>
+                    <td style={tdStyle}>{c.attempts}</td>
+                    <td style={tdStyle}>{c.delivered}</td>
+                    <td style={tdStyle}>{c.cancelled}</td>
+                    <td style={tdStyle}><Badge status={c.lastStatus} /></td>
+                    <td style={{ ...tdStyle, color: 'var(--text-muted)', fontSize: 12 }}>{new Date(c.lastAttemptAt).toLocaleString('fr-FR')}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+const DRIVER_PRESENCE_PERIODS = [
+  { key: 'live', label: 'En live' },
+  { key: '1h',   label: '1h' },
+  { key: '6h',   label: '6h' },
+  { key: '24h',  label: '24h' },
+  { key: '3d',   label: '3 jours' },
+  { key: '7d',   label: '7 jours' },
+  { key: '30d',  label: '30 jours' },
+  { key: '3m',   label: '3 mois' },
+]
+
+function DriverActivityModal({ kpi, onClose }) {
+  const [period, setPeriod] = useState('live')
+  const [data, setData]     = useState(null)
+  const [mLoading, setMLoading] = useState(true)
+
+  useEffect(() => {
+    setMLoading(true)
+    api.get(`/admin/stats/active-drivers?period=${period}`)
+      .then(r => setData(r.data))
+      .catch(() => setData(null))
+      .finally(() => setMLoading(false))
+  }, [period])
+
+  const totalActive     = data?.totalActive     ?? 0
+  const totalRegistered = data?.totalRegistered ?? 0
+  const onlineNowCount   = data?.onlineNowCount  ?? 0
+
+  return (
+    <div style={modalOverlay} onClick={onClose}>
+      <div style={{ ...glass, width: 720, maxWidth: '95vw', padding: 0, borderRadius: 16, overflow: 'hidden', maxHeight: '90vh', display: 'flex', flexDirection: 'column' }} onClick={e => e.stopPropagation()}>
+        <div style={{ padding: '20px 24px 16px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            <div style={{ width: 36, height: 36, borderRadius: 10, background: kpi.color + '18', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <kpi.icon size={18} color={kpi.color} />
+            </div>
+            <h2 style={{ fontSize: 16, fontWeight: 700, margin: 0 }}>Livreurs actifs</h2>
+          </div>
+          <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', fontSize: 20 }}>✕</button>
+        </div>
+
+        <div style={{ padding: '16px 24px', overflowY: 'auto', flex: 1 }}>
+          {/* Filtres période */}
+          <div style={{ display: 'flex', gap: 6, marginBottom: 20, flexWrap: 'wrap' }}>
+            {DRIVER_PRESENCE_PERIODS.map(p => (
+              <button key={p.key} onClick={() => setPeriod(p.key)} style={{
+                padding: '6px 16px', borderRadius: 20, fontSize: 12, fontWeight: 600, cursor: 'pointer',
+                border: period === p.key ? 'none' : '1px solid var(--border)',
+                background: period === p.key ? kpi.color : 'transparent',
+                color: period === p.key ? '#fff' : 'var(--text-muted)',
+                transition: 'all .15s',
+              }}>
+                {p.key === 'live' ? '🔴 En live' : p.label}
+              </button>
+            ))}
+          </div>
+
+          {/* Résumé */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 12, marginBottom: 20 }}>
+            {[['Livreurs actifs', totalActive], ['En ligne maintenant', onlineNowCount], ['Flotte totale', totalRegistered]].map(([label, val]) => (
+              <div key={label} style={{ background: 'var(--surface2)', borderRadius: 10, padding: '14px 16px', borderLeft: `3px solid ${kpi.color}` }}>
+                <div style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 600 }}>{label}</div>
+                <div style={{ fontSize: 20, fontWeight: 800, color: kpi.color, marginTop: 4 }}>{val}</div>
+              </div>
+            ))}
+          </div>
+
+          {/* Liste des livreurs */}
+          {mLoading ? (
+            <div style={{ color: 'var(--text-muted)', textAlign: 'center', padding: 40 }}>Chargement...</div>
+          ) : !data || data.drivers.length === 0 ? (
+            <div style={{ color: 'var(--text-muted)', textAlign: 'center', padding: 40 }}>Aucun livreur actif sur cette période.</div>
+          ) : (
+            <table style={tableStyle}>
+              <thead>
+                <tr>{['Livreur','Téléphone','Véhicule','Statut','Dernière connexion'].map(h => <th key={h} style={thStyle}>{h}</th>)}</tr>
+              </thead>
+              <tbody>
+                {data.drivers.map(d => (
+                  <tr key={d.driverId} style={{ borderBottom: '1px solid var(--border)' }}>
+                    <td style={tdStyle}>{d.name}</td>
+                    <td style={tdStyle}>{d.phone ?? '—'}</td>
+                    <td style={tdStyle}>{d.vehicleType ?? '—'}</td>
+                    <td style={tdStyle}><Badge status={d.isOnlineNow ? 'ONLINE' : 'OFFLINE'} /></td>
+                    <td style={{ ...tdStyle, color: 'var(--text-muted)', fontSize: 12 }}>{d.lastSeenAt ? new Date(d.lastSeenAt).toLocaleString('fr-FR') : '—'}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function DemProActivityModal({ kpi, onClose }) {
+  const [hours, setHours] = useState(24)
+  const [data, setData]   = useState(null)
+  const [mLoading, setMLoading] = useState(true)
+
+  useEffect(() => {
+    setMLoading(true)
+    api.get(`/admin/stats/dem-pro-activity?hours=${hours}`)
+      .then(r => setData(r.data))
+      .catch(() => setData(null))
+      .finally(() => setMLoading(false))
+  }, [hours])
+
+  const totalAccounts = data?.totalAccounts ?? 0
+  const totalAttempts = data?.totalAttempts ?? 0
+  const successRate   = totalAttempts > 0
+    ? Math.round((data.accounts.reduce((s, a) => s + a.delivered, 0) / totalAttempts) * 100)
+    : 0
+
+  return (
+    <div style={modalOverlay} onClick={onClose}>
+      <div style={{ ...glass, width: 720, maxWidth: '95vw', padding: 0, borderRadius: 16, overflow: 'hidden', maxHeight: '90vh', display: 'flex', flexDirection: 'column' }} onClick={e => e.stopPropagation()}>
+        <div style={{ padding: '20px 24px 16px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            <div style={{ width: 36, height: 36, borderRadius: 10, background: kpi.color + '18', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <kpi.icon size={18} color={kpi.color} />
+            </div>
+            <h2 style={{ fontSize: 16, fontWeight: 700, margin: 0 }}>Comptes DEM Pro actifs</h2>
+          </div>
+          <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', fontSize: 20 }}>✕</button>
+        </div>
+
+        <div style={{ padding: '16px 24px', overflowY: 'auto', flex: 1 }}>
+          {/* Filtres période */}
+          <div style={{ display: 'flex', gap: 6, marginBottom: 20 }}>
+            {ATTEMPT_PERIODS.map(p => (
+              <button key={p.key} onClick={() => setHours(p.key)} style={{
+                padding: '6px 16px', borderRadius: 20, fontSize: 12, fontWeight: 600, cursor: 'pointer',
+                border: hours === p.key ? 'none' : '1px solid var(--border)',
+                background: hours === p.key ? kpi.color : 'transparent',
+                color: hours === p.key ? '#fff' : 'var(--text-muted)',
+                transition: 'all .15s',
+              }}>
+                Dernières {p.label}
+              </button>
+            ))}
+          </div>
+
+          {/* Résumé */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 12, marginBottom: 20 }}>
+            {[['Comptes Pro actifs', totalAccounts], ['Courses passées', totalAttempts], ['Taux de succès', `${successRate}%`]].map(([label, val]) => (
+              <div key={label} style={{ background: 'var(--surface2)', borderRadius: 10, padding: '14px 16px', borderLeft: `3px solid ${kpi.color}` }}>
+                <div style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 600 }}>{label}</div>
+                <div style={{ fontSize: 20, fontWeight: 800, color: kpi.color, marginTop: 4 }}>{val}</div>
+              </div>
+            ))}
+          </div>
+
+          {/* Liste des comptes Pro */}
+          {mLoading ? (
+            <div style={{ color: 'var(--text-muted)', textAlign: 'center', padding: 40 }}>Chargement...</div>
+          ) : !data || data.accounts.length === 0 ? (
+            <div style={{ color: 'var(--text-muted)', textAlign: 'center', padding: 40 }}>Aucun compte DEM Pro n'a passé de course sur cette période.</div>
+          ) : (
+            <table style={tableStyle}>
+              <thead>
+                <tr>{['Entreprise','Contact','Téléphone','Courses','Livrées','Annulées','Dernier statut','Dernière activité'].map(h => <th key={h} style={thStyle}>{h}</th>)}</tr>
+              </thead>
+              <tbody>
+                {data.accounts.map(a => (
+                  <tr key={a.clientId} style={{ borderBottom: '1px solid var(--border)' }}>
+                    <td style={tdStyle}>{a.businessName ?? '—'}</td>
+                    <td style={tdStyle}>{a.name}</td>
+                    <td style={tdStyle}>{a.phone ?? '—'}</td>
+                    <td style={tdStyle}>{a.attempts}</td>
+                    <td style={tdStyle}>{a.delivered}</td>
+                    <td style={tdStyle}>{a.cancelled}</td>
+                    <td style={tdStyle}><Badge status={a.lastStatus} /></td>
+                    <td style={{ ...tdStyle, color: 'var(--text-muted)', fontSize: 12 }}>{new Date(a.lastAttemptAt).toLocaleString('fr-FR')}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+const RECENT_ACTIVE_PERIODS = [
+  { key: '5m',  label: '5 min' },
+  { key: '10m', label: '10 min' },
+  { key: '30m', label: '30 min' },
+  { key: '1h',  label: '1h' },
+  { key: '2h',  label: '2h' },
+  { key: '6h',  label: '6h' },
+]
+
+function ActiveOrdersModal({ kpi, onClose }) {
+  const [period, setPeriod] = useState('30m')
+  const [data, setData]     = useState(null)
+  const [mLoading, setMLoading] = useState(true)
+
+  useEffect(() => {
+    setMLoading(true)
+    api.get(`/admin/stats/recent-active-orders?period=${period}`)
+      .then(r => setData(r.data))
+      .catch(() => setData(null))
+      .finally(() => setMLoading(false))
+  }, [period])
+
+  const total = data?.total ?? 0
+
+  return (
+    <div style={modalOverlay} onClick={onClose}>
+      <div style={{ ...glass, width: 720, maxWidth: '95vw', padding: 0, borderRadius: 16, overflow: 'hidden', maxHeight: '90vh', display: 'flex', flexDirection: 'column' }} onClick={e => e.stopPropagation()}>
+        <div style={{ padding: '20px 24px 16px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            <div style={{ width: 36, height: 36, borderRadius: 10, background: kpi.color + '18', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <kpi.icon size={18} color={kpi.color} />
+            </div>
+            <h2 style={{ fontSize: 16, fontWeight: 700, margin: 0 }}>Courses en cours — activité récente</h2>
+          </div>
+          <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', fontSize: 20 }}>✕</button>
+        </div>
+
+        <div style={{ padding: '16px 24px', overflowY: 'auto', flex: 1 }}>
+          {/* Filtres période */}
+          <div style={{ display: 'flex', gap: 6, marginBottom: 20, flexWrap: 'wrap' }}>
+            {RECENT_ACTIVE_PERIODS.map(p => (
+              <button key={p.key} onClick={() => setPeriod(p.key)} style={{
+                padding: '6px 16px', borderRadius: 20, fontSize: 12, fontWeight: 600, cursor: 'pointer',
+                border: period === p.key ? 'none' : '1px solid var(--border)',
+                background: period === p.key ? kpi.color : 'transparent',
+                color: period === p.key ? '#fff' : 'var(--text-muted)',
+                transition: 'all .15s',
+              }}>
+                Derniers {p.label}
+              </button>
+            ))}
+          </div>
+
+          {/* Résumé */}
+          <div style={{ marginBottom: 20 }}>
+            <div style={{ background: 'var(--surface2)', borderRadius: 10, padding: '14px 16px', borderLeft: `3px solid ${kpi.color}`, display: 'inline-block' }}>
+              <div style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 600 }}>Prises en charge récentes</div>
+              <div style={{ fontSize: 20, fontWeight: 800, color: kpi.color, marginTop: 4 }}>{total}</div>
+            </div>
+          </div>
+
+          {/* Liste des courses */}
+          {mLoading ? (
+            <div style={{ color: 'var(--text-muted)', textAlign: 'center', padding: 40 }}>Chargement...</div>
+          ) : !data || data.orders.length === 0 ? (
+            <div style={{ color: 'var(--text-muted)', textAlign: 'center', padding: 40 }}>Aucune course passée en cours sur cette période.</div>
+          ) : (
+            <table style={tableStyle}>
+              <thead>
+                <tr>{['Statut','Client','Livreur','Départ','Arrivée','Prix','Prise en charge'].map(h => <th key={h} style={thStyle}>{h}</th>)}</tr>
+              </thead>
+              <tbody>
+                {data.orders.map(o => (
+                  <tr key={o.id} style={{ borderBottom: '1px solid var(--border)' }}>
+                    <td style={tdStyle}><Badge status={o.status} /></td>
+                    <td style={tdStyle}>{o.client?.name ?? '—'}</td>
+                    <td style={tdStyle}>{o.driver?.name ?? '—'}</td>
+                    <td style={{ ...tdStyle, fontSize: 12 }}>{o.pickupAddress}</td>
+                    <td style={{ ...tdStyle, fontSize: 12 }}>{o.deliveryAddress}</td>
+                    <td style={tdStyle}>{o.price?.toLocaleString()} F</td>
+                    <td style={{ ...tdStyle, color: 'var(--text-muted)', fontSize: 12 }}>{o.acceptedAt ? new Date(o.acceptedAt).toLocaleString('fr-FR') : '—'}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+const STUCK_PENDING_PERIODS = [
+  { key: '2m',  label: '2 min' },
+  { key: '5m',  label: '5 min' },
+  { key: '10m', label: '10 min' },
+  { key: '15m', label: '15 min' },
+  { key: '30m', label: '30 min' },
+]
+
+function waitingMinutes(createdAt) {
+  return Math.max(0, Math.round((Date.now() - new Date(createdAt).getTime()) / 60000))
+}
+
+function StuckPendingOrdersModal({ kpi, onClose }) {
+  const [period, setPeriod] = useState('5m')
+  const [data, setData]     = useState(null)
+  const [mLoading, setMLoading] = useState(true)
+
+  useEffect(() => {
+    setMLoading(true)
+    api.get(`/admin/stats/stuck-pending-orders?period=${period}`)
+      .then(r => setData(r.data))
+      .catch(() => setData(null))
+      .finally(() => setMLoading(false))
+  }, [period])
+
+  const total = data?.total ?? 0
+
+  return (
+    <div style={modalOverlay} onClick={onClose}>
+      <div style={{ ...glass, width: 720, maxWidth: '95vw', padding: 0, borderRadius: 16, overflow: 'hidden', maxHeight: '90vh', display: 'flex', flexDirection: 'column' }} onClick={e => e.stopPropagation()}>
+        <div style={{ padding: '20px 24px 16px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            <div style={{ width: 36, height: 36, borderRadius: 10, background: kpi.color + '18', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <kpi.icon size={18} color={kpi.color} />
+            </div>
+            <h2 style={{ fontSize: 16, fontWeight: 700, margin: 0 }}>Courses en attente — sans livreur depuis...</h2>
+          </div>
+          <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', fontSize: 20 }}>✕</button>
+        </div>
+
+        <div style={{ padding: '16px 24px', overflowY: 'auto', flex: 1 }}>
+          {/* Filtres période */}
+          <div style={{ display: 'flex', gap: 6, marginBottom: 20, flexWrap: 'wrap' }}>
+            {STUCK_PENDING_PERIODS.map(p => (
+              <button key={p.key} onClick={() => setPeriod(p.key)} style={{
+                padding: '6px 16px', borderRadius: 20, fontSize: 12, fontWeight: 600, cursor: 'pointer',
+                border: period === p.key ? 'none' : '1px solid var(--border)',
+                background: period === p.key ? kpi.color : 'transparent',
+                color: period === p.key ? '#fff' : 'var(--text-muted)',
+                transition: 'all .15s',
+              }}>
+                Plus de {p.label}
+              </button>
+            ))}
+          </div>
+
+          {/* Résumé */}
+          <div style={{ marginBottom: 20 }}>
+            <div style={{ background: 'var(--surface2)', borderRadius: 10, padding: '14px 16px', borderLeft: `3px solid ${kpi.color}`, display: 'inline-block' }}>
+              <div style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 600 }}>Commandes en retard</div>
+              <div style={{ fontSize: 20, fontWeight: 800, color: kpi.color, marginTop: 4 }}>{total}</div>
+            </div>
+          </div>
+
+          {/* Liste des courses */}
+          {mLoading ? (
+            <div style={{ color: 'var(--text-muted)', textAlign: 'center', padding: 40 }}>Chargement...</div>
+          ) : !data || data.orders.length === 0 ? (
+            <div style={{ color: 'var(--text-muted)', textAlign: 'center', padding: 40 }}>Aucune course en attente depuis plus de ce délai.</div>
+          ) : (
+            <table style={tableStyle}>
+              <thead>
+                <tr>{['Client','Départ','Arrivée','Prix','En attente depuis','Dispatch'].map(h => <th key={h} style={thStyle}>{h}</th>)}</tr>
+              </thead>
+              <tbody>
+                {data.orders.map(o => {
+                  const hasOffer = o.dispatchedToDriverId && o.dispatchExpiresAt && new Date(o.dispatchExpiresAt) > new Date()
+                  return (
+                    <tr key={o.id} style={{ borderBottom: '1px solid var(--border)' }}>
+                      <td style={tdStyle}>{o.client?.name ?? '—'}</td>
+                      <td style={{ ...tdStyle, fontSize: 12 }}>{o.pickupAddress}</td>
+                      <td style={{ ...tdStyle, fontSize: 12 }}>{o.deliveryAddress}</td>
+                      <td style={tdStyle}>{o.price?.toLocaleString()} F</td>
+                      <td style={{ ...tdStyle, fontWeight: 700, color: '#f59e0b' }}>{waitingMinutes(o.createdAt)} min</td>
+                      <td style={tdStyle}><Badge status={hasOffer ? 'PENDING' : 'CANCELLED'} label={hasOffer ? 'Offre en cours' : 'Aucune offre'} /></td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
           )}
         </div>
       </div>
@@ -289,6 +772,7 @@ export default function Dashboard() {
     { id: 'pending',    icon: AlertTriangle, color: '#f59e0b', label: 'En attente',       value: stats?.orders.pending ?? 0,    title: 'Courses en attente', dataKey: 'orders',     unit: '' },
     { id: 'drivers',    icon: Bike,         color: '#22c55e', label: 'Livreurs dispo',    value: stats?.drivers.available ?? 0, title: 'Livreurs',         dataKey: 'delivered',     unit: '', sub: `/ ${stats?.drivers.total ?? 0}` },
     { id: 'clients',    icon: Users,        color: '#a78bfa', label: 'Clients',           value: stats?.clients.total ?? 0,     title: 'Clients',          dataKey: 'orders',        unit: '' },
+    { id: 'demPro',     icon: Briefcase,    color: '#0ea5e9', label: 'DEM Pro',           value: stats?.demPro?.active ?? 0,    title: 'DEM Pro',          dataKey: 'orders',        unit: '', sub: `${stats?.demPro?.pending ?? 0} en attente` },
     { id: 'revDriver',  icon: CreditCard,   color: '#22c55e', label: 'Rev. livreurs',     value: `${(stats?.revenue?.driver?.today ?? 0).toLocaleString()} F`, title: 'Revenus livreurs', dataKey: 'driverRevenue', unit: 'F', sub: `Total ${((stats?.revenue?.driver?.total ?? 0) / 1000).toFixed(0)}k`, sparkKey: 'driverRevenue' },
     { id: 'revDem',     icon: CreditCard,   color: '#f59e0b', label: 'Frais DEM',         value: `${(stats?.revenue?.dem?.today ?? 0).toLocaleString()} F`,    title: 'Frais DEM',        dataKey: 'demRevenue',    unit: 'F', sub: `Total ${((stats?.revenue?.dem?.total ?? 0) / 1000).toFixed(0)}k`, sparkKey: 'demRevenue' },
   ]
@@ -297,8 +781,8 @@ export default function Dashboard() {
     <div>
       <h1 style={{ fontSize: isMobile ? 18 : 22, fontWeight: 700, marginBottom: isMobile ? 16 : 24 }}>Dashboard</h1>
 
-      {/* ── 7 KPI cards — une seule ligne ── */}
-      <div style={{ display: 'grid', gridTemplateColumns: isMobile ? 'repeat(2,1fr)' : isTablet ? 'repeat(4,1fr)' : 'repeat(7,1fr)', gap: isMobile ? 8 : 10, marginBottom: isMobile ? 16 : 24 }}>
+      {/* ── 8 KPI cards — une seule ligne ── */}
+      <div style={{ display: 'grid', gridTemplateColumns: isMobile ? 'repeat(2,1fr)' : isTablet ? 'repeat(4,1fr)' : 'repeat(8,1fr)', gap: isMobile ? 8 : 10, marginBottom: isMobile ? 16 : 24 }}>
         {KPI_CARDS.map(k => (
           <StatCard
             key={k.id}
@@ -313,7 +797,18 @@ export default function Dashboard() {
       </div>
 
       {/* Modal détail KPI */}
-      {openKpi && <KpiModal kpi={openKpi} onClose={() => setOpenKpi(null)} />}
+      {openKpi && (openKpi.id === 'clients'
+        ? <ClientAttemptsModal kpi={openKpi} onClose={() => setOpenKpi(null)} />
+        : openKpi.id === 'drivers'
+        ? <DriverActivityModal kpi={openKpi} onClose={() => setOpenKpi(null)} />
+        : openKpi.id === 'demPro'
+        ? <DemProActivityModal kpi={openKpi} onClose={() => setOpenKpi(null)} />
+        : openKpi.id === 'active'
+        ? <ActiveOrdersModal kpi={openKpi} onClose={() => setOpenKpi(null)} />
+        : openKpi.id === 'pending'
+        ? <StuckPendingOrdersModal kpi={openKpi} onClose={() => setOpenKpi(null)} />
+        : <KpiModal kpi={openKpi} onClose={() => setOpenKpi(null)} />
+      )}
 
       {/* ── Charts row ── */}
       <div style={{ display: 'grid', gridTemplateColumns: chartCols, gap: isMobile ? 10 : 16, marginBottom: isMobile ? 12 : 20 }}>
@@ -523,7 +1018,6 @@ export default function Dashboard() {
     </div>
   )
 }
-
 const card       = { ...glass, padding: '18px 20px' }
 const cardTitle  = { fontSize: 14, fontWeight: 600, marginBottom: 14 }
 const tableStyle = { width: '100%', borderCollapse: 'collapse' }

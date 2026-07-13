@@ -15,6 +15,47 @@ export default function Orders() {
   const [cancelling, setCancelling]     = useState(false)
   const [paying, setPaying]             = useState(false)
   const [redispatching, setRedispatching] = useState(false)
+  const [driverPicker, setDriverPicker]   = useState(null) // { drivers, loading, error } quand ouvert
+  const [assigning, setAssigning]         = useState(false)
+
+  const openDriverPicker = async (order) => {
+    setDriverPicker({ drivers: [], loading: true, error: null })
+    try {
+      const res = await api.get(`/admin/orders/${order.id}/assignable-drivers`)
+      setDriverPicker({ drivers: res.data?.drivers ?? [], loading: false, error: null })
+    } catch (e) {
+      setDriverPicker({ drivers: [], loading: false, error: e.response?.data?.message ?? 'Erreur de chargement des livreurs.' })
+    }
+  }
+
+  const assignDriver = async (driverId) => {
+    setAssigning(true)
+    try {
+      const res = await api.patch(`/admin/orders/${detail.id}/reassign`, { driverId })
+      setDetail(res.data?.order ?? null)
+      setDriverPicker(null)
+      fetch()
+    } catch (e) {
+      alert(e.response?.data?.message ?? 'Erreur lors de l\'attribution du livreur')
+    } finally {
+      setAssigning(false)
+    }
+  }
+
+  const suggestDriver = async (driverId) => {
+    setAssigning(true)
+    try {
+      const res = await api.patch(`/admin/orders/${detail.id}/suggest`, { driverId })
+      alert(res.data?.message ?? 'Course suggérée au livreur.')
+      setDetail(null)
+      setDriverPicker(null)
+      fetch()
+    } catch (e) {
+      alert(e.response?.data?.message ?? 'Erreur lors de la suggestion au livreur')
+    } finally {
+      setAssigning(false)
+    }
+  }
 
   const markPaid = async (id) => {
     if (!window.confirm('Marquer ce paiement comme reçu ?')) return
@@ -202,6 +243,14 @@ export default function Orders() {
             </div>
             <div style={{ marginTop: 20, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                {detail.status === 'PENDING' && !detail.driver && (
+                  <button
+                    onClick={() => openDriverPicker(detail)}
+                    style={{ ...btnOutline, color: '#0077b6', borderColor: '#0077b6', background: 'rgba(0,119,182,0.08)' }}
+                  >
+                    🚴 Choisir un livreur
+                  </button>
+                )}
                 {detail.status === 'ACCEPTED' && (
                   <button
                     onClick={() => redispatch(detail.id)}
@@ -231,6 +280,67 @@ export default function Orders() {
                 )}
               </div>
               <button onClick={() => setDetail(null)} style={{ ...btnOutline, marginLeft: 'auto' }}>Fermer</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Sélecteur de livreur */}
+      {driverPicker && (
+        <div style={{ ...overlay, zIndex: 110 }} onClick={() => setDriverPicker(null)}>
+          <div style={{ ...modalBox, width: 460 }} onClick={e => e.stopPropagation()}>
+            <h2 style={{ marginBottom: 4, fontSize: 16 }}>Choisir un livreur</h2>
+            <p style={{ marginBottom: 16, fontSize: 12, color: 'var(--text-muted)' }}>
+              <strong>Suggérer</strong> envoie une offre que le livreur peut accepter ou refuser.{' '}
+              <strong>Attribuer directement</strong> lui assigne la course sans confirmation de sa part.
+            </p>
+            {driverPicker.loading ? (
+              <div style={{ color: 'var(--text-muted)', padding: 12 }}>Chargement des livreurs disponibles…</div>
+            ) : driverPicker.error ? (
+              <div style={{ color: '#e53e3e', padding: 12 }}>{driverPicker.error}</div>
+            ) : driverPicker.drivers.length === 0 ? (
+              <div style={{ color: 'var(--text-muted)', padding: 12 }}>Aucun livreur disponible pour le moment.</div>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8, maxHeight: 360, overflowY: 'auto' }}>
+                {driverPicker.drivers.map(d => (
+                  <div
+                    key={d.id}
+                    style={{
+                      display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10,
+                      padding: '10px 14px', borderRadius: 'var(--radius-sm)',
+                      border: '1px solid rgba(0,119,182,0.2)', background: 'rgba(255,255,255,0.5)',
+                      fontSize: 13,
+                    }}
+                  >
+                    <span style={{ minWidth: 0 }}>
+                      <strong>{d.name ?? 'Sans nom'}</strong>
+                      <span style={{ color: 'var(--text-muted)', marginLeft: 8 }}>{d.phone}</span>
+                      <span style={{ display: 'block', color: 'var(--text-muted)', fontSize: 11 }}>{d.vehicleType ?? '—'}</span>
+                    </span>
+                    <span style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
+                      <button
+                        onClick={() => suggestDriver(d.id)}
+                        disabled={assigning}
+                        style={{ ...btnOutline, padding: '6px 10px', fontSize: 12, color: '#0077b6', borderColor: '#0077b6', background: 'rgba(0,119,182,0.08)' }}
+                      >
+                        Suggérer
+                      </button>
+                      <button
+                        onClick={() => assignDriver(d.id)}
+                        disabled={assigning}
+                        style={{ ...btnOutline, padding: '6px 10px', fontSize: 12, color: '#38a169', borderColor: '#38a169', background: 'rgba(56,161,105,0.08)' }}
+                      >
+                        Attribuer directement
+                      </button>
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
+            <div style={{ marginTop: 20, display: 'flex', justifyContent: 'flex-end' }}>
+              <button onClick={() => setDriverPicker(null)} disabled={assigning} style={btnOutline}>
+                {assigning ? 'Attribution…' : 'Annuler'}
+              </button>
             </div>
           </div>
         </div>
