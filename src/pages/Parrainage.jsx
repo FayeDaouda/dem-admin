@@ -43,8 +43,8 @@ export default function Parrainage() {
 
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, marginBottom: 20, flexShrink: 0 }}>
         <StatBox label="Total parrainages" value={total} />
-        <StatBox label="Credits MLM distribues" value={`${credits.toLocaleString()} F`} color="var(--primary)" />
         <StatBox label="Parrains actifs" value={data?.referrers?.length ?? 0} color="#22c55e" />
+        <StatBox label="Credits MLM distribues" value={`${credits.toLocaleString()} F`} color="var(--primary)" />
       </div>
 
       <input
