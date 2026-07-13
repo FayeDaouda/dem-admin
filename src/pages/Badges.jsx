@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react'
 import api from '../lib/api'
 import { Pencil, Save, X, RotateCcw } from 'lucide-react'
 import { glass, glassInput, pageWrap, pageScroll } from '../lib/glassStyles'
+import { useAuth } from '../contexts/AuthContext'
 
 const DEFAULT_DRIVER_BADGES = [
   { tier: 'xarit',     name: 'DEM Xarit',      emoji: '🤝', courses: 3,   referrals: 3,  rating: 0   },
@@ -30,29 +31,29 @@ const DRIVER_VISUALS = {
   gainde:    { emoji: '🏅', color: '#B8860B', bg: 'rgba(184,134,11,.08)',  border: 'rgba(184,134,11,.25)' },
 }
 
-const TAB = (active) => ({
-  padding: '8px 20px', borderRadius: 'var(--radius-sm)', border: 'none', cursor: 'pointer',
-  background: active ? 'var(--primary)' : 'transparent',
-  color: active ? '#fff' : 'var(--text-muted)',
-  fontWeight: active ? 700 : 500, fontSize: 13, transition: 'all .15s',
-})
-
-export default function Badges() {
-  const [tab, setTab] = useState('clients')
-
+export function ClientBadgesPage() {
   return (
     <div style={pageWrap}>
       <div style={{ marginBottom: 24, flexShrink: 0 }}>
-        <h1 style={{ fontSize: 22, fontWeight: 700 }}>Badges</h1>
-        <p style={{ color: 'var(--text-muted)', fontSize: 13, marginTop: 4 }}>Gestion des badges clients et livreurs.</p>
-      </div>
-      <div style={{ display: 'flex', gap: 4, marginBottom: 24, background: 'rgba(255,255,255,.45)', borderRadius: 'var(--radius)', padding: 4, width: 'fit-content', flexShrink: 0 }}>
-        <button style={TAB(tab === 'clients')} onClick={() => setTab('clients')}>Badges clients</button>
-        <button style={TAB(tab === 'drivers')} onClick={() => setTab('drivers')}>Badges livreurs</button>
+        <h1 style={{ fontSize: 22, fontWeight: 700 }}>Badge client</h1>
+        <p style={{ color: 'var(--text-muted)', fontSize: 13, marginTop: 4 }}>Consultation des badges clients.</p>
       </div>
       <div style={pageScroll}>
-        {tab === 'clients' && <ClientBadgesTab />}
-        {tab === 'drivers' && <DriverBadgesTab />}
+        <ClientBadgesTab />
+      </div>
+    </div>
+  )
+}
+
+export function DriverBadgesPage() {
+  return (
+    <div style={pageWrap}>
+      <div style={{ marginBottom: 24, flexShrink: 0 }}>
+        <h1 style={{ fontSize: 22, fontWeight: 700 }}>Badge livreur</h1>
+        <p style={{ color: 'var(--text-muted)', fontSize: 13, marginTop: 4 }}>Consultation des badges livreurs.</p>
+      </div>
+      <div style={pageScroll}>
+        <DriverBadgesTab />
       </div>
     </div>
   )
@@ -62,6 +63,8 @@ export default function Badges() {
 //  BADGES CLIENTS
 // ══════════════════════════════════════════════════════════════════════════════
 function ClientBadgesTab() {
+  const { user } = useAuth()
+  const isSuper = !user?.adminRole || user.adminRole === 'SUPER'
   const [stats,      setStats]      = useState(null)
   const [referrers,  setReferrers]  = useState([])
   const [tiers,      setTiers]      = useState([])
@@ -109,9 +112,11 @@ function ClientBadgesTab() {
       {/* Header + bouton Modifier */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <div style={{ fontSize: 13, color: 'var(--text-muted)' }}>{total} clients inscrits</div>
-        <button onClick={() => setEditModal('open')} style={btnEdit}>
-          <Pencil size={14} /> Modifier les badges
-        </button>
+        {isSuper && (
+          <button onClick={() => setEditModal('open')} style={btnEdit}>
+            <Pencil size={14} /> Modifier les badges
+          </button>
+        )}
       </div>
 
       {/* Cartes badges */}
@@ -184,10 +189,12 @@ function ClientBadgesTab() {
                     <div style={{ fontWeight: 600, fontSize: 13 }}>{c.name ?? '—'}</div>
                     <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>{c.phone}</div>
                   </div>
-                  <button onClick={() => validate(c.id)} disabled={validating === c.id}
-                    style={{ padding: '6px 14px', borderRadius: 8, border: 'none', background: '#15803d', color: '#fff', fontWeight: 700, fontSize: 12, cursor: 'pointer', opacity: validating === c.id ? 0.5 : 1 }}>
-                    {validating === c.id ? '...' : 'Valider'}
-                  </button>
+                  {isSuper && (
+                    <button onClick={() => validate(c.id)} disabled={validating === c.id}
+                      style={{ padding: '6px 14px', borderRadius: 8, border: 'none', background: '#15803d', color: '#fff', fontWeight: 700, fontSize: 12, cursor: 'pointer', opacity: validating === c.id ? 0.5 : 1 }}>
+                      {validating === c.id ? '...' : 'Valider'}
+                    </button>
+                  )}
                 </div>
               )
             })}
@@ -292,6 +299,8 @@ function ClientBadgesTab() {
 //  BADGES LIVREURS
 // ══════════════════════════════════════════════════════════════════════════════
 function DriverBadgesTab() {
+  const { user } = useAuth()
+  const isSuper = !user?.adminRole || user.adminRole === 'SUPER'
   const [badges,      setBadges]      = useState(null)
   const [draft,       setDraft]       = useState(null)
   const [loading,     setLoading]     = useState(true)
@@ -370,9 +379,11 @@ function DriverBadgesTab() {
       {/* Header + bouton Modifier */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <div style={{ fontSize: 13, color: 'var(--text-muted)' }}>{totalDrivers} livreurs inscrits</div>
-        <button onClick={() => setEditModal('open')} style={btnEdit}>
-          <Pencil size={14} /> Modifier les badges
-        </button>
+        {isSuper && (
+          <button onClick={() => setEditModal('open')} style={btnEdit}>
+            <Pencil size={14} /> Modifier les badges
+          </button>
+        )}
       </div>
 
       {/* Cartes badges */}

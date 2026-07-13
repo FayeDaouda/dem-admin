@@ -21,7 +21,7 @@ import ServiceClient from './pages/service-client'
 import Marketing from './pages/marketing'
 import Finance from './pages/finance'
 import Equipes from './pages/Equipes'
-import Badges from './pages/Badges'
+import { ClientBadgesPage, DriverBadgesPage } from './pages/Badges'
 import Parrainage from './pages/Parrainage'
 import Broadcast from './pages/Broadcast'
 
@@ -61,7 +61,8 @@ function AppRoutes() {
       <Route path="/clients"  element={<ProtectedRoute><Clients /></ProtectedRoute>} />
       <Route path="/config"      element={<ProtectedRoute><Config /></ProtectedRoute>} />
       <Route path="/acquisition" element={<ProtectedRoute><Acquisition /></ProtectedRoute>} />
-      <Route path="/badges"     element={<ProtectedRoute><Badges /></ProtectedRoute>} />
+      <Route path="/badges/clients" element={<ProtectedRoute><ClientBadgesPage /></ProtectedRoute>} />
+      <Route path="/badges/drivers" element={<ProtectedRoute><DriverBadgesPage /></ProtectedRoute>} />
       <Route path="/parrainage" element={<ProtectedRoute><Parrainage /></ProtectedRoute>} />
       <Route path="/broadcast"  element={<ProtectedRoute><Broadcast /></ProtectedRoute>} />
       <Route path="/incidents"   element={<ProtectedRoute><Incidents /></ProtectedRoute>} />
