@@ -6,7 +6,7 @@ import {
 import { connectSocket, disconnectSocket } from '../lib/socket'
 import api from '../lib/api'
 import Badge from '../components/Badge'
-import { Package, Bike, AlertTriangle, TrendingUp, Users, CreditCard, Activity, Wifi, ArrowUpRight, ArrowDownRight, Minus, Briefcase } from 'lucide-react'
+import { Package, Bike, AlertTriangle, TrendingUp, Users, CreditCard, Activity, Wifi, ArrowUpRight, ArrowDownRight, Minus, Briefcase, Eye, EyeOff } from 'lucide-react'
 import { glass } from '../lib/glassStyles'
 import { useResponsive } from '../lib/useResponsive'
 import { useAuth } from '../contexts/AuthContext'
@@ -693,6 +693,16 @@ export default function Dashboard() {
   const { user } = useAuth()
   const isServiceClient = user?.adminRole === 'SERVICE_CLIENT'
   const isSuper = !user?.adminRole || user.adminRole === 'SUPER'
+  const [showCommunity, setShowCommunity] = useState(() => localStorage.getItem('dashboard.showCommunity') !== 'false')
+  const [showServiceClient, setShowServiceClient] = useState(() => localStorage.getItem('dashboard.showServiceClient') !== 'false')
+
+  function toggleSection(key, setter) {
+    setter(v => {
+      const next = !v
+      localStorage.setItem(key, String(next))
+      return next
+    })
+  }
   const [stats, setStats]       = useState(null)
   const [snapshot, setSnapshot] = useState(null)
   const [timeseries, setTimeseries] = useState([])
@@ -791,7 +801,19 @@ export default function Dashboard() {
 
   return (
     <div>
-      <h1 style={{ fontSize: isMobile ? 18 : 22, fontWeight: 700, marginBottom: isMobile ? 16 : 24 }}>Dashboard</h1>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12, marginBottom: isMobile ? 16 : 24 }}>
+        <h1 style={{ fontSize: isMobile ? 18 : 22, fontWeight: 700 }}>Dashboard</h1>
+        {isSuper && (
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+            <button onClick={() => toggleSection('dashboard.showCommunity', setShowCommunity)} style={visibilityToggle(showCommunity)}>
+              {showCommunity ? <Eye size={13} /> : <EyeOff size={13} />} Community
+            </button>
+            <button onClick={() => toggleSection('dashboard.showServiceClient', setShowServiceClient)} style={visibilityToggle(showServiceClient)}>
+              {showServiceClient ? <Eye size={13} /> : <EyeOff size={13} />} Service Client
+            </button>
+          </div>
+        )}
+      </div>
 
       {/* ── KPI cards — une seule ligne ── */}
       <div style={{ display: 'grid', gridTemplateColumns: `repeat(${kpiCols},1fr)`, gap: isMobile ? 8 : 10, marginBottom: isMobile ? 16 : 24 }}>
@@ -824,7 +846,7 @@ export default function Dashboard() {
 
       {/* ── KPI Community & Service Client — consolidés ici pour SUPER, qui n'a plus
            besoin de naviguer vers des dashboards séparés pour les consulter ── */}
-      {isSuper && (
+      {isSuper && showCommunity && (
         <>
           <div style={{ marginTop: 4, marginBottom: 10 }}>
             <h2 style={sectionTitle}>Community</h2>
@@ -832,7 +854,11 @@ export default function Dashboard() {
           <div style={{ marginBottom: isMobile ? 16 : 24 }}>
             <MarketingKpiRow />
           </div>
+        </>
+      )}
 
+      {isSuper && showServiceClient && (
+        <>
           <div style={{ marginBottom: 10 }}>
             <h2 style={sectionTitle}>Service Client</h2>
           </div>
@@ -1053,6 +1079,13 @@ export default function Dashboard() {
 const card       = { ...glass, padding: '18px 20px' }
 const cardTitle  = { fontSize: 14, fontWeight: 600, marginBottom: 14 }
 const sectionTitle = { fontSize: 15, fontWeight: 700, color: 'var(--text)', paddingBottom: 8, borderBottom: '1px solid rgba(0,119,182,0.15)' }
+const visibilityToggle = (active) => ({
+  display: 'flex', alignItems: 'center', gap: 6, padding: '6px 14px', borderRadius: 20,
+  border: '1px solid rgba(0,119,182,.25)',
+  background: active ? 'var(--primary)' : 'rgba(255,255,255,.5)',
+  color: active ? '#fff' : 'var(--text-muted)',
+  fontSize: 12, fontWeight: 600, cursor: 'pointer',
+})
 const tableStyle = { width: '100%', borderCollapse: 'collapse' }
 const thStyle    = { textAlign: 'left', padding: '6px 8px', color: 'var(--text-muted)', fontSize: 11, fontWeight: 600, borderBottom: '1px solid var(--border)' }
 const tdStyle    = { padding: '9px 8px', verticalAlign: 'middle', fontSize: 13 }
