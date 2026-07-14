@@ -4,6 +4,7 @@ import api from '../lib/api'
 import { useAuth } from '../contexts/AuthContext'
 import { RefreshCw, Plus, Pencil, Trash2, X, Search, CheckCircle, Phone, Flag } from 'lucide-react'
 import { glass, glassInput, pageWrap, pageScroll, stickyTh, stickyCol, stickyThCol } from '../lib/glassStyles'
+import SubmitRequestModal from './service-client/components/SubmitRequestModal'
 
 // ── Modal Créer / Modifier ────────────────────────────────────────────────────
 function ChefFormModal({ initial, onClose, onSaved }) {
@@ -130,6 +131,7 @@ export default function ChefsDeFlotte() {
   const [search, setSearch]       = useState('')
   const [sortDate, setSortDate]   = useState(null)
   const [acting, setActing]       = useState(null)
+  const [requestTarget, setRequestTarget] = useState(null)
 
   const fetch = useCallback(async () => {
     setLoading(true)
@@ -292,7 +294,7 @@ export default function ChefsDeFlotte() {
                     {c.createdAt ? new Date(c.createdAt).toLocaleDateString('fr-FR') : '—'}
                   </td>
                   <td style={tdStyle} onClick={e => e.stopPropagation()}>
-                    <div style={{ display: 'flex', gap: 5 }}>
+                    <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap' }}>
                       {isServiceClient ? (
                         <>
                           {c.phone && (
@@ -303,6 +305,14 @@ export default function ChefsDeFlotte() {
                           <button onClick={() => reportChef(c)} style={{ ...btnSmall, color: '#dc2626', borderColor: '#dc2626' }} title="Signaler">
                             <Flag size={13} />
                           </button>
+                          {c.isActive && (
+                            <button
+                              onClick={() => setRequestTarget({ id: c.id, label: c.companyName?.trim() || c.name?.trim() || c.phone })}
+                              style={{ ...btnSmall, color: '#f59e0b', borderColor: '#f59e0b' }}
+                            >
+                              Demander suspension
+                            </button>
+                          )}
                         </>
                       ) : (
                         <>
@@ -331,6 +341,16 @@ export default function ChefsDeFlotte() {
           initial={formTarget.id ? formTarget : null}
           onClose={() => setFormTarget(null)}
           onSaved={() => { setFormTarget(null); fetch() }}
+        />
+      )}
+
+      {/* Modal demande suspension (SERVICE_CLIENT) */}
+      {requestTarget && (
+        <SubmitRequestModal
+          kind="CHEF_SUSPEND"
+          targetUser={requestTarget}
+          onClose={() => setRequestTarget(null)}
+          onSubmitted={() => { setRequestTarget(null); alert('Demande envoyée pour validation.') }}
         />
       )}
     </div>

@@ -569,6 +569,8 @@ const REQUEST_KIND_LABELS = {
   GESTE_FREE_RIDE:  'Course gratuite',
   GESTE_DISCOUNT:   'Remise',
   TARIFF_CHANGE:    'Modification tarifaire',
+  DRIVER_SUSPEND:   'Suspension livreur',
+  CHEF_SUSPEND:     'Suspension chef de flotte',
 }
 
 function ServiceRequestsTab() {

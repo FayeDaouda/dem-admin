@@ -5,6 +5,7 @@ import Badge from '../components/Badge'
 import SuspendModal from '../components/SuspendModal'
 import { RefreshCw, BarChart2, Phone, CheckCircle, XCircle, Eye, Plus, Pencil, Trash2, Search, Flag } from 'lucide-react'
 import { glass, glassInput, pageWrap, pageScroll, stickyTh, stickyCol, stickyThCol } from '../lib/glassStyles'
+import SubmitRequestModal from './service-client/components/SubmitRequestModal'
 
 const DOC_LIST = [
   { key: 'idCardFront',    label: 'CNI recto' },
@@ -259,6 +260,7 @@ export default function Drivers() {
   const [phoneReqs, setPhoneReqs]       = useState([])
   const [phoneLoading, setPhoneLoading] = useState(true)
   const [resolving, setResolving]       = useState(null)
+  const [requestTarget, setRequestTarget] = useState(null)
 
   const fetch = useCallback(async () => {
     setLoading(true)
@@ -663,6 +665,14 @@ export default function Drivers() {
                           <button onClick={() => reportDriver(d)} style={{ ...btnSmall, color: '#dc2626', borderColor: '#dc2626' }} title="Signaler">
                             <Flag size={13} />
                           </button>
+                          {d.isActive && (
+                            <button
+                              onClick={() => setRequestTarget({ id: d.id, label: d.name?.trim() || d.phone })}
+                              style={{ ...btnSmall, color: '#f59e0b', borderColor: '#f59e0b' }}
+                            >
+                              Demander suspension
+                            </button>
+                          )}
                         </>
                       ) : (
                         <>
@@ -849,6 +859,16 @@ export default function Drivers() {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Modal demande suspension (SERVICE_CLIENT) */}
+      {requestTarget && (
+        <SubmitRequestModal
+          kind="DRIVER_SUSPEND"
+          targetUser={requestTarget}
+          onClose={() => setRequestTarget(null)}
+          onSubmitted={() => { setRequestTarget(null); alert('Demande envoyée pour validation.') }}
+        />
       )}
     </div>
   )

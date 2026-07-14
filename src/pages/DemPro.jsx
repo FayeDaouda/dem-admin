@@ -4,6 +4,7 @@ import { useAuth } from '../contexts/AuthContext'
 import Badge from '../components/Badge'
 import { RefreshCw, CheckCircle, XCircle, Pencil, Trash2, Ban, RotateCcw, X, Search, Phone, Flag } from 'lucide-react'
 import { glass, glassModal, glassInput, pageWrap, pageScroll, stickyTh, stickyThCol, stickyCol } from '../lib/glassStyles'
+import SubmitRequestModal from './service-client/components/SubmitRequestModal'
 
 const STATUS_FILTERS = [
   ['all',       'Tous'],
@@ -165,6 +166,7 @@ export default function DemPro() {
   const [modal, setModal]       = useState(null)
   const [editTarget, setEditTarget] = useState(null)
   const [saving, setSaving]     = useState(false)
+  const [requestTarget, setRequestTarget] = useState(null)
 
   const fetch = useCallback(async () => {
     setLoading(true)
@@ -383,7 +385,7 @@ export default function DemPro() {
                           </button>
                         </div>
                       ) : isServiceClient ? (
-                        <div style={{ display: 'flex', gap: 5 }}>
+                        <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap' }}>
                           {a.phone && (
                             <a href={`tel:${a.phone}`} style={btnSmall} title="Appeler">
                               <Phone size={13} />
@@ -392,6 +394,21 @@ export default function DemPro() {
                           <button onClick={() => reportAccount(a)} style={{ ...btnSmall, color: '#dc2626', borderColor: '#dc2626' }} title="Signaler">
                             <Flag size={13} />
                           </button>
+                          {a.isActive ? (
+                            <button
+                              onClick={() => setRequestTarget({ kind: 'DEM_PRO_SUSPEND', targetUser: { id: a.id, label: a.proBusinessName ?? a.name ?? a.phone } })}
+                              style={{ ...btnSmall, color: '#f59e0b', borderColor: '#f59e0b' }}
+                            >
+                              Demander suspension
+                            </button>
+                          ) : (
+                            <button
+                              onClick={() => setRequestTarget({ kind: 'DEM_PRO_ACTIVATE', targetUser: { id: a.id, label: a.proBusinessName ?? a.name ?? a.phone } })}
+                              style={{ ...btnSmall, color: '#15803d', borderColor: '#15803d' }}
+                            >
+                              Demander réactivation
+                            </button>
+                          )}
                         </div>
                       ) : (
                         <span style={{ color: 'var(--text-muted)', fontSize: 11 }}>Lecture seule</span>
@@ -480,6 +497,16 @@ export default function DemPro() {
           initial={editTarget}
           onClose={() => setEditTarget(null)}
           onSaved={() => { setEditTarget(null); fetch() }}
+        />
+      )}
+
+      {/* Modal demande suspension/réactivation (SERVICE_CLIENT) */}
+      {requestTarget && (
+        <SubmitRequestModal
+          kind={requestTarget.kind}
+          targetUser={requestTarget.targetUser}
+          onClose={() => setRequestTarget(null)}
+          onSubmitted={() => { setRequestTarget(null); alert('Demande envoyée pour validation.') }}
         />
       )}
     </div>
