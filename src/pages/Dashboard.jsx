@@ -9,6 +9,7 @@ import Badge from '../components/Badge'
 import { Package, Bike, AlertTriangle, TrendingUp, Users, CreditCard, Activity, Wifi, ArrowUpRight, ArrowDownRight, Minus, Briefcase } from 'lucide-react'
 import { glass } from '../lib/glassStyles'
 import { useResponsive } from '../lib/useResponsive'
+import { useAuth } from '../contexts/AuthContext'
 
 function TrendBadge({ current, previous }) {
   if (previous == null || previous === 0) return null
@@ -687,6 +688,8 @@ function StuckPendingOrdersModal({ kpi, onClose }) {
 }
 
 export default function Dashboard() {
+  const { user } = useAuth()
+  const isServiceClient = user?.adminRole === 'SERVICE_CLIENT'
   const [stats, setStats]       = useState(null)
   const [snapshot, setSnapshot] = useState(null)
   const [timeseries, setTimeseries] = useState([])
@@ -766,7 +769,7 @@ export default function Dashboard() {
   const todayTs    = timeseries[timeseries.length - 1]
   const yesterdayTs = timeseries[timeseries.length - 2]
 
-  const KPI_CARDS = [
+  const ALL_KPI_CARDS = [
     { id: 'courses',    icon: Package,      color: '#0077b6', label: 'Total courses',    value: stats?.orders.total ?? 0,      title: 'Courses',          dataKey: 'orders',        unit: '', sparkKey: 'orders' },
     { id: 'active',     icon: TrendingUp,   color: '#6366f1', label: 'En cours',         value: stats?.orders.active ?? 0,     title: 'Courses en cours', dataKey: 'orders',        unit: '' },
     { id: 'pending',    icon: AlertTriangle, color: '#f59e0b', label: 'En attente',       value: stats?.orders.pending ?? 0,    title: 'Courses en attente', dataKey: 'orders',     unit: '' },
@@ -777,12 +780,18 @@ export default function Dashboard() {
     { id: 'revDem',     icon: CreditCard,   color: '#f59e0b', label: 'Frais DEM',         value: `${(stats?.revenue?.dem?.today ?? 0).toLocaleString()} F`,    title: 'Frais DEM',        dataKey: 'demRevenue',    unit: 'F', sub: `Total ${((stats?.revenue?.dem?.total ?? 0) / 1000).toFixed(0)}k`, sparkKey: 'demRevenue' },
   ]
 
+  // Service Client ne voit pas les KPI de chiffre d'affaires
+  const KPI_CARDS = isServiceClient
+    ? ALL_KPI_CARDS.filter(k => k.id !== 'revDriver' && k.id !== 'revDem')
+    : ALL_KPI_CARDS
+  const kpiCols = isMobile ? 2 : isTablet ? 4 : KPI_CARDS.length
+
   return (
     <div>
       <h1 style={{ fontSize: isMobile ? 18 : 22, fontWeight: 700, marginBottom: isMobile ? 16 : 24 }}>Dashboard</h1>
 
-      {/* ── 8 KPI cards — une seule ligne ── */}
-      <div style={{ display: 'grid', gridTemplateColumns: isMobile ? 'repeat(2,1fr)' : isTablet ? 'repeat(4,1fr)' : 'repeat(8,1fr)', gap: isMobile ? 8 : 10, marginBottom: isMobile ? 16 : 24 }}>
+      {/* ── KPI cards — une seule ligne ── */}
+      <div style={{ display: 'grid', gridTemplateColumns: `repeat(${kpiCols},1fr)`, gap: isMobile ? 8 : 10, marginBottom: isMobile ? 16 : 24 }}>
         {KPI_CARDS.map(k => (
           <StatCard
             key={k.id}
