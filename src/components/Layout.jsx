@@ -11,8 +11,8 @@ import { useResponsive } from '../lib/useResponsive'
 // ASSISTANCE_EXECUTIVE : proche du SUPER — pas d'Audit, pas de Paiements (écritures), pas de Marketing.
 const NAV = [
   { to: '/',                 icon: LayoutDashboard, label: 'Dashboard',       roles: ['SUPER','DEV','FINANCE','ASSISTANCE_EXECUTIVE'] },
-  { to: '/marketing',       icon: LayoutDashboard,  label: 'Dashboard',      roles: ['SUPER','MARKETING'] },
-  { to: '/service-client',  icon: LayoutDashboard,  label: 'Dashboard',      roles: ['SUPER','SERVICE_CLIENT'] },
+  { to: '/marketing',       icon: LayoutDashboard,  label: 'Dashboard Community',      roles: ['SUPER','MARKETING'] },
+  { to: '/service-client',  icon: LayoutDashboard,  label: 'Dashboard Service Client', roles: ['SUPER','SERVICE_CLIENT'] },
   { to: '/map',              icon: Map,             label: 'Carte live',      roles: ['SUPER','DEV','ASSISTANCE_EXECUTIVE','SERVICE_CLIENT'] },
   { to: '/clients',          icon: Users,           label: 'Clients',         roles: ['SUPER','DEV','SERVICE_CLIENT','ASSISTANCE_EXECUTIVE'] },
   { to: '/drivers',          icon: Bike,            label: 'Livreurs',        roles: ['SUPER','DEV','ASSISTANCE_EXECUTIVE','SERVICE_CLIENT'] },
