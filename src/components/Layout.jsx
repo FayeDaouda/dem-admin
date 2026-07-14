@@ -13,7 +13,7 @@ const NAV = [
   { to: '/',                 icon: LayoutDashboard, label: 'Dashboard',       roles: ['SUPER','DEV','FINANCE','ASSISTANCE_EXECUTIVE'] },
   { to: '/marketing',       icon: LayoutDashboard,  label: 'Dashboard',      roles: ['SUPER','MARKETING'] },
   { to: '/service-client',  icon: LayoutDashboard,  label: 'Dashboard',      roles: ['SUPER','SERVICE_CLIENT'] },
-  { to: '/map',              icon: Map,             label: 'Carte live',      roles: ['SUPER','DEV','ASSISTANCE_EXECUTIVE'] },
+  { to: '/map',              icon: Map,             label: 'Carte live',      roles: ['SUPER','DEV','ASSISTANCE_EXECUTIVE','SERVICE_CLIENT'] },
   { to: '/clients',          icon: Users,           label: 'Clients',         roles: ['SUPER','DEV','SERVICE_CLIENT','ASSISTANCE_EXECUTIVE'] },
   { to: '/drivers',          icon: Bike,            label: 'Livreurs',        roles: ['SUPER','DEV','ASSISTANCE_EXECUTIVE','SERVICE_CLIENT'] },
   { to: '/dem-pro',          icon: Briefcase,       label: 'DEM Pro',         roles: ['SUPER','ASSISTANCE_EXECUTIVE','SERVICE_CLIENT'] },
