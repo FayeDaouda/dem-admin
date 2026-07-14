@@ -6,6 +6,12 @@ import { glass, glassInput, pageWrap, pageScroll, stickyTh, stickyCol, stickyThC
 
 const firstNonEmpty = (...values) => values.find(v => typeof v === 'string' && v.trim() !== '') ?? '—'
 
+// DEM Pro : on affiche le nom de l'entreprise plutôt que le nom du responsable.
+const clientDisplayName = (client, clientName, clientPhone) =>
+  client?.role === 'DEM_PRO' && client?.proBusinessName?.trim()
+    ? client.proBusinessName
+    : firstNonEmpty(client?.name, clientName, client?.phone, clientPhone)
+
 export default function Orders() {
   const [orders, setOrders]     = useState([])
   const [loading, setLoading]   = useState(true)
@@ -130,6 +136,7 @@ export default function Orders() {
     return !q
       || o.id.includes(q)
       || o.client?.name?.toLowerCase().includes(q)
+      || o.client?.proBusinessName?.toLowerCase().includes(q)
       || o.driver?.name?.toLowerCase().includes(q)
       || o.pickupAddress?.toLowerCase().includes(q)
       || o.deliveryAddress?.toLowerCase().includes(q)
@@ -203,7 +210,7 @@ export default function Orders() {
                   <td style={{ ...tdStyle, ...stickyCol }}><code style={{ fontSize: 11, color: 'var(--text-muted)' }}>{o.id.slice(0,8)}</code></td>
                   <td style={tdStyle}><Badge status={o.orderType} /></td>
                   <td style={tdStyle}><Badge status={o.status} /></td>
-                  <td style={tdStyle}>{firstNonEmpty(o.client?.name, o.clientName, o.client?.phone, o.clientPhone)}</td>
+                  <td style={tdStyle}>{clientDisplayName(o.client, o.clientName, o.clientPhone)}</td>
                   <td style={tdStyle}>{firstNonEmpty(o.driver?.name, o.driver?.phone)}</td>
                   <td style={{ ...tdStyle, fontWeight: 600 }}>{o.price?.toLocaleString()} F</td>
                   <td style={tdStyle}><Badge status={o.paymentStatus ?? 'PENDING'} /></td>
@@ -228,7 +235,7 @@ export default function Orders() {
               <Row label="Type"          value={<Badge status={detail.orderType} />} />
               <Row label="Statut"        value={<Badge status={detail.status} />} />
               <Row label="Paiement"      value={<Badge status={detail.paymentStatus ?? 'PENDING'} />} />
-              <Row label="Client"        value={firstNonEmpty(detail.client?.name, detail.clientName, detail.client?.phone, detail.clientPhone)} />
+              <Row label="Client"        value={clientDisplayName(detail.client, detail.clientName, detail.clientPhone)} />
               <Row label="Tél. client"   value={firstNonEmpty(detail.client?.phone, detail.clientPhone)} />
               <Row label="Livreur"       value={firstNonEmpty(detail.driver?.name, detail.driver?.phone)} />
               <Row label="Tél. livreur"  value={firstNonEmpty(detail.driver?.phone)} />
