@@ -10,6 +10,8 @@ import { Package, Bike, AlertTriangle, TrendingUp, Users, CreditCard, Activity, 
 import { glass } from '../lib/glassStyles'
 import { useResponsive } from '../lib/useResponsive'
 import { useAuth } from '../contexts/AuthContext'
+import MarketingKpiRow from './marketing/components/MarketingKpiRow'
+import ServiceClientKpiRow from './service-client/components/KpiRow'
 
 function TrendBadge({ current, previous }) {
   if (previous == null || previous === 0) return null
@@ -690,6 +692,7 @@ function StuckPendingOrdersModal({ kpi, onClose }) {
 export default function Dashboard() {
   const { user } = useAuth()
   const isServiceClient = user?.adminRole === 'SERVICE_CLIENT'
+  const isSuper = !user?.adminRole || user.adminRole === 'SUPER'
   const [stats, setStats]       = useState(null)
   const [snapshot, setSnapshot] = useState(null)
   const [timeseries, setTimeseries] = useState([])
@@ -817,6 +820,26 @@ export default function Dashboard() {
         : openKpi.id === 'pending'
         ? <StuckPendingOrdersModal kpi={openKpi} onClose={() => setOpenKpi(null)} />
         : <KpiModal kpi={openKpi} onClose={() => setOpenKpi(null)} />
+      )}
+
+      {/* ── KPI Community & Service Client — consolidés ici pour SUPER, qui n'a plus
+           besoin de naviguer vers des dashboards séparés pour les consulter ── */}
+      {isSuper && (
+        <>
+          <div style={{ marginTop: 4, marginBottom: 10 }}>
+            <h2 style={sectionTitle}>Community</h2>
+          </div>
+          <div style={{ marginBottom: isMobile ? 16 : 24 }}>
+            <MarketingKpiRow />
+          </div>
+
+          <div style={{ marginBottom: 10 }}>
+            <h2 style={sectionTitle}>Service Client</h2>
+          </div>
+          <div style={{ marginBottom: isMobile ? 16 : 24 }}>
+            <ServiceClientKpiRow />
+          </div>
+        </>
       )}
 
       {/* ── Charts row ── */}
@@ -1029,6 +1052,7 @@ export default function Dashboard() {
 }
 const card       = { ...glass, padding: '18px 20px' }
 const cardTitle  = { fontSize: 14, fontWeight: 600, marginBottom: 14 }
+const sectionTitle = { fontSize: 15, fontWeight: 700, color: 'var(--text)', paddingBottom: 8, borderBottom: '1px solid rgba(0,119,182,0.15)' }
 const tableStyle = { width: '100%', borderCollapse: 'collapse' }
 const thStyle    = { textAlign: 'left', padding: '6px 8px', color: 'var(--text-muted)', fontSize: 11, fontWeight: 600, borderBottom: '1px solid var(--border)' }
 const tdStyle    = { padding: '9px 8px', verticalAlign: 'middle', fontSize: 13 }
