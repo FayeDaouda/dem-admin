@@ -4,6 +4,17 @@ import { useAuth } from '../contexts/AuthContext'
 import { RefreshCw, Eye, X, Plus, Pencil, Trash2, Search, Phone, CheckCircle, XCircle, Briefcase, Flag } from 'lucide-react'
 import { glass, glassInput, pageWrap, pageScroll, stickyTh, stickyCol, stickyThCol } from '../lib/glassStyles'
 
+// Ordre d'affichage : Sans badge en premier, puis progression des tiers.
+const CLIENT_BADGE_OPTIONS = [
+  ['none',    '🆕 Sans badge'],
+  ['classic', '✅ DEM Classic'],
+  ['xarit',   '🤝 DEM Xarit'],
+  ['mbokk',   '⭐ DEM Mbokk'],
+  ['djambar', '🏆 DEM Djambar'],
+  ['buur',    '👑 DEM Buur'],
+  ['vip',     '💎 DEM VIP'],
+]
+
 // ── Modal Créer / Modifier ────────────────────────────────────────────────────
 function ClientFormModal({ initial, onClose, onSaved }) {
   const isEdit = !!initial
@@ -175,6 +186,7 @@ export default function Clients() {
   const [status, setStatus]         = useState('')
   const [period, setPeriod]         = useState('')
   const [hasOrders, setHasOrders]   = useState('')
+  const [badgeFilter, setBadgeFilter] = useState('all')
   const [sortByCourses, setSortByCourses] = useState(false)
   const [page, setPage]             = useState(1)
   const [phoneReqs, setPhoneReqs]   = useState([])
@@ -222,11 +234,15 @@ export default function Clients() {
   useEffect(() => { fetch(); fetchPhoneRequests() }, [fetch, fetchPhoneRequests])
 
   const totalPages = Math.max(1, Math.ceil(total / LIMIT))
-  const hasFilters = !!(search || status || period || hasOrders)
+  const hasFilters = !!(search || status || period || hasOrders || badgeFilter !== 'all')
 
   function updateFilter(setter) {
     return (v) => { setter(v); setPage(1) }
   }
+
+  const visibleClients = badgeFilter === 'all'
+    ? clients
+    : clients.filter(c => badgeFilter === 'none' ? !c.clientBadge : c.clientBadge === badgeFilter)
 
   async function toggleBan(client) {
     const action = client.isBanned ? 'unban' : 'ban'
@@ -382,13 +398,19 @@ export default function Clients() {
           <option value="some">Avec courses</option>
           <option value="none">Sans course</option>
         </select>
+        <select value={badgeFilter} onChange={e => setBadgeFilter(e.target.value)} style={{ ...glassInput, width: 170 }}>
+          <option value="all">Badge : Tous</option>
+          {CLIENT_BADGE_OPTIONS.map(([val, label]) => (
+            <option key={val} value={val}>{label}</option>
+          ))}
+        </select>
       </div>
 
       <div style={pageScroll}>
       <div style={card}>
         {loading ? (
           <div style={{ color: 'var(--text-muted)', padding: 20 }}>Chargement…</div>
-        ) : clients.length === 0 ? (
+        ) : visibleClients.length === 0 ? (
           <div style={{ color: 'var(--text-muted)', padding: 20 }}>Aucun client{hasFilters ? ' pour ce filtre' : ''}.</div>
         ) : (
           <table style={tableStyle}>
@@ -410,7 +432,7 @@ export default function Clients() {
               </tr>
             </thead>
             <tbody>
-              {clients.map((c, idx) => (
+              {visibleClients.map((c, idx) => (
                 <tr key={c.id} style={{ borderBottom: '1px solid var(--border)' }}>
                   <td style={{ ...tdStyle, color: 'var(--text-muted)', fontSize: 12, width: 40, textAlign: 'center' }}>{(page - 1) * LIMIT + idx + 1}</td>
                   <td style={{ ...tdStyle, ...stickyCol }}>
@@ -445,6 +467,9 @@ export default function Clients() {
                       </button>
                       {isServiceClient ? (
                         <>
+                          <button onClick={() => setFormTarget(c)} style={btnSmall} title="Modifier">
+                            <Pencil size={13} />
+                          </button>
                           {c.phone && (
                             <a href={`tel:${c.phone}`} style={btnSmall} title="Appeler">
                               <Phone size={13} />

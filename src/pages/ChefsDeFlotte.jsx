@@ -297,6 +297,9 @@ export default function ChefsDeFlotte() {
                     <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap' }}>
                       {isServiceClient ? (
                         <>
+                          <button onClick={() => setFormTarget(c)} style={btnSmall} title="Modifier">
+                            <Pencil size={13} />
+                          </button>
                           {c.phone && (
                             <a href={`tel:${c.phone}`} style={btnSmall} title="Appeler">
                               <Phone size={13} />

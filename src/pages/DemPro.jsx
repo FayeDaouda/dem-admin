@@ -386,6 +386,9 @@ export default function DemPro() {
                         </div>
                       ) : isServiceClient ? (
                         <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap' }}>
+                          <button onClick={() => setEditTarget(a)} style={btnSmall} title="Modifier">
+                            <Pencil size={13} />
+                          </button>
                           {a.phone && (
                             <a href={`tel:${a.phone}`} style={btnSmall} title="Appeler">
                               <Phone size={13} />

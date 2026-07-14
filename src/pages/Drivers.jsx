@@ -657,6 +657,9 @@ export default function Drivers() {
                       </button>
                       {isServiceClient ? (
                         <>
+                          <button onClick={() => setFormTarget(d)} style={btnSmall} title="Modifier">
+                            <Pencil size={13} />
+                          </button>
                           {d.phone && (
                             <a href={`tel:${d.phone}`} style={btnSmall} title="Appeler">
                               <Phone size={13} />
