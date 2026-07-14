@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import api from '../lib/api'
+import { useAuth } from '../contexts/AuthContext'
 import { glass, glassInput, pageWrap, pageScroll } from '../lib/glassStyles'
 import { RefreshCw, CheckCircle, XCircle, ChevronDown, ChevronUp, Shield, Truck, Layers, AlertTriangle, Briefcase, ClipboardList } from 'lucide-react'
 import SuspendModal from '../components/SuspendModal'
@@ -73,6 +74,8 @@ function DocThumb({ url, label }) {
 
 // ── Page principale ───────────────────────────────────────────────────────────
 export default function Validation() {
+  const { user } = useAuth()
+  const isServiceClient = user?.adminRole === 'SERVICE_CLIENT'
   const [tab, setTab] = useState('ambassadors')
 
   return (
@@ -85,29 +88,33 @@ export default function Validation() {
         <button style={TAB(tab === 'drivers')} onClick={() => setTab('drivers')}>
           <span style={{ display:'flex', alignItems:'center', gap:6 }}><Truck size={13} />Livreurs en attente</span>
         </button>
-        <button style={TAB(tab === 'fleet')} onClick={() => setTab('fleet')}>
-          <span style={{ display:'flex', alignItems:'center', gap:6 }}><Layers size={13} />Extensions flotte</span>
-        </button>
         <button style={TAB(tab === 'dem-pro')} onClick={() => setTab('dem-pro')}>
           <span style={{ display:'flex', alignItems:'center', gap:6 }}><Briefcase size={13} />DEM Pro</span>
         </button>
-        <button style={TAB(tab === 'service-requests')} onClick={() => setTab('service-requests')}>
-          <span style={{ display:'flex', alignItems:'center', gap:6 }}><ClipboardList size={13} />Demandes Service Client</span>
-        </button>
+        {!isServiceClient && (
+          <>
+            <button style={TAB(tab === 'fleet')} onClick={() => setTab('fleet')}>
+              <span style={{ display:'flex', alignItems:'center', gap:6 }}><Layers size={13} />Extensions flotte</span>
+            </button>
+            <button style={TAB(tab === 'service-requests')} onClick={() => setTab('service-requests')}>
+              <span style={{ display:'flex', alignItems:'center', gap:6 }}><ClipboardList size={13} />Demandes Service Client</span>
+            </button>
+          </>
+        )}
       </div>
       <div style={pageScroll}>
-        {tab === 'ambassadors'       && <AmbassadorsTab />}
+        {tab === 'ambassadors'       && <AmbassadorsTab isServiceClient={isServiceClient} />}
         {tab === 'drivers'           && <DriversTab />}
-        {tab === 'fleet'             && <FleetTab />}
         {tab === 'dem-pro'           && <DemProTab />}
-        {tab === 'service-requests'  && <ServiceRequestsTab />}
+        {!isServiceClient && tab === 'fleet'             && <FleetTab />}
+        {!isServiceClient && tab === 'service-requests'  && <ServiceRequestsTab />}
       </div>
     </div>
   )
 }
 
 // ── Tab Chefs de flotte ────────────────────────────────────────────────────────
-function AmbassadorsTab() {
+function AmbassadorsTab({ isServiceClient }) {
   const [list,     setList]     = useState([])
   const [loading,       setLoading]       = useState(true)
   const [filter,        setFilter]        = useState('PENDING')
@@ -241,8 +248,8 @@ function AmbassadorsTab() {
                   </div>
                 )}
 
-                {/* Action ACTIVE → Suspendre */}
-                {am.chefDeFlotteStatus === 'ACTIVE' && (
+                {/* Action ACTIVE → Suspendre (SUPER uniquement — SC passe par "Demander suspension" sur la page Chefs de flotte) */}
+                {am.chefDeFlotteStatus === 'ACTIVE' && !isServiceClient && (
                   <button style={{ ...btnRefuse, alignSelf:'flex-start' }} onClick={() => setSuspendTarget(am)}>
                     Suspendre (+ tous ses livreurs)
                   </button>
