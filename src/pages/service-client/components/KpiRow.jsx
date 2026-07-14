@@ -1,7 +1,8 @@
 import { useState, useEffect, useCallback } from 'react'
 import api from '../../../lib/api'
-import { Package, TrendingUp, AlertTriangle, Bike, Star, XCircle, Briefcase } from 'lucide-react'
+import { Package, TrendingUp, AlertTriangle, Bike, Star, XCircle, Briefcase, Repeat, UserPlus } from 'lucide-react'
 import StatCard from '../../../components/StatCard'
+import { NewClientsModal, RetentionModal } from '../../marketing/components/MarketingKpiModals'
 import {
   CoursesModal, ActiveOrdersModal, StuckPendingOrdersModal, DriverActivityModal,
   IncidentsModal, LowRatingModal, CancellationRateModal, DemProAccountsModal,
@@ -10,18 +11,24 @@ import {
 export default function KpiRow({ reloadKey }) {
   const [stats, setStats] = useState(null)
   const [kpis, setKpis]   = useState(null)
+  const [acquisition, setAcquisition] = useState(null)
+  const [retention, setRetention]     = useState(null)
   const [loading, setLoading] = useState(true)
   const [openModal, setOpenModal] = useState(null)
 
   const load = useCallback(async () => {
     setLoading(true)
     try {
-      const [statsRes, kpisRes] = await Promise.all([
+      const [statsRes, kpisRes, acqRes, retRes] = await Promise.all([
         api.get('/admin/stats'),
         api.get('/admin/service-client/kpis'),
+        api.get('/admin/marketing/acquisition'),
+        api.get('/admin/marketing/retention', { params: { days: 7 } }),
       ])
       setStats(statsRes.data)
       setKpis(kpisRes.data)
+      setAcquisition(acqRes.data)
+      setRetention(retRes.data)
     } catch (e) { console.error(e) }
     finally { setLoading(false) }
   }, [])
@@ -42,6 +49,8 @@ export default function KpiRow({ reloadKey }) {
         <StatCard icon={Star}          label="Clients notés < 3/5"                  value={v(kpis?.lowRatingClients)} color="#f59e0b" onClick={() => setOpenModal('lowClients')} />
         <StatCard icon={XCircle}       label="Taux annulation (jour)"               value={loading ? '…' : `${kpis?.cancellationRateToday ?? 0}%`} color="#6366f1" onClick={() => setOpenModal('cancellation')} />
         <StatCard icon={Briefcase}     label="DEM Pro actifs / total"               value={loading ? '…' : `${kpis?.activeProAccounts ?? 0} / ${kpis?.totalProAccounts ?? 0}`} color="#06b6d4" onClick={() => setOpenModal('demPro')} />
+        <StatCard icon={Repeat}        label="Taux de rétention"                    value={loading ? '…' : `${retention?.retentionRate ?? 0}%`} color="#8b5cf6" onClick={() => setOpenModal('retention')} />
+        <StatCard icon={UserPlus}      label="Nouveau client"                       value={v(acquisition?.newClients?.today)} color="#06b6d4" onClick={() => setOpenModal('newClients')} />
       </div>
 
       {openModal === 'courses'      && <CoursesModal            icon={Package}       color="#0077b6" onClose={() => setOpenModal(null)} />}
@@ -53,6 +62,8 @@ export default function KpiRow({ reloadKey }) {
       {openModal === 'lowClients'   && <LowRatingModal          icon={Star}          color="#f59e0b" onClose={() => setOpenModal(null)} role="CLIENT" title="Clients notés < 3/5" />}
       {openModal === 'cancellation' && <CancellationRateModal   icon={XCircle}       color="#6366f1" onClose={() => setOpenModal(null)} />}
       {openModal === 'demPro'       && <DemProAccountsModal     icon={Briefcase}     color="#06b6d4" onClose={() => setOpenModal(null)} />}
+      {openModal === 'retention'    && <RetentionModal          icon={Repeat}        color="#8b5cf6" onClose={() => setOpenModal(null)} focus="retention" />}
+      {openModal === 'newClients'   && <NewClientsModal         icon={UserPlus}      color="#06b6d4" onClose={() => setOpenModal(null)} />}
     </>
   )
 }

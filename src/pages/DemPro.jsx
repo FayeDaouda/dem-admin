@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react'
 import api from '../lib/api'
 import { useAuth } from '../contexts/AuthContext'
 import Badge from '../components/Badge'
-import { RefreshCw, CheckCircle, XCircle, Pencil, Trash2, Ban, RotateCcw, X, Search } from 'lucide-react'
+import { RefreshCw, CheckCircle, XCircle, Pencil, Trash2, Ban, RotateCcw, X, Search, Phone, Flag } from 'lucide-react'
 import { glass, glassModal, glassInput, pageWrap, pageScroll, stickyTh, stickyThCol, stickyCol } from '../lib/glassStyles'
 
 const STATUS_FILTERS = [
@@ -157,6 +157,7 @@ export default function DemPro() {
   // Actions (valider, suspendre, modifier, supprimer) : SUPER uniquement —
   // SC / MARKETING / AE consultent en lecture seule
   const isSuper = !user?.adminRole || user.adminRole === 'SUPER'
+  const isServiceClient = user?.adminRole === 'SERVICE_CLIENT'
   const [accounts, setAccounts] = useState([])
   const [loading, setLoading]   = useState(true)
   const [filter, setFilter]     = useState('all')
@@ -210,6 +211,17 @@ export default function DemPro() {
     try {
       await api.delete(`/admin/dem-pro/${account.id}`)
       fetch()
+    } catch (e) {
+      alert(e.response?.data?.message ?? 'Erreur.')
+    }
+  }
+
+  async function reportAccount(account) {
+    const reason = window.prompt(`Motif du signalement pour ${account.name ?? account.phone} :`)
+    if (!reason?.trim()) return
+    try {
+      await api.post('/admin/report-user', { userId: account.id, userRole: 'DEM_PRO', reason: reason.trim() })
+      alert('Signalement envoyé.')
     } catch (e) {
       alert(e.response?.data?.message ?? 'Erreur.')
     }
@@ -317,7 +329,9 @@ export default function DemPro() {
                         </div>
                       </div>
                     </td>
-                    <td style={tdStyle}>{a.phone}</td>
+                    <td style={tdStyle}>
+                      {a.phone ? <a href={`tel:${a.phone}`} style={{ color: '#0077b6' }}>{a.phone}</a> : '—'}
+                    </td>
                     <td style={tdStyle}>
                       {a.proSector ? (
                         <span style={{
@@ -366,6 +380,17 @@ export default function DemPro() {
                           </button>
                           <button onClick={() => deleteAccount(a)} style={{ ...btnSmall, color: 'var(--danger)', borderColor: 'var(--danger)' }} title="Supprimer">
                             <Trash2 size={13} />
+                          </button>
+                        </div>
+                      ) : isServiceClient ? (
+                        <div style={{ display: 'flex', gap: 5 }}>
+                          {a.phone && (
+                            <a href={`tel:${a.phone}`} style={btnSmall} title="Appeler">
+                              <Phone size={13} />
+                            </a>
+                          )}
+                          <button onClick={() => reportAccount(a)} style={{ ...btnSmall, color: '#dc2626', borderColor: '#dc2626' }} title="Signaler">
+                            <Flag size={13} />
                           </button>
                         </div>
                       ) : (
@@ -467,7 +492,7 @@ const thStyle    = { textAlign: 'left', padding: '8px 10px', color: 'var(--text-
 const tdStyle    = { padding: '10px 10px', verticalAlign: 'middle' }
 const btnOutline = { display: 'flex', alignItems: 'center', gap: 6, padding: '7px 14px', borderRadius: 'var(--radius-sm)', border: '1px solid rgba(0,119,182,0.25)', background: 'rgba(255,255,255,0.5)', color: 'var(--text-muted)', fontSize: 13, cursor: 'pointer' }
 const btnPrimary = { display: 'flex', alignItems: 'center', gap: 6, padding: '7px 14px', borderRadius: 'var(--radius-sm)', border: 'none', background: 'var(--primary)', color: '#fff', fontSize: 13, fontWeight: 600, cursor: 'pointer' }
-const btnSmall   = { display: 'flex', alignItems: 'center', gap: 4, padding: '4px 10px', borderRadius: 'var(--radius-sm)', border: '1px solid rgba(0,119,182,0.25)', background: 'rgba(255,255,255,0.5)', color: 'var(--text-muted)', fontSize: 12, cursor: 'pointer' }
+const btnSmall   = { display: 'flex', alignItems: 'center', gap: 4, padding: '4px 10px', borderRadius: 'var(--radius-sm)', border: '1px solid rgba(0,119,182,0.25)', background: 'rgba(255,255,255,0.5)', color: 'var(--text-muted)', fontSize: 12, cursor: 'pointer', textDecoration: 'none' }
 const btnDanger  = { padding: '7px 16px', borderRadius: 'var(--radius-sm)', border: 'none', background: 'var(--danger)', color: '#fff', fontWeight: 600, fontSize: 13, cursor: 'pointer' }
 const btnIcon    = { background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', display: 'flex', padding: 4, borderRadius: 6 }
 const overlay    = { position: 'fixed', inset: 0, background: 'rgba(0,40,80,0.45)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100 }

@@ -1,21 +1,15 @@
 import { useState } from 'react'
-import { RefreshCw, LayoutGrid, Users, Bike, AlertTriangle, Briefcase, Gift, ClipboardList } from 'lucide-react'
+import { RefreshCw, LayoutGrid, AlertTriangle, Gift, ClipboardList } from 'lucide-react'
 import { pageWrap, pageScroll } from '../../lib/glassStyles'
 import KpiRow from './components/KpiRow'
 import OverviewTab from './OverviewTab'
-import ClientsTab from './ClientsTab'
-import DriversTab from './DriversTab'
 import IncidentsTab from './IncidentsTab'
-import DemProTab from './DemProTab'
 import GestesTab from './GestesTab'
 import RequestsTab from './RequestsTab'
 
 const TABS = [
   ['overview', "Vue d'ensemble", LayoutGrid, OverviewTab],
-  ['clients',  'Clients',        Users,      ClientsTab],
-  ['drivers',  'Livreurs',       Bike,       DriversTab],
   ['incidents','Incidents',      AlertTriangle, IncidentsTab],
-  ['dem-pro',  'DEM Pro',        Briefcase,  DemProTab],
   ['gestes',   'Gestes commerciaux', Gift,   GestesTab],
   ['requests', 'Mes demandes',   ClipboardList, RequestsTab],
 ]

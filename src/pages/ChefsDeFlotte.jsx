@@ -1,7 +1,8 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import api from '../lib/api'
-import { RefreshCw, Plus, Pencil, Trash2, X, Search, CheckCircle } from 'lucide-react'
+import { useAuth } from '../contexts/AuthContext'
+import { RefreshCw, Plus, Pencil, Trash2, X, Search, CheckCircle, Phone, Flag } from 'lucide-react'
 import { glass, glassInput, pageWrap, pageScroll, stickyTh, stickyCol, stickyThCol } from '../lib/glassStyles'
 
 // ── Modal Créer / Modifier ────────────────────────────────────────────────────
@@ -120,6 +121,8 @@ function NetworkStats({ chefs }) {
 
 export default function ChefsDeFlotte() {
   const navigate = useNavigate()
+  const { user } = useAuth()
+  const isServiceClient = user?.adminRole === 'SERVICE_CLIENT'
   const [chefs, setChefs]       = useState([])
   const [loading, setLoading]   = useState(true)
   const [formTarget, setFormTarget] = useState(null)
@@ -165,6 +168,17 @@ export default function ChefsDeFlotte() {
     }
   }
 
+  async function reportChef(chef) {
+    const reason = window.prompt(`Motif du signalement pour ${chef.name ?? chef.phone} :`)
+    if (!reason?.trim()) return
+    try {
+      await api.post('/admin/report-user', { userId: chef.id, userRole: 'CHEF_DE_FLOTTE', reason: reason.trim() })
+      alert('Signalement envoyé.')
+    } catch (e) {
+      alert(e.response?.data?.message ?? 'Erreur.')
+    }
+  }
+
   const filtered = chefs
     .filter(c => statusFilter === 'all'
       ? true
@@ -191,7 +205,9 @@ export default function ChefsDeFlotte() {
         <h1 style={{ fontSize: 22, fontWeight: 700 }}>Chefs de flotte</h1>
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
           <button onClick={fetch} style={btnOutline}><RefreshCw size={14} /> Actualiser</button>
-          <button onClick={() => setFormTarget({})} style={btnPrimary}><Plus size={14} /> Nouveau</button>
+          {!isServiceClient && (
+            <button onClick={() => setFormTarget({})} style={btnPrimary}><Plus size={14} /> Nouveau</button>
+          )}
         </div>
       </div>
 
@@ -243,9 +259,13 @@ export default function ChefsDeFlotte() {
               {sorted.map((c, idx) => {
                 const status = chefStatusInfo(c)
                 return (
-                <tr key={c.id} style={{ borderBottom: '1px solid var(--border)', cursor: 'pointer' }} onClick={() => navigate(`/chefs-de-flotte/${c.id}`)}>
+                <tr
+                  key={c.id}
+                  style={{ borderBottom: '1px solid var(--border)', cursor: isServiceClient ? 'default' : 'pointer' }}
+                  onClick={isServiceClient ? undefined : () => navigate(`/chefs-de-flotte/${c.id}`)}
+                >
                   <td style={{ ...tdStyle, color: 'var(--text-muted)', fontSize: 12, width: 40, textAlign: 'center' }}>{idx + 1}</td>
-                  <td style={{ ...tdStyle, ...stickyCol, cursor: 'pointer' }}>
+                  <td style={{ ...tdStyle, ...stickyCol, cursor: isServiceClient ? 'default' : 'pointer' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                       <div style={{ width: 34, height: 34, borderRadius: '50%', background: 'linear-gradient(135deg,rgba(124,58,237,.15),rgba(6,113,186,.15))', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, color: '#7c3aed', fontSize: 13, flexShrink: 0 }}>
                         {c.avatar ? <img src={c.avatar} alt="" style={{ width: 34, height: 34, borderRadius: '50%', objectFit: 'cover' }} /> : (c.name?.trim() || c.phone || '?')[0].toUpperCase()}
@@ -256,7 +276,9 @@ export default function ChefsDeFlotte() {
                       </div>
                     </div>
                   </td>
-                  <td style={tdStyle}>{c.phone}</td>
+                  <td style={tdStyle}>
+                    {c.phone ? <a href={`tel:${c.phone}`} style={{ color: '#0077b6' }} onClick={e => e.stopPropagation()}>{c.phone}</a> : '—'}
+                  </td>
                   <td style={{ ...tdStyle, textAlign: 'center', fontWeight: 600 }}>
                     {c._count?.managedDrivers ?? 0}
                     <span style={{ color: 'var(--text-muted)', fontWeight: 400 }}> / {c.fleetMaxSize}</span>
@@ -271,13 +293,28 @@ export default function ChefsDeFlotte() {
                   </td>
                   <td style={tdStyle} onClick={e => e.stopPropagation()}>
                     <div style={{ display: 'flex', gap: 5 }}>
-                      {c.chefDeFlotteStatus !== 'ACTIVE' && (
-                        <button onClick={() => approveChef(c)} disabled={acting === c.id} style={{ ...btnSmall, color: 'var(--success)', borderColor: 'var(--success)' }} title="Activer">
-                          <CheckCircle size={13} />
-                        </button>
+                      {isServiceClient ? (
+                        <>
+                          {c.phone && (
+                            <a href={`tel:${c.phone}`} style={btnSmall} title="Appeler">
+                              <Phone size={13} />
+                            </a>
+                          )}
+                          <button onClick={() => reportChef(c)} style={{ ...btnSmall, color: '#dc2626', borderColor: '#dc2626' }} title="Signaler">
+                            <Flag size={13} />
+                          </button>
+                        </>
+                      ) : (
+                        <>
+                          {c.chefDeFlotteStatus !== 'ACTIVE' && (
+                            <button onClick={() => approveChef(c)} disabled={acting === c.id} style={{ ...btnSmall, color: 'var(--success)', borderColor: 'var(--success)' }} title="Activer">
+                              <CheckCircle size={13} />
+                            </button>
+                          )}
+                          <button onClick={() => setFormTarget(c)} style={btnSmall} title="Modifier"><Pencil size={13} /></button>
+                          <button onClick={() => deleteChef(c)} style={{ ...btnSmall, color: 'var(--danger)', borderColor: 'var(--danger)' }} title="Supprimer"><Trash2 size={13} /></button>
+                        </>
                       )}
-                      <button onClick={() => setFormTarget(c)} style={btnSmall} title="Modifier"><Pencil size={13} /></button>
-                      <button onClick={() => deleteChef(c)} style={{ ...btnSmall, color: 'var(--danger)', borderColor: 'var(--danger)' }} title="Supprimer"><Trash2 size={13} /></button>
                     </div>
                   </td>
                 </tr>
@@ -310,5 +347,5 @@ const inputStyle   = { width: '100%', padding: '8px 10px', borderRadius: 8, bord
 const errorStyle   = { fontSize: 12, color: 'var(--danger)', background: 'rgba(239,68,68,.08)', borderRadius: 6, padding: '7px 10px', marginTop: 4 }
 const btnOutline   = { display: 'flex', alignItems: 'center', gap: 6, padding: '7px 14px', borderRadius: 'var(--radius-sm)', border: '1px solid rgba(0,119,182,0.25)', background: 'rgba(255,255,255,0.5)', color: 'var(--text-muted)', fontSize: 13, cursor: 'pointer' }
 const btnPrimary   = { display: 'flex', alignItems: 'center', gap: 6, padding: '7px 14px', borderRadius: 'var(--radius-sm)', border: 'none', background: 'var(--primary)', color: '#fff', fontSize: 13, fontWeight: 600, cursor: 'pointer' }
-const btnSmall     = { display: 'flex', alignItems: 'center', gap: 4, padding: '4px 10px', borderRadius: 'var(--radius-sm)', border: '1px solid rgba(0,119,182,0.25)', background: 'rgba(255,255,255,0.5)', color: 'var(--text-muted)', fontSize: 12, cursor: 'pointer' }
+const btnSmall     = { display: 'flex', alignItems: 'center', gap: 4, padding: '4px 10px', borderRadius: 'var(--radius-sm)', border: '1px solid rgba(0,119,182,0.25)', background: 'rgba(255,255,255,0.5)', color: 'var(--text-muted)', fontSize: 12, cursor: 'pointer', textDecoration: 'none' }
 const btnIcon      = { background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', display: 'flex', padding: 4, borderRadius: 6 }

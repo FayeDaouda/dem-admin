@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import api from '../lib/api'
-import { RefreshCw, Eye, X, Plus, Pencil, Trash2, Search, Phone, CheckCircle, XCircle, Briefcase } from 'lucide-react'
+import { useAuth } from '../contexts/AuthContext'
+import { RefreshCw, Eye, X, Plus, Pencil, Trash2, Search, Phone, CheckCircle, XCircle, Briefcase, Flag } from 'lucide-react'
 import { glass, glassInput, pageWrap, pageScroll, stickyTh, stickyCol, stickyThCol } from '../lib/glassStyles'
 
 // ── Modal Créer / Modifier ────────────────────────────────────────────────────
@@ -163,6 +164,8 @@ function ClientDetailModal({ client, onClose }) {
 const LIMIT = 50
 
 export default function Clients() {
+  const { user } = useAuth()
+  const isServiceClient = user?.adminRole === 'SERVICE_CLIENT'
   const [clients, setClients]   = useState([])
   const [total, setTotal]       = useState(0)
   const [loading, setLoading]   = useState(true)
@@ -231,6 +234,17 @@ export default function Clients() {
     try {
       await api.patch(`/admin/clients/${client.id}/${action}`, action === 'ban' ? { reason: 'Banni par admin' } : {})
       fetch()
+    } catch (e) {
+      alert(e.response?.data?.message ?? 'Erreur.')
+    }
+  }
+
+  async function reportClient(client) {
+    const reason = window.prompt(`Motif du signalement pour ${client.name ?? client.phone} :`)
+    if (!reason?.trim()) return
+    try {
+      await api.post('/admin/report-user', { userId: client.id, userRole: 'CLIENT', reason: reason.trim() })
+      alert('Signalement envoyé.')
     } catch (e) {
       alert(e.response?.data?.message ?? 'Erreur.')
     }
@@ -410,7 +424,9 @@ export default function Clients() {
                       <span style={{ fontWeight: 600 }}>{c.name ?? '—'}</span>
                     </div>
                   </td>
-                  <td style={tdStyle}>{c.phone}</td>
+                  <td style={tdStyle}>
+                    {c.phone ? <a href={`tel:${c.phone}`} style={{ color: '#0077b6' }}>{c.phone}</a> : '—'}
+                  </td>
                   <td style={{ ...tdStyle, textAlign: 'center', fontWeight: 700 }}>{c._count?.ordersAsClient ?? 0}</td>
                   <td style={{ ...tdStyle, color: 'var(--text-muted)', fontSize: 12 }}>
                     {c.createdAt ? new Date(c.createdAt).toLocaleDateString('fr-FR') : '—'}
@@ -427,31 +443,50 @@ export default function Clients() {
                       <button onClick={() => setSelected(c)} style={btnSmall} title="Voir détail">
                         <Eye size={13} />
                       </button>
-                      <button onClick={() => setFormTarget(c)} style={btnSmall} title="Modifier">
-                        <Pencil size={13} />
-                      </button>
-                      {c.role === 'CLIENT' && (
-                        <button
-                          onClick={() => upgradeToPro(c)}
-                          style={{ ...btnSmall, color: '#7c3aed', borderColor: '#7c3aed' }}
-                          title="Convertir en DEM Pro"
-                        >
-                          <Briefcase size={13} /> Pro
-                        </button>
+                      {isServiceClient ? (
+                        <>
+                          {c.phone && (
+                            <a href={`tel:${c.phone}`} style={btnSmall} title="Appeler">
+                              <Phone size={13} />
+                            </a>
+                          )}
+                          <button
+                            onClick={() => reportClient(c)}
+                            style={{ ...btnSmall, color: '#dc2626', borderColor: '#dc2626' }}
+                            title="Signaler"
+                          >
+                            <Flag size={13} />
+                          </button>
+                        </>
+                      ) : (
+                        <>
+                          <button onClick={() => setFormTarget(c)} style={btnSmall} title="Modifier">
+                            <Pencil size={13} />
+                          </button>
+                          {c.role === 'CLIENT' && (
+                            <button
+                              onClick={() => upgradeToPro(c)}
+                              style={{ ...btnSmall, color: '#7c3aed', borderColor: '#7c3aed' }}
+                              title="Convertir en DEM Pro"
+                            >
+                              <Briefcase size={13} /> Pro
+                            </button>
+                          )}
+                          <button
+                            onClick={() => toggleBan(c)}
+                            style={{ ...btnSmall, color: c.isBanned ? 'var(--success)' : 'var(--warning)', borderColor: c.isBanned ? 'var(--success)' : 'var(--warning)' }}
+                          >
+                            {c.isBanned ? 'Débannir' : 'Bannir'}
+                          </button>
+                          <button
+                            onClick={() => deleteClient(c)}
+                            style={{ ...btnSmall, color: 'var(--danger)', borderColor: 'var(--danger)' }}
+                            title="Supprimer"
+                          >
+                            <Trash2 size={13} />
+                          </button>
+                        </>
                       )}
-                      <button
-                        onClick={() => toggleBan(c)}
-                        style={{ ...btnSmall, color: c.isBanned ? 'var(--success)' : 'var(--warning)', borderColor: c.isBanned ? 'var(--success)' : 'var(--warning)' }}
-                      >
-                        {c.isBanned ? 'Débannir' : 'Bannir'}
-                      </button>
-                      <button
-                        onClick={() => deleteClient(c)}
-                        style={{ ...btnSmall, color: 'var(--danger)', borderColor: 'var(--danger)' }}
-                        title="Supprimer"
-                      >
-                        <Trash2 size={13} />
-                      </button>
                     </div>
                   </td>
                 </tr>
@@ -498,5 +533,5 @@ const inputStyle   = { width: '100%', padding: '8px 10px', borderRadius: 8, bord
 const errorStyle   = { fontSize: 12, color: 'var(--danger)', background: 'rgba(239,68,68,.08)', borderRadius: 6, padding: '7px 10px', marginTop: 4 }
 const btnOutline   = { display: 'flex', alignItems: 'center', gap: 6, padding: '7px 14px', borderRadius: 'var(--radius-sm)', border: '1px solid rgba(0,119,182,0.25)', background: 'rgba(255,255,255,0.5)', color: 'var(--text-muted)', fontSize: 13, cursor: 'pointer' }
 const btnPrimary   = { display: 'flex', alignItems: 'center', gap: 6, padding: '7px 14px', borderRadius: 'var(--radius-sm)', border: 'none', background: 'var(--primary)', color: '#fff', fontSize: 13, fontWeight: 600, cursor: 'pointer' }
-const btnSmall     = { display: 'flex', alignItems: 'center', gap: 4, padding: '4px 10px', borderRadius: 'var(--radius-sm)', border: '1px solid rgba(0,119,182,0.25)', background: 'rgba(255,255,255,0.5)', color: 'var(--text-muted)', fontSize: 12, cursor: 'pointer' }
+const btnSmall     = { display: 'flex', alignItems: 'center', gap: 4, padding: '4px 10px', borderRadius: 'var(--radius-sm)', border: '1px solid rgba(0,119,182,0.25)', background: 'rgba(255,255,255,0.5)', color: 'var(--text-muted)', fontSize: 12, cursor: 'pointer', textDecoration: 'none' }
 const btnIcon      = { background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', display: 'flex', padding: 4, borderRadius: 6 }

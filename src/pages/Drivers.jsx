@@ -1,8 +1,9 @@
 import { useState, useEffect, useCallback } from 'react'
 import api from '../lib/api'
+import { useAuth } from '../contexts/AuthContext'
 import Badge from '../components/Badge'
 import SuspendModal from '../components/SuspendModal'
-import { RefreshCw, BarChart2, Phone, CheckCircle, XCircle, Eye, Plus, Pencil, Trash2, Search } from 'lucide-react'
+import { RefreshCw, BarChart2, Phone, CheckCircle, XCircle, Eye, Plus, Pencil, Trash2, Search, Flag } from 'lucide-react'
 import { glass, glassInput, pageWrap, pageScroll, stickyTh, stickyCol, stickyThCol } from '../lib/glassStyles'
 
 const DOC_LIST = [
@@ -233,6 +234,8 @@ function DocThumb({ url, label }) {
 }
 
 export default function Drivers() {
+  const { user } = useAuth()
+  const isServiceClient = user?.adminRole === 'SERVICE_CLIENT'
   const LIMIT = 50
   const [drivers, setDrivers]           = useState([])
   const [total, setTotal]               = useState(0)
@@ -360,6 +363,17 @@ export default function Drivers() {
     }
   }
 
+  async function reportDriver(driver) {
+    const reason = window.prompt(`Motif du signalement pour ${driver.name ?? driver.phone} :`)
+    if (!reason?.trim()) return
+    try {
+      await api.post('/admin/report-user', { userId: driver.id, userRole: 'DRIVER', reason: reason.trim() })
+      alert('Signalement envoyé.')
+    } catch (e) {
+      alert(e.response?.data?.message ?? 'Erreur.')
+    }
+  }
+
   async function resolvePhoneChange(driverId, approve) {
     setResolving(driverId)
     try {
@@ -420,9 +434,11 @@ export default function Drivers() {
           <button onClick={() => { fetch(); fetchPhoneRequests() }} style={btnOutline}>
             <RefreshCw size={14} /> Actualiser
           </button>
-          <button onClick={() => setFormTarget({})} style={btnPrimary}>
-            <Plus size={14} /> Nouveau livreur
-          </button>
+          {!isServiceClient && (
+            <button onClick={() => setFormTarget({})} style={btnPrimary}>
+              <Plus size={14} /> Nouveau livreur
+            </button>
+          )}
         </div>
       </div>
 
@@ -479,7 +495,9 @@ export default function Drivers() {
                         </span>
                       </td>
                       <td style={tdStyle}>
-                        {resolving === d.id ? (
+                        {isServiceClient ? (
+                          <span style={{ color: 'var(--text-muted)', fontSize: 11 }}>Lecture seule</span>
+                        ) : resolving === d.id ? (
                           <span style={{ color: 'var(--text-muted)', fontSize: 12 }}>En cours…</span>
                         ) : (
                           <div style={{ display: 'flex', gap: 8 }}>
@@ -612,7 +630,9 @@ export default function Drivers() {
                       <div style={{ fontSize: 11, color: '#f59e0b' }}>★ {d.avgRating}</div>
                     )}
                   </td>
-                  <td style={tdStyle}>{d.phone}</td>
+                  <td style={tdStyle}>
+                    {d.phone ? <a href={`tel:${d.phone}`} style={{ color: '#0077b6' }}>{d.phone}</a> : '—'}
+                  </td>
                   <td style={tdStyle}>{d.vehicleType ?? '—'}</td>
                   <td style={tdStyle}>
                     {d.chefDeFlotteStatus === 'PENDING'
@@ -633,25 +653,40 @@ export default function Drivers() {
                       <button onClick={() => setDetail(d)} style={btnSmall} title="Voir infos & documents">
                         <Eye size={13} />
                       </button>
-                      <button onClick={() => showStats(d.id)} style={btnSmall} title="Statistiques paiement">
-                        <BarChart2 size={13} />
-                      </button>
-                      <button onClick={() => setFormTarget(d)} style={btnSmall} title="Modifier">
-                        <Pencil size={13} />
-                      </button>
-                      {d.chefDeFlotteStatus === 'PENDING' ? (
+                      {isServiceClient ? (
                         <>
-                          <button onClick={() => activateFleetDriver(d)} style={{ ...btnSmall, color: 'var(--success)', borderColor: 'var(--success)' }}>Activer</button>
-                          <button onClick={() => setRejectTarget(d)} style={{ ...btnSmall, color: 'var(--danger)', borderColor: 'var(--danger)' }}>Refuser</button>
+                          {d.phone && (
+                            <a href={`tel:${d.phone}`} style={btnSmall} title="Appeler">
+                              <Phone size={13} />
+                            </a>
+                          )}
+                          <button onClick={() => reportDriver(d)} style={{ ...btnSmall, color: '#dc2626', borderColor: '#dc2626' }} title="Signaler">
+                            <Flag size={13} />
+                          </button>
                         </>
-                      ) : d.isActive ? (
-                        <button onClick={() => setSuspendTarget(d)} style={{ ...btnSmall, color: 'var(--danger)', borderColor: 'var(--danger)' }}>Suspendre</button>
                       ) : (
-                        <button onClick={() => activateDriver(d)} style={{ ...btnSmall, color: 'var(--success)', borderColor: 'var(--success)' }}>Réactiver</button>
+                        <>
+                          <button onClick={() => showStats(d.id)} style={btnSmall} title="Statistiques paiement">
+                            <BarChart2 size={13} />
+                          </button>
+                          <button onClick={() => setFormTarget(d)} style={btnSmall} title="Modifier">
+                            <Pencil size={13} />
+                          </button>
+                          {d.chefDeFlotteStatus === 'PENDING' ? (
+                            <>
+                              <button onClick={() => activateFleetDriver(d)} style={{ ...btnSmall, color: 'var(--success)', borderColor: 'var(--success)' }}>Activer</button>
+                              <button onClick={() => setRejectTarget(d)} style={{ ...btnSmall, color: 'var(--danger)', borderColor: 'var(--danger)' }}>Refuser</button>
+                            </>
+                          ) : d.isActive ? (
+                            <button onClick={() => setSuspendTarget(d)} style={{ ...btnSmall, color: 'var(--danger)', borderColor: 'var(--danger)' }}>Suspendre</button>
+                          ) : (
+                            <button onClick={() => activateDriver(d)} style={{ ...btnSmall, color: 'var(--success)', borderColor: 'var(--success)' }}>Réactiver</button>
+                          )}
+                          <button onClick={() => deleteDriver(d)} style={{ ...btnSmall, color: 'var(--danger)', borderColor: 'var(--danger)' }} title="Supprimer">
+                            <Trash2 size={13} />
+                          </button>
+                        </>
                       )}
-                      <button onClick={() => deleteDriver(d)} style={{ ...btnSmall, color: 'var(--danger)', borderColor: 'var(--danger)' }} title="Supprimer">
-                        <Trash2 size={13} />
-                      </button>
                     </div>
                   </td>
                 </tr>
@@ -825,6 +860,6 @@ const thStyle    = { textAlign: 'left', padding: '8px 10px', color: 'var(--text-
 const tdStyle    = { padding: '10px 10px', verticalAlign: 'middle' }
 const btnOutline = { display: 'flex', alignItems: 'center', gap: 6, padding: '7px 14px', borderRadius: 'var(--radius-sm)', border: '1px solid rgba(0,119,182,0.25)', background: 'rgba(255,255,255,0.5)', color: 'var(--text-muted)', fontSize: 13, cursor: 'pointer' }
 const btnPrimary = { display: 'flex', alignItems: 'center', gap: 6, padding: '7px 14px', borderRadius: 'var(--radius-sm)', border: 'none', background: 'var(--primary)', color: '#fff', fontSize: 13, fontWeight: 600, cursor: 'pointer' }
-const btnSmall   = { display: 'flex', alignItems: 'center', gap: 4, padding: '4px 10px', borderRadius: 'var(--radius-sm)', border: '1px solid rgba(0,119,182,0.25)', background: 'rgba(255,255,255,0.5)', color: 'var(--text-muted)', fontSize: 12, cursor: 'pointer' }
+const btnSmall   = { display: 'flex', alignItems: 'center', gap: 4, padding: '4px 10px', borderRadius: 'var(--radius-sm)', border: '1px solid rgba(0,119,182,0.25)', background: 'rgba(255,255,255,0.5)', color: 'var(--text-muted)', fontSize: 12, cursor: 'pointer', textDecoration: 'none' }
 const overlay    = { position: 'fixed', inset: 0, background: 'rgba(0,40,80,0.45)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100 }
 const modalBox   = { ...glass, padding: '28px 32px', width: 440, maxWidth: '90vw' }
