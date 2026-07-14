@@ -2,6 +2,7 @@
 const ROLE_HOME = {
   MARKETING: '/marketing',
   FINANCE: '/finance',
+  SERVICE_CLIENT: '/service-client',
 }
 
 export function homeRouteForRole(adminRole) {

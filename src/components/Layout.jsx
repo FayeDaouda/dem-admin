@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { NavLink, useNavigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import {
-  LayoutDashboard, CreditCard, Package, Users, LogOut, Bike, Map, Menu, X, TrendingUp, ShieldCheck, AlertTriangle, ScrollText, UserCog, Briefcase, Headphones, UsersRound, SlidersHorizontal, Award, GitBranch, Bell, Wallet,
+  LayoutDashboard, CreditCard, Package, Users, LogOut, Bike, Map, Menu, X, TrendingUp, ShieldCheck, AlertTriangle, ScrollText, UserCog, Briefcase, UsersRound, SlidersHorizontal, Award, GitBranch, Bell, Wallet,
 } from 'lucide-react'
 import logoSrc from '../assets/logo-dem.svg'
 import { useResponsive } from '../lib/useResponsive'
@@ -10,8 +10,9 @@ import { useResponsive } from '../lib/useResponsive'
 // roles: undefined = tous les rôles. Sinon tableau des rôles autorisés (SUPER bypass toujours).
 // ASSISTANCE_EXECUTIVE : proche du SUPER — pas d'Audit, pas de Paiements (écritures), pas de Marketing.
 const NAV = [
-  { to: '/',                 icon: LayoutDashboard, label: 'Dashboard',       roles: ['SUPER','DEV','FINANCE','SERVICE_CLIENT','ASSISTANCE_EXECUTIVE'] },
+  { to: '/',                 icon: LayoutDashboard, label: 'Dashboard',       roles: ['SUPER','DEV','FINANCE','ASSISTANCE_EXECUTIVE'] },
   { to: '/marketing',       icon: LayoutDashboard,  label: 'Dashboard',      roles: ['SUPER','MARKETING'] },
+  { to: '/service-client',  icon: LayoutDashboard,  label: 'Dashboard',      roles: ['SUPER','SERVICE_CLIENT'] },
   { to: '/map',              icon: Map,             label: 'Carte live',      roles: ['SUPER','DEV','ASSISTANCE_EXECUTIVE'] },
   { to: '/drivers',          icon: Bike,            label: 'Livreurs',        roles: ['SUPER','DEV','ASSISTANCE_EXECUTIVE'] },
   { to: '/clients',          icon: Users,           label: 'Clients',         roles: ['SUPER','DEV','SERVICE_CLIENT','ASSISTANCE_EXECUTIVE'] },
@@ -22,7 +23,6 @@ const NAV = [
   { to: '/config',           icon: SlidersHorizontal, label: 'Tarifs',        roles: ['SUPER','DEV','ASSISTANCE_EXECUTIVE'] },
   { to: '/finance',          icon: Wallet,          label: 'Finance',         roles: ['SUPER','FINANCE','ASSISTANCE_EXECUTIVE'] },
   { to: '/payments',         icon: CreditCard,      label: 'Paiements',       roles: ['SUPER','FINANCE'] },
-  { to: '/service-client',   icon: Headphones,      label: 'Service client',  roles: ['SUPER','SERVICE_CLIENT'] },
   { to: '/audit',            icon: ScrollText,       label: 'Audit',          roles: ['SUPER','DEV'] },
   { to: '/incidents',        icon: AlertTriangle,    label: 'Incidents',      roles: ['SUPER','DEV','SERVICE_CLIENT','ASSISTANCE_EXECUTIVE'] },
   { to: '/badges/clients',  icon: Award,            label: 'Badge client',   roles: ['SUPER','MARKETING'] },

@@ -30,7 +30,7 @@ export default function ServiceClient() {
     <div style={pageWrap}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16, flexShrink: 0 }}>
         <div>
-          <h1 style={{ fontSize: 22, fontWeight: 700, marginBottom: 2 }}>Service Client</h1>
+          <h1 style={{ fontSize: 22, fontWeight: 700, marginBottom: 2 }}>Dashboard</h1>
           <p style={{ color: 'var(--text-muted)', fontSize: 12, margin: 0 }}>
             Support clients/livreurs et gestion des comptes DEM Pro
           </p>
