@@ -11,13 +11,12 @@ const PROFILES = [
 ]
 
 const STATUS_OPTIONS = [
-  ['A_APPELER', 'À appeler'],
-  ['APPELE',    'Appelé'],
-  ['SANS_REPONSE', 'Sans réponse'],
-  ['RESOLU',    'Résolu'],
-  ['RELANCE',   'Relance programmée'],
+  ['A_APPELER',     'À appeler'],
+  ['INTERESSE',     'Intéressé'],
+  ['PAS_INTERESSE', 'Pas intéressé'],
+  ['A_RAPPELER',    'À rappeler'],
+  ['CONVERTI',      'Converti'],
 ]
-const STATUS_LABELS = Object.fromEntries(STATUS_OPTIONS)
 
 const TRISTATE_OPTIONS = [['', '—'], ['true', 'Oui'], ['false', 'Non']]
 
@@ -248,7 +247,7 @@ export default function OutreachTable() {
 }
 
 function statusColor(status) {
-  return { A_APPELER: '#f59e0b', APPELE: '#0077b6', SANS_REPONSE: '#dc2626', RESOLU: '#22c55e', RELANCE: '#7c3aed' }[status] ?? 'var(--text)'
+  return { A_APPELER: '#f59e0b', INTERESSE: '#0077b6', PAS_INTERESSE: '#dc2626', A_RAPPELER: '#7c3aed', CONVERTI: '#22c55e' }[status] ?? 'var(--text)'
 }
 
 function statusPill(active) {
