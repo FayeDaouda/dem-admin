@@ -10,7 +10,7 @@ import { useResponsive } from '../lib/useResponsive'
 // roles: undefined = tous les rôles. Sinon tableau des rôles autorisés (SUPER bypass toujours).
 // ASSISTANCE_EXECUTIVE : proche du SUPER — pas d'Audit, pas de Paiements (écritures), pas de Marketing.
 const NAV = [
-  { to: '/',                 icon: LayoutDashboard, label: 'Dashboard',       roles: ['SUPER','DEV','FINANCE','ASSISTANCE_EXECUTIVE'] },
+  { to: '/',                 icon: LayoutDashboard, label: 'Dashboard',       roles: ['SUPER','DEV','ASSISTANCE_EXECUTIVE'] },
   { to: '/marketing',       icon: LayoutDashboard,  label: 'Dashboard', roles: ['SUPER','MARKETING'], hideForSuper: true },
   { to: '/service-client',  icon: LayoutDashboard,  label: 'Dashboard', roles: ['SUPER','SERVICE_CLIENT'], hideForSuper: true },
   { to: '/map',              icon: Map,             label: 'Carte live',      roles: ['SUPER','DEV','ASSISTANCE_EXECUTIVE','SERVICE_CLIENT'] },
@@ -23,7 +23,7 @@ const NAV = [
   { to: '/tableau',          icon: Table2,          label: 'Tableau',          roles: ['SUPER','SERVICE_CLIENT'] },
   { to: '/orders',           icon: Package,         label: 'Courses',         roles: ['SUPER','DEV','FINANCE','SERVICE_CLIENT','ASSISTANCE_EXECUTIVE'] },
   { to: '/config',           icon: SlidersHorizontal, label: 'Tarifs',        roles: ['SUPER','DEV','ASSISTANCE_EXECUTIVE'] },
-  { to: '/finance',          icon: Wallet,          label: 'Finance',         roles: ['SUPER','FINANCE','ASSISTANCE_EXECUTIVE'] },
+  { to: '/finance',          icon: Wallet,          label: 'Finance',         roles: ['SUPER','FINANCE','ASSISTANCE_EXECUTIVE'], labelForRole: { FINANCE: 'Dashboard' } },
   { to: '/payments',         icon: CreditCard,      label: 'Paiements',       roles: ['SUPER','FINANCE'] },
   { to: '/audit',            icon: ScrollText,       label: 'Audit',          roles: ['SUPER','DEV'] },
   { to: '/incidents',        icon: AlertTriangle,    label: 'Incidents',      roles: ['SUPER','DEV','SERVICE_CLIENT','ASSISTANCE_EXECUTIVE'] },
@@ -104,12 +104,14 @@ export default function Layout({ children }) {
 
       {/* Nav — filtré selon adminRole */}
       <nav style={{ flex: 1, padding: '10px 6px', display: 'flex', flexDirection: 'column', gap: 2 }}>
-        {NAV.filter(item => canSeeNav(item, user?.adminRole)).map(({ to, icon: Icon, label }) => (
+        {NAV.filter(item => canSeeNav(item, user?.adminRole)).map(({ to, icon: Icon, label, labelForRole }) => {
+          const resolvedLabel = labelForRole?.[user?.adminRole] ?? label
+          return (
           <NavLink
             key={to}
             to={to}
             end={to === '/'}
-            title={collapsed ? label : undefined}
+            title={collapsed ? resolvedLabel : undefined}
             style={({ isActive }) => ({
               display: 'flex',
               alignItems: 'center',
@@ -126,9 +128,10 @@ export default function Layout({ children }) {
             })}
           >
             <Icon size={17} />
-            {!collapsed && label}
+            {!collapsed && resolvedLabel}
           </NavLink>
-        ))}
+          )
+        })}
       </nav>
 
       {/* User + rôle + Logout */}
