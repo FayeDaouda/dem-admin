@@ -28,9 +28,9 @@ export default function FinanceKpiRow({ reloadKey }) {
     <>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 10, marginBottom: 20 }}>
         <StatCard icon={Wallet}     label="CA aujourd'hui"        value={loading ? '…' : `${v(kpis?.caToday)} F`} color="#22c55e" onClick={() => setOpenModal('revenue')} />
+        <StatCard icon={Ticket}     label="Pass activés (jour)"   value={v(kpis?.passActivatedToday)} color="#f59e0b" onClick={() => setOpenModal('pass')} />
         <StatCard icon={Handshake}  label="Frais de mise en relation (jour)" value={loading ? '…' : `${v(kpis?.feesToday)} F`} color="#0ea5e9" onClick={() => setOpenModal('fees')} />
         <StatCard icon={Receipt}    label="Transactions (jour)"   value={v(kpis?.transactionsToday)} color="#8b5cf6" onClick={() => setOpenModal('transactions')} />
-        <StatCard icon={Ticket}     label="Pass activés (jour)"   value={v(kpis?.passActivatedToday)} color="#f59e0b" onClick={() => setOpenModal('pass')} />
         <StatCard icon={BellRing}   label="Dernière alerte financière" value={loading ? '…' : 'Non disponible'} sub="Alertes email non configurées" color="#ef4444" />
         <StatCard
           icon={FileDown}
