@@ -92,9 +92,53 @@ export function RevenueModal({ icon, color, onClose }) {
   )
 }
 
+// ── KPI : Frais de mise en relation — détail + filtres période ───────────────
+const FEES_PERIODS = [
+  { key: 1,   label: 'Jour' },
+  { key: 3,   label: '3 jours' },
+  { key: 7,   label: 'Semaine' },
+  { key: 30,  label: 'Mois' },
+  { key: 90,  label: '3 mois' },
+  { key: 180, label: '6 mois' },
+  { key: 365, label: '1 an' },
+]
+
+export function FeesModal({ icon, color, onClose }) {
+  const [days, setDays] = useState(1)
+  const [data, setData] = useState(null)
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    setLoading(true)
+    api.get('/admin/finance/revenue-period', { params: { days } })
+      .then(r => setData(r.data)).catch(() => setData(null)).finally(() => setLoading(false))
+  }, [days])
+
+  return (
+    <Shell icon={icon} color={color} title="Frais de mise en relation" onClose={onClose}>
+      <PeriodTabs periods={FEES_PERIODS} active={days} onChange={setDays} color={color} />
+      {loading ? (
+        <div style={{ color: 'var(--text-muted)', textAlign: 'center', padding: 40 }}>Chargement...</div>
+      ) : !data ? (
+        <div style={{ color: 'var(--text-muted)', textAlign: 'center', padding: 40 }}>Erreur de chargement.</div>
+      ) : (
+        <>
+          <div style={{ marginBottom: 16 }}>
+            <StatBox label="FRAIS DE MISE EN RELATION" value={`${data.courses.toLocaleString()} F`} color={color} />
+          </div>
+          <div style={{ fontSize: 12, color: 'var(--text-muted)', padding: '10px 14px', background: 'var(--surface2)', borderRadius: 8 }}>
+            {data.ordersCount} course{data.ordersCount !== 1 ? 's' : ''} livrée{data.ordersCount !== 1 ? 's' : ''} sur la période.
+            Estimation basée sur la grille de commission configurée — la commission réelle reste à 0 F tant que la Phase 1 (lancement gratuit) est active.
+          </div>
+        </>
+      )}
+    </Shell>
+  )
+}
+
 // ── KPI : Transactions ────────────────────────────────────────────────────────
 const TRANSACTIONS_PERIODS = [
-  { key: 2,   label: '2 jours' },
+  { key: 3,   label: '3 jours' },
   { key: 7,   label: 'Semaine' },
   { key: 30,  label: 'Mois' },
   { key: 90,  label: '3 mois' },
@@ -103,7 +147,7 @@ const TRANSACTIONS_PERIODS = [
 ]
 
 export function TransactionsModal({ icon, color, onClose }) {
-  const [days, setDays] = useState(2)
+  const [days, setDays] = useState(3)
   const [data, setData] = useState(null)
   const [loading, setLoading] = useState(true)
 
