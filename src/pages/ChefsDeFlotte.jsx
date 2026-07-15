@@ -325,6 +325,11 @@ export default function ChefsDeFlotte() {
                             </button>
                           )}
                           <button onClick={() => setFormTarget(c)} style={btnSmall} title="Modifier"><Pencil size={13} /></button>
+                          {c.phone && (
+                            <a href={`tel:${c.phone}`} style={btnSmall} title="Appeler">
+                              <Phone size={13} />
+                            </a>
+                          )}
                           <button onClick={() => deleteChef(c)} style={{ ...btnSmall, color: 'var(--danger)', borderColor: 'var(--danger)' }} title="Supprimer"><Trash2 size={13} /></button>
                         </>
                       )}

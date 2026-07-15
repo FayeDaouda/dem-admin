@@ -488,6 +488,11 @@ export default function Clients() {
                           <button onClick={() => setFormTarget(c)} style={btnSmall} title="Modifier">
                             <Pencil size={13} />
                           </button>
+                          {c.phone && (
+                            <a href={`tel:${c.phone}`} style={btnSmall} title="Appeler">
+                              <Phone size={13} />
+                            </a>
+                          )}
                           {c.role === 'CLIENT' && (
                             <button
                               onClick={() => upgradeToPro(c)}

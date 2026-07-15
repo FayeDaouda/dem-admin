@@ -685,6 +685,11 @@ export default function Drivers() {
                           <button onClick={() => setFormTarget(d)} style={btnSmall} title="Modifier">
                             <Pencil size={13} />
                           </button>
+                          {d.phone && (
+                            <a href={`tel:${d.phone}`} style={btnSmall} title="Appeler">
+                              <Phone size={13} />
+                            </a>
+                          )}
                           {d.chefDeFlotteStatus === 'PENDING' ? (
                             <>
                               <button onClick={() => activateFleetDriver(d)} style={{ ...btnSmall, color: 'var(--success)', borderColor: 'var(--success)' }}>Activer</button>

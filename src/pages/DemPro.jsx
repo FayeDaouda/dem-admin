@@ -380,6 +380,11 @@ export default function DemPro() {
                           <button onClick={() => setEditTarget(a)} style={btnSmall} title="Modifier">
                             <Pencil size={13} />
                           </button>
+                          {a.phone && (
+                            <a href={`tel:${a.phone}`} style={btnSmall} title="Appeler">
+                              <Phone size={13} />
+                            </a>
+                          )}
                           <button onClick={() => deleteAccount(a)} style={{ ...btnSmall, color: 'var(--danger)', borderColor: 'var(--danger)' }} title="Supprimer">
                             <Trash2 size={13} />
                           </button>
