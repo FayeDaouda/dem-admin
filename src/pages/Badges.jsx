@@ -1,5 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import api from '../lib/api'
+import { useAuth } from '../contexts/AuthContext'
+import { Pencil, X } from 'lucide-react'
 import { glass, glassInput, pageWrap, pageScroll } from '../lib/glassStyles'
 
 const DEFAULT_DRIVER_BADGES = [
@@ -157,10 +159,13 @@ function ClientBadgesTab() {
 //  BADGES LIVREURS
 // ══════════════════════════════════════════════════════════════════════════════
 function DriverBadgesTab() {
+  const { user } = useAuth()
+  const isSuper = !user?.adminRole || user.adminRole === 'SUPER'
   const [driversList, setDriversList] = useState([])
   const [badgeTiers,  setBadgeTiers]  = useState(DEFAULT_DRIVER_BADGES)
   const [loading,     setLoading]     = useState(true)
   const [selected,    setSelected]    = useState(null) // tier sélectionné (ou 'none') pour la popup
+  const [editing,     setEditing]     = useState(false)
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -211,6 +216,14 @@ function DriverBadgesTab() {
 
   return (
     <>
+      {isSuper && (
+        <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 12 }}>
+          <button onClick={() => setEditing(true)} style={btnOutline}>
+            <Pencil size={14} /> Modifier les seuils
+          </button>
+        </div>
+      )}
+
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 12 }}>
         <BadgeCard v={NONE_VISUAL} count={none} onClick={() => setSelected('none')} />
         {orderedBadgeTiers.map(tier => (
@@ -222,6 +235,14 @@ function DriverBadgesTab() {
           />
         ))}
       </div>
+
+      {editing && (
+        <EditBadgeTiersModal
+          tiers={orderedBadgeTiers}
+          onClose={() => setEditing(false)}
+          onSaved={() => { setEditing(false); load() }}
+        />
+      )}
 
       {selected && (
         <BadgeUserListModal
@@ -243,6 +264,94 @@ function DriverBadgesTab() {
         />
       )}
     </>
+  )
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+//  MODAL : édition des seuils de badges livreurs (SUPER uniquement)
+// ══════════════════════════════════════════════════════════════════════════════
+function EditBadgeTiersModal({ tiers, onClose, onSaved }) {
+  const [rows, setRows]     = useState(tiers.map(t => ({ ...t })))
+  const [saving, setSaving] = useState(false)
+  const [error, setError]   = useState('')
+
+  function setField(tier, key, value) {
+    setRows(rs => rs.map(r => r.tier === tier ? { ...r, [key]: value } : r))
+  }
+
+  async function save() {
+    setError('')
+    for (const r of rows) {
+      if (!r.name?.trim()) { setError('Le nom de chaque palier est requis.'); return }
+      if (r.courses === '' || Number.isNaN(Number(r.courses)) || Number(r.courses) < 0) { setError(`Nombre de courses invalide pour ${r.name}.`); return }
+      if (r.referrals === '' || Number.isNaN(Number(r.referrals)) || Number(r.referrals) < 0) { setError(`Nombre de parrainages invalide pour ${r.name}.`); return }
+      if (r.rating === '' || Number.isNaN(Number(r.rating)) || Number(r.rating) < 0 || Number(r.rating) > 5) { setError(`Note minimale invalide pour ${r.name} (0 à 5).`); return }
+    }
+
+    setSaving(true)
+    try {
+      const badges = rows.map(r => ({
+        tier: r.tier, name: r.name.trim(), emoji: r.emoji,
+        courses: Number(r.courses), referrals: Number(r.referrals), rating: Number(r.rating),
+      }))
+      await api.put('/admin/badges/config', { badges })
+      onSaved()
+    } catch (e) {
+      setError(e.response?.data?.message ?? 'Erreur lors de l\'enregistrement.')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  return (
+    <div style={overlay} onClick={onClose}>
+      <div style={{ ...glass, width: 820, maxWidth: '95vw', padding: 0, borderRadius: 16, overflow: 'hidden', maxHeight: '90vh', display: 'flex', flexDirection: 'column' }} onClick={e => e.stopPropagation()}>
+        <div style={{ padding: '20px 24px 16px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <h2 style={{ fontSize: 16, fontWeight: 700, margin: 0 }}>Modifier les seuils de badges livreurs</h2>
+          <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', display: 'flex' }}><X size={18} /></button>
+        </div>
+
+        <div style={{ padding: '16px 24px', overflowY: 'auto', flex: 1 }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+            <thead>
+              <tr>
+                {['Emoji', 'Nom', 'Courses min.', 'Parrainages min.', 'Note min.'].map(h => (
+                  <th key={h} style={{ textAlign: 'left', padding: '6px 8px', color: 'var(--text-muted)', fontSize: 11, fontWeight: 700, borderBottom: '1px solid rgba(0,119,182,.12)' }}>{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map(r => (
+                <tr key={r.tier} style={{ borderBottom: '1px solid var(--border)' }}>
+                  <td style={{ padding: '6px 8px', width: 60 }}>
+                    <input value={r.emoji} onChange={e => setField(r.tier, 'emoji', e.target.value)} style={{ ...rowInput, textAlign: 'center', fontSize: 18 }} />
+                  </td>
+                  <td style={{ padding: '6px 8px' }}>
+                    <input value={r.name} onChange={e => setField(r.tier, 'name', e.target.value)} style={rowInput} />
+                  </td>
+                  <td style={{ padding: '6px 8px', width: 110 }}>
+                    <input type="number" min="0" value={r.courses} onChange={e => setField(r.tier, 'courses', e.target.value)} style={rowInput} />
+                  </td>
+                  <td style={{ padding: '6px 8px', width: 130 }}>
+                    <input type="number" min="0" value={r.referrals} onChange={e => setField(r.tier, 'referrals', e.target.value)} style={rowInput} />
+                  </td>
+                  <td style={{ padding: '6px 8px', width: 100 }}>
+                    <input type="number" min="0" max="5" step="0.1" value={r.rating} onChange={e => setField(r.tier, 'rating', e.target.value)} style={rowInput} />
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+
+          {error && <div style={{ fontSize: 12, color: 'var(--danger)', background: 'rgba(239,68,68,.08)', borderRadius: 6, padding: '8px 12px', marginTop: 14 }}>{error}</div>}
+        </div>
+
+        <div style={{ padding: '16px 24px', borderTop: '1px solid var(--border)', display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
+          <button onClick={onClose} style={btnOutline}>Annuler</button>
+          <button onClick={save} disabled={saving} style={btnPrimary}>{saving ? 'Enregistrement…' : 'Enregistrer'}</button>
+        </div>
+      </div>
+    </div>
   )
 }
 
@@ -300,3 +409,6 @@ function BadgeUserListModal({ visual, onClose, users, columns, renderRow, matche
 }
 
 const overlay = { position: 'fixed', inset: 0, background: 'rgba(0,40,80,0.45)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 300 }
+const btnOutline = { display: 'flex', alignItems: 'center', gap: 6, padding: '7px 14px', borderRadius: 'var(--radius-sm)', border: '1px solid rgba(0,119,182,0.25)', background: 'rgba(255,255,255,0.5)', color: 'var(--text-muted)', fontSize: 13, cursor: 'pointer' }
+const btnPrimary = { display: 'flex', alignItems: 'center', gap: 6, padding: '7px 14px', borderRadius: 'var(--radius-sm)', border: 'none', background: 'var(--primary)', color: '#fff', fontSize: 13, fontWeight: 600, cursor: 'pointer' }
+const rowInput   = { width: '100%', padding: '6px 8px', borderRadius: 6, border: '1px solid rgba(0,119,182,.2)', background: 'rgba(255,255,255,.6)', fontSize: 13, outline: 'none', boxSizing: 'border-box' }
