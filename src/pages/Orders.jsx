@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import api from '../lib/api'
+import { useAuth } from '../contexts/AuthContext'
 import Badge from '../components/Badge'
 import { RefreshCw, Search } from 'lucide-react'
 import { glass, glassInput, pageWrap, pageScroll, stickyTh, stickyCol, stickyThCol } from '../lib/glassStyles'
@@ -13,6 +14,8 @@ const clientDisplayName = (client, clientName, clientPhone) =>
     : firstNonEmpty(client?.name, clientName, client?.phone, clientPhone)
 
 export default function Orders() {
+  const { user } = useAuth()
+  const isFinance = user?.adminRole === 'FINANCE'
   const [orders, setOrders]     = useState([])
   const [loading, setLoading]   = useState(true)
   const [search, setSearch]     = useState('')
@@ -250,7 +253,9 @@ export default function Orders() {
             </div>
             <div style={{ marginTop: 20, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                {detail.status === 'PENDING' && !detail.driver && (
+                {/* Actions opérationnelles (dispatch) : pas pertinentes pour Finance, et
+                    de toute façon refusées côté backend pour ce rôle (SUPER/AE uniquement) */}
+                {!isFinance && detail.status === 'PENDING' && !detail.driver && (
                   <button
                     onClick={() => openDriverPicker(detail)}
                     style={{ ...btnOutline, color: '#0077b6', borderColor: '#0077b6', background: 'rgba(0,119,182,0.08)' }}
@@ -258,7 +263,7 @@ export default function Orders() {
                     🚴 Choisir un livreur
                   </button>
                 )}
-                {detail.status === 'ACCEPTED' && (
+                {!isFinance && detail.status === 'ACCEPTED' && (
                   <button
                     onClick={() => redispatch(detail.id)}
                     disabled={redispatching}
@@ -267,7 +272,7 @@ export default function Orders() {
                     {redispatching ? 'Re-dispatch…' : '↺ Re-dispatcher'}
                   </button>
                 )}
-                {!['DELIVERED', 'CANCELLED'].includes(detail.status) && (
+                {!isFinance && !['DELIVERED', 'CANCELLED'].includes(detail.status) && (
                   <button
                     onClick={() => cancelOrder(detail.id)}
                     disabled={cancelling}
