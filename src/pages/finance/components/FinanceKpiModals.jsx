@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react'
 import api from '../../../lib/api'
 import { glass } from '../../../lib/glassStyles'
-import Badge from '../../../components/Badge'
 
 function Shell({ icon: Icon, color, title, onClose, children }) {
   return (
@@ -93,51 +92,44 @@ export function RevenueModal({ icon, color, onClose }) {
   )
 }
 
-// ── KPI : Transactions du jour ────────────────────────────────────────────────
+// ── KPI : Transactions ────────────────────────────────────────────────────────
+const TRANSACTIONS_PERIODS = [
+  { key: 2,   label: '2 jours' },
+  { key: 7,   label: 'Semaine' },
+  { key: 30,  label: 'Mois' },
+  { key: 90,  label: '3 mois' },
+  { key: 180, label: '6 mois' },
+  { key: 365, label: 'Année' },
+]
+
 export function TransactionsModal({ icon, color, onClose }) {
+  const [days, setDays] = useState(2)
   const [data, setData] = useState(null)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    const startOfToday = new Date(); startOfToday.setHours(0, 0, 0, 0)
-    api.get('/admin/finance/transactions', { params: { from: startOfToday.toISOString(), to: new Date().toISOString(), limit: 100 } })
+    setLoading(true)
+    api.get('/admin/finance/transactions-period', { params: { days } })
       .then(r => setData(r.data)).catch(() => setData(null)).finally(() => setLoading(false))
-  }, [])
+  }, [days])
 
   return (
-    <Shell icon={icon} color={color} title="Transactions du jour" onClose={onClose}>
+    <Shell icon={icon} color={color} title="Transactions" onClose={onClose}>
+      <PeriodTabs periods={TRANSACTIONS_PERIODS} active={days} onChange={setDays} color={color} />
       {loading ? (
         <div style={{ color: 'var(--text-muted)', textAlign: 'center', padding: 40 }}>Chargement...</div>
       ) : !data ? (
         <div style={{ color: 'var(--text-muted)', textAlign: 'center', padding: 40 }}>Erreur de chargement.</div>
       ) : (
         <>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2,1fr)', gap: 12, marginBottom: 20 }}>
-            <StatBox label="WAVE"          value={`${(data.today.wave.amount ?? 0).toLocaleString()} F · ${data.today.wave.count}`}     color="#22c55e" />
-            <StatBox label="ORANGE MONEY"  value={`${(data.today.orange.amount ?? 0).toLocaleString()} F · ${data.today.orange.count}`} color="#f97316" />
+          <div style={{ marginBottom: 16 }}>
+            <StatBox label="TOTAL TRANSACTIONS" value={data.total} color={color} />
           </div>
-          {!data.transactions?.length ? (
-            <div style={{ color: 'var(--text-muted)', textAlign: 'center', padding: 20 }}>Aucune transaction aujourd'hui.</div>
-          ) : (
-            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-              <thead>
-                <tr>{['Type', 'Prix', 'Méthode', 'Statut', 'Heure'].map(h => (
-                  <th key={h} style={{ textAlign: 'left', padding: '6px 8px', color: 'var(--text-muted)', fontSize: 11, fontWeight: 700, borderBottom: '1px solid rgba(0,119,182,.12)' }}>{h}</th>
-                ))}</tr>
-              </thead>
-              <tbody>
-                {data.transactions.map(t => (
-                  <tr key={t.id} style={{ borderBottom: '1px solid var(--border)' }}>
-                    <td style={{ padding: '8px', fontSize: 13 }}><Badge status={t.orderType} /></td>
-                    <td style={{ padding: '8px', fontSize: 13 }}>{t.price?.toLocaleString()} F</td>
-                    <td style={{ padding: '8px', fontSize: 13 }}>{t.paymentMethod ?? '—'}</td>
-                    <td style={{ padding: '8px', fontSize: 13 }}><Badge status={t.paymentStatus ?? 'PENDING'} /></td>
-                    <td style={{ padding: '8px', fontSize: 12, color: 'var(--text-muted)' }}>{new Date(t.createdAt).toLocaleTimeString('fr-FR')}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          )}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 12 }}>
+            <StatBox label="WAVE"          value={`${data.wave.count} · ${data.wave.amount.toLocaleString()} F`}     color="#22c55e" />
+            <StatBox label="ORANGE MONEY"  value={`${data.orange.count} · ${data.orange.amount.toLocaleString()} F`} color="#f97316" />
+            <StatBox label="CASH"          value={`${data.cash.count} · ${data.cash.amount.toLocaleString()} F`}     color="#6366f1" />
+          </div>
         </>
       )}
     </Shell>
