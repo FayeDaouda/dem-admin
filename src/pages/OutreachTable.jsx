@@ -20,12 +20,30 @@ const STATUS_OPTIONS = [
 
 const TRISTATE_OPTIONS = [['', '—'], ['true', 'Oui'], ['false', 'Non']]
 
+const FLOW_OPTIONS = [
+  ['inactif',    'Inactif (< 5)'],
+  ['actif',      'Actif (5 à 7)'],
+  ['tres_actif', 'Très actif (> 7)'],
+]
+
+function flowBucket(flow) {
+  if (flow == null) return null
+  if (flow < 5) return 'inactif'
+  if (flow <= 7) return 'actif'
+  return 'tres_actif'
+}
+
+function flowColor(bucket) {
+  return { inactif: '#dc2626', actif: '#f59e0b', tres_actif: '#22c55e' }[bucket] ?? 'var(--text-muted)'
+}
+
 export default function OutreachTable() {
   const [role, setRole]         = useState('DEM_PRO')
   const [rows, setRows]         = useState([])
   const [loading, setLoading]   = useState(true)
   const [search, setSearch]     = useState('')
   const [statusFilter, setStatusFilter] = useState('all')
+  const [flowFilter, setFlowFilter]     = useState('all')
   const [saving, setSaving]     = useState(false)
 
   const fetch = useCallback(async () => {
@@ -79,6 +97,7 @@ export default function OutreachTable() {
 
   const visible = rows
     .filter(r => statusFilter === 'all' || r.status === statusFilter)
+    .filter(r => flowFilter === 'all' || flowBucket(r.avgWeeklyFlow) === flowFilter)
     .filter(r => {
       const q = search.trim().toLowerCase()
       if (!q) return true
@@ -103,7 +122,7 @@ export default function OutreachTable() {
       {/* Onglets profil */}
       <div style={{ display: 'flex', gap: 4, marginBottom: 14, background: 'rgba(255,255,255,.45)', borderRadius: 'var(--radius)', padding: 4, width: 'fit-content', flexWrap: 'wrap', flexShrink: 0 }}>
         {PROFILES.map(([key, label, Icon]) => (
-          <button key={key} onClick={() => setRole(key)} style={{
+          <button key={key} onClick={() => { setRole(key); setStatusFilter('all'); setFlowFilter('all') }} style={{
             padding: '7px 16px', borderRadius: 'var(--radius-sm)', border: 'none', cursor: 'pointer',
             background: role === key ? 'var(--primary)' : 'transparent',
             color: role === key ? '#fff' : 'var(--text-muted)',
@@ -135,6 +154,15 @@ export default function OutreachTable() {
         {saving && <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>Enregistrement…</span>}
       </div>
 
+      {/* Filtre flux */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 14, flexWrap: 'wrap', flexShrink: 0 }}>
+        <span style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 600 }}>Flux :</span>
+        <button onClick={() => setFlowFilter('all')} style={statusPill(flowFilter === 'all')}>Tous</button>
+        {FLOW_OPTIONS.map(([key, label]) => (
+          <button key={key} onClick={() => setFlowFilter(key)} style={statusPill(flowFilter === key)}>{label}</button>
+        ))}
+      </div>
+
       <div style={pageScroll}>
         <div style={{ ...glass, padding: '16px 18px' }}>
           {loading ? (
@@ -146,7 +174,7 @@ export default function OutreachTable() {
               <thead>
                 <tr>
                   {[
-                    ['#', 40], ['Nom entreprise', 160], ['Contacté par', 110], ['Date appel', 130],
+                    ['#', 40], ['Nom entreprise', 160], ['Flux moyen', 100], ['Contacté par', 110], ['Date appel', 130],
                     ['Problème identifié', 220], ['Solution proposée', 200], ['Geste commercial', 130],
                     ['Statut', 150], ['1ère commande ?', 110], ['Nb courses générées', 100],
                     ['Retour collecté ?', 110], ['Score /10', 80], ['Notes', 200], ['', 36],
@@ -161,6 +189,13 @@ export default function OutreachTable() {
                     <td style={{ ...tdStyle, color: 'var(--text-muted)', fontSize: 12, textAlign: 'center' }}>{idx + 1}</td>
                     <td style={{ ...tdStyle, ...stickyCol }}>
                       <TextCell value={r.companyName ?? ''} onChange={v => setLocal(r.id, 'companyName', v)} onSave={v => save(r.id, 'companyName', v)} />
+                    </td>
+                    <td style={{ ...tdStyle, textAlign: 'center' }}>
+                      {r.avgWeeklyFlow == null ? (
+                        <span style={{ color: 'var(--text-muted)' }}>—</span>
+                      ) : (
+                        <span style={{ fontWeight: 700, color: flowColor(flowBucket(r.avgWeeklyFlow)) }}>{r.avgWeeklyFlow}</span>
+                      )}
                     </td>
                     <td style={tdStyle}>
                       <TextCell value={r.contactedBy ?? ''} onChange={v => setLocal(r.id, 'contactedBy', v)} onSave={v => save(r.id, 'contactedBy', v)} />
