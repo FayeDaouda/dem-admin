@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react'
 import api from '../lib/api'
 import { useAuth } from '../contexts/AuthContext'
 import Badge from '../components/Badge'
-import { RefreshCw, CheckCircle, XCircle, Pencil, Trash2, Ban, RotateCcw, X, Search, Phone, Flag } from 'lucide-react'
+import { RefreshCw, CheckCircle, XCircle, Pencil, Trash2, Ban, RotateCcw, X, Search, Phone, Flag, Plus } from 'lucide-react'
 import { glass, glassModal, glassInput, pageWrap, pageScroll, stickyTh, stickyThCol, stickyCol } from '../lib/glassStyles'
 import SubmitRequestModal from './service-client/components/SubmitRequestModal'
 
@@ -35,8 +35,9 @@ const VOLUME_LABELS = {
   high:   '9+ / sem.',
 }
 
-// ── Modal Modifier ───────────────────────────────────────────────────────────
+// ── Modal Créer / Modifier ────────────────────────────────────────────────────
 function EditModal({ initial, onClose, onSaved }) {
+  const isEdit = !!initial?.id
   const [form, setForm] = useState({
     name:            initial?.name            ?? '',
     phone:           initial?.phone           ?? '',
@@ -51,9 +52,11 @@ function EditModal({ initial, onClose, onSaved }) {
   function set(k, v) { setForm(f => ({ ...f, [k]: v })) }
 
   async function save() {
+    if (!isEdit && !form.phone.trim()) { setError('Le numéro de téléphone est requis.'); return }
     setSaving(true); setError('')
     try {
-      await api.patch(`/admin/dem-pro/${initial.id}`, form)
+      if (isEdit) await api.patch(`/admin/dem-pro/${initial.id}`, form)
+      else        await api.post('/admin/dem-pro', form)
       onSaved()
     } catch (e) {
       setError(e.response?.data?.message ?? 'Erreur.')
@@ -64,13 +67,13 @@ function EditModal({ initial, onClose, onSaved }) {
     <div style={overlay} onClick={onClose}>
       <div style={{ ...glass, width: 460, maxWidth: '92vw', borderRadius: 16, padding: 24 }} onClick={e => e.stopPropagation()}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
-          <h2 style={{ fontSize: 17, fontWeight: 700 }}>Modifier le compte DEM Pro</h2>
+          <h2 style={{ fontSize: 17, fontWeight: 700 }}>{isEdit ? 'Modifier le compte DEM Pro' : 'Nouveau compte DEM Pro'}</h2>
           <button onClick={onClose} style={btnIcon}><X size={16} /></button>
         </div>
 
         {[
           { key: 'name',            label: 'Nom complet',     type: 'text', placeholder: 'Ex : Ibrahima Sow' },
-          { key: 'phone',           label: 'Téléphone',       type: 'tel',  placeholder: '+221 77 000 00 00' },
+          { key: 'phone',           label: isEdit ? 'Téléphone' : 'Téléphone *', type: 'tel',  placeholder: '+221 77 000 00 00' },
           { key: 'email',           label: 'Email',           type: 'email', placeholder: 'email@exemple.com' },
           { key: 'proBusinessName', label: 'Nom entreprise',  type: 'text', placeholder: 'Ex : Sow Commerce SARL' },
         ].map(({ key, label, type, placeholder }) => (
@@ -247,9 +250,16 @@ export default function DemPro() {
     <div style={pageWrap}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12, marginBottom: 24, flexShrink: 0 }}>
         <h1 style={{ fontSize: 22, fontWeight: 700 }}>DEM Pro</h1>
-        <button onClick={fetch} style={btnOutline}>
-          <RefreshCw size={14} /> Actualiser
-        </button>
+        <div style={{ display: 'flex', gap: 8 }}>
+          <button onClick={fetch} style={btnOutline}>
+            <RefreshCw size={14} /> Actualiser
+          </button>
+          {isSuper && (
+            <button onClick={() => setEditTarget({})} style={btnPrimary}>
+              <Plus size={14} /> Nouveau compte
+            </button>
+          )}
+        </div>
       </div>
 
       <ProStats accounts={accounts} />
