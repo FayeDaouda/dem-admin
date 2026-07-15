@@ -2,6 +2,25 @@ import { useState, useEffect, useCallback } from 'react'
 import api from '../lib/api'
 import { RefreshCw, Plus, Trash2, Search, Users, Bike, Briefcase, UserCog } from 'lucide-react'
 import { glass, glassInput, pageWrap, pageScroll, stickyTh, stickyCol, stickyThCol } from '../lib/glassStyles'
+import ExportPdfButton from '../components/ExportPdfButton'
+
+const LIMIT = 20
+
+const PDF_COLUMNS = [
+  { header: 'Nom entreprise',        key: 'companyName' },
+  { header: 'Flux moyen',            key: 'avgWeeklyFlow' },
+  { header: 'Contacté par',          key: 'contactedBy' },
+  { header: 'Date appel',            key: 'callDateLabel' },
+  { header: 'Problème identifié',    key: 'problem' },
+  { header: 'Solution proposée',     key: 'solution' },
+  { header: 'Geste commercial',      key: 'commercialGesture' },
+  { header: 'Statut',                key: 'statusLabel' },
+  { header: '1ère commande ?',       key: 'firstOrderLabel' },
+  { header: 'Nb courses générées',   key: 'coursesGenerated' },
+  { header: 'Retour collecté ?',     key: 'feedbackCollectedLabel' },
+  { header: 'Score /10',             key: 'score' },
+  { header: 'Notes',                 key: 'notes' },
+]
 
 const PROFILES = [
   ['CLIENT',         'Client',         Users],
@@ -37,6 +56,11 @@ function flowColor(bucket) {
   return { inactif: '#dc2626', actif: '#f59e0b', tres_actif: '#22c55e' }[bucket] ?? 'var(--text-muted)'
 }
 
+const STATUS_LABELS = Object.fromEntries(STATUS_OPTIONS)
+const PROFILE_LABELS = Object.fromEntries(PROFILES.map(([key, label]) => [key, label]))
+
+function triLabel(v) { return v === true ? 'Oui' : v === false ? 'Non' : '—' }
+
 export default function OutreachTable() {
   const [role, setRole]         = useState('DEM_PRO')
   const [rows, setRows]         = useState([])
@@ -45,6 +69,7 @@ export default function OutreachTable() {
   const [statusFilter, setStatusFilter] = useState('all')
   const [flowFilter, setFlowFilter]     = useState('all')
   const [saving, setSaving]     = useState(false)
+  const [page, setPage]         = useState(1)
 
   const fetch = useCallback(async () => {
     setLoading(true)
@@ -59,6 +84,7 @@ export default function OutreachTable() {
   }, [role])
 
   useEffect(() => { fetch() }, [fetch])
+  useEffect(() => { setPage(1) }, [role, search, statusFilter, flowFilter])
 
   function setLocal(id, field, value) {
     setRows(rs => rs.map(r => r.id === id ? { ...r, [field]: value } : r))
@@ -104,6 +130,18 @@ export default function OutreachTable() {
       return (r.companyName ?? '').toLowerCase().includes(q) || (r.contactedBy ?? '').toLowerCase().includes(q)
     })
 
+  const totalPages = Math.max(1, Math.ceil(visible.length / LIMIT))
+  const paginated = visible.slice((page - 1) * LIMIT, page * LIMIT)
+
+  const pdfRows = visible.map(r => ({
+    ...r,
+    avgWeeklyFlow: r.avgWeeklyFlow ?? '—',
+    callDateLabel: r.callDate ? new Date(r.callDate).toLocaleDateString('fr-FR') : '—',
+    statusLabel: STATUS_LABELS[r.status] ?? r.status,
+    firstOrderLabel: triLabel(r.firstOrder),
+    feedbackCollectedLabel: triLabel(r.feedbackCollected),
+  }))
+
   return (
     <div style={pageWrap}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12, marginBottom: 16, flexShrink: 0 }}>
@@ -113,8 +151,14 @@ export default function OutreachTable() {
             Suivi des appels de prospection et de support.
           </p>
         </div>
-        <div style={{ display: 'flex', gap: 8 }}>
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
           <button onClick={fetch} style={btnOutline}><RefreshCw size={14} /> Actualiser</button>
+          <ExportPdfButton
+            title={`Tableau — ${PROFILE_LABELS[role]}`}
+            filename={`tableau-${role.toLowerCase()}-${new Date().toISOString().slice(0, 10)}.pdf`}
+            columns={PDF_COLUMNS}
+            rows={pdfRows}
+          />
           <button onClick={addRow} style={btnPrimary}><Plus size={14} /> Nouvelle ligne</button>
         </div>
       </div>
@@ -184,18 +228,20 @@ export default function OutreachTable() {
                 </tr>
               </thead>
               <tbody>
-                {visible.map((r, idx) => (
+                {paginated.map((r, idx) => (
                   <tr key={r.id} style={{ borderBottom: '1px solid var(--border)' }}>
-                    <td style={{ ...tdStyle, color: 'var(--text-muted)', fontSize: 12, textAlign: 'center' }}>{idx + 1}</td>
+                    <td style={{ ...tdStyle, color: 'var(--text-muted)', fontSize: 12, textAlign: 'center' }}>{(page - 1) * LIMIT + idx + 1}</td>
                     <td style={{ ...tdStyle, ...stickyCol }}>
                       <TextCell value={r.companyName ?? ''} onChange={v => setLocal(r.id, 'companyName', v)} onSave={v => save(r.id, 'companyName', v)} />
                     </td>
                     <td style={{ ...tdStyle, textAlign: 'center' }}>
-                      {r.avgWeeklyFlow == null ? (
-                        <span style={{ color: 'var(--text-muted)' }}>—</span>
-                      ) : (
-                        <span style={{ fontWeight: 700, color: flowColor(flowBucket(r.avgWeeklyFlow)) }}>{r.avgWeeklyFlow}</span>
-                      )}
+                      <input
+                        type="number" min="0" step="0.1"
+                        value={r.avgWeeklyFlow ?? ''}
+                        onChange={e => setLocal(r.id, 'avgWeeklyFlow', e.target.value)}
+                        onBlur={e => save(r.id, 'avgWeeklyFlow', e.target.value === '' ? null : Number(e.target.value))}
+                        style={{ ...cellInput, fontWeight: 700, textAlign: 'center', color: flowColor(flowBucket(r.avgWeeklyFlow)) }}
+                      />
                     </td>
                     <td style={tdStyle}>
                       <TextCell value={r.contactedBy ?? ''} onChange={v => setLocal(r.id, 'contactedBy', v)} onSave={v => save(r.id, 'contactedBy', v)} />
@@ -277,6 +323,16 @@ export default function OutreachTable() {
           )}
         </div>
       </div>
+
+      {totalPages > 1 && (
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 12, marginTop: 12, flexShrink: 0 }}>
+          <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page <= 1} style={btnOutline}>← Préc.</button>
+          <span style={{ fontSize: 13, color: 'var(--text-muted)' }}>
+            Page {page} / {totalPages} — {visible.length} ligne{visible.length !== 1 ? 's' : ''}
+          </span>
+          <button onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page >= totalPages} style={btnOutline}>Suiv. →</button>
+        </div>
+      )}
     </div>
   )
 }
