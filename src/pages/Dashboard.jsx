@@ -6,7 +6,7 @@ import {
 import { connectSocket, disconnectSocket } from '../lib/socket'
 import api from '../lib/api'
 import Badge from '../components/Badge'
-import { Package, Bike, AlertTriangle, TrendingUp, Users, CreditCard, Activity, Wifi, ArrowUpRight, ArrowDownRight, Minus, Briefcase, Eye, EyeOff } from 'lucide-react'
+import { Package, Bike, AlertTriangle, TrendingUp, Users, CreditCard, Activity, Wifi, ArrowUpRight, ArrowDownRight, Minus, Briefcase, Eye, EyeOff, Ticket } from 'lucide-react'
 import { glass } from '../lib/glassStyles'
 import { useResponsive } from '../lib/useResponsive'
 import { useAuth } from '../contexts/AuthContext'
@@ -692,7 +692,9 @@ function StuckPendingOrdersModal({ kpi, onClose }) {
 export default function Dashboard() {
   const { user } = useAuth()
   const isServiceClient = user?.adminRole === 'SERVICE_CLIENT'
+  const isFinance = user?.adminRole === 'FINANCE'
   const isSuper = !user?.adminRole || user.adminRole === 'SUPER'
+  const [financeKpis, setFinanceKpis] = useState(null)
   const [showCommunity, setShowCommunity] = useState(() => localStorage.getItem('dashboard.showCommunity') !== 'false')
   const [showServiceClient, setShowServiceClient] = useState(() => localStorage.getItem('dashboard.showServiceClient') !== 'false')
 
@@ -721,10 +723,11 @@ export default function Dashboard() {
 
   const fetchAll = useCallback(async () => {
     try {
-      const [sRes, lRes, tRes] = await Promise.all([
+      const [sRes, lRes, tRes, fRes] = await Promise.all([
         api.get('/admin/stats'),
         api.get('/admin/live'),
         api.get('/admin/stats/timeseries?days=7'),
+        isFinance ? api.get('/admin/finance/kpis') : Promise.resolve(null),
       ])
       setStats(sRes.data)
       setSnapshot(lRes.data)
@@ -734,12 +737,13 @@ export default function Dashboard() {
         driverRevenueK: Math.round((d.driverRevenue ?? 0) / 1000),
         demRevenueK:    Math.round((d.demRevenue    ?? 0) / 1000),
       })))
+      if (fRes) setFinanceKpis(fRes.data)
     } catch (e) {
       console.error(e)
     } finally {
       setLoading(false)
     }
-  }, [])
+  }, [isFinance])
 
   useEffect(() => {
     fetchAll()
@@ -790,13 +794,18 @@ export default function Dashboard() {
     { id: 'clients',    icon: Users,        color: '#a78bfa', label: 'Clients',           value: stats?.clients.total ?? 0,     title: 'Clients',          dataKey: 'orders',        unit: '' },
     { id: 'demPro',     icon: Briefcase,    color: '#0ea5e9', label: 'DEM Pro',           value: stats?.demPro?.active ?? 0,    title: 'DEM Pro',          dataKey: 'orders',        unit: '', sub: `${stats?.demPro?.pending ?? 0} en attente` },
     { id: 'revDriver',  icon: CreditCard,   color: '#22c55e', label: 'Rev. livreurs',     value: `${(stats?.revenue?.driver?.today ?? 0).toLocaleString()} F`, title: 'Revenus livreurs', dataKey: 'driverRevenue', unit: 'F', sub: `Total ${((stats?.revenue?.driver?.total ?? 0) / 1000).toFixed(0)}k`, sparkKey: 'driverRevenue' },
-    { id: 'revDem',     icon: CreditCard,   color: '#f59e0b', label: 'Frais DEM',         value: `${(stats?.revenue?.dem?.today ?? 0).toLocaleString()} F`,    title: 'Frais DEM',        dataKey: 'demRevenue',    unit: 'F', sub: `Total ${((stats?.revenue?.dem?.total ?? 0) / 1000).toFixed(0)}k`, sparkKey: 'demRevenue' },
+    { id: 'revDem',     icon: CreditCard,   color: '#f59e0b', label: 'Frais DEM',         value: `${(stats?.revenue?.dem?.today ?? 0).toLocaleString()} F`,    title: 'Frais DEM',        dataKey: 'demRevenue',    unit: 'F', sub: `Estimé · Total ${((stats?.revenue?.dem?.total ?? 0) / 1000).toFixed(0)}k`, sparkKey: 'demRevenue' },
+    { id: 'passActivated', icon: Ticket,    color: '#8b5cf6', label: 'Pass activés (jour)', value: financeKpis?.passActivatedToday ?? 0, clickable: false },
   ]
 
-  // Service Client ne voit pas les KPI de chiffre d'affaires
+  // Service Client ne voit pas les KPI de chiffre d'affaires.
+  // Finance ne voit que les KPI opérationnels utiles à son rôle (pas les
+  // courses en attente/livreurs/clients/DEM Pro), + le nombre de pass activés.
   const KPI_CARDS = isServiceClient
-    ? ALL_KPI_CARDS.filter(k => k.id !== 'revDriver' && k.id !== 'revDem')
-    : ALL_KPI_CARDS
+    ? ALL_KPI_CARDS.filter(k => k.id !== 'revDriver' && k.id !== 'revDem' && k.id !== 'passActivated')
+    : isFinance
+    ? ALL_KPI_CARDS.filter(k => ['courses', 'active', 'revDriver', 'revDem', 'passActivated'].includes(k.id))
+    : ALL_KPI_CARDS.filter(k => k.id !== 'passActivated')
   const kpiCols = isMobile ? 2 : isTablet ? 4 : KPI_CARDS.length
 
   return (
@@ -825,7 +834,7 @@ export default function Dashboard() {
             sub={k.sub}
             sparkData={k.sparkKey ? timeseries : null} sparkKey={k.sparkKey}
             trend={k.sparkKey ? <TrendBadge current={todayTs?.[k.sparkKey]} previous={yesterdayTs?.[k.sparkKey]} /> : null}
-            onClick={() => setOpenKpi(k)}
+            onClick={k.clickable === false ? undefined : () => setOpenKpi(k)}
           />
         ))}
       </div>
