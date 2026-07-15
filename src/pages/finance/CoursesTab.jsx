@@ -44,7 +44,7 @@ export default function CoursesTab() {
   return (
     <div>
       <p style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 0, marginBottom: 14 }}>
-        "Revenus" = commission DEM (`demFee`) sur les courses livrées — actuellement offerte au lancement (0 F).
+"Revenus" = commission DEM estimée sur les courses livrées, selon la grille de commission configurée (la commission réelle facturée reste à 0 F tant que la Phase 1 lancement gratuit est active).
       </p>
       <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap' }}>
         <PeriodCard label="Aujourd'hui" {...data.today} />

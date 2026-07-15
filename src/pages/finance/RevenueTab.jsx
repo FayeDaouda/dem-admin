@@ -44,7 +44,7 @@ export default function RevenueTab() {
   return (
     <div>
       <p style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 0, marginBottom: 14 }}>
-        "CA courses" = commission DEM par livraison (actuellement offerte au lancement, donc à 0 F) · "CA pass" = charges journalières livreurs encaissées.
+"CA courses" = commission DEM par livraison, estimée selon la grille de commission configurée (la commission réelle facturée reste à 0 F tant que la Phase 1 lancement gratuit est active) · "CA pass" = charges journalières livreurs encaissées.
       </p>
 
       <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginBottom: 14 }}>
