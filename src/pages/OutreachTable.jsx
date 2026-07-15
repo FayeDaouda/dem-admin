@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import api from '../lib/api'
-import { RefreshCw, Plus, Trash2, Search, Users, Bike, Briefcase, UserCog } from 'lucide-react'
+import { RefreshCw, Plus, Trash2, Search, Users, Bike, Briefcase, UserCog, Phone } from 'lucide-react'
 import { glass, glassInput, pageWrap, pageScroll, stickyTh, stickyCol, stickyThCol } from '../lib/glassStyles'
 import ExportPdfButton from '../components/ExportPdfButton'
 
@@ -8,6 +8,7 @@ const LIMIT = 20
 
 const PDF_COLUMNS = [
   { header: 'Nom entreprise',        key: 'companyName' },
+  { header: 'Téléphone',             key: 'phone' },
   { header: 'Flux moyen',            key: 'avgWeeklyFlow' },
   { header: 'Contacté par',          key: 'contactedBy' },
   { header: 'Date appel',            key: 'callDateLabel' },
@@ -218,7 +219,7 @@ export default function OutreachTable() {
               <thead>
                 <tr>
                   {[
-                    ['#', 40], ['Nom entreprise', 160], ['Flux moyen', 100], ['Contacté par', 110], ['Date appel', 130],
+                    ['#', 40], ['Nom entreprise', 160], ['Téléphone', 140], ['Flux moyen', 100], ['Contacté par', 110], ['Date appel', 130],
                     ['Problème identifié', 220], ['Solution proposée', 200], ['Geste commercial', 130],
                     ['Statut', 150], ['1ère commande ?', 110], ['Nb courses générées', 100],
                     ['Retour collecté ?', 110], ['Score /10', 80], ['Notes', 200], ['', 36],
@@ -233,6 +234,16 @@ export default function OutreachTable() {
                     <td style={{ ...tdStyle, color: 'var(--text-muted)', fontSize: 12, textAlign: 'center' }}>{(page - 1) * LIMIT + idx + 1}</td>
                     <td style={{ ...tdStyle, ...stickyCol }}>
                       <TextCell value={r.companyName ?? ''} onChange={v => setLocal(r.id, 'companyName', v)} onSave={v => save(r.id, 'companyName', v)} />
+                    </td>
+                    <td style={tdStyle}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                        <TextCell value={r.phone ?? ''} onChange={v => setLocal(r.id, 'phone', v)} onSave={v => save(r.id, 'phone', v)} />
+                        {r.phone && (
+                          <a href={`tel:${r.phone}`} style={{ ...btnIcon, flexShrink: 0 }} title="Appeler">
+                            <Phone size={13} />
+                          </a>
+                        )}
+                      </div>
                     </td>
                     <td style={{ ...tdStyle, textAlign: 'center' }}>
                       <input
