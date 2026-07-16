@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react'
 import api from '../../../lib/api'
 import { Wallet, Receipt, Ticket, BellRing, FileDown, Handshake } from 'lucide-react'
 import StatCard from '../../../components/StatCard'
-import { RevenueModal, FeesModal, TransactionsModal, PassModal } from './FinanceKpiModals'
+import { RevenueModal, FeesModal, TransactionsModal, PassModal, AlertsModal } from './FinanceKpiModals'
 
 const EXPORT_TYPE_LABELS = { pdf: 'PDF', csv: 'CSV' }
 
@@ -31,7 +31,14 @@ export default function FinanceKpiRow({ reloadKey }) {
         <StatCard icon={Ticket}     label="Pass activés (jour)"   value={v(kpis?.passActivatedToday)} color="#f59e0b" onClick={() => setOpenModal('pass')} />
         <StatCard icon={Handshake}  label="Frais de mise en relation (jour)" value={loading ? '…' : `${v(kpis?.feesToday)} F`} color="#0ea5e9" onClick={() => setOpenModal('fees')} />
         <StatCard icon={Receipt}    label="Transactions (jour)"   value={v(kpis?.transactionsToday)} color="#8b5cf6" onClick={() => setOpenModal('transactions')} />
-        <StatCard icon={BellRing}   label="Dernière alerte financière" value={loading ? '…' : 'Non disponible'} sub="Alertes email non configurées" color="#ef4444" />
+        <StatCard
+          icon={BellRing}
+          label="Dernière alerte financière"
+          value={loading ? '…' : (kpis?.lastAlert ? kpis.lastAlert.message : 'Aucune alerte')}
+          sub={kpis?.lastAlert ? new Date(kpis.lastAlert.triggeredAt).toLocaleString('fr-FR') : (kpis?.alertCount === 0 ? 'Tout est normal' : undefined)}
+          color={kpis?.lastAlert ? (kpis.lastAlert.severity === 'high' ? '#ef4444' : '#f59e0b') : '#22c55e'}
+          onClick={() => setOpenModal('alerts')}
+        />
         <StatCard
           icon={FileDown}
           label="Dernier export"
@@ -45,6 +52,7 @@ export default function FinanceKpiRow({ reloadKey }) {
       {openModal === 'fees'         && <FeesModal         icon={Handshake} color="#0ea5e9" onClose={() => setOpenModal(null)} />}
       {openModal === 'transactions' && <TransactionsModal icon={Receipt}  color="#8b5cf6" onClose={() => setOpenModal(null)} />}
       {openModal === 'pass'         && <PassModal         icon={Ticket}  color="#f59e0b" onClose={() => setOpenModal(null)} />}
+      {openModal === 'alerts'       && <AlertsModal       icon={BellRing} color="#ef4444" onClose={() => setOpenModal(null)} />}
     </>
   )
 }

@@ -222,4 +222,74 @@ export function PassModal({ icon, color, onClose }) {
   )
 }
 
+// ── KPI : Dernière alerte financière ─────────────────────────────────────────
+const SEVERITY_COLORS = { high: '#ef4444', medium: '#f59e0b', low: '#6366f1' }
+const SEVERITY_LABELS = { high: 'Critique', medium: 'Attention', low: 'Info' }
+const DETAIL_COLUMNS = {
+  PAYMENT_DISPUTED: { extraLabel: 'Motif', extraValue: d => d.disputeNotes ?? '—' },
+  UNPAID_DELIVERY:  { extraLabel: 'Livré le', extraValue: d => d.deliveredAt ? new Date(d.deliveredAt).toLocaleString('fr-FR') : '—' },
+}
+
+export function AlertsModal({ icon, color, onClose }) {
+  const [alerts, setAlerts] = useState(null)
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    api.get('/admin/finance/alerts')
+      .then(r => setAlerts(r.data.alerts)).catch(() => setAlerts(null)).finally(() => setLoading(false))
+  }, [])
+
+  return (
+    <Shell icon={icon} color={color} title="Alertes financières" onClose={onClose}>
+      {loading ? (
+        <div style={{ color: 'var(--text-muted)', textAlign: 'center', padding: 40 }}>Chargement...</div>
+      ) : !alerts ? (
+        <div style={{ color: 'var(--text-muted)', textAlign: 'center', padding: 40 }}>Erreur de chargement.</div>
+      ) : alerts.length === 0 ? (
+        <div style={{ color: 'var(--text-muted)', textAlign: 'center', padding: 40 }}>Aucune alerte active — tout est normal.</div>
+      ) : (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+          {alerts.map((a, i) => {
+            const sevColor = SEVERITY_COLORS[a.severity] ?? color
+            const detailCols = DETAIL_COLUMNS[a.type]
+            return (
+              <div key={i} style={{ background: 'var(--surface2)', borderRadius: 10, padding: '14px 16px', borderLeft: `3px solid ${sevColor}` }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 10 }}>
+                  <div style={{ fontWeight: 700, fontSize: 13 }}>{a.message}</div>
+                  <span style={{ fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 10, background: sevColor + '18', color: sevColor, whiteSpace: 'nowrap', flexShrink: 0 }}>
+                    {SEVERITY_LABELS[a.severity] ?? a.severity}
+                  </span>
+                </div>
+                <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 4 }}>{new Date(a.triggeredAt).toLocaleString('fr-FR')}</div>
+
+                {a.detail?.length > 0 && detailCols && (
+                  <table style={{ width: '100%', borderCollapse: 'collapse', marginTop: 10 }}>
+                    <thead>
+                      <tr>{['Client', 'Prix', detailCols.extraLabel].map(h => (
+                        <th key={h} style={{ textAlign: 'left', padding: '4px 6px', color: 'var(--text-muted)', fontSize: 10, fontWeight: 700, borderBottom: '1px solid rgba(0,119,182,.12)' }}>{h}</th>
+                      ))}</tr>
+                    </thead>
+                    <tbody>
+                      {a.detail.slice(0, 10).map(d => (
+                        <tr key={d.id} style={{ borderBottom: '1px solid var(--border)' }}>
+                          <td style={{ padding: '5px 6px', fontSize: 12 }}>{d.clientName ?? '—'}{d.clientPhone ? ` · ${d.clientPhone}` : ''}</td>
+                          <td style={{ padding: '5px 6px', fontSize: 12 }}>{d.price?.toLocaleString()} F</td>
+                          <td style={{ padding: '5px 6px', fontSize: 12 }}>{detailCols.extraValue(d)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                )}
+                {a.detail?.length > 10 && (
+                  <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 6 }}>+ {a.detail.length - 10} autre{a.detail.length - 10 !== 1 ? 's' : ''}…</div>
+                )}
+              </div>
+            )
+          })}
+        </div>
+      )}
+    </Shell>
+  )
+}
+
 const modalOverlay = { position: 'fixed', inset: 0, background: 'rgba(0,40,80,0.45)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 300 }
