@@ -1,4 +1,5 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import api from '../lib/api'
 import { useAuth } from '../contexts/AuthContext'
 import { glass, glassInput, pageWrap, pageScroll } from '../lib/glassStyles'
@@ -8,6 +9,7 @@ import AmbassadorDetailModal from '../components/AmbassadorDetailModal'
 
 // ── Styles partagés ───────────────────────────────────────────────────────────
 const card      = { ...glass, padding: '18px 20px' }
+const cardHighlight = { boxShadow: '0 0 0 2px var(--primary)' }
 const btnAccept ={ display:'flex', alignItems:'center', gap:5, padding:'6px 14px', borderRadius:8, border:'none', background:'rgba(34,197,94,.12)', color:'#15803d', fontWeight:700, fontSize:12, cursor:'pointer' }
 const btnRefuse = { display:'flex', alignItems:'center', gap:5, padding:'6px 14px', borderRadius:8, border:'none', background:'rgba(239,68,68,.10)', color:'#dc2626', fontWeight:700, fontSize:12, cursor:'pointer' }
 const btnDisabled = { ...{}, opacity: 0.45, cursor: 'not-allowed' }
@@ -76,7 +78,14 @@ function DocThumb({ url, label }) {
 export default function Validation() {
   const { user } = useAuth()
   const isServiceClient = user?.adminRole === 'SERVICE_CLIENT'
-  const [tab, setTab] = useState('ambassadors')
+  const [searchParams] = useSearchParams()
+  const [tab, setTab] = useState(searchParams.get('tab') || 'ambassadors')
+  const highlightId = searchParams.get('highlight') || null
+
+  useEffect(() => {
+    const t = searchParams.get('tab')
+    if (t) setTab(t)
+  }, [searchParams])
 
   return (
     <div style={pageWrap}>
@@ -103,18 +112,18 @@ export default function Validation() {
         )}
       </div>
       <div style={pageScroll}>
-        {tab === 'ambassadors'       && <AmbassadorsTab isServiceClient={isServiceClient} />}
-        {tab === 'drivers'           && <DriversTab />}
-        {tab === 'dem-pro'           && <DemProTab />}
-        {!isServiceClient && tab === 'fleet'             && <FleetTab />}
-        {!isServiceClient && tab === 'service-requests'  && <ServiceRequestsTab />}
+        {tab === 'ambassadors'       && <AmbassadorsTab isServiceClient={isServiceClient} highlightId={highlightId} />}
+        {tab === 'drivers'           && <DriversTab highlightId={highlightId} />}
+        {tab === 'dem-pro'           && <DemProTab highlightId={highlightId} />}
+        {!isServiceClient && tab === 'fleet'             && <FleetTab highlightId={highlightId} />}
+        {!isServiceClient && tab === 'service-requests'  && <ServiceRequestsTab highlightId={highlightId} />}
       </div>
     </div>
   )
 }
 
 // ── Tab Chefs de flotte ────────────────────────────────────────────────────────
-function AmbassadorsTab({ isServiceClient }) {
+function AmbassadorsTab({ isServiceClient, highlightId }) {
   const [list,     setList]     = useState([])
   const [loading,       setLoading]       = useState(true)
   const [filter,        setFilter]        = useState('PENDING')
@@ -124,6 +133,7 @@ function AmbassadorsTab({ isServiceClient }) {
   const [suspendTarget, setSuspendTarget] = useState(null)
   const [suspending,    setSuspending]    = useState(false)
   const [detailAmId,    setDetailAmId]    = useState(null)
+  const rowRefs = useRef({})
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -135,6 +145,12 @@ function AmbassadorsTab({ isServiceClient }) {
   }, [filter])
 
   useEffect(() => { load() }, [load])
+
+  useEffect(() => {
+    if (!highlightId || !list.some(am => am.id === highlightId)) return
+    setExpanded(highlightId)
+    rowRefs.current[highlightId]?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+  }, [highlightId, list])
 
   async function handleValidate(id, approve) {
     if (!approve && !reason.trim()) { alert('Saisissez un motif de refus.'); return }
@@ -181,7 +197,7 @@ function AmbassadorsTab({ isServiceClient }) {
       : list.map(am => {
         const isOpen = expanded === am.id
         return (
-          <div key={am.id} style={card}>
+          <div key={am.id} ref={el => { rowRefs.current[am.id] = el }} style={{ ...card, ...(am.id === highlightId ? cardHighlight : {}) }}>
             {/* Ligne résumé */}
             <div style={{ display:'flex', alignItems:'center', gap:12 }}>
               <div style={{ width:42, height:42, borderRadius:'50%', background:'rgba(0,180,216,.12)', display:'flex', alignItems:'center', justifyContent:'center', fontWeight:800, color:'var(--primary)', fontSize:15, flexShrink:0 }}>
@@ -285,12 +301,13 @@ function AmbassadorsTab({ isServiceClient }) {
 }
 
 // ── Tab Livreurs en attente ───────────────────────────────────────────────────
-function DriversTab() {
+function DriversTab({ highlightId }) {
   const [list,     setList]     = useState([])
   const [loading,  setLoading]  = useState(true)
   const [expanded, setExpanded] = useState(null)
   const [reason,   setReason]   = useState('')
   const [acting,   setActing]   = useState(null)
+  const rowRefs = useRef({})
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -302,6 +319,12 @@ function DriversTab() {
   }, [])
 
   useEffect(() => { load() }, [load])
+
+  useEffect(() => {
+    if (!highlightId || !list.some(d => d.id === highlightId)) return
+    setExpanded(highlightId)
+    rowRefs.current[highlightId]?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+  }, [highlightId, list])
 
   async function handleValidate(id, approve) {
     if (!approve && !reason.trim()) { alert('Saisissez un motif de refus.'); return }
@@ -333,7 +356,7 @@ function DriversTab() {
         const canValidate  = !isExpired && !amNotActive
 
         return (
-          <div key={d.id} style={card}>
+          <div key={d.id} ref={el => { rowRefs.current[d.id] = el }} style={{ ...card, ...(d.id === highlightId ? cardHighlight : {}) }}>
             {/* Ligne résumé */}
             <div style={{ display:'flex', alignItems:'center', gap:12 }}>
               <div style={{ width:38, height:38, borderRadius:'50%', background:'rgba(99,102,241,.12)', display:'flex', alignItems:'center', justifyContent:'center', fontWeight:800, color:'#6366f1', fontSize:14, flexShrink:0 }}>
@@ -450,13 +473,14 @@ const VOLUME_LABELS = {
   high:   '9 ou plus / semaine',
 }
 
-function DemProTab() {
+function DemProTab({ highlightId }) {
   const [list,     setList]     = useState([])
   const [loading,  setLoading]  = useState(true)
   const [filter,   setFilter]   = useState('PENDING')
   const [expanded, setExpanded] = useState(null)
   const [reason,   setReason]   = useState('')
   const [acting,   setActing]   = useState(null)
+  const rowRefs = useRef({})
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -468,6 +492,12 @@ function DemProTab() {
   }, [filter])
 
   useEffect(() => { load() }, [load])
+
+  useEffect(() => {
+    if (!highlightId || !list.some(pro => pro.id === highlightId)) return
+    setExpanded(highlightId)
+    rowRefs.current[highlightId]?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+  }, [highlightId, list])
 
   async function handleValidate(id, approve) {
     if (!approve && !reason.trim()) { alert('Saisissez un motif de refus.'); return }
@@ -502,7 +532,7 @@ function DemProTab() {
       : list.map(pro => {
         const isOpen = expanded === pro.id
         return (
-          <div key={pro.id} style={card}>
+          <div key={pro.id} ref={el => { rowRefs.current[pro.id] = el }} style={{ ...card, ...(pro.id === highlightId ? cardHighlight : {}) }}>
             {/* Ligne résumé */}
             <div style={{ display:'flex', alignItems:'center', gap:12 }}>
               <div style={{ width:42, height:42, borderRadius:'50%', background:'rgba(0,180,216,.12)', display:'flex', alignItems:'center', justifyContent:'center', fontWeight:800, color:'var(--primary)', fontSize:15, flexShrink:0 }}>
@@ -580,12 +610,13 @@ const REQUEST_KIND_LABELS = {
   CHEF_SUSPEND:     'Suspension chef de flotte',
 }
 
-function ServiceRequestsTab() {
+function ServiceRequestsTab({ highlightId }) {
   const [list,    setList]    = useState([])
   const [loading, setLoading] = useState(true)
   const [filter,  setFilter]  = useState('PENDING')
   const [acting,  setActing]  = useState(null)
   const [notes,   setNotes]   = useState({})
+  const rowRefs = useRef({})
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -597,6 +628,11 @@ function ServiceRequestsTab() {
   }, [filter])
 
   useEffect(() => { load() }, [load])
+
+  useEffect(() => {
+    if (!highlightId || !list.some(r => r.id === highlightId)) return
+    rowRefs.current[highlightId]?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+  }, [highlightId, list])
 
   async function handleDecide(id, approve) {
     setActing(id)
@@ -626,7 +662,7 @@ function ServiceRequestsTab() {
       {loading ? <div style={{ color:'var(--text-muted)' }}>Chargement…</div>
       : list.length === 0 ? <div style={{ ...card, color:'var(--text-muted)', textAlign:'center', padding:32 }}>Aucune demande.</div>
       : list.map(r => (
-        <div key={r.id} style={card}>
+        <div key={r.id} ref={el => { rowRefs.current[r.id] = el }} style={{ ...card, ...(r.id === highlightId ? cardHighlight : {}) }}>
           <div style={{ display:'flex', alignItems:'center', gap:12, flexWrap:'wrap' }}>
             <div style={{ flex:1, minWidth:200 }}>
               <div style={{ fontWeight:700, fontSize:14 }}>{REQUEST_KIND_LABELS[r.kind] ?? r.kind}</div>
@@ -682,11 +718,12 @@ function ServiceRequestsTab() {
 }
 
 // ── Tab Extensions flotte ─────────────────────────────────────────────────────
-function FleetTab() {
+function FleetTab({ highlightId }) {
   const [list,    setList]    = useState([])
   const [loading, setLoading] = useState(true)
   const [acting,  setActing]  = useState(null)
   const [notes,   setNotes]   = useState({})
+  const rowRefs = useRef({})
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -698,6 +735,11 @@ function FleetTab() {
   }, [])
 
   useEffect(() => { load() }, [load])
+
+  useEffect(() => {
+    if (!highlightId || !list.some(ext => ext.id === highlightId)) return
+    rowRefs.current[highlightId]?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+  }, [highlightId, list])
 
   async function handleValidate(id, approve) {
     setActing(id)
@@ -713,7 +755,7 @@ function FleetTab() {
       {loading ? <div style={{ color:'var(--text-muted)' }}>Chargement…</div>
       : list.length === 0 ? <div style={{ ...card, color:'var(--text-muted)', textAlign:'center', padding:32 }}>Aucune demande d'extension en attente.</div>
       : list.map(ext => (
-        <div key={ext.id} style={card}>
+        <div key={ext.id} ref={el => { rowRefs.current[ext.id] = el }} style={{ ...card, ...(ext.id === highlightId ? cardHighlight : {}) }}>
           <div style={{ display:'flex', alignItems:'center', gap:16, flexWrap:'wrap' }}>
             <div style={{ flex:1, minWidth:160 }}>
               <div style={{ fontWeight:700, fontSize:14 }}>{ext.ambassador?.name ?? '—'}</div>

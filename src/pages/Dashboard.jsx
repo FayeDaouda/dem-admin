@@ -12,6 +12,7 @@ import { useResponsive } from '../lib/useResponsive'
 import { useAuth } from '../contexts/AuthContext'
 import MarketingKpiRow from './marketing/components/MarketingKpiRow'
 import ServiceClientKpiRow from './service-client/components/KpiRow'
+import ValidationNotifications from '../components/ValidationNotifications'
 
 function TrendBadge({ current, previous }) {
   if (previous == null || previous === 0) return null
@@ -813,13 +814,14 @@ export default function Dashboard() {
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12, marginBottom: isMobile ? 16 : 24 }}>
         <h1 style={{ fontSize: isMobile ? 18 : 22, fontWeight: 700 }}>Dashboard</h1>
         {isSuper && (
-          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
             <button onClick={() => toggleSection('dashboard.showCommunity', setShowCommunity)} style={visibilityToggle(showCommunity)}>
               {showCommunity ? <Eye size={13} /> : <EyeOff size={13} />} Community
             </button>
             <button onClick={() => toggleSection('dashboard.showServiceClient', setShowServiceClient)} style={visibilityToggle(showServiceClient)}>
               {showServiceClient ? <Eye size={13} /> : <EyeOff size={13} />} Service Client
             </button>
+            <ValidationNotifications />
           </div>
         )}
       </div>
