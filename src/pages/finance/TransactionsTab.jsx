@@ -4,6 +4,8 @@ import Badge from '../../components/Badge'
 import { glass, glassInput, stickyTh } from '../../lib/glassStyles'
 import DateRangeFilter from '../../components/DateRangeFilter'
 import { exportCsv } from '../../lib/exportCsv'
+import { useAuth } from '../../contexts/AuthContext'
+import PaymentStatusEditor from './components/PaymentStatusEditor'
 
 const PM_LABELS = { CASH: 'Espèces', WAVE: 'Wave', ORANGE_MONEY: 'Orange Money' }
 
@@ -18,7 +20,9 @@ async function logExport(type) {
 }
 
 export default function TransactionsTab() {
-  const [range, setRange] = useState({ from: isoDaysAgo(30), to: isoDaysAgo(0) })
+  const { user } = useAuth()
+  const canEditPayment = !user?.adminRole || user.adminRole === 'SUPER' || user.adminRole === 'FINANCE'
+  const [range, setRange] = useState({ from: isoDaysAgo(0), to: isoDaysAgo(0) })
   const [method, setMethod] = useState('')
   const [status, setStatus] = useState('')
   const [minAmount, setMinAmount] = useState('')
@@ -113,7 +117,13 @@ export default function TransactionsTab() {
                   <td style={tdStyle}><Badge status={t.orderType} /></td>
                   <td style={{ ...tdStyle, fontWeight: 600 }}>{t.price?.toLocaleString()} F</td>
                   <td style={tdStyle}>{t.paymentMethod ? PM_LABELS[t.paymentMethod] : '—'}</td>
-                  <td style={tdStyle}><Badge status={t.paymentStatus} /></td>
+                  <td style={tdStyle}>
+                    {canEditPayment ? (
+                      <PaymentStatusEditor order={t} onUpdated={fetch} />
+                    ) : (
+                      <Badge status={t.paymentStatus} />
+                    )}
+                  </td>
                   <td style={{ ...tdStyle, fontSize: 12, color: 'var(--text-muted)' }}>{new Date(t.createdAt).toLocaleString('fr-FR')}</td>
                 </tr>
               ))}
