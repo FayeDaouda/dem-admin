@@ -2,6 +2,12 @@ import { useState, useEffect, useCallback } from 'react'
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts'
 import api from '../../lib/api'
 import { glass } from '../../lib/glassStyles'
+import ExportPdfButton from '../../components/ExportPdfButton'
+import { exportCsv } from '../../lib/exportCsv'
+
+async function logExport(type) {
+  try { await api.post('/admin/finance/export-log', { type }) } catch (e) { console.error(e) }
+}
 
 const TOOLTIP_STYLE = { background: '#fff', border: '1px solid var(--border)', borderRadius: 6, color: 'var(--text)', fontSize: 12, boxShadow: '0 2px 8px rgba(0,0,0,0.10)' }
 const PASS_COLORS = ['#22c55e', '#e2e8f0']
@@ -40,9 +46,21 @@ export default function PassTab() {
     { name: 'Avec pass actif', value: data.driversWithActivePass },
     { name: 'Sans pass actif', value: data.driversWithoutActivePass },
   ]
+  const exportColumns = [
+    { header: 'Date',         key: 'date' },
+    { header: 'Pass activés', key: 'activated' },
+    { header: 'Revenus',      key: 'revenue' },
+  ]
 
   return (
     <div>
+      <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginBottom: 14 }}>
+        <button onClick={() => { exportCsv({ filename: `pass-livreurs-${new Date().toISOString().slice(0, 10)}.csv`, columns: exportColumns, rows: data.trend }); logExport('csv') }} style={btnOutline}>
+          Exporter CSV
+        </button>
+        <ExportPdfButton title="Pass livreurs" filename={`pass-livreurs-${new Date().toISOString().slice(0, 10)}.pdf`} columns={exportColumns} rows={data.trend} onExport={() => logExport('pdf')} />
+      </div>
+
       <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginBottom: 20 }}>
         <PeriodBox label="AUJOURD'HUI" activated={data.today.activated} revenue={data.today.revenue} />
         <PeriodBox label="7 JOURS" activated={data.week.activated} revenue={data.week.revenue} />
@@ -80,3 +98,5 @@ export default function PassTab() {
     </div>
   )
 }
+
+const btnOutline = { display: 'flex', alignItems: 'center', gap: 6, padding: '7px 14px', borderRadius: 'var(--radius-sm)', border: '1px solid rgba(0,119,182,0.25)', background: 'rgba(255,255,255,0.5)', color: 'var(--text-muted)', fontSize: 13, cursor: 'pointer' }

@@ -163,9 +163,9 @@ export default function TariffsTab() {
           </table>
         </div>
         <p style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 10 }}>
-          La grille complète se modifie ligne par ligne côté Super Admin — décris ici la modification souhaitée, elle sera appliquée après validation.
+          Modifie les tranches ci-dessous, la grille éditée sera appliquée automatiquement dès que la proposition est validée.
         </p>
-        <ProposeGridForm submitting={submitting} onSubmit={(reason) => submitProposal('fees_grid', { grid: data.feesGrid }, reason)} />
+        <ProposeGridForm grid={data.feesGrid} submitting={submitting} onSubmit={(draft, reason) => submitProposal('fees_grid', { grid: draft }, reason)} />
       </Section>
 
       <Section title="Mes propositions">
@@ -195,24 +195,66 @@ export default function TariffsTab() {
   )
 }
 
-function ProposeGridForm({ onSubmit, submitting }) {
+function ProposeGridForm({ grid, onSubmit, submitting }) {
   const [open, setOpen] = useState(false)
+  const [draft, setDraft] = useState(() => grid.map(t => ({ ...t })))
   const [reason, setReason] = useState('')
 
   if (!open) return <button onClick={() => setOpen(true)} style={btnOutline}>Proposer une modification</button>
 
+  function update(i, field, val) {
+    setDraft(prev => prev.map((t, idx) => idx === i ? { ...t, [field]: Number.parseInt(val, 10) || 0 } : t))
+  }
+
+  const hasChanges = JSON.stringify(draft) !== JSON.stringify(grid)
+
   return (
     <div style={{ padding: '14px 16px', background: 'var(--surface2)', borderRadius: 10 }}>
+      <div style={{ overflowX: 'auto', marginBottom: 12 }}>
+        <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 380 }}>
+          <thead>
+            <tr>
+              {['Prix min', 'Prix max', 'Commission'].map(h => (
+                <th key={h} style={{ textAlign: 'left', padding: '4px 8px', fontSize: 10, color: 'var(--text-muted)', fontWeight: 700 }}>{h}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {draft.map((t, i) => {
+              const changed = t.min !== grid[i]?.min || t.max !== grid[i]?.max || t.fee !== grid[i]?.fee
+              return (
+                <tr key={i}>
+                  <td style={{ padding: '4px 8px' }}>
+                    <input type="number" min={0} value={t.min} onChange={e => update(i, 'min', e.target.value)}
+                      style={{ ...glassInput, width: 90, border: `1px solid ${t.min !== grid[i]?.min ? 'var(--primary)' : 'rgba(0,119,182,.2)'}` }} />
+                  </td>
+                  <td style={{ padding: '4px 8px' }}>
+                    <input type="number" min={0} value={t.max} onChange={e => update(i, 'max', e.target.value)}
+                      style={{ ...glassInput, width: 90, border: `1px solid ${t.max !== grid[i]?.max ? 'var(--primary)' : 'rgba(0,119,182,.2)'}` }} />
+                  </td>
+                  <td style={{ padding: '4px 8px' }}>
+                    <input type="number" min={0} value={t.fee} onChange={e => update(i, 'fee', e.target.value)}
+                      style={{ ...glassInput, width: 90, fontWeight: 700, color: changed ? 'var(--primary)' : undefined, border: `1px solid ${t.fee !== grid[i]?.fee ? 'var(--primary)' : 'rgba(0,119,182,.2)'}` }} />
+                  </td>
+                </tr>
+              )
+            })}
+          </tbody>
+        </table>
+      </div>
       <textarea
         value={reason}
         onChange={e => setReason(e.target.value)}
-        placeholder="Décris la modification souhaitée sur la grille (ex : tranche 900-1250F → commission 70F au lieu de 65F)…"
-        rows={3}
+        placeholder="Motif de la proposition (optionnel)…"
+        rows={2}
         style={{ ...glassInput, resize: 'vertical', marginBottom: 10 }}
       />
+      {!hasChanges && (
+        <div style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 10 }}>Modifie au moins une valeur pour pouvoir soumettre.</div>
+      )}
       <div style={{ display: 'flex', gap: 8 }}>
         <button onClick={() => setOpen(false)} style={btnOutline}>Annuler</button>
-        <button onClick={() => onSubmit(reason).then(() => setOpen(false))} disabled={submitting || !reason.trim()} style={btnPrimary}>
+        <button onClick={() => onSubmit(draft, reason).then(() => setOpen(false))} disabled={submitting || !hasChanges} style={btnPrimary}>
           <Send size={13} /> {submitting ? 'Envoi…' : 'Soumettre pour validation'}
         </button>
       </div>
