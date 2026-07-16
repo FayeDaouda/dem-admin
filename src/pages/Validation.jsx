@@ -3,7 +3,7 @@ import { useSearchParams } from 'react-router-dom'
 import api from '../lib/api'
 import { useAuth } from '../contexts/AuthContext'
 import { glass, glassInput, pageWrap, pageScroll } from '../lib/glassStyles'
-import { RefreshCw, CheckCircle, XCircle, ChevronDown, ChevronUp, Shield, Truck, Layers, AlertTriangle, Briefcase, ClipboardList } from 'lucide-react'
+import { RefreshCw, CheckCircle, XCircle, ChevronDown, ChevronUp, Shield, Truck, Layers, AlertTriangle, Briefcase, ClipboardList, Wallet } from 'lucide-react'
 import SuspendModal from '../components/SuspendModal'
 import AmbassadorDetailModal from '../components/AmbassadorDetailModal'
 
@@ -108,6 +108,9 @@ export default function Validation() {
             <button style={TAB(tab === 'service-requests')} onClick={() => setTab('service-requests')}>
               <span style={{ display:'flex', alignItems:'center', gap:6 }}><ClipboardList size={13} />Demandes Service Client</span>
             </button>
+            <button style={TAB(tab === 'finance-requests')} onClick={() => setTab('finance-requests')}>
+              <span style={{ display:'flex', alignItems:'center', gap:6 }}><Wallet size={13} />Demandes Finance</span>
+            </button>
           </>
         )}
       </div>
@@ -117,6 +120,7 @@ export default function Validation() {
         {tab === 'dem-pro'           && <DemProTab highlightId={highlightId} />}
         {!isServiceClient && tab === 'fleet'             && <FleetTab highlightId={highlightId} />}
         {!isServiceClient && tab === 'service-requests'  && <ServiceRequestsTab highlightId={highlightId} />}
+        {!isServiceClient && tab === 'finance-requests'  && <FinanceRequestsTab highlightId={highlightId} />}
       </div>
     </div>
   )
@@ -610,7 +614,24 @@ const REQUEST_KIND_LABELS = {
   CHEF_SUSPEND:     'Suspension chef de flotte',
 }
 
+// kindFilter distingue les demandes soumises par le Service Client (création/
+// suspension DEM Pro, gestes commerciaux, suspensions livreur/chef de flotte)
+// de celles soumises par l'admin Finance (TARIFF_CHANGE) — même backend
+// (/admin/requests), deux onglets pour ne pas les noyer les unes dans les autres.
+// Références stables (pas de fonction inline) pour ne pas invalider le
+// useCallback de chargement à chaque rendu.
+const SC_KIND_FILTER      = kind => kind !== 'TARIFF_CHANGE'
+const FINANCE_KIND_FILTER = kind => kind === 'TARIFF_CHANGE'
+
 function ServiceRequestsTab({ highlightId }) {
+  return <AdminRequestsTab highlightId={highlightId} kindFilter={SC_KIND_FILTER} emptyText="Aucune demande." />
+}
+
+function FinanceRequestsTab({ highlightId }) {
+  return <AdminRequestsTab highlightId={highlightId} kindFilter={FINANCE_KIND_FILTER} emptyText="Aucune demande Finance." />
+}
+
+function AdminRequestsTab({ highlightId, kindFilter, emptyText }) {
   const [list,    setList]    = useState([])
   const [loading, setLoading] = useState(true)
   const [filter,  setFilter]  = useState('PENDING')
@@ -622,10 +643,10 @@ function ServiceRequestsTab({ highlightId }) {
     setLoading(true)
     try {
       const res = await api.get('/admin/requests', { params: filter === 'all' ? {} : { status: filter } })
-      setList(res.data.requests ?? [])
+      setList((res.data.requests ?? []).filter(r => kindFilter(r.kind)))
     } catch (e) { console.error(e) }
     finally { setLoading(false) }
-  }, [filter])
+  }, [filter, kindFilter])
 
   useEffect(() => { load() }, [load])
 
@@ -660,7 +681,7 @@ function ServiceRequestsTab({ highlightId }) {
       </div>
 
       {loading ? <div style={{ color:'var(--text-muted)' }}>Chargement…</div>
-      : list.length === 0 ? <div style={{ ...card, color:'var(--text-muted)', textAlign:'center', padding:32 }}>Aucune demande.</div>
+      : list.length === 0 ? <div style={{ ...card, color:'var(--text-muted)', textAlign:'center', padding:32 }}>{emptyText}</div>
       : list.map(r => (
         <div key={r.id} ref={el => { rowRefs.current[r.id] = el }} style={{ ...card, ...(r.id === highlightId ? cardHighlight : {}) }}>
           <div style={{ display:'flex', alignItems:'center', gap:12, flexWrap:'wrap' }}>
