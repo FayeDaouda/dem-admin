@@ -74,6 +74,8 @@ export default function TariffsTab() {
   const [loading, setLoading] = useState(true)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState('')
+  const [history, setHistory] = useState(null)
+  const [historyLoading, setHistoryLoading] = useState(true)
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -84,7 +86,16 @@ export default function TariffsTab() {
     finally { setLoading(false) }
   }, [])
 
-  useEffect(() => { load() }, [load])
+  const loadHistory = useCallback(async () => {
+    setHistoryLoading(true)
+    try {
+      const res = await api.get('/admin/finance/tariffs/history')
+      setHistory(res.data.history)
+    } catch (e) { console.error(e) }
+    finally { setHistoryLoading(false) }
+  }, [])
+
+  useEffect(() => { load(); loadHistory() }, [load, loadHistory])
 
   async function submitProposal(target, changes, reason) {
     setSubmitting(true); setError('')
@@ -185,6 +196,48 @@ export default function TariffsTab() {
                 {r.reason && <div style={{ marginTop: 6, fontSize: 12, color: 'var(--text-muted)', fontStyle: 'italic' }}>« {r.reason} »</div>}
                 {r.status !== 'PENDING' && r.reviewNotes && (
                   <div style={{ marginTop: 6, fontSize: 12, color: 'var(--text-muted)' }}><strong>Réponse :</strong> {r.reviewNotes}</div>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+      </Section>
+
+      <Section title="Historique des modifications">
+        {historyLoading ? (
+          <div style={{ color: 'var(--text-muted)', fontSize: 13, padding: 20 }}>Chargement…</div>
+        ) : !history?.length ? (
+          <div style={{ color: 'var(--text-muted)', fontSize: 13, textAlign: 'center', padding: 20 }}>Aucun changement de tarif enregistré.</div>
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            {history.map((h, i) => (
+              <div key={i} style={{ padding: '10px 14px', borderRadius: 10, background: 'var(--surface2)' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+                  <div style={{ flex: 1, minWidth: 180, fontWeight: 600, fontSize: 13 }}>{h.label}</div>
+                  <span style={{
+                    fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 10,
+                    background: h.source === 'DIRECT' ? 'rgba(99,102,241,.12)' : 'rgba(34,197,94,.12)',
+                    color: h.source === 'DIRECT' ? '#6366f1' : '#15803d',
+                  }}>
+                    {h.source === 'DIRECT' ? 'Édition directe' : 'Demande approuvée'}
+                  </span>
+                  <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>{new Date(h.at).toLocaleString('fr-FR')}</div>
+                </div>
+                <div style={{ marginTop: 6, fontSize: 12, color: 'var(--text-muted)' }}>
+                  {h.by && <>Par <strong style={{ color: 'var(--text)' }}>{h.by.name ?? h.by.email}</strong></>}
+                  {h.submittedBy && <> · Proposé par <strong style={{ color: 'var(--text)' }}>{h.submittedBy.name ?? h.submittedBy.email}</strong></>}
+                </div>
+                {h.reason && <div style={{ marginTop: 4, fontSize: 12, color: 'var(--text-muted)', fontStyle: 'italic' }}>« {h.reason} »</div>}
+                {h.changes && (
+                  <div style={{ marginTop: 6, fontSize: 12, display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+                    {Object.entries(h.changes).map(([k, v]) => (
+                      Array.isArray(v) ? null : (
+                        <span key={k} style={{ color: 'var(--text-muted)' }}>
+                          {k} : <strong style={{ color: 'var(--text)' }}>{typeof v === 'boolean' ? (v ? 'Oui' : 'Non') : String(v)}</strong>
+                        </span>
+                      )
+                    ))}
+                  </div>
                 )}
               </div>
             ))}
