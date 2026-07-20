@@ -8,31 +8,36 @@ import logoSrc from '../assets/logo-dem.svg'
 import { useResponsive } from '../lib/useResponsive'
 
 // roles: undefined = tous les rôles. Sinon tableau des rôles autorisés (SUPER bypass toujours).
-// ASSISTANCE_EXECUTIVE : quasi second du SUPER — pas d'Audit, pas de Paiements (écritures financières).
+// ASSISTANCE_EXECUTIVE (Assistant Exécutif) : périmètre opérationnel restreint — Dashboard (sans
+// finance), Carte live, Livreurs, Courses, Validation, Incidents, Nouveaux profils, Chefs de flotte
+// (lecture), Acquisition (lecture), Tableau, Badge livreur (lecture). Pas de Finance, Paiements,
+// Service client, Audit, Marketing, Badge client, Parrainage, Notification, Équipes, Clients (fiche
+// complète), DEM Pro (facturation) ni Tarifs.
 const NAV = [
   { to: '/',                 icon: LayoutDashboard, label: 'Dashboard',       roles: ['SUPER','DEV','ASSISTANCE_EXECUTIVE'] },
-  { to: '/marketing',       icon: LayoutDashboard,  label: 'Dashboard', roles: ['SUPER','MARKETING','ASSISTANCE_EXECUTIVE'], hideForSuper: true },
+  { to: '/marketing',       icon: LayoutDashboard,  label: 'Dashboard', roles: ['SUPER','MARKETING'], hideForSuper: true },
   { to: '/service-client',  icon: LayoutDashboard,  label: 'Dashboard', roles: ['SUPER','SERVICE_CLIENT'], hideForSuper: true },
   { to: '/map',              icon: Map,             label: 'Carte live',      roles: ['SUPER','DEV','ASSISTANCE_EXECUTIVE','SERVICE_CLIENT'] },
-  { to: '/clients',          icon: Users,           label: 'Clients',         roles: ['SUPER','DEV','SERVICE_CLIENT','ASSISTANCE_EXECUTIVE'] },
+  { to: '/clients',          icon: Users,           label: 'Clients',         roles: ['SUPER','DEV','SERVICE_CLIENT'] },
   { to: '/drivers',          icon: Bike,            label: 'Livreurs',        roles: ['SUPER','DEV','ASSISTANCE_EXECUTIVE','SERVICE_CLIENT'] },
-  { to: '/dem-pro',          icon: Briefcase,       label: 'DEM Pro',         roles: ['SUPER','ASSISTANCE_EXECUTIVE','SERVICE_CLIENT'] },
+  { to: '/dem-pro',          icon: Briefcase,       label: 'DEM Pro',         roles: ['SUPER','SERVICE_CLIENT'] },
   { to: '/chefs-de-flotte',  icon: UserCog,         label: 'Chefs de flotte', roles: ['SUPER','ASSISTANCE_EXECUTIVE','SERVICE_CLIENT'] },
   { to: '/validation',       icon: ShieldCheck,     label: 'Validation',      roles: ['SUPER','ASSISTANCE_EXECUTIVE','SERVICE_CLIENT'] },
   { to: '/nouveaux-profils', icon: UserPlus,        label: 'Nouveaux profils', roles: ['SUPER','SERVICE_CLIENT','ASSISTANCE_EXECUTIVE'] },
   { to: '/tableau',          icon: Table2,          label: 'Tableau',          roles: ['SUPER','SERVICE_CLIENT','ASSISTANCE_EXECUTIVE'] },
-  { to: '/finance',          icon: Wallet,          label: 'Finance',         roles: ['SUPER','FINANCE','ASSISTANCE_EXECUTIVE'], labelForRole: { FINANCE: 'Dashboard' } },
+  { to: '/finance',          icon: Wallet,          label: 'Finance',         roles: ['SUPER','FINANCE'], labelForRole: { FINANCE: 'Dashboard' } },
   { to: '/payments',         icon: CreditCard,      label: 'Paiements',       roles: ['SUPER','FINANCE'] },
   { to: '/orders',           icon: Package,         label: 'Courses',         roles: ['SUPER','DEV','FINANCE','SERVICE_CLIENT','ASSISTANCE_EXECUTIVE'] },
-  { to: '/config',           icon: SlidersHorizontal, label: 'Tarifs',        roles: ['SUPER','DEV','ASSISTANCE_EXECUTIVE'] },
+  { to: '/config',           icon: SlidersHorizontal, label: 'Tarifs',        roles: ['SUPER','DEV'] },
   { to: '/audit',            icon: ScrollText,       label: 'Audit',          roles: ['SUPER','DEV'] },
   { to: '/incidents',        icon: AlertTriangle,    label: 'Incidents',      roles: ['SUPER','DEV','SERVICE_CLIENT','ASSISTANCE_EXECUTIVE'] },
-  { to: '/badges/clients',  icon: Award,            label: 'Badge client',   roles: ['SUPER','MARKETING','ASSISTANCE_EXECUTIVE'] },
+  { to: '/badges/clients',  icon: Award,            label: 'Badge client',   roles: ['SUPER','MARKETING'] },
   { to: '/badges/drivers',  icon: Award,            label: 'Badge livreur',  roles: ['SUPER','MARKETING','ASSISTANCE_EXECUTIVE'] },
-  { to: '/parrainage',      icon: GitBranch,        label: 'Parrainage',     roles: ['SUPER','MARKETING','ASSISTANCE_EXECUTIVE'] },
-  { to: '/acquisition',     icon: TrendingUp,       label: 'Acquisition',    roles: ['SUPER','ASSISTANCE_EXECUTIVE'] },
-  { to: '/broadcast',       icon: Bell,             label: 'Notification',   roles: ['SUPER','MARKETING','ASSISTANCE_EXECUTIVE'] },
-  { to: '/equipes',          icon: UsersRound,       label: 'Equipes',        roles: ['SUPER','ASSISTANCE_EXECUTIVE'] },
+  { to: '/parrainage',      icon: GitBranch,        label: 'Parrainage',     roles: ['SUPER','MARKETING'] },
+  { to: '/acquisition',     icon: TrendingUp,       label: 'Acquisition',    roles: ['SUPER'] },
+  { to: '/acquisition-overview', icon: TrendingUp,  label: 'Acquisition',    roles: ['ASSISTANCE_EXECUTIVE'], hideForSuper: true },
+  { to: '/broadcast',       icon: Bell,             label: 'Notification',   roles: ['SUPER','MARKETING'] },
+  { to: '/equipes',          icon: UsersRound,       label: 'Equipes',        roles: ['SUPER'] },
 ]
 
 const ROLE_LABELS = {

@@ -694,8 +694,10 @@ export default function Dashboard() {
   const { user } = useAuth()
   const isServiceClient = user?.adminRole === 'SERVICE_CLIENT'
   const isFinance = user?.adminRole === 'FINANCE'
+  const isAssistantExecutif = user?.adminRole === 'ASSISTANCE_EXECUTIVE'
   const isSuper = !user?.adminRole || user.adminRole === 'SUPER'
   const [financeKpis, setFinanceKpis] = useState(null)
+  const [cancellationTrend, setCancellationTrend] = useState([])
   const [showCommunity, setShowCommunity] = useState(() => localStorage.getItem('dashboard.showCommunity') !== 'false')
   const [showServiceClient, setShowServiceClient] = useState(() => localStorage.getItem('dashboard.showServiceClient') !== 'false')
 
@@ -721,6 +723,17 @@ export default function Dashboard() {
     const t = setInterval(fetchHealth, 30_000)
     return () => clearInterval(t)
   }, [])
+
+  // Widget natif Assistant Exécutif — taux d'annulation, évolution 30 jours
+  useEffect(() => {
+    if (!isAssistantExecutif) return
+    api.get('/admin/stats/timeseries?days=30')
+      .then(r => setCancellationTrend(r.data.map(d => ({
+        ...d,
+        dateLabel: new Date(d.date + 'T00:00:00').toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit' }),
+      }))))
+      .catch(() => {})
+  }, [isAssistantExecutif])
 
   const fetchAll = useCallback(async () => {
     try {
@@ -799,10 +812,10 @@ export default function Dashboard() {
     { id: 'passActivated', icon: Ticket,    color: '#8b5cf6', label: 'Pass activés (jour)', value: financeKpis?.passActivatedToday ?? 0, clickable: false },
   ]
 
-  // Service Client ne voit pas les KPI de chiffre d'affaires.
+  // Service Client et Assistant Exécutif ne voient pas les KPI de chiffre d'affaires (dashboard sans finance).
   // Finance ne voit que les KPI opérationnels utiles à son rôle (pas les
   // courses en attente/livreurs/clients/DEM Pro), + le nombre de pass activés.
-  const KPI_CARDS = isServiceClient
+  const KPI_CARDS = isServiceClient || isAssistantExecutif
     ? ALL_KPI_CARDS.filter(k => k.id !== 'revDriver' && k.id !== 'revDem' && k.id !== 'passActivated')
     : isFinance
     ? ALL_KPI_CARDS.filter(k => ['courses', 'active', 'revDriver', 'revDem', 'passActivated'].includes(k.id))
@@ -877,6 +890,21 @@ export default function Dashboard() {
             <ServiceClientKpiRow />
           </div>
         </>
+      )}
+
+      {/* ── Widget natif Assistant Exécutif : taux d'annulation, évolution 30j ── */}
+      {isAssistantExecutif && (
+        <div style={{ ...card, marginBottom: isMobile ? 12 : 20 }}>
+          <h2 style={cardTitle}>Taux d'annulation — évolution (30 derniers jours)</h2>
+          <ResponsiveContainer width="100%" height={200}>
+            <LineChart data={cancellationTrend} margin={{ top: 0, right: 8, left: -20, bottom: 0 }}>
+              <XAxis dataKey="dateLabel" tick={{ fontSize: 11, fill: 'var(--text-muted)' }} axisLine={false} tickLine={false} />
+              <YAxis tick={{ fontSize: 11, fill: 'var(--text-muted)' }} axisLine={false} tickLine={false} unit="%" />
+              <Tooltip contentStyle={TOOLTIP_STYLE} formatter={(v) => [`${v}%`, "Taux d'annulation"]} />
+              <Line type="monotone" dataKey="cancellationRate" name="Taux d'annulation" stroke="#ef4444" strokeWidth={2} dot={{ fill: '#ef4444', r: 3 }} />
+            </LineChart>
+          </ResponsiveContainer>
+        </div>
       )}
 
       {/* ── Charts row ── */}

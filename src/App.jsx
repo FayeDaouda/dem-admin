@@ -11,6 +11,7 @@ import Drivers     from './pages/Drivers'
 import Clients     from './pages/Clients'
 import Config      from './pages/Config'
 import Acquisition from './pages/Acquisition'
+import AcquisitionOverview from './pages/AcquisitionOverview'
 import NewProfiles from './pages/NewProfiles'
 import OutreachTable from './pages/OutreachTable'
 import Validation    from './pages/Validation'
@@ -63,6 +64,7 @@ function AppRoutes() {
       <Route path="/clients"  element={<ProtectedRoute><Clients /></ProtectedRoute>} />
       <Route path="/config"      element={<ProtectedRoute><Config /></ProtectedRoute>} />
       <Route path="/acquisition" element={<ProtectedRoute><Acquisition /></ProtectedRoute>} />
+      <Route path="/acquisition-overview" element={<ProtectedRoute><AcquisitionOverview /></ProtectedRoute>} />
       <Route path="/nouveaux-profils" element={<ProtectedRoute><NewProfiles /></ProtectedRoute>} />
       <Route path="/tableau" element={<ProtectedRoute><OutreachTable /></ProtectedRoute>} />
       <Route path="/badges/clients" element={<ProtectedRoute><ClientBadgesPage /></ProtectedRoute>} />
