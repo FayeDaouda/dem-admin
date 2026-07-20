@@ -182,18 +182,22 @@ const BADGE_VISUALS = {
 }
 
 const DEFAULT_BADGE_TIERS = [
-  { tier: 'gainde',    name: 'DEM Gainde',     courses: 500, referrals: 0,  rating: 4.2 },
-  { tier: 'buur',      name: 'DEM Buur',       courses: 300, referrals: 0,  rating: 4.0 },
-  { tier: 'domouNdey', name: 'DEM Domou Ndey', courses: 135, referrals: 0,  rating: 4.0 },
-  { tier: 'doorWarr',  name: 'DEM Door Warr',  courses: 70,  referrals: 0,  rating: 3.5 },
-  { tier: 'mbokk',     name: 'DEM Mbokk',      courses: 30,  referrals: 12, rating: 3.5 },
-  { tier: 'xarit',     name: 'DEM Xarit',      courses: 3,   referrals: 3,  rating: 0   },
+  { tier: 'gainde',    name: 'DEM Gainde',     criteria: [{ courses: 500, referrals: 0,  rating: 4.2 }] },
+  { tier: 'buur',      name: 'DEM Buur',       criteria: [{ courses: 300, referrals: 0,  rating: 4.0 }] },
+  { tier: 'domouNdey', name: 'DEM Domou Ndey', criteria: [{ courses: 135, referrals: 0,  rating: 4.0 }] },
+  { tier: 'doorWarr',  name: 'DEM Door Warr',  criteria: [{ courses: 70,  referrals: 0,  rating: 3.5 }] },
+  { tier: 'mbokk',     name: 'DEM Mbokk',      criteria: [{ courses: 30,  referrals: 12, rating: 3.5 }] },
+  { tier: 'xarit',     name: 'DEM Xarit',      criteria: [{ courses: 3, referrals: 0, rating: 0 }, { courses: 0, referrals: 3, rating: 0 }] },
 ]
 
+// Un badge est atteint si AU MOINS une ligne de critères est entièrement remplie.
 function computeBadge(courses, referrals, rating, tiers) {
   for (const tier of (tiers ?? DEFAULT_BADGE_TIERS)) {
-    const okRating = tier.rating === 0 || rating >= tier.rating
-    if (courses >= tier.courses && referrals >= tier.referrals && okRating) return tier
+    const met = (tier.criteria ?? []).some(c => {
+      const okRating = !c.rating || rating >= c.rating
+      return courses >= c.courses && referrals >= c.referrals && okRating
+    })
+    if (met) return tier
   }
   return null
 }

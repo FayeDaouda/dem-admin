@@ -4,14 +4,30 @@ import { useAuth } from '../contexts/AuthContext'
 import { Pencil, X } from 'lucide-react'
 import { glass, glassInput, pageWrap, pageScroll } from '../lib/glassStyles'
 
+// Chaque badge peut être atteint par plusieurs lignes de critères alternatives
+// (OR entre les lignes, AND entre les critères d'une même ligne).
 const DEFAULT_DRIVER_BADGES = [
-  { tier: 'xarit',     name: 'DEM Xarit',      emoji: '🤝', courses: 3,   referrals: 3,  rating: 0   },
-  { tier: 'mbokk',     name: 'DEM Mbokk',      emoji: '👥', courses: 30,  referrals: 12, rating: 3.5 },
-  { tier: 'doorWarr',  name: 'DEM Door Warr',   emoji: '✅', courses: 70,  referrals: 0,  rating: 3.5 },
-  { tier: 'domouNdey', name: 'DEM Domou Ndey', emoji: '⭐', courses: 135, referrals: 0,  rating: 4.0 },
-  { tier: 'buur',      name: 'DEM Buur',       emoji: '👑', courses: 300, referrals: 0,  rating: 4.0 },
-  { tier: 'gainde',    name: 'DEM Gainde',     emoji: '🏅', courses: 500, referrals: 0,  rating: 4.2 },
+  { tier: 'xarit',     name: 'DEM Xarit',      emoji: '🤝', advantage: 'Priorité sur les courses',
+    criteria: [{ courses: 3, referrals: 0, rating: 0 }, { courses: 0, referrals: 3, rating: 0 }] },
+  { tier: 'mbokk',     name: 'DEM Mbokk',      emoji: '👥', advantage: 'Tenue DEM offerte + badge vérifié',
+    criteria: [{ courses: 30,  referrals: 12, rating: 3.5 }] },
+  { tier: 'doorWarr',  name: 'DEM Door Warr',   emoji: '✅', advantage: '',
+    criteria: [{ courses: 70,  referrals: 0,  rating: 3.5 }] },
+  { tier: 'domouNdey', name: 'DEM Domou Ndey', emoji: '⭐', advantage: '8 courses garanties/sem',
+    criteria: [{ courses: 135, referrals: 0,  rating: 4.0 }] },
+  { tier: 'buur',      name: 'DEM Buur',       emoji: '👑', advantage: '10 courses garanties/sem + casque DEM',
+    criteria: [{ courses: 300, referrals: 0,  rating: 4.0 }] },
+  { tier: 'gainde',    name: 'DEM Gainde',     emoji: '🏅', advantage: '12 courses garanties/sem + chef de flotte',
+    criteria: [{ courses: 500, referrals: 0,  rating: 4.2 }] },
 ]
+
+// Un badge est atteint si AU MOINS une ligne de critères est entièrement remplie.
+function driverBadgeMatches(tier, courses, referrals, rating) {
+  return (tier.criteria ?? []).some(c => {
+    const okRating = !c.rating || rating >= c.rating
+    return courses >= c.courses && referrals >= c.referrals && okRating
+  })
+}
 
 // Ordre d'affichage imposé (Sans badge en premier, puis progression des tiers)
 // — indépendant de l'ordre renvoyé par /admin/badges/config.
@@ -181,8 +197,7 @@ function DriverBadgesTab() {
       const withBadge = drivers.map(d => {
         let matchedTier = null
         for (const tier of b) {
-          const okRating = tier.rating === 0 || (d.avgRating ?? 0) >= tier.rating
-          if ((d.deliveredCourses ?? 0) >= tier.courses && (d.referralCount ?? 0) >= tier.referrals && okRating) {
+          if (driverBadgeMatches(tier, d.deliveredCourses ?? 0, d.referralCount ?? 0, d.avgRating ?? 0)) {
             matchedTier = tier.tier
             break
           }
@@ -271,28 +286,55 @@ function DriverBadgesTab() {
 //  MODAL : édition des seuils de badges livreurs (SUPER uniquement)
 // ══════════════════════════════════════════════════════════════════════════════
 function EditBadgeTiersModal({ tiers, onClose, onSaved }) {
-  const [rows, setRows]     = useState(tiers.map(t => ({ ...t })))
-  const [saving, setSaving] = useState(false)
-  const [error, setError]   = useState('')
+  const [rows, setRows]         = useState(tiers.map(t => ({ ...t, criteria: (t.criteria ?? []).map(c => ({ ...c })) })))
+  const [selectedTier, setSelectedTier] = useState(tiers[0]?.tier ?? null)
+  const [saving, setSaving]     = useState(false)
+  const [error, setError]       = useState('')
+
+  const selected = rows.find(r => r.tier === selectedTier) ?? null
 
   function setField(tier, key, value) {
     setRows(rs => rs.map(r => r.tier === tier ? { ...r, [key]: value } : r))
+  }
+
+  function setCriteriaField(tier, idx, key, value) {
+    setRows(rs => rs.map(r => r.tier !== tier ? r : {
+      ...r,
+      criteria: r.criteria.map((c, i) => i === idx ? { ...c, [key]: value } : c),
+    }))
+  }
+
+  function addCriteriaRow(tier) {
+    setRows(rs => rs.map(r => r.tier !== tier ? r : {
+      ...r,
+      criteria: [...r.criteria, { courses: 0, referrals: 0, rating: 0 }],
+    }))
+  }
+
+  function removeCriteriaRow(tier, idx) {
+    setRows(rs => rs.map(r => r.tier !== tier ? r : {
+      ...r,
+      criteria: r.criteria.filter((_, i) => i !== idx),
+    }))
   }
 
   async function save() {
     setError('')
     for (const r of rows) {
       if (!r.name?.trim()) { setError('Le nom de chaque palier est requis.'); return }
-      if (r.courses === '' || Number.isNaN(Number(r.courses)) || Number(r.courses) < 0) { setError(`Nombre de courses invalide pour ${r.name}.`); return }
-      if (r.referrals === '' || Number.isNaN(Number(r.referrals)) || Number(r.referrals) < 0) { setError(`Nombre de parrainages invalide pour ${r.name}.`); return }
-      if (r.rating === '' || Number.isNaN(Number(r.rating)) || Number(r.rating) < 0 || Number(r.rating) > 5) { setError(`Note minimale invalide pour ${r.name} (0 à 5).`); return }
+      if (r.criteria.length === 0) { setError(`${r.name} doit avoir au moins une ligne de critères.`); return }
+      for (const c of r.criteria) {
+        if (c.courses === '' || Number.isNaN(Number(c.courses)) || Number(c.courses) < 0) { setError(`Nombre de courses invalide pour ${r.name}.`); return }
+        if (c.referrals === '' || Number.isNaN(Number(c.referrals)) || Number(c.referrals) < 0) { setError(`Nombre de parrainages invalide pour ${r.name}.`); return }
+        if (c.rating === '' || Number.isNaN(Number(c.rating)) || Number(c.rating) < 0 || Number(c.rating) > 5) { setError(`Note minimale invalide pour ${r.name} (0 à 5).`); return }
+      }
     }
 
     setSaving(true)
     try {
       const badges = rows.map(r => ({
-        tier: r.tier, name: r.name.trim(), emoji: r.emoji,
-        courses: Number(r.courses), referrals: Number(r.referrals), rating: Number(r.rating),
+        tier: r.tier, name: r.name.trim(), emoji: r.emoji, advantage: r.advantage ?? '',
+        criteria: r.criteria.map(c => ({ courses: Number(c.courses), referrals: Number(c.referrals), rating: Number(c.rating) })),
       }))
       await api.put('/admin/badges/config', { badges })
       onSaved()
@@ -305,45 +347,85 @@ function EditBadgeTiersModal({ tiers, onClose, onSaved }) {
 
   return (
     <div style={overlay} onClick={onClose}>
-      <div style={{ ...glass, width: 820, maxWidth: '95vw', padding: 0, borderRadius: 16, overflow: 'hidden', maxHeight: '90vh', display: 'flex', flexDirection: 'column' }} onClick={e => e.stopPropagation()}>
+      <div style={{ ...glass, width: 880, maxWidth: '95vw', padding: 0, borderRadius: 16, overflow: 'hidden', maxHeight: '90vh', display: 'flex', flexDirection: 'column' }} onClick={e => e.stopPropagation()}>
         <div style={{ padding: '20px 24px 16px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <h2 style={{ fontSize: 16, fontWeight: 700, margin: 0 }}>Modifier les seuils de badges livreurs</h2>
+          <div>
+            <h2 style={{ fontSize: 16, fontWeight: 700, margin: 0 }}>Modifier les seuils de badges livreurs</h2>
+            <p style={{ fontSize: 11, color: 'var(--text-muted)', margin: '4px 0 0' }}>Choisissez un badge, ajustez ses seuils, puis passez au suivant. Un badge est validé dès qu'UNE ligne de critères est entièrement remplie.</p>
+          </div>
           <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', display: 'flex' }}><X size={18} /></button>
         </div>
 
-        <div style={{ padding: '16px 24px', overflowY: 'auto', flex: 1 }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-            <thead>
-              <tr>
-                {['Emoji', 'Nom', 'Courses min.', 'Parrainages min.', 'Note min.'].map(h => (
-                  <th key={h} style={{ textAlign: 'left', padding: '6px 8px', color: 'var(--text-muted)', fontSize: 11, fontWeight: 700, borderBottom: '1px solid rgba(0,119,182,.12)' }}>{h}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {rows.map(r => (
-                <tr key={r.tier} style={{ borderBottom: '1px solid var(--border)' }}>
-                  <td style={{ padding: '6px 8px', width: 60 }}>
-                    <input value={r.emoji} onChange={e => setField(r.tier, 'emoji', e.target.value)} style={{ ...rowInput, textAlign: 'center', fontSize: 18 }} />
-                  </td>
-                  <td style={{ padding: '6px 8px' }}>
-                    <input value={r.name} onChange={e => setField(r.tier, 'name', e.target.value)} style={rowInput} />
-                  </td>
-                  <td style={{ padding: '6px 8px', width: 110 }}>
-                    <input type="number" min="0" value={r.courses} onChange={e => setField(r.tier, 'courses', e.target.value)} style={rowInput} />
-                  </td>
-                  <td style={{ padding: '6px 8px', width: 130 }}>
-                    <input type="number" min="0" value={r.referrals} onChange={e => setField(r.tier, 'referrals', e.target.value)} style={rowInput} />
-                  </td>
-                  <td style={{ padding: '6px 8px', width: 100 }}>
-                    <input type="number" min="0" max="5" step="0.1" value={r.rating} onChange={e => setField(r.tier, 'rating', e.target.value)} style={rowInput} />
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+        <div style={{ display: 'flex', flex: 1, minHeight: 0 }}>
+          {/* Sélecteur de badge */}
+          <div style={{ width: 180, flexShrink: 0, borderRight: '1px solid var(--border)', overflowY: 'auto', padding: 10, display: 'flex', flexDirection: 'column', gap: 4 }}>
+            {rows.map(r => (
+              <button
+                key={r.tier}
+                onClick={() => setSelectedTier(r.tier)}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: 8, padding: '8px 10px', borderRadius: 8,
+                  border: 'none', textAlign: 'left', cursor: 'pointer', fontSize: 13, fontWeight: r.tier === selectedTier ? 700 : 500,
+                  background: r.tier === selectedTier ? 'rgba(0,119,182,.12)' : 'transparent',
+                  color: r.tier === selectedTier ? 'var(--primary)' : 'var(--text)',
+                }}
+              >
+                <span style={{ fontSize: 16 }}>{r.emoji}</span>
+                <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.name || 'Sans nom'}</span>
+              </button>
+            ))}
+          </div>
 
-          {error && <div style={{ fontSize: 12, color: 'var(--danger)', background: 'rgba(239,68,68,.08)', borderRadius: 6, padding: '8px 12px', marginTop: 14 }}>{error}</div>}
+          {/* Formulaire du badge sélectionné */}
+          <div style={{ flex: 1, padding: '16px 24px', overflowY: 'auto' }}>
+            {selected && (
+              <div>
+                <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 14 }}>
+                  <input value={selected.emoji} onChange={e => setField(selected.tier, 'emoji', e.target.value)} style={{ ...rowInput, width: 48, textAlign: 'center', fontSize: 18, flex: 'none' }} />
+                  <input value={selected.name} onChange={e => setField(selected.tier, 'name', e.target.value)} style={{ ...rowInput, width: 180, fontWeight: 700, flex: 'none' }} placeholder="Nom du badge" />
+                  <input value={selected.advantage ?? ''} onChange={e => setField(selected.tier, 'advantage', e.target.value)} style={rowInput} placeholder="Avantage affiché (ex : Priorité sur les courses)" />
+                </div>
+
+                <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                  <thead>
+                    <tr>
+                      {['Courses min.', 'Parrainages min.', 'Note min.', ''].map(h => (
+                        <th key={h} style={{ textAlign: 'left', padding: '4px 8px', color: 'var(--text-muted)', fontSize: 10, fontWeight: 700, borderBottom: '1px solid rgba(0,119,182,.12)' }}>{h}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {selected.criteria.map((c, idx) => (
+                      <tr key={idx} style={{ borderBottom: idx < selected.criteria.length - 1 ? '1px solid var(--border)' : 'none' }}>
+                        <td style={{ padding: '6px 8px', width: 130 }}>
+                          <input type="number" min="0" value={c.courses} onChange={e => setCriteriaField(selected.tier, idx, 'courses', e.target.value)} style={rowInput} />
+                        </td>
+                        <td style={{ padding: '6px 8px', width: 150 }}>
+                          <input type="number" min="0" value={c.referrals} onChange={e => setCriteriaField(selected.tier, idx, 'referrals', e.target.value)} style={rowInput} />
+                        </td>
+                        <td style={{ padding: '6px 8px', width: 110 }}>
+                          <input type="number" min="0" max="5" step="0.1" value={c.rating} onChange={e => setCriteriaField(selected.tier, idx, 'rating', e.target.value)} style={rowInput} />
+                        </td>
+                        <td style={{ padding: '6px 8px', width: 36 }}>
+                          {selected.criteria.length > 1 && (
+                            <button onClick={() => removeCriteriaRow(selected.tier, idx)} title="Supprimer cette alternative" style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--danger)', display: 'flex' }}>
+                              <X size={14} />
+                            </button>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+
+                <button onClick={() => addCriteriaRow(selected.tier)} style={{ ...btnOutline, marginTop: 10, fontSize: 12, padding: '5px 10px' }}>
+                  + Ajouter un chemin alternatif (OU)
+                </button>
+              </div>
+            )}
+
+            {error && <div style={{ fontSize: 12, color: 'var(--danger)', background: 'rgba(239,68,68,.08)', borderRadius: 6, padding: '8px 12px', marginTop: 16 }}>{error}</div>}
+          </div>
         </div>
 
         <div style={{ padding: '16px 24px', borderTop: '1px solid var(--border)', display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
