@@ -33,44 +33,37 @@ function driverBadgeMatches(tier, courses, referrals, rating) {
 // — indépendant de l'ordre renvoyé par /admin/badges/config.
 const DRIVER_TIER_ORDER = ['xarit', 'mbokk', 'doorWarr', 'domouNdey', 'buur', 'gainde']
 
-// Chemins nommés fixes (commandeur/parrain/équilibre) — seuls leurs seuils numériques
-// sont éditables depuis l'admin, la structure des paths ne change pas.
+// Chaque badge peut être atteint par plusieurs lignes de critères alternatives
+// (OR entre les lignes, AND entre les critères d'une même ligne) — même principe
+// que les badges livreur.
 const DEFAULT_CLIENT_TIERS = [
-  { id: 'vip', name: 'DEM VIP', paths: {
-    commandeur: { courses: 200, referrals: 12, rating: 4.5 },
-    parrain:    { courses: 55,  referrals: 65, rating: 4.5 },
-    equilibre:  { courses: 130, referrals: 50, rating: 4.5 },
-  } },
-  { id: 'buur', name: 'DEM Buur', paths: {
-    commandeur: { courses: 130, referrals: 8,  rating: 4.2 },
-    parrain:    { courses: 38,  referrals: 40, rating: 4.2 },
-    equilibre:  { courses: 85,  referrals: 28, rating: 4.2 },
-  } },
-  { id: 'djambar', name: 'DEM Djambar', paths: {
-    commandeur: { courses: 85, referrals: 5,  rating: 4.0 },
-    parrain:    { courses: 25, referrals: 25, rating: 4.0 },
-    equilibre:  { courses: 50, referrals: 15, rating: 4.0 },
-  } },
-  { id: 'mbokk', name: 'DEM Mbokk', requiresValidation: true, paths: {
-    commandeur: { courses: 50, referrals: 6,  profileComplete: true },
-    parrain:    { courses: 18, referrals: 16, profileComplete: true },
-    equilibre:  { courses: 25, referrals: 10, profileComplete: true },
-  } },
-  { id: 'xarit', name: 'DEM Xarit', paths: {
-    commandeur: { courses: 12, referrals: 3 },
-    parrain:    { courses: 5,  referrals: 4 },
-    equilibre:  { courses: 7,  referrals: 4 },
-  } },
-  { id: 'classic', name: 'DEM Classic', paths: {
-    commandeur: { courses: 1, referrals: 0 },
-  } },
+  { id: 'vip', name: 'DEM VIP', criteria: [
+    { courses: 200, referrals: 12, rating: 4.5 },
+    { courses: 55,  referrals: 65, rating: 4.5 },
+    { courses: 130, referrals: 50, rating: 4.5 },
+  ] },
+  { id: 'buur', name: 'DEM Buur', criteria: [
+    { courses: 130, referrals: 8,  rating: 4.2 },
+    { courses: 38,  referrals: 40, rating: 4.2 },
+    { courses: 85,  referrals: 28, rating: 4.2 },
+  ] },
+  { id: 'djambar', name: 'DEM Djambar', criteria: [
+    { courses: 85, referrals: 5,  rating: 4.0 },
+    { courses: 25, referrals: 25, rating: 4.0 },
+    { courses: 50, referrals: 15, rating: 4.0 },
+  ] },
+  { id: 'mbokk', name: 'DEM Mbokk', requiresValidation: true, criteria: [
+    { courses: 50, referrals: 6,  profileComplete: true },
+    { courses: 18, referrals: 16, profileComplete: true },
+    { courses: 25, referrals: 10, profileComplete: true },
+  ] },
+  { id: 'xarit', name: 'DEM Xarit', criteria: [
+    { courses: 12, referrals: 3 },
+    { courses: 5,  referrals: 4 },
+    { courses: 7,  referrals: 4 },
+  ] },
+  { id: 'classic', name: 'DEM Classic', criteria: [{ courses: 1, referrals: 0 }] },
 ]
-
-const CLIENT_PATH_LABELS = {
-  commandeur: 'Commandeur (via courses)',
-  parrain:    'Parrain (via parrainages)',
-  equilibre:  'Équilibre (mix courses/parrainages)',
-}
 
 const CLIENT_VISUALS = {
   classic: { emoji: '✅', color: '#00838F', bg: 'rgba(0,131,143,.08)', border: 'rgba(0,131,143,.25)',  name: 'DEM Classic' },
@@ -506,42 +499,60 @@ function EditBadgeTiersModal({ tiers, onClose, onSaved }) {
 //  numériques (courses/parrainages/note) sont éditables.
 // ══════════════════════════════════════════════════════════════════════════════
 function EditClientBadgeTiersModal({ tiers, onClose, onSaved }) {
-  const [rows, setRows]     = useState(tiers.map(t => ({
-    ...t,
-    paths: Object.fromEntries(Object.entries(t.paths).map(([k, c]) => [k, { ...c }])),
-  })))
+  const [rows, setRows]     = useState(tiers.map(t => ({ ...t, criteria: (t.criteria ?? []).map(c => ({ ...c })) })))
   const [selectedTier, setSelectedTier] = useState(tiers[0]?.id ?? null)
   const [saving, setSaving] = useState(false)
   const [error, setError]   = useState('')
 
   const selected = rows.find(r => r.id === selectedTier) ?? null
 
-  function setPathField(tierId, pathKey, field, value) {
+  function setCriteriaField(tierId, idx, field, value) {
     setRows(rs => rs.map(r => r.id !== tierId ? r : {
       ...r,
-      paths: { ...r.paths, [pathKey]: { ...r.paths[pathKey], [field]: value } },
+      criteria: r.criteria.map((c, i) => i === idx ? { ...c, [field]: value } : c),
+    }))
+  }
+
+  function toggleProfileComplete(tierId, idx) {
+    setRows(rs => rs.map(r => r.id !== tierId ? r : {
+      ...r,
+      criteria: r.criteria.map((c, i) => i === idx ? { ...c, profileComplete: !c.profileComplete } : c),
+    }))
+  }
+
+  function addCriteriaRow(tierId) {
+    setRows(rs => rs.map(r => r.id !== tierId ? r : {
+      ...r,
+      criteria: [...r.criteria, { courses: 0, referrals: 0, rating: 0 }],
+    }))
+  }
+
+  function removeCriteriaRow(tierId, idx) {
+    setRows(rs => rs.map(r => r.id !== tierId ? r : {
+      ...r,
+      criteria: r.criteria.filter((_, i) => i !== idx),
     }))
   }
 
   async function save() {
     setError('')
     for (const r of rows) {
-      for (const [pathKey, c] of Object.entries(r.paths)) {
-        if (c.courses === '' || Number.isNaN(Number(c.courses)) || Number(c.courses) < 0) { setError(`Nombre de courses invalide pour ${r.name} (${CLIENT_PATH_LABELS[pathKey] ?? pathKey}).`); return }
-        if (c.referrals === '' || Number.isNaN(Number(c.referrals)) || Number(c.referrals) < 0) { setError(`Nombre de parrainages invalide pour ${r.name} (${CLIENT_PATH_LABELS[pathKey] ?? pathKey}).`); return }
-        if (c.rating !== undefined && (Number.isNaN(Number(c.rating)) || Number(c.rating) < 0 || Number(c.rating) > 5)) { setError(`Note minimale invalide pour ${r.name} (${CLIENT_PATH_LABELS[pathKey] ?? pathKey}).`); return }
+      if (r.criteria.length === 0) { setError(`${r.name} doit avoir au moins une ligne de critères.`); return }
+      for (const c of r.criteria) {
+        if (c.courses === '' || Number.isNaN(Number(c.courses)) || Number(c.courses) < 0) { setError(`Nombre de courses invalide pour ${r.name}.`); return }
+        if (c.referrals === '' || Number.isNaN(Number(c.referrals)) || Number(c.referrals) < 0) { setError(`Nombre de parrainages invalide pour ${r.name}.`); return }
+        if (c.rating === '' || Number.isNaN(Number(c.rating)) || Number(c.rating) < 0 || Number(c.rating) > 5) { setError(`Note minimale invalide pour ${r.name} (0 à 5).`); return }
       }
     }
 
     setSaving(true)
     try {
       const payload = rows.map(r => ({
-        id: r.id,
-        name: r.name,
-        paths: Object.fromEntries(Object.entries(r.paths).map(([k, c]) => [k, {
-          courses: Number(c.courses), referrals: Number(c.referrals),
-          ...(c.rating !== undefined ? { rating: Number(c.rating) } : {}),
-        }])),
+        id: r.id, name: r.name,
+        criteria: r.criteria.map(c => ({
+          courses: Number(c.courses), referrals: Number(c.referrals), rating: Number(c.rating),
+          ...(c.profileComplete ? { profileComplete: true } : {}),
+        })),
       }))
       await api.put('/admin/client-badges/config', { tiers: payload })
       onSaved()
@@ -554,11 +565,11 @@ function EditClientBadgeTiersModal({ tiers, onClose, onSaved }) {
 
   return (
     <div style={overlay} onClick={onClose}>
-      <div style={{ ...glass, width: 880, maxWidth: '95vw', padding: 0, borderRadius: 16, overflow: 'hidden', maxHeight: '90vh', display: 'flex', flexDirection: 'column' }} onClick={e => e.stopPropagation()}>
+      <div style={{ ...glass, width: 920, maxWidth: '95vw', padding: 0, borderRadius: 16, overflow: 'hidden', maxHeight: '90vh', display: 'flex', flexDirection: 'column' }} onClick={e => e.stopPropagation()}>
         <div style={{ padding: '20px 24px 16px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <div>
             <h2 style={{ fontSize: 16, fontWeight: 700, margin: 0 }}>Modifier les seuils de badges clients</h2>
-            <p style={{ fontSize: 11, color: 'var(--text-muted)', margin: '4px 0 0' }}>Choisissez un badge, ajustez les 3 chemins (commandeur/parrain/équilibre), puis passez au suivant. Un badge est validé dès qu'UN chemin est entièrement rempli.</p>
+            <p style={{ fontSize: 11, color: 'var(--text-muted)', margin: '4px 0 0' }}>Un badge est validé dès qu'UNE ligne de critères est entièrement remplie. Ajoutez plusieurs lignes pour proposer des chemins alternatifs.</p>
           </div>
           <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', display: 'flex' }}><X size={18} /></button>
         </div>
@@ -598,35 +609,41 @@ function EditClientBadgeTiersModal({ tiers, onClose, onSaved }) {
                 <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                   <thead>
                     <tr>
-                      {['Chemin', 'Courses min.', 'Parrainages min.', 'Note min.'].map(h => (
+                      {['Courses min.', 'Parrainages min.', 'Note min.', 'Profil complet', ''].map(h => (
                         <th key={h} style={{ textAlign: 'left', padding: '4px 8px', color: 'var(--text-muted)', fontSize: 10, fontWeight: 700, borderBottom: '1px solid rgba(0,119,182,.12)' }}>{h}</th>
                       ))}
                     </tr>
                   </thead>
                   <tbody>
-                    {Object.entries(selected.paths).map(([pathKey, c], idx, arr) => (
-                      <tr key={pathKey} style={{ borderBottom: idx < arr.length - 1 ? '1px solid var(--border)' : 'none' }}>
-                        <td style={{ padding: '6px 8px', fontSize: 12, color: 'var(--text-muted)' }}>
-                          {CLIENT_PATH_LABELS[pathKey] ?? pathKey}
-                          {c.profileComplete && <div style={{ fontSize: 10, marginTop: 2 }}>+ profil complet</div>}
-                        </td>
+                    {selected.criteria.map((c, idx) => (
+                      <tr key={idx} style={{ borderBottom: idx < selected.criteria.length - 1 ? '1px solid var(--border)' : 'none' }}>
                         <td style={{ padding: '6px 8px', width: 120 }}>
-                          <input type="number" min="0" value={c.courses} onChange={e => setPathField(selected.id, pathKey, 'courses', e.target.value)} style={rowInput} />
+                          <input type="number" min="0" value={c.courses} onChange={e => setCriteriaField(selected.id, idx, 'courses', e.target.value)} style={rowInput} />
                         </td>
                         <td style={{ padding: '6px 8px', width: 140 }}>
-                          <input type="number" min="0" value={c.referrals} onChange={e => setPathField(selected.id, pathKey, 'referrals', e.target.value)} style={rowInput} />
+                          <input type="number" min="0" value={c.referrals} onChange={e => setCriteriaField(selected.id, idx, 'referrals', e.target.value)} style={rowInput} />
                         </td>
                         <td style={{ padding: '6px 8px', width: 100 }}>
-                          {c.rating !== undefined ? (
-                            <input type="number" min="0" max="5" step="0.1" value={c.rating} onChange={e => setPathField(selected.id, pathKey, 'rating', e.target.value)} style={rowInput} />
-                          ) : (
-                            <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>—</span>
+                          <input type="number" min="0" max="5" step="0.1" value={c.rating} onChange={e => setCriteriaField(selected.id, idx, 'rating', e.target.value)} style={rowInput} />
+                        </td>
+                        <td style={{ padding: '6px 8px', width: 90, textAlign: 'center' }}>
+                          <input type="checkbox" checked={!!c.profileComplete} onChange={() => toggleProfileComplete(selected.id, idx)} style={{ width: 16, height: 16, cursor: 'pointer' }} />
+                        </td>
+                        <td style={{ padding: '6px 8px', width: 36 }}>
+                          {selected.criteria.length > 1 && (
+                            <button onClick={() => removeCriteriaRow(selected.id, idx)} title="Supprimer cette alternative" style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--danger)', display: 'flex' }}>
+                              <X size={14} />
+                            </button>
                           )}
                         </td>
                       </tr>
                     ))}
                   </tbody>
                 </table>
+
+                <button onClick={() => addCriteriaRow(selected.id)} style={{ ...btnOutline, marginTop: 10, fontSize: 12, padding: '5px 10px' }}>
+                  + Ajouter un chemin alternatif (OU)
+                </button>
               </div>
             )}
 
