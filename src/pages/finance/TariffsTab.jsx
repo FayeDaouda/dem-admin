@@ -69,10 +69,41 @@ function ProposeForm({ fields, onSubmit, submitting }) {
   )
 }
 
+function GatingToggle({ active, onToggle, toggling }) {
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 14, padding: '12px 14px', background: 'var(--surface2)', borderRadius: 10 }}>
+      <div>
+        <div style={{ fontWeight: 600, fontSize: 13, marginBottom: 2 }}>Bloquer la mise en ligne sans passe payée</div>
+        <div style={{ color: 'var(--text-muted)', fontSize: 11.5, maxWidth: 420 }}>
+          {active
+            ? 'Actif — un livreur ne peut passer en ligne que s\'il a payé sa passe du jour.'
+            : 'Désactivé — accès libre, comme aujourd\'hui (aucun blocage à la mise en ligne).'}
+        </div>
+      </div>
+      <button
+        onClick={onToggle}
+        disabled={toggling}
+        style={{
+          width: 48, height: 26, borderRadius: 13, border: 'none', cursor: toggling ? 'wait' : 'pointer',
+          background: active ? 'var(--primary)' : 'rgba(0,0,0,.15)',
+          position: 'relative', transition: 'background .2s', opacity: toggling ? 0.6 : 1, flexShrink: 0,
+        }}
+      >
+        <span style={{
+          position: 'absolute', top: 3, left: active ? 24 : 3,
+          width: 20, height: 20, borderRadius: '50%', background: '#fff',
+          transition: 'left .2s', boxShadow: '0 1px 3px rgba(0,0,0,.2)',
+        }} />
+      </button>
+    </div>
+  )
+}
+
 export default function TariffsTab() {
   const [data, setData] = useState(null)
   const [loading, setLoading] = useState(true)
   const [submitting, setSubmitting] = useState(false)
+  const [togglingGating, setTogglingGating] = useState(false)
   const [error, setError] = useState('')
   const [history, setHistory] = useState(null)
   const [historyLoading, setHistoryLoading] = useState(true)
@@ -105,6 +136,20 @@ export default function TariffsTab() {
     } catch (e) {
       setError(e.response?.data?.message ?? 'Erreur.')
     } finally { setSubmitting(false) }
+  }
+
+  // Appliqué immédiatement (pas de flux de proposition/validation) — déjà
+  // restreint au rôle super admin côté serveur (PUT /admin/forfait/config),
+  // et un simple interrupteur ON/OFF ne justifie pas un aller-retour de
+  // validation comme les montants tarifaires.
+  async function toggleDispatchGating() {
+    setTogglingGating(true); setError('')
+    try {
+      await api.put('/admin/forfait/config', { dispatchGatingActive: !data.forfait.dispatchGatingActive })
+      await load()
+    } catch (e) {
+      setError(e.response?.data?.message ?? 'Erreur.')
+    } finally { setTogglingGating(false) }
   }
 
   if (loading || !data) return <div style={{ color: 'var(--text-muted)', padding: 20 }}>Chargement…</div>
@@ -149,6 +194,11 @@ export default function TariffsTab() {
             const changes = Object.fromEntries(Object.entries(values).filter(([, v]) => v !== '').map(([k, v]) => [k, Number(v)]))
             return submitProposal('forfait', changes, reason)
           }}
+        />
+        <GatingToggle
+          active={data.forfait.dispatchGatingActive}
+          onToggle={toggleDispatchGating}
+          toggling={togglingGating}
         />
       </Section>
 
