@@ -66,6 +66,71 @@ export default function Config() {
   )
 }
 
+// ── Section "Pass livreurs" — endpoint dédié /admin/forfait/config, pas
+// /admin/config (qui parseFloat() toutes les valeurs, incompatible avec un
+// booléen — voir admin.config.service.js) ──────────────────────────────────
+function PassGatingSection() {
+  const [active,   setActive]   = useState(false)
+  const [loading,  setLoading]  = useState(true)
+  const [toggling, setToggling] = useState(false)
+  const [saved,    setSaved]    = useState(false)
+
+  const load = useCallback(async () => {
+    setLoading(true)
+    try {
+      const res = await api.get('/admin/forfait/config')
+      setActive(res.data.dispatchGatingActive ?? false)
+    } catch (e) { console.error(e) }
+    finally { setLoading(false) }
+  }, [])
+
+  useEffect(() => { load() }, [load])
+
+  async function handleToggle() {
+    setToggling(true)
+    try {
+      await api.put('/admin/forfait/config', { dispatchGatingActive: !active })
+      setActive(a => !a)
+      setSaved(true)
+      setTimeout(() => setSaved(false), 2000)
+    } catch (e) {
+      alert(e.response?.data?.message ?? 'Erreur lors de la sauvegarde.')
+    } finally { setToggling(false) }
+  }
+
+  if (loading) return null
+
+  return (
+    <div style={{ ...glass, padding: '20px 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+      <div>
+        <div style={{ fontWeight: 600, marginBottom: 4 }}>
+          Pass livreurs — bloquer la mise en ligne sans passe payée {saved && <span style={{ color: 'var(--primary)', fontSize: 11, fontWeight: 700 }}>· Enregistré ✓</span>}
+        </div>
+        <div style={{ color: 'var(--text-muted)', fontSize: 12, maxWidth: 480 }}>
+          {active
+            ? 'Actif — un livreur ne peut passer en ligne que s\'il a payé sa passe du jour.'
+            : 'Désactivé — accès libre, comme aujourd\'hui (aucun blocage à la mise en ligne).'}
+        </div>
+      </div>
+      <button
+        onClick={handleToggle}
+        disabled={toggling}
+        style={{
+          width: 48, height: 26, borderRadius: 13, border: 'none', cursor: toggling ? 'wait' : 'pointer',
+          background: active ? 'var(--primary)' : 'rgba(0,0,0,.15)',
+          position: 'relative', transition: 'background .2s', opacity: toggling ? 0.6 : 1, flexShrink: 0,
+        }}
+      >
+        <span style={{
+          position: 'absolute', top: 3, left: active ? 24 : 3,
+          width: 20, height: 20, borderRadius: '50%', background: '#fff',
+          transition: 'left .2s', boxShadow: '0 1px 3px rgba(0,0,0,.2)',
+        }} />
+      </button>
+    </div>
+  )
+}
+
 // ── Tab Tarifs ────────────────────────────────────────────────────────────────
 function TarifsTab() {
   const navigate = useNavigate()
@@ -137,6 +202,8 @@ function TarifsTab() {
               </div>
             </div>
           ))}
+
+          <PassGatingSection />
 
           {/* Simulation — utilise la grille configurée */}
           <div style={{ ...glass, padding: '20px 24px' }}>
