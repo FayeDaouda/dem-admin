@@ -32,6 +32,7 @@ export default function SamirpayTab() {
   const [health, setHealth]     = useState(null)
   const [manualReview, setManualReview] = useState(null)
   const [orphans, setOrphans]           = useState(null)
+  const [collections, setCollections]   = useState(null)
   const [loading, setLoading]           = useState(true)
   const [range, setRange] = useState({ from: isoDaysAgo(0), to: isoDaysAgo(0) })
   const [exporting, setExporting] = useState(false)
@@ -39,14 +40,16 @@ export default function SamirpayTab() {
   const load = useCallback(async () => {
     setLoading(true)
     try {
-      const [cfgRes, reviewRes, orphansRes] = await Promise.all([
+      const [cfgRes, reviewRes, orphansRes, collectionsRes] = await Promise.all([
         api.get('/admin/samirpay/config'),
         api.get('/admin/samirpay/manual-review'),
         api.get('/admin/samirpay/orphans'),
+        api.get('/admin/samirpay/collections-by-operator'),
       ])
       setConfig(cfgRes.data)
       setManualReview(reviewRes.data.cashouts ?? [])
       setOrphans(orphansRes.data)
+      setCollections(collectionsRes.data?.byOperator ?? null)
       // Le solde SamirPay n'est interrogeable que si le paiement en ligne
       // est actif (sinon 503, voir samirpay.service.js:_assertActive) — pas
       // une erreur à afficher, juste une donnée indisponible pour l'instant.
@@ -166,6 +169,29 @@ export default function SamirpayTab() {
           )}
         </div>
       )}
+
+      {/* Collecté par opérateur */}
+      <div style={{ ...glass, padding: '18px 20px' }}>
+        <h2 style={{ fontSize: 14, fontWeight: 600, marginBottom: 4 }}>Collecté par opérateur</h2>
+        <p style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 14 }}>
+          Recharges livreur + paiements de commande confirmés en ligne, toutes plateformes confondues.
+        </p>
+        {!collections ? (
+          <div style={{ color: 'var(--text-muted)', fontSize: 12 }}>Chargement…</div>
+        ) : (
+          <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap' }}>
+            {['WAVE', 'ORANGE_MONEY'].map(op => (
+              <div key={op} style={{ flex: '1 1 220px', padding: '12px 14px', borderRadius: 'var(--radius-sm)', background: 'rgba(0,119,182,0.06)' }}>
+                <div style={{ fontSize: 12, fontWeight: 700, marginBottom: 8 }}>{PM_LABELS[op]}</div>
+                <div style={{ fontSize: 22, fontWeight: 800 }}>{collections[op].total.toLocaleString()} F</div>
+                <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 4 }}>
+                  Recharges : {collections[op].topups.toLocaleString()} F · Commandes : {collections[op].deliveries.toLocaleString()} F
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
 
       {/* Retraits en attente de vérification manuelle */}
       <div style={{ ...glass, padding: '18px 20px' }}>
