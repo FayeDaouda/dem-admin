@@ -26,6 +26,8 @@ export default function Orders() {
   const [redispatching, setRedispatching] = useState(false)
   const [driverPicker, setDriverPicker]   = useState(null) // { drivers, loading, error } quand ouvert
   const [assigning, setAssigning]         = useState(false)
+  const [cancelReasons, setCancelReasons] = useState(null) // liste { code, label }, chargée une fois
+  const [cancelPicker, setCancelPicker]   = useState(null) // { orderId, code, note } quand ouvert
 
   const openDriverPicker = async (order) => {
     setDriverPicker({ drivers: [], loading: true, error: null })
@@ -94,11 +96,29 @@ export default function Orders() {
     }
   }
 
-  const cancelOrder = async (id) => {
-    if (!window.confirm('Annuler cette commande ?')) return
+  // Le motif d'annulation détermine le message envoyé au client/livreur —
+  // toujours choisi dans une liste préparée par le backend (jamais de texte
+  // libre affiché tel quel), voir dem-backend/admin-cancel-reasons.js.
+  const openCancelPicker = async (orderId) => {
+    setCancelPicker({ orderId, code: '', note: '' })
+    if (cancelReasons) return
+    try {
+      const res = await api.get('/admin/orders/cancel-reasons')
+      setCancelReasons(res.data?.reasons ?? [])
+    } catch {
+      setCancelReasons([])
+    }
+  }
+
+  const confirmCancelOrder = async () => {
+    if (!cancelPicker?.code) return
     setCancelling(true)
     try {
-      await api.patch(`/admin/orders/${id}/cancel`, { reason: 'Annulé par admin' })
+      await api.patch(`/admin/orders/${cancelPicker.orderId}/cancel`, {
+        reasonCode: cancelPicker.code,
+        note: cancelPicker.note || undefined,
+      })
+      setCancelPicker(null)
       setDetail(null)
       fetch()
     } catch (e) {
@@ -216,7 +236,7 @@ export default function Orders() {
                   <td style={tdStyle}>{clientDisplayName(o.client, o.clientName, o.clientPhone)}</td>
                   <td style={tdStyle}>{firstNonEmpty(o.driver?.name, o.driver?.phone)}</td>
                   <td style={{ ...tdStyle, fontWeight: 600 }}>{o.price?.toLocaleString()} F</td>
-                  <td style={tdStyle}><Badge status={o.paymentStatus ?? 'PENDING'} /></td>
+                  <td style={tdStyle}>{o.status === 'CANCELLED' ? '—' : <Badge status={o.paymentStatus ?? 'PENDING'} />}</td>
                   <td style={{ ...tdStyle, color: 'var(--text-muted)', fontSize: 12 }}>
                     {o.createdAt ? new Date(o.createdAt).toLocaleString('fr-FR', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '—'}
                   </td>
@@ -237,7 +257,7 @@ export default function Orders() {
               <Row label="ID"            value={<code>{detail.id}</code>} />
               <Row label="Type"          value={<Badge status={detail.orderType} />} />
               <Row label="Statut"        value={<Badge status={detail.status} />} />
-              <Row label="Paiement"      value={<Badge status={detail.paymentStatus ?? 'PENDING'} />} />
+              <Row label="Paiement"      value={detail.status === 'CANCELLED' ? '—' : <Badge status={detail.paymentStatus ?? 'PENDING'} />} />
               <Row label="Client"        value={clientDisplayName(detail.client, detail.clientName, detail.clientPhone)} />
               <Row label="Tél. client"   value={firstNonEmpty(detail.client?.phone, detail.clientPhone)} />
               <Row label="Livreur"       value={firstNonEmpty(detail.driver?.name, detail.driver?.phone)} />
@@ -274,11 +294,10 @@ export default function Orders() {
                 )}
                 {!isFinance && !['DELIVERED', 'CANCELLED'].includes(detail.status) && (
                   <button
-                    onClick={() => cancelOrder(detail.id)}
-                    disabled={cancelling}
+                    onClick={() => openCancelPicker(detail.id)}
                     style={{ ...btnOutline, color: '#e53e3e', borderColor: '#e53e3e', background: 'rgba(229,62,62,0.08)' }}
                   >
-                    {cancelling ? 'Annulation…' : '✕ Annuler'}
+                    ✕ Annuler
                   </button>
                 )}
                 {detail.status === 'DELIVERED' && detail.paymentStatus === 'PENDING' && (
@@ -352,6 +371,58 @@ export default function Orders() {
             <div style={{ marginTop: 20, display: 'flex', justifyContent: 'flex-end' }}>
               <button onClick={() => setDriverPicker(null)} disabled={assigning} style={btnOutline}>
                 {assigning ? 'Attribution…' : 'Annuler'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Motif d'annulation — obligatoire, jamais de texte libre envoyé au client/livreur */}
+      {cancelPicker && (
+        <div style={{ ...overlay, zIndex: 120 }} onClick={() => !cancelling && setCancelPicker(null)}>
+          <div style={{ ...modalBox, width: 460 }} onClick={e => e.stopPropagation()}>
+            <h2 style={{ marginBottom: 4, fontSize: 16 }}>Annuler la commande</h2>
+            <p style={{ marginBottom: 16, fontSize: 12, color: 'var(--text-muted)' }}>
+              Le motif choisi détermine le message envoyé au client (et au livreur si assigné) —
+              jamais le mot "admin", toujours une formulation professionnelle déjà rédigée.
+            </p>
+            {cancelReasons === null ? (
+              <div style={{ color: 'var(--text-muted)', padding: 12 }}>Chargement des motifs…</div>
+            ) : (
+              <>
+                <label style={{ display: 'block', fontSize: 12, fontWeight: 600, marginBottom: 6 }}>Motif *</label>
+                <select
+                  value={cancelPicker.code}
+                  onChange={e => setCancelPicker(p => ({ ...p, code: e.target.value }))}
+                  style={{ ...glassInput, width: '100%', marginBottom: 14 }}
+                >
+                  <option value="">— Sélectionner un motif —</option>
+                  {cancelReasons.map(r => (
+                    <option key={r.code} value={r.code}>{r.label}</option>
+                  ))}
+                </select>
+                <label style={{ display: 'block', fontSize: 12, fontWeight: 600, marginBottom: 6 }}>
+                  Note interne (optionnelle — jamais montrée au client/livreur)
+                </label>
+                <textarea
+                  value={cancelPicker.note}
+                  onChange={e => setCancelPicker(p => ({ ...p, note: e.target.value }))}
+                  rows={3}
+                  style={{ ...glassInput, width: '100%', resize: 'vertical', fontFamily: 'inherit' }}
+                  placeholder="Contexte pour l'équipe support/audit…"
+                />
+              </>
+            )}
+            <div style={{ marginTop: 20, display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
+              <button onClick={() => setCancelPicker(null)} disabled={cancelling} style={btnOutline}>
+                Retour
+              </button>
+              <button
+                onClick={confirmCancelOrder}
+                disabled={cancelling || !cancelPicker.code}
+                style={{ ...btnOutline, color: '#fff', borderColor: '#e53e3e', background: cancelPicker.code ? '#e53e3e' : 'rgba(229,62,62,0.4)' }}
+              >
+                {cancelling ? 'Annulation…' : 'Confirmer l\'annulation'}
               </button>
             </div>
           </div>
