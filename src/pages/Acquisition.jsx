@@ -97,7 +97,9 @@ function PassTab({ notify }) {
   const [data,    setData]    = useState(null)
   const [loading, setLoading] = useState(true)
   const [amount,  setAmount]  = useState('')
+  const [amountM3, setAmountM3] = useState('')
   const [saving,  setSaving]  = useState(false)
+  const [savingM3, setSavingM3] = useState(false)
   const [processing, setProcessing] = useState(false)
 
   const load = useCallback(async () => {
@@ -115,6 +117,7 @@ function PassTab({ notify }) {
         amountM3: Number(map['forfait_amount_m3'] ?? 650),
       })
       setAmount(map['forfait_amount'] ?? '480')
+      setAmountM3(map['forfait_amount_m3'] ?? '650')
     } catch { /* silencieux */ }
     setLoading(false)
   }, [])
@@ -139,6 +142,18 @@ function PassTab({ notify }) {
       load()
     } catch (e) { notify(e.response?.data?.message ?? 'Erreur', false) }
     setSaving(false)
+  }
+
+  async function saveAmountM3(val) {
+    const n = Number(val ?? amountM3)
+    if (isNaN(n) || n < 0) return
+    setSavingM3(true)
+    try {
+      await api.put('/admin/forfait/config', { amountM3: n })
+      notify(`Montant Voiture mis à jour : ${n} FCFA/jour ✓`)
+      load()
+    } catch (e) { notify(e.response?.data?.message ?? 'Erreur', false) }
+    setSavingM3(false)
   }
 
   async function processPass() {
@@ -180,9 +195,9 @@ function PassTab({ notify }) {
         </div>
       </Card>
 
-      {/* Modifier le montant */}
+      {/* Modifier le montant — Moto (S4) */}
       <Card>
-        <Label>Montant journalier (FCFA)</Label>
+        <Label>Montant journalier — Moto (FCFA)</Label>
         <div style={{ display: 'flex', gap: 10, alignItems: 'center', marginBottom: 12 }}>
           <input
             type="number"
@@ -215,6 +230,30 @@ function PassTab({ notify }) {
               {label}
             </button>
           ))}
+        </div>
+      </Card>
+
+      {/* Modifier le montant — Voiture (M3+) */}
+      <Card>
+        <Label>Montant journalier — Voiture (FCFA)</Label>
+        <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+          <input
+            type="number"
+            value={amountM3}
+            onChange={e => setAmountM3(e.target.value)}
+            style={{ ...glassInput, width: 130, fontWeight: 700, fontSize: 16 }}
+          />
+          <span style={{ fontSize: 13, color: 'var(--text-muted)' }}>FCFA / jour</span>
+          <button
+            onClick={() => saveAmountM3()}
+            disabled={savingM3}
+            style={{
+              padding: '8px 16px', borderRadius: 'var(--radius-sm)', border: 'none',
+              background: 'var(--primary)', color: '#fff', fontWeight: 700, fontSize: 13, cursor: 'pointer',
+            }}
+          >
+            {savingM3 ? '…' : 'Sauver'}
+          </button>
         </div>
       </Card>
 
