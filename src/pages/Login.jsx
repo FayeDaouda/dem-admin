@@ -1,45 +1,11 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Eye, EyeOff } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
 import api from '../lib/api'
 import logoSrc from '../assets/logo-dem.svg'
 import { glassInput } from '../lib/glassStyles'
 import { homeRouteForRole } from '../lib/roleHome'
-
-// Politique mot de passe (identique au backend)
-const PASSWORD_PATTERN = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,}$/
-const PASSWORD_HINT = '8 caracteres minimum, avec une majuscule, une minuscule et un chiffre.'
-
-// Champ mot de passe avec bouton afficher / masquer
-function PasswordInput({ value, onChange, placeholder, autoComplete }) {
-  const [show, setShow] = useState(false)
-  return (
-    <div style={{ position: 'relative' }}>
-      <input
-        type={show ? 'text' : 'password'}
-        value={value}
-        onChange={onChange}
-        placeholder={placeholder}
-        autoComplete={autoComplete}
-        required
-        style={{ ...inputStyle, paddingRight: 42 }}
-      />
-      <button
-        type="button"
-        onClick={() => setShow(s => !s)}
-        title={show ? 'Masquer le mot de passe' : 'Afficher le mot de passe'}
-        style={{
-          position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)',
-          background: 'none', border: 'none', cursor: 'pointer', padding: 4,
-          color: '#5a7a96', display: 'flex', alignItems: 'center',
-        }}
-      >
-        {show ? <EyeOff size={17} /> : <Eye size={17} />}
-      </button>
-    </div>
-  )
-}
+import PasswordInput from '../components/PasswordInput'
 
 export default function Login() {
   const { login } = useAuth()
@@ -49,15 +15,6 @@ export default function Login() {
   const [password, setPassword]     = useState('')
   const [error, setError]           = useState('')
   const [loading, setLoading]       = useState(false)
-
-  // Changement mot de passe obligatoire
-  const [mustChange, setMustChange]       = useState(false)
-  const [currentPwd, setCurrentPwd]       = useState('')
-  const [pendingRole, setPendingRole]     = useState(null)
-  const [newPwd, setNewPwd]               = useState('')
-  const [confirmPwd, setConfirmPwd]       = useState('')
-  const [changeError, setChangeError]     = useState('')
-  const [changeSaving, setChangeSaving]   = useState(false)
 
   // Mot de passe oublié : demande envoyée au Super Admin (identifiant = email ou téléphone)
   const [resetMode, setResetMode]             = useState(false)
@@ -73,33 +30,11 @@ export default function Login() {
     setLoading(true)
     try {
       const result = await login(identifier, password)
-      if (result.mustChangePassword) {
-        setCurrentPwd(password)
-        setPendingRole(result.adminRole)
-        setMustChange(true)
-      } else {
-        navigate(homeRouteForRole(result.adminRole))
-      }
+      navigate(result.mustChangePassword ? '/change-password' : homeRouteForRole(result.adminRole))
     } catch (err) {
       setError(err.response?.data?.message ?? err.message ?? 'Erreur de connexion.')
     } finally {
       setLoading(false)
-    }
-  }
-
-  async function handleChangePassword(e) {
-    e.preventDefault()
-    setChangeError('')
-    if (!PASSWORD_PATTERN.test(newPwd)) { setChangeError(PASSWORD_HINT); return }
-    if (newPwd !== confirmPwd) { setChangeError('Les mots de passe ne correspondent pas.'); return }
-    setChangeSaving(true)
-    try {
-      await api.post('/admin/auth/change-password', { currentPassword: currentPwd, newPassword: newPwd })
-      navigate(homeRouteForRole(pendingRole))
-    } catch (err) {
-      setChangeError(err.response?.data?.message ?? 'Erreur.')
-    } finally {
-      setChangeSaving(false)
     }
   }
 
@@ -116,40 +51,6 @@ export default function Login() {
     } finally {
       setResetLoading(false)
     }
-  }
-
-  // ── Modal changement mot de passe obligatoire ──
-  if (mustChange) {
-    return (
-      <div style={pageStyle}>
-        <div style={{ position: 'fixed', inset: 0, overflow: 'hidden', pointerEvents: 'none', zIndex: 0 }}>
-          <div style={{ position: 'absolute', width: 400, height: 400, borderRadius: '50%', background: 'rgba(0,180,216,0.15)', top: '-80px', left: '-100px', filter: 'blur(60px)' }} />
-          <div style={{ position: 'absolute', width: 350, height: 350, borderRadius: '50%', background: 'rgba(0,119,182,0.12)', bottom: '-60px', right: '-80px', filter: 'blur(50px)' }} />
-        </div>
-        <div style={cardStyle}>
-          <div style={{ textAlign: 'center', marginBottom: 24 }}>
-            <img src={logoSrc} alt="DEM" style={{ width: 70, height: 70, objectFit: 'contain', borderRadius: 16, marginBottom: 10 }} />
-            <h2 style={{ fontSize: 17, fontWeight: 700, color: '#1a3a52', marginBottom: 4 }}>Changement de mot de passe</h2>
-            <p style={{ color: '#5a7a96', fontSize: 12, margin: 0 }}>Vous devez changer votre mot de passe par defaut avant de continuer.</p>
-          </div>
-          <form onSubmit={handleChangePassword} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-            <div>
-              <label style={labelStyle}>Nouveau mot de passe</label>
-              <PasswordInput value={newPwd} onChange={e => setNewPwd(e.target.value)} placeholder="Nouveau mot de passe" autoComplete="new-password" />
-              <p style={hintStyle}>{PASSWORD_HINT}</p>
-            </div>
-            <div>
-              <label style={labelStyle}>Confirmer le mot de passe</label>
-              <PasswordInput value={confirmPwd} onChange={e => setConfirmPwd(e.target.value)} placeholder="Retapez le mot de passe" autoComplete="new-password" />
-            </div>
-            {changeError && <div style={errorStyle}>{changeError}</div>}
-            <button type="submit" disabled={changeSaving} style={btnStyle(changeSaving)}>
-              {changeSaving ? 'Mise a jour...' : 'Valider le nouveau mot de passe'}
-            </button>
-          </form>
-        </div>
-      </div>
-    )
   }
 
   // ── Flow reset mot de passe via OTP ──
@@ -249,6 +150,7 @@ export default function Login() {
               onChange={e => setPassword(e.target.value)}
               placeholder="••••••••"
               autoComplete="current-password"
+              inputStyle={inputStyle}
             />
           </div>
 
@@ -289,8 +191,6 @@ const cardStyle = {
 }
 
 const labelStyle = { display: 'block', marginBottom: 7, fontSize: 13, fontWeight: 500, color: '#3a6080' }
-
-const hintStyle = { margin: '6px 0 0', fontSize: 11, color: '#5a7a96' }
 
 const inputStyle = {
   ...glassInput,

@@ -47,8 +47,16 @@ export function AuthProvider({ children }) {
     setUser(null)
   }
 
+  // Rafraîchit la session en place (ex: après un changement de mot de passe
+  // réussi) sans repasser par /auth/login.
+  function applySession(token, admin) {
+    localStorage.setItem('dem_admin_token', token)
+    localStorage.setItem('dem_admin_user', JSON.stringify(admin))
+    setUser(admin)
+  }
+
   return (
-    <AuthContext.Provider value={{ user, loading, login, logout }}>
+    <AuthContext.Provider value={{ user, loading, login, logout, applySession }}>
       {children}
     </AuthContext.Provider>
   )

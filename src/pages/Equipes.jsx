@@ -3,6 +3,7 @@ import api from '../lib/api'
 import { useAuth } from '../contexts/AuthContext'
 import { RefreshCw, UserPlus, Trash2, Power, XCircle, Pencil, Search, KeyRound, Check } from 'lucide-react'
 import { glass, glassInput, pageWrap, pageScroll, stickyTh } from '../lib/glassStyles'
+import { PASSWORD_PATTERN, PASSWORD_HINT } from '../lib/passwordPolicy'
 
 const ROLE_COLORS = {
   SUPER: '#f59e0b', DEV: '#6366f1', FINANCE: '#22c55e', MARKETING: '#ec4899', SERVICE_CLIENT: '#06b6d4', ASSISTANCE_EXECUTIVE: '#a855f7',
@@ -98,6 +99,16 @@ export default function Equipes() {
     } catch (e) { alert(e.response?.data?.message ?? 'Erreur.') }
   }
 
+  async function handleResetDefaultPassword(admin) {
+    const who = admin.name ?? admin.email ?? admin.phone
+    if (!confirm(`Reinitialiser le mot de passe de ${who} au mot de passe par defaut ?\nIl devra le changer a sa premiere connexion.`)) return
+    try {
+      const res = await api.patch(`/admin/admins/${admin.id}/reset-default-password`)
+      alert(`Mot de passe reinitialise pour ${who}.\n\nMot de passe par defaut : ${res.data?.defaultPassword}\n\nCommuniquez-le a l'utilisateur. Il devra le changer a sa premiere connexion.`)
+      fetch()
+    } catch (e) { alert(e.response?.data?.message ?? 'Erreur.') }
+  }
+
   async function handleDelete(admin) {
     if (!confirm(`Supprimer definitivement le compte de ${admin.name ?? admin.email ?? admin.phone} ?`)) return
     try {
@@ -112,7 +123,7 @@ export default function Equipes() {
     setResetBusy(req.id)
     try {
       const res = await api.patch(`/admin/password-resets/${req.id}/approve`)
-      alert(res.data?.message ?? 'Mot de passe reinitialise.')
+      alert(`${res.data?.message ?? 'Mot de passe reinitialise.'}\n\nMot de passe par defaut : ${res.data?.defaultPassword}`)
       fetch()
     } catch (e) { alert(e.response?.data?.message ?? 'Erreur.') }
     finally { setResetBusy(null) }
@@ -215,7 +226,7 @@ export default function Equipes() {
             ))}
           </div>
           <p style={{ fontSize: 11, color: 'var(--text-muted)', margin: '10px 0 0' }}>
-            La reinitialisation applique le mot de passe par defaut. L'utilisateur devra choisir un nouveau mot de passe a sa premiere connexion.
+            La reinitialisation applique le mot de passe par defaut (DEM1234). L'utilisateur devra choisir un nouveau mot de passe a sa premiere connexion.
           </p>
         </div>
       )}
@@ -245,7 +256,10 @@ export default function Equipes() {
             </div>
             <div>
               <label style={labelStyle}>Mot de passe par defaut *</label>
-              <input type="text" value={createForm.password} onChange={e => setCreateForm(f => ({ ...f, password: e.target.value }))} placeholder="dem12345" required minLength={8} style={inputStyle} />
+              <input type="text" value={createForm.password} onChange={e => setCreateForm(f => ({ ...f, password: e.target.value }))} placeholder="Dem@2026!" required pattern={PASSWORD_PATTERN.source} title={PASSWORD_HINT} style={inputStyle} />
+              <div style={{ fontSize: 10, color: 'var(--text-muted)', marginTop: 4 }}>
+                {PASSWORD_HINT} L'utilisateur devra le changer à sa première connexion.
+              </div>
             </div>
             <div style={{ display: 'flex', alignItems: 'flex-end' }}>
               <button type="submit" disabled={createSaving} style={{ ...btnPrimary, width: '100%', justifyContent: 'center' }}>
@@ -345,6 +359,9 @@ export default function Equipes() {
                             <button onClick={() => openEdit(a)} title="Modifier" style={actionBtn('#0077b6')}>
                               <Pencil size={12} /> Modifier
                             </button>
+                            <button onClick={() => handleResetDefaultPassword(a)} title="Reinitialiser au mot de passe par defaut (compte oublie)" style={actionBtn('#f59e0b')}>
+                              <KeyRound size={12} /> Mdp par defaut
+                            </button>
                             <button onClick={() => handleToggle(a)} title={a.isActive ? 'Desactiver' : 'Activer'} style={actionBtn(a.isActive ? '#f59e0b' : '#22c55e')}>
                               <Power size={12} /> {a.isActive ? 'Desactiver' : 'Activer'}
                             </button>
@@ -396,9 +413,9 @@ export default function Equipes() {
               </div>
               <div style={{ borderTop: '1px solid var(--border)', paddingTop: 12 }}>
                 <label style={labelStyle}>Reinitialiser le mot de passe (optionnel)</label>
-                <input type="text" value={editForm.resetPassword} onChange={e => setEditForm(f => ({ ...f, resetPassword: e.target.value }))} placeholder="Laisser vide pour ne pas changer" style={inputStyle} />
+                <input type="text" value={editForm.resetPassword} onChange={e => setEditForm(f => ({ ...f, resetPassword: e.target.value }))} placeholder="Laisser vide pour ne pas changer" pattern={PASSWORD_PATTERN.source} title={PASSWORD_HINT} style={inputStyle} />
                 <div style={{ fontSize: 10, color: 'var(--text-muted)', marginTop: 4 }}>
-                  L'utilisateur devra changer ce mot de passe a sa prochaine connexion.
+                  {PASSWORD_HINT} L'utilisateur devra le changer a sa prochaine connexion.
                 </div>
               </div>
               {editError && <div style={{ color: '#ef4444', fontSize: 12, background: '#ef444410', padding: '8px 12px', borderRadius: 6 }}>{editError}</div>}

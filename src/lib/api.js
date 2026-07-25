@@ -20,6 +20,9 @@ api.interceptors.response.use(
       localStorage.removeItem('dem_admin_token')
       window.location.href = '/login'
     }
+    if (err.response?.data?.code === 'MUST_CHANGE_PASSWORD' && window.location.pathname !== '/change-password') {
+      window.location.href = '/change-password'
+    }
     return Promise.reject(err)
   }
 )

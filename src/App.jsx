@@ -4,6 +4,7 @@ import { lazy, Suspense } from 'react'
 import { homeRouteForRole } from './lib/roleHome'
 import Layout      from './components/Layout'
 import Login       from './pages/Login'
+import ChangePasswordRequired from './pages/ChangePasswordRequired'
 import Dashboard   from './pages/Dashboard'
 import Payments    from './pages/Payments'
 import Orders      from './pages/Orders'
@@ -45,14 +46,33 @@ function ProtectedRoute({ children }) {
     </div>
   )
   if (!user) return <Navigate to="/login" replace />
+  if (user.mustChangePassword) return <Navigate to="/change-password" replace />
   return <Layout>{children}</Layout>
+}
+
+// Accessible dès qu'une session existe, même si mustChangePassword est vrai
+// (sinon ProtectedRoute ci-dessus bouclerait indéfiniment vers cette page).
+function ChangePasswordRoute() {
+  const { user, loading } = useAuth()
+  if (loading) return (
+    <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)' }}>
+      Chargement…
+    </div>
+  )
+  if (!user) return <Navigate to="/login" replace />
+  return <ChangePasswordRequired />
 }
 
 function AppRoutes() {
   const { user } = useAuth()
   return (
     <Routes>
-      <Route path="/login" element={user ? <Navigate to={homeRouteForRole(user.adminRole)} replace /> : <Login />} />
+      <Route path="/login" element={
+        user
+          ? <Navigate to={user.mustChangePassword ? '/change-password' : homeRouteForRole(user.adminRole)} replace />
+          : <Login />
+      } />
+      <Route path="/change-password" element={<ChangePasswordRoute />} />
       <Route path="/" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
       <Route path="/service-client" element={<ProtectedRoute><ServiceClient /></ProtectedRoute>} />
       <Route path="/marketing" element={<ProtectedRoute><Marketing /></ProtectedRoute>} />
