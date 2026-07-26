@@ -8,12 +8,15 @@ import { homeRouteForRole } from '../lib/roleHome'
 import { PASSWORD_PATTERN, PASSWORD_HINT } from '../lib/passwordPolicy'
 import PasswordInput from '../components/PasswordInput'
 
-// Ecran de changement de mot de passe obligatoire — atteint soit juste après
-// la connexion (redirection depuis Login), soit via ProtectedRoute si une
-// session existante porte encore mustChangePassword: true.
+// Ecran de changement de mot de passe — deux entrées possibles :
+// 1) Obligatoire : juste après le login (mustChangePassword) ou via
+//    ProtectedRoute si une session existante le porte encore.
+// 2) Volontaire : lien "Changer mon mot de passe" dans la sidebar (Layout),
+//    accessible à tout moment par n'importe quel admin sur son propre compte.
 export default function ChangePasswordRequired() {
   const { user, applySession, logout } = useAuth()
   const navigate = useNavigate()
+  const forced = !!user?.mustChangePassword
 
   const [currentPwd, setCurrentPwd]   = useState('')
   const [newPwd, setNewPwd]           = useState('')
@@ -49,9 +52,13 @@ export default function ChangePasswordRequired() {
       <div style={cardStyle}>
         <div style={{ textAlign: 'center', marginBottom: 24 }}>
           <img src={logoSrc} alt="DEM" style={{ width: 70, height: 70, objectFit: 'contain', borderRadius: 16, marginBottom: 10 }} />
-          <h2 style={{ fontSize: 17, fontWeight: 700, color: '#1a3a52', marginBottom: 4 }}>Changement de mot de passe requis</h2>
+          <h2 style={{ fontSize: 17, fontWeight: 700, color: '#1a3a52', marginBottom: 4 }}>
+            {forced ? 'Changement de mot de passe requis' : 'Changer mon mot de passe'}
+          </h2>
           <p style={{ color: '#5a7a96', fontSize: 12, margin: 0 }}>
-            {user?.name ? `${user.name}, votre` : 'Votre'} mot de passe a été défini par un administrateur. Vous devez le changer avant de continuer.
+            {forced
+              ? `${user?.name ? `${user.name}, votre` : 'Votre'} mot de passe a été défini par un administrateur. Vous devez le changer avant de continuer.`
+              : 'Renseignez votre mot de passe actuel puis choisissez-en un nouveau.'}
           </p>
         </div>
         <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
@@ -72,9 +79,15 @@ export default function ChangePasswordRequired() {
           <button type="submit" disabled={saving} style={btnStyle(saving)}>
             {saving ? 'Mise a jour...' : 'Valider le nouveau mot de passe'}
           </button>
-          <button type="button" onClick={() => { logout(); navigate('/login', { replace: true }) }} style={linkBtnStyle}>
-            Se déconnecter
-          </button>
+          {forced ? (
+            <button type="button" onClick={() => { logout(); navigate('/login', { replace: true }) }} style={linkBtnStyle}>
+              Se déconnecter
+            </button>
+          ) : (
+            <button type="button" onClick={() => navigate(homeRouteForRole(user?.adminRole))} style={linkBtnStyle}>
+              Annuler
+            </button>
+          )}
         </form>
       </div>
     </div>

@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { NavLink, useNavigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import {
-  LayoutDashboard, CreditCard, Package, Users, LogOut, Bike, Map, Menu, X, TrendingUp, ShieldCheck, AlertTriangle, ScrollText, UserCog, Briefcase, UsersRound, SlidersHorizontal, Award, GitBranch, Bell, Wallet, UserPlus, Table2, Percent,
+  LayoutDashboard, CreditCard, Package, Users, LogOut, Bike, Map, Menu, X, TrendingUp, ShieldCheck, AlertTriangle, ScrollText, UserCog, Briefcase, UsersRound, SlidersHorizontal, Award, GitBranch, Bell, Wallet, UserPlus, Table2, Percent, KeyRound,
 } from 'lucide-react'
 import logoSrc from '../assets/logo-dem.svg'
 import { useResponsive } from '../lib/useResponsive'
@@ -159,6 +159,25 @@ export default function Layout({ children }) {
             </div>
           )
         })()}
+        <button
+          onClick={() => navigate('/change-password')}
+          title={collapsed ? 'Changer mon mot de passe' : undefined}
+          style={{
+            display: 'flex', alignItems: 'center', justifyContent: collapsed ? 'center' : 'flex-start', gap: 8,
+            width: '100%', padding: collapsed ? '8px 0' : '7px 12px',
+            borderRadius: 'var(--radius-sm)',
+            border: 'none',
+            background: 'transparent',
+            color: 'rgba(255,255,255,0.75)',
+            fontSize: 13,
+            transition: 'all .15s',
+          }}
+          onMouseEnter={e => e.currentTarget.style.color = '#fff'}
+          onMouseLeave={e => e.currentTarget.style.color = 'rgba(255,255,255,0.75)'}
+        >
+          <KeyRound size={15} />
+          {!collapsed && 'Changer mon mot de passe'}
+        </button>
         <button
           onClick={handleLogout}
           title={collapsed ? 'Déconnexion' : undefined}
