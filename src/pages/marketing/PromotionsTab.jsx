@@ -4,7 +4,7 @@ import api from '../../lib/api'
 import { glass, glassInput } from '../../lib/glassStyles'
 
 const TYPE_LABELS = { FREE_COURSE: 'Course gratuite', PERCENT_OFF: 'Réduction %', FIXED_OFF: 'Montant fixe' }
-const TARGET_LABELS = { CLIENT: 'Clients', DEM_PRO: 'DEM Pro', ALL: 'Tous' }
+const TARGET_LABELS = { CLIENT: 'Clients', DEM_PRO: 'DEM Pro', DRIVER: 'Livreurs (passe)', ALL: 'Clients + DEM Pro' }
 
 const card       = { ...glass, padding: '20px 24px' }
 const tableStyle = { width: '100%', minWidth: 760, borderCollapse: 'collapse' }
@@ -185,7 +185,14 @@ export default function PromotionsTab() {
               <option value="ALL">Tous (clients + DEM Pro)</option>
               <option value="CLIENT">Clients uniquement</option>
               <option value="DEM_PRO">DEM Pro uniquement</option>
+              <option value="DRIVER">Livreurs — réduction sur la passe</option>
             </select>
+            {form.targetRole === 'DRIVER' && (
+              <p style={{ fontSize: 11.5, color: 'var(--text-muted)', marginTop: 4 }}>
+                S'applique au prix de la passe journalière (480/650 FCFA), pas aux commandes.
+                "Course minimum" ne s'applique pas ici.
+              </p>
+            )}
 
             <div style={{ display: 'flex', gap: 12 }}>
               <div style={{ flex: 1 }}>
@@ -203,10 +210,12 @@ export default function PromotionsTab() {
                 <label style={label}>Budget max (FCFA)</label>
                 <input type="number" value={form.budgetCap} onChange={e => setForm(f => ({ ...f, budgetCap: e.target.value }))} style={{ ...glassInput, width: '100%' }} placeholder="Illimité" />
               </div>
-              <div style={{ flex: 1 }}>
-                <label style={label}>Course minimum (FCFA)</label>
-                <input type="number" value={form.minOrderPrice} onChange={e => setForm(f => ({ ...f, minOrderPrice: e.target.value }))} style={{ ...glassInput, width: '100%' }} placeholder="Aucun minimum" />
-              </div>
+              {form.targetRole !== 'DRIVER' && (
+                <div style={{ flex: 1 }}>
+                  <label style={label}>Course minimum (FCFA)</label>
+                  <input type="number" value={form.minOrderPrice} onChange={e => setForm(f => ({ ...f, minOrderPrice: e.target.value }))} style={{ ...glassInput, width: '100%' }} placeholder="Aucun minimum" />
+                </div>
+              )}
             </div>
 
             <label style={label}>Expire le</label>
