@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { NavLink, useNavigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import {
-  LayoutDashboard, CreditCard, Package, Users, LogOut, Bike, Map, Menu, X, TrendingUp, ShieldCheck, AlertTriangle, ScrollText, UserCog, Briefcase, UsersRound, SlidersHorizontal, Award, GitBranch, Bell, Wallet, UserPlus, Table2,
+  LayoutDashboard, CreditCard, Package, Users, LogOut, Bike, Map, Menu, X, TrendingUp, ShieldCheck, AlertTriangle, ScrollText, UserCog, Briefcase, UsersRound, SlidersHorizontal, Award, GitBranch, Bell, Wallet, UserPlus, Table2, Percent,
 } from 'lucide-react'
 import logoSrc from '../assets/logo-dem.svg'
 import { useResponsive } from '../lib/useResponsive'
@@ -35,6 +35,7 @@ const NAV = [
   { to: '/badges/drivers',  icon: Award,            label: 'Badge livreur',  roles: ['SUPER','MARKETING','ASSISTANCE_EXECUTIVE'] },
   { to: '/parrainage',      icon: GitBranch,        label: 'Parrainage',     roles: ['SUPER','MARKETING'] },
   { to: '/acquisition',     icon: TrendingUp,       label: 'Acquisition',    roles: ['SUPER'] },
+  { to: '/promotions',      icon: Percent,          label: 'Promotions',     roles: ['SUPER','MARKETING'] },
   { to: '/acquisition-overview', icon: TrendingUp,  label: 'Acquisition',    roles: ['ASSISTANCE_EXECUTIVE'], hideForSuper: true },
   { to: '/broadcast',       icon: Bell,             label: 'Notification',   roles: ['SUPER','MARKETING'] },
   { to: '/equipes',          icon: UsersRound,       label: 'Equipes',        roles: ['SUPER'] },
