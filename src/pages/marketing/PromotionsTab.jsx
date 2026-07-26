@@ -17,7 +17,7 @@ const modalBox   = { ...glass, padding: '28px 32px', width: 520, maxWidth: '90vw
 const label      = { display: 'block', fontSize: 12, fontWeight: 600, marginBottom: 6, marginTop: 14 }
 
 const EMPTY_FORM = {
-  name: '', code: '', type: 'PERCENT_OFF', value: '', targetRole: 'ALL',
+  name: '', code: '', type: 'PERCENT_OFF', value: '', targetRole: 'ALL', targetUser: null,
   maxUsesPerUser: 1, maxUsesTotal: '', budgetCap: '', minOrderPrice: '', expiresAt: '',
 }
 
@@ -26,6 +26,9 @@ export default function PromotionsTab() {
   const [form, setForm] = useState(null) // null = fermé, {} = création, {...} = édition
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
+  const [userSearch, setUserSearch] = useState('')
+  const [userResults, setUserResults] = useState([])
+  const [searchingUser, setSearchingUser] = useState(false)
 
   const load = useCallback(async () => {
     try {
@@ -36,15 +39,30 @@ export default function PromotionsTab() {
 
   useEffect(() => { load() }, [load])
 
-  function openCreate() { setForm({ ...EMPTY_FORM }); setError('') }
+  function openCreate() {
+    setForm({ ...EMPTY_FORM }); setError('')
+    setUserSearch(''); setUserResults([])
+  }
   function openEdit(c) {
     setForm({
       id: c.id, name: c.name, code: c.code ?? '', type: c.type, value: c.value ?? '',
-      targetRole: c.targetRole, maxUsesPerUser: c.maxUsesPerUser, maxUsesTotal: c.maxUsesTotal ?? '',
+      targetRole: c.targetRole, targetUser: c.targetUser ?? null,
+      maxUsesPerUser: c.maxUsesPerUser, maxUsesTotal: c.maxUsesTotal ?? '',
       budgetCap: c.budgetCap ?? '', minOrderPrice: c.minOrderPrice ?? '',
       expiresAt: c.expiresAt ? c.expiresAt.slice(0, 10) : '',
     })
     setError('')
+    setUserSearch(''); setUserResults([])
+  }
+
+  async function searchTargetUser() {
+    if (!userSearch.trim()) return
+    setSearchingUser(true)
+    try {
+      const res = await api.get('/admin/promotions/users-search', { params: { search: userSearch.trim() } })
+      setUserResults(res.data.users ?? [])
+    } catch (e) { console.error(e) }
+    finally { setSearchingUser(false) }
   }
 
   async function save() {
@@ -56,6 +74,7 @@ export default function PromotionsTab() {
         type: form.type,
         value: form.type === 'FREE_COURSE' ? null : Number(form.value),
         targetRole: form.targetRole,
+        targetUserId: form.targetUser?.id || null,
         maxUsesPerUser: Number(form.maxUsesPerUser) || 0,
         maxUsesTotal: form.maxUsesTotal === '' ? null : Number(form.maxUsesTotal),
         budgetCap: form.budgetCap === '' ? null : Number(form.budgetCap),
@@ -122,7 +141,11 @@ export default function PromotionsTab() {
                     {c.type === 'PERCENT_OFF' && ` (${c.value}%)`}
                     {c.type === 'FIXED_OFF' && ` (${c.value} F)`}
                   </td>
-                  <td style={tdStyle}>{TARGET_LABELS[c.targetRole]}</td>
+                  <td style={tdStyle}>
+                    {c.targetUser
+                      ? <span>👤 {c.targetUser.name ?? c.targetUser.phone}</span>
+                      : TARGET_LABELS[c.targetRole]}
+                  </td>
                   <td style={tdStyle}>{c.usedCount}{c.maxUsesTotal != null ? ` / ${c.maxUsesTotal}` : ''}</td>
                   <td style={tdStyle}>
                     {c.budgetCap != null
@@ -192,6 +215,45 @@ export default function PromotionsTab() {
                 S'applique au prix de la passe journalière (480/650 FCFA), pas aux commandes.
                 "Course minimum" ne s'applique pas ici.
               </p>
+            )}
+
+            <label style={label}>Utilisateur spécifique (optionnel — prime sur la cible ci-dessus)</label>
+            {form.targetUser ? (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px', background: 'rgba(0,119,182,0.06)', borderRadius: 8 }}>
+                <span style={{ fontSize: 13, flex: 1 }}>
+                  <strong>{form.targetUser.name ?? '—'}</strong> — {form.targetUser.phone}
+                </span>
+                <button onClick={() => setForm(f => ({ ...f, targetUser: null }))} style={{ ...btnOutline, padding: '4px 10px' }}>Retirer</button>
+              </div>
+            ) : (
+              <>
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <input
+                    value={userSearch}
+                    onChange={e => setUserSearch(e.target.value)}
+                    onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); searchTargetUser() } }}
+                    placeholder="Nom ou téléphone…"
+                    style={{ ...glassInput, flex: 1 }}
+                  />
+                  <button onClick={searchTargetUser} disabled={searchingUser} style={btnOutline}>
+                    <Search size={14} /> {searchingUser ? '…' : 'Chercher'}
+                  </button>
+                </div>
+                {userResults.length > 0 && (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginTop: 6, maxHeight: 150, overflowY: 'auto' }}>
+                    {userResults.map(u => (
+                      <button
+                        key={u.id}
+                        onClick={() => { setForm(f => ({ ...f, targetUser: u })); setUserResults([]); setUserSearch('') }}
+                        style={{ ...btnOutline, justifyContent: 'space-between', width: '100%', textAlign: 'left' }}
+                      >
+                        <span>{u.name ?? '—'} <span style={{ color: 'var(--text-muted)', fontSize: 11 }}>({u.role})</span></span>
+                        <span style={{ color: 'var(--text-muted)' }}>{u.phone}</span>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </>
             )}
 
             <div style={{ display: 'flex', gap: 12 }}>
