@@ -19,14 +19,14 @@ function FleetProtectedRoute({ children }) {
   const { fleetUser, loading } = useFleetAuth()
   if (loading) return <PageLoader />
   if (!fleetUser) return <Navigate to="/fleet/login" replace />
-  if (!fleetUser.hasPassword) return <Navigate to="/fleet/set-password" replace />
+  if (!fleetUser.hasPassword || fleetUser.mustChangePassword) return <Navigate to="/fleet/set-password" replace />
   return <FleetLayout>{children}</FleetLayout>
 }
 
 function FleetLoginRoute() {
   const { fleetUser, loading } = useFleetAuth()
   if (loading) return <PageLoader />
-  if (fleetUser?.hasPassword) return <Navigate to="/fleet" replace />
+  if (fleetUser?.hasPassword && !fleetUser.mustChangePassword) return <Navigate to="/fleet" replace />
   if (fleetUser) return <Navigate to="/fleet/set-password" replace />
   return <FleetLogin />
 }

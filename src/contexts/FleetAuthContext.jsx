@@ -48,7 +48,10 @@ export function FleetAuthProvider({ children }) {
     const res = await fleetApi.post('/chefs-de-flotte/me/set-password', {
       password, ...(email ? { email } : {}),
     })
-    const updated = { ...fleetUser, ...res.data.user, hasPassword: true }
+    const updated = { ...fleetUser, ...res.data.user, hasPassword: true, mustChangePassword: false }
+    // L'ancien token pouvait porter mustChangePassword: true (login par mdp par défaut) —
+    // le backend en réémet un à jour pour ne pas rester bloqué après ce changement.
+    if (res.data.token) localStorage.setItem('dem_fleet_token', res.data.token)
     localStorage.setItem('dem_fleet_user', JSON.stringify(updated))
     setFleetUser(updated)
     return updated
@@ -56,8 +59,8 @@ export function FleetAuthProvider({ children }) {
 
   async function loginWithPassword(identifier, password) {
     const res = await publicApi.post('/chefs-de-flotte/auth/login', { identifier, password })
-    const { token, user } = res.data
-    const formatted = { ...user, hasPassword: true }
+    const { token, user, mustChangePassword } = res.data
+    const formatted = { ...user, hasPassword: true, mustChangePassword: !!mustChangePassword }
     localStorage.setItem('dem_fleet_token', token)
     localStorage.setItem('dem_fleet_user', JSON.stringify(formatted))
     setFleetUser(formatted)

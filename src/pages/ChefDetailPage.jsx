@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import api from '../lib/api'
-import { ArrowLeft, CheckCircle, XCircle, ChevronDown, ChevronUp, Ban, RotateCcw, Trash2, UserPlus, Search, X } from 'lucide-react'
+import { ArrowLeft, CheckCircle, XCircle, ChevronDown, ChevronUp, Ban, RotateCcw, Trash2, UserPlus, Search, X, KeyRound } from 'lucide-react'
 import { glass, pageWrap, pageScroll } from '../lib/glassStyles'
 import SuspendModal from '../components/SuspendModal'
 
@@ -115,6 +115,20 @@ export default function ChefDetailPage() {
       alert(e.response?.data?.message ?? 'Erreur.')
     } finally {
       setActingId(null)
+    }
+  }
+
+  async function resetChefPassword() {
+    const who = chef.name?.trim() || chef.phone
+    if (!confirm(`Réinitialiser le mot de passe de ${who} au mot de passe par défaut ?\nIl devra le changer à sa prochaine connexion.`)) return
+    setActing(true)
+    try {
+      const res = await api.patch(`/admin/chefs-de-flotte/${id}/reset-password`)
+      alert(`Mot de passe réinitialisé pour ${who}.\n\nMot de passe par défaut : ${res.data?.defaultPassword}\n\nCommuniquez-le au chef de flotte. Il devra le changer à sa prochaine connexion sur l'Espace flotte.`)
+    } catch (e) {
+      alert(e.response?.data?.message ?? 'Erreur.')
+    } finally {
+      setActing(false)
     }
   }
 
@@ -242,6 +256,9 @@ export default function ChefDetailPage() {
         <span style={{ fontSize: 12, fontWeight: 700, padding: '4px 12px', borderRadius: 20, background: status.bg, color: status.color, whiteSpace: 'nowrap' }}>
           {status.text}
         </span>
+        <button onClick={resetChefPassword} disabled={acting} title="Réinitialiser au mot de passe par défaut (compte oublié)" style={{ ...btnOutline, color: '#f59e0b', borderColor: '#f59e0b' }}>
+          <KeyRound size={14} /> Mdp par défaut
+        </button>
         {chef.isActive ? (
           <button onClick={() => setReasonModal({ kind: 'chef-suspend' })} disabled={acting} style={{ ...btnOutline, color: 'var(--danger)', borderColor: 'var(--danger)' }}>
             <Ban size={14} /> Suspendre

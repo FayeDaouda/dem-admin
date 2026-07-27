@@ -23,8 +23,8 @@ export default function FleetLogin() {
     e.preventDefault()
     setError(''); setLoading(true)
     try {
-      await loginWithPassword(identifier, password)
-      navigate('/fleet')
+      const result = await loginWithPassword(identifier, password)
+      navigate(result.mustChangePassword ? '/fleet/set-password' : '/fleet')
     } catch (err) {
       setError(err.response?.data?.message ?? 'Identifiants invalides.')
     } finally { setLoading(false) }
@@ -45,8 +45,12 @@ export default function FleetLogin() {
     e.preventDefault()
     setError(''); setLoading(true)
     try {
-      const { hasPassword } = await verifyOtp(phone, code)
-      navigate(hasPassword ? '/fleet' : '/fleet/set-password')
+      // Le code SMS prouve déjà l'identité du chef : qu'il s'agisse d'une 1ère
+      // connexion (pas encore de mot de passe) ou d'un mot de passe oublié
+      // (il en a déjà un mais veut le remplacer), on l'envoie définir un
+      // nouveau mot de passe dans les deux cas.
+      await verifyOtp(phone, code)
+      navigate('/fleet/set-password')
     } catch (err) {
       setError(err.response?.data?.message ?? err.message ?? 'Code invalide.')
     } finally { setLoading(false) }
@@ -121,7 +125,7 @@ export default function FleetLogin() {
               onClick={() => { setMode('otp-phone'); setError('') }}
               style={linkStyle}
             >
-              Première connexion ? Recevoir un code par SMS
+              Mot de passe oublié ou première connexion ? Recevoir un code par SMS
             </button>
           </form>
         )}

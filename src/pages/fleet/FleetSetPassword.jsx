@@ -14,9 +14,13 @@ export default function FleetSetPassword() {
   const [error, setError]     = useState('')
   const [loading, setLoading] = useState(false)
 
+  const isReset = !!fleetUser?.hasPassword
+
+  // Accessible même si un mot de passe existe déjà : c'est aussi l'écran de
+  // récupération de compte (après vérification OTP ou réinitialisation par un
+  // SUPER). Seule condition : être connecté (token OTP ou mdp par défaut).
   useEffect(() => {
     if (!fleetUser) navigate('/fleet/login', { replace: true })
-    else if (fleetUser.hasPassword) navigate('/fleet', { replace: true })
   }, [fleetUser, navigate])
 
   async function handleSubmit(e) {
@@ -62,10 +66,12 @@ export default function FleetSetPassword() {
         <div style={{ textAlign: 'center', marginBottom: 28 }}>
           <img src={logoSrc} alt="DEM" style={{ width: 90, height: 90, objectFit: 'contain', borderRadius: 20, marginBottom: 12 }} />
           <div style={{ fontWeight: 700, fontSize: 16, color: '#04317C', marginBottom: 4 }}>
-            Bienvenue {fleetUser?.name?.trim() || ''}
+            {isReset ? 'Réinitialiser votre mot de passe' : `Bienvenue ${fleetUser?.name?.trim() || ''}`}
           </div>
           <div style={{ color: '#5a7a96', fontSize: 13, letterSpacing: '0.02em' }}>
-            Définissez votre mot de passe pour vos prochaines connexions
+            {isReset
+              ? 'Choisissez un nouveau mot de passe pour vos prochaines connexions'
+              : 'Définissez votre mot de passe pour vos prochaines connexions'}
           </div>
         </div>
 
