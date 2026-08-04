@@ -267,7 +267,7 @@ export default function Clients() {
   }
 
   async function deleteClient(client) {
-    if (!confirm(`Supprimer définitivement ${client.name ?? client.phone} ? Cette action est irréversible.`)) return
+    if (!confirm(`Supprimer ${client.name ?? client.phone} ? Le compte sera désactivé et son numéro libéré — son historique (commandes, transactions...) reste conservé.`)) return
     try {
       await api.delete(`/admin/clients/${client.id}`)
       fetch()

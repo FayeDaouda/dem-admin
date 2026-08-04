@@ -360,7 +360,7 @@ export default function Drivers() {
   }
 
   async function deleteDriver(driver) {
-    if (!confirm(`Supprimer définitivement ${driver.name ?? driver.phone} ? Cette action est irréversible.`)) return
+    if (!confirm(`Supprimer ${driver.name ?? driver.phone} ? Le compte sera désactivé et son numéro libéré — son historique (commandes, transactions...) reste conservé.`)) return
     try {
       await api.delete(`/admin/drivers/${driver.id}`)
       fetch()
