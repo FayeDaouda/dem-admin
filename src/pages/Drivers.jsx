@@ -263,6 +263,9 @@ export default function Drivers() {
   const [rejecting, setRejecting]       = useState(false)
   const [phoneReqs, setPhoneReqs]       = useState([])
   const [phoneLoading, setPhoneLoading] = useState(true)
+  const [showDeleted, setShowDeleted]   = useState(false)
+  const [deletedDrivers, setDeletedDrivers] = useState([])
+  const [deletedLoading, setDeletedLoading] = useState(false)
   const [resolving, setResolving]       = useState(null)
   const [requestTarget, setRequestTarget] = useState(null)
 
@@ -278,6 +281,25 @@ export default function Drivers() {
       setLoading(false)
     }
   }, [page])
+
+  // Comptes archivés (voir deleteDriver côté backend — jamais un vrai DELETE)
+  // — chargés à la demande seulement, pas au chargement de la page (rare,
+  // pas besoin d'un appel API systématique).
+  async function toggleDeleted() {
+    const next = !showDeleted
+    setShowDeleted(next)
+    if (next && deletedDrivers.length === 0) {
+      setDeletedLoading(true)
+      try {
+        const res = await api.get('/admin/drivers', { params: { status: 'deleted', limit: 100 } })
+        setDeletedDrivers(Array.isArray(res.data?.drivers) ? res.data.drivers : [])
+      } catch (e) {
+        console.error(e)
+      } finally {
+        setDeletedLoading(false)
+      }
+    }
+  }
 
   const fetchPhoneRequests = useCallback(async () => {
     setPhoneLoading(true)
@@ -530,6 +552,62 @@ export default function Drivers() {
           </div>
         </div>
       )}
+
+      {/* ── Comptes supprimés (archivés) ── */}
+      <div style={{ marginBottom: 20, flexShrink: 0 }}>
+        <button onClick={toggleDeleted} style={{ ...btnOutline, marginBottom: showDeleted ? 12 : 0 }}>
+          <Trash2 size={14} /> {showDeleted ? 'Masquer' : 'Voir'} les comptes supprimés
+        </button>
+        {showDeleted && (
+          <div style={card}>
+            {deletedLoading ? (
+              <div style={{ color: 'var(--text-muted)', padding: 20 }}>Chargement…</div>
+            ) : deletedDrivers.length === 0 ? (
+              <div style={{ color: 'var(--text-muted)', padding: 20 }}>Aucun compte supprimé.</div>
+            ) : (
+              <table style={tableStyle}>
+                <thead>
+                  <tr>
+                    {['Livreur', 'Véhicule', 'Supprimé le', 'Historique', ''].map(h => (
+                      <th key={h} style={thStyle}>{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {deletedDrivers.map(d => (
+                    <tr key={d.id} style={{ borderBottom: '1px solid var(--border)' }}>
+                      <td style={tdStyle}>
+                        <div style={{ fontWeight: 600 }}>{d.name ?? '—'}</div>
+                        <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>Numéro libéré</div>
+                      </td>
+                      <td style={tdStyle}>
+                        <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>
+                          {d.vehicleType === 'MOTO' ? '🏍 Moto' : d.vehicleType === 'TAXI' ? '🚗 Taxi' : '—'}
+                        </span>
+                      </td>
+                      <td style={tdStyle}>
+                        <span style={{ fontSize: 13 }}>
+                          {d.deletedAt ? new Date(d.deletedAt).toLocaleDateString('fr-FR') : '—'}
+                        </span>
+                      </td>
+                      <td style={tdStyle}>
+                        <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>
+                          {d.deliveredCourses ?? 0} course(s) livrée(s)
+                        </span>
+                      </td>
+                      <td style={tdStyle}>
+                        <button onClick={() => setDetail(d)} style={btnSmall} title="Voir infos & documents">
+                          <Eye size={13} /> Voir
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+          </div>
+        )}
+      </div>
 
       {/* ── Liste complète drivers ── */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 12, flexWrap: 'wrap', flexShrink: 0 }}>

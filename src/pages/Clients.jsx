@@ -386,6 +386,7 @@ export default function Clients() {
           <option value="active">✓ Actif</option>
           <option value="inactive">Inactif</option>
           <option value="banned">🚫 Banni</option>
+          <option value="deleted">🗑 Supprimés</option>
         </select>
         <select value={period} onChange={e => updateFilter(setPeriod)(e.target.value)} style={{ ...glassInput, width: 180 }}>
           <option value="">Inscription : Toujours</option>
