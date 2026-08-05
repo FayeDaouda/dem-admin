@@ -270,11 +270,18 @@ export default function Orders() {
               <Row label="Destinataire"  value={firstNonEmpty(detail.receiverName, detail.receiverPhone)} />
               <Row label="Tél. destinataire" value={firstNonEmpty(detail.receiverPhone)} />
               {detail.disputeNotes && <Row label="Note litige" value={<span style={{ color: 'var(--danger)' }}>{detail.disputeNotes}</span>} />}
-              {detail.status === 'DELIVERED' && (
-                <Row label="Preuve de livraison" value={<DocThumb url={detail.proofPhotoUrl} label="Photo" />} />
-              )}
               <Row label="Créée le"      value={detail.createdAt ? new Date(detail.createdAt).toLocaleString('fr-FR') : '—'} />
             </div>
+
+            {/* Preuve de livraison — mise en avant hors de la liste
+                label:valeur, agrandie : c'est la pièce qui compte le plus
+                en cas de litige, pas un simple champ à scanner. */}
+            {detail.status === 'DELIVERED' && (
+              <div style={{ marginTop: 16 }}>
+                <div style={{ color: 'var(--text-muted)', fontSize: 12, marginBottom: 6 }}>Preuve de livraison</div>
+                <DocThumb url={detail.proofPhotoUrl} label="Photo" width={140} height={110} />
+              </div>
+            )}
             <div style={{ marginTop: 20, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                 {/* Actions opérationnelles (dispatch) : pas pertinentes pour Finance, et
