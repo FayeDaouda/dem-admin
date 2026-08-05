@@ -4,6 +4,7 @@ import { useAuth } from '../contexts/AuthContext'
 import Badge from '../components/Badge'
 import { RefreshCw, Search } from 'lucide-react'
 import { glass, glassInput, pageWrap, pageScroll, stickyTh, stickyCol, stickyThCol } from '../lib/glassStyles'
+import DocThumb from '../components/DocThumb'
 
 const firstNonEmpty = (...values) => values.find(v => typeof v === 'string' && v.trim() !== '') ?? '—'
 
@@ -269,6 +270,9 @@ export default function Orders() {
               <Row label="Destinataire"  value={firstNonEmpty(detail.receiverName, detail.receiverPhone)} />
               <Row label="Tél. destinataire" value={firstNonEmpty(detail.receiverPhone)} />
               {detail.disputeNotes && <Row label="Note litige" value={<span style={{ color: 'var(--danger)' }}>{detail.disputeNotes}</span>} />}
+              {detail.status === 'DELIVERED' && (
+                <Row label="Preuve de livraison" value={<DocThumb url={detail.proofPhotoUrl} label="Photo" />} />
+              )}
               <Row label="Créée le"      value={detail.createdAt ? new Date(detail.createdAt).toLocaleString('fr-FR') : '—'} />
             </div>
             <div style={{ marginTop: 20, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
