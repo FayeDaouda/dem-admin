@@ -3,7 +3,7 @@ import { useSearchParams } from 'react-router-dom'
 import api from '../lib/api'
 import { useAuth } from '../contexts/AuthContext'
 import { glass, glassInput, pageWrap, pageScroll } from '../lib/glassStyles'
-import { RefreshCw, CheckCircle, XCircle, ChevronDown, ChevronUp, Shield, Truck, Layers, AlertTriangle, Briefcase, ClipboardList, Wallet } from 'lucide-react'
+import { RefreshCw, CheckCircle, XCircle, ChevronDown, ChevronUp, Shield, Truck, Layers, AlertTriangle, Briefcase, ClipboardList, Wallet, FileWarning } from 'lucide-react'
 import SuspendModal from '../components/SuspendModal'
 import AmbassadorDetailModal from '../components/AmbassadorDetailModal'
 
@@ -97,6 +97,9 @@ export default function Validation() {
         <button style={TAB(tab === 'drivers')} onClick={() => setTab('drivers')}>
           <span style={{ display:'flex', alignItems:'center', gap:6 }}><Truck size={13} />Livreurs en attente</span>
         </button>
+        <button style={TAB(tab === 'kyc-review')} onClick={() => setTab('kyc-review')}>
+          <span style={{ display:'flex', alignItems:'center', gap:6 }}><FileWarning size={13} />KYC à réviser</span>
+        </button>
         <button style={TAB(tab === 'dem-pro')} onClick={() => setTab('dem-pro')}>
           <span style={{ display:'flex', alignItems:'center', gap:6 }}><Briefcase size={13} />DEM Pro</span>
         </button>
@@ -117,6 +120,7 @@ export default function Validation() {
       <div style={pageScroll}>
         {tab === 'ambassadors'       && <AmbassadorsTab isServiceClient={isServiceClient} highlightId={highlightId} />}
         {tab === 'drivers'           && <DriversTab highlightId={highlightId} />}
+        {tab === 'kyc-review'        && <KycReviewTab highlightId={highlightId} />}
         {tab === 'dem-pro'           && <DemProTab highlightId={highlightId} />}
         {!isServiceClient && tab === 'fleet'             && <FleetTab highlightId={highlightId} />}
         {!isServiceClient && tab === 'service-requests'  && <ServiceRequestsTab highlightId={highlightId} />}
@@ -454,6 +458,177 @@ function DriversTab({ highlightId }) {
                     </button>
                   </div>
                 </div>
+              </div>
+            )}
+          </div>
+        )
+      })}
+    </div>
+  )
+}
+
+// ── Tab KYC à réviser (driverStatus : UNDER_REVIEW / PENDING_DOCUMENTS) ────────
+// Système distinct de "Livreurs en attente" ci-dessus (qui opère sur
+// chefDeFlotteStatus, la validation à l'inscription) — ici on gère le rejet
+// document par document une fois le livreur déjà actif, sans le suspendre.
+const KYC_FIELDS = [
+  ['licenseFront',   'Permis recto'],
+  ['licenseBack',    'Permis verso'],
+  ['carteGrise',     'Carte grise recto'],
+  ['carteGriseBack', 'Carte grise verso'],
+  ['assurance',      'Assurance'],
+  ['vehiclePhoto',   'Photo moto'],
+  ['avatar',         'Photo profil'],
+]
+
+function KycReviewTab({ highlightId }) {
+  const [list,     setList]     = useState([])
+  const [loading,  setLoading]  = useState(true)
+  const [expanded, setExpanded] = useState(null)
+  const [acting,   setActing]   = useState(null)
+  const [rejectingField, setRejectingField] = useState(null) // `${driverId}:${field}`
+  const [reason,   setReason]   = useState('')
+  const rowRefs = useRef({})
+
+  const load = useCallback(async () => {
+    setLoading(true)
+    try {
+      const res = await api.get('/admin/drivers', { params: { status: 'kyc-review', limit: 50 } })
+      setList(res.data.drivers ?? [])
+    } catch (e) { console.error(e) }
+    finally { setLoading(false) }
+  }, [])
+
+  useEffect(() => { load() }, [load])
+
+  useEffect(() => {
+    if (!highlightId || !list.some(d => d.id === highlightId)) return
+    setExpanded(highlightId)
+    rowRefs.current[highlightId]?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+  }, [highlightId, list])
+
+  async function handleReject(driverId, field) {
+    if (!reason.trim()) { alert('Saisissez un motif de refus.'); return }
+    setActing(`${driverId}:${field}`)
+    try {
+      await api.patch(`/admin/drivers/${driverId}/documents/${field}/reject`, { reason: reason.trim() })
+      setReason('')
+      setRejectingField(null)
+      load()
+    } catch (e) { alert(e.response?.data?.message ?? 'Erreur.') }
+    finally { setActing(null) }
+  }
+
+  async function handleVerify(driverId) {
+    setActing(driverId)
+    try {
+      await api.patch(`/admin/drivers/${driverId}/verify`)
+      setExpanded(null)
+      load()
+    } catch (e) { alert(e.response?.data?.message ?? 'Erreur.') }
+    finally { setActing(null) }
+  }
+
+  return (
+    <div style={{ display:'flex', flexDirection:'column', gap:12 }}>
+      <div style={{ display:'flex', justifyContent:'flex-end', marginBottom:4 }}>
+        <button onClick={load} style={{ display:'flex', alignItems:'center', gap:6, padding:'5px 12px', borderRadius:8, border:'1px solid rgba(0,119,182,.2)', background:'rgba(255,255,255,.5)', color:'var(--text-muted)', fontSize:12, cursor:'pointer' }}>
+          <RefreshCw size={12} /> Actualiser
+        </button>
+      </div>
+
+      {loading ? <div style={{ color:'var(--text-muted)' }}>Chargement…</div>
+      : list.length === 0 ? <div style={{ ...card, color:'var(--text-muted)', textAlign:'center', padding:32 }}>Aucun livreur à réviser.</div>
+      : list.map(d => {
+        const isOpen = expanded === d.id
+        const rejections = d.rejectedDocuments ?? {}
+        const missing = KYC_FIELDS.filter(([f]) => !d[f])
+        const hasActiveRejections = Object.keys(rejections).length > 0
+        const canVerify = missing.length === 0 && !hasActiveRejections
+
+        return (
+          <div key={d.id} ref={el => { rowRefs.current[d.id] = el }} style={{ ...card, ...(d.id === highlightId ? cardHighlight : {}) }}>
+            <div style={{ display:'flex', alignItems:'center', gap:12 }}>
+              <div style={{ width:38, height:38, borderRadius:'50%', background:'rgba(99,102,241,.12)', display:'flex', alignItems:'center', justifyContent:'center', fontWeight:800, color:'#6366f1', fontSize:14, flexShrink:0 }}>
+                {(d.name ?? '?')[0].toUpperCase()}
+              </div>
+              <div style={{ flex:1, minWidth:0 }}>
+                <div style={{ fontWeight:700, fontSize:14 }}>{d.name ?? '—'}</div>
+                <div style={{ fontSize:12, color:'var(--text-muted)' }}>{d.phone}</div>
+              </div>
+              <span style={{ fontSize:11, fontWeight:700, padding:'2px 10px', borderRadius:20, background: d.driverStatus === 'UNDER_REVIEW' ? 'rgba(99,102,241,.12)' : 'rgba(245,158,11,.12)', color: d.driverStatus === 'UNDER_REVIEW' ? '#6366f1' : '#b45309' }}>
+                {d.driverStatus === 'UNDER_REVIEW' ? 'En révision' : 'Documents manquants'}
+              </span>
+              <button onClick={() => { setExpanded(isOpen ? null : d.id); setRejectingField(null); setReason('') }}
+                style={{ background:'none', border:'none', cursor:'pointer', color:'var(--text-muted)', flexShrink:0 }}>
+                {isOpen ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
+              </button>
+            </div>
+
+            {isOpen && (
+              <div style={{ marginTop:14, borderTop:'1px solid rgba(0,0,0,.06)', paddingTop:12, display:'flex', flexDirection:'column', gap:12 }}>
+                <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(96px, 1fr))', gap:14 }}>
+                  {KYC_FIELDS.map(([field, label]) => {
+                    const rejection = rejections[field]
+                    const uploaded  = !!d[field]
+                    const isRejecting = rejectingField === `${d.id}:${field}`
+                    return (
+                      <div key={field} style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:6 }}>
+                        <DocThumb url={d[field]} label={label} />
+                        {rejection ? (
+                          <span style={{ fontSize:10, fontWeight:700, color:'#dc2626', textAlign:'center' }}>Refusé : {rejection.reason}</span>
+                        ) : uploaded ? (
+                          <span style={{ fontSize:10, fontWeight:700, color:'#15803d' }}>Valide</span>
+                        ) : (
+                          <span style={{ fontSize:10, fontWeight:700, color:'var(--text-muted)' }}>Manquant</span>
+                        )}
+                        {uploaded && !isRejecting && (
+                          <button
+                            onClick={() => { setRejectingField(`${d.id}:${field}`); setReason('') }}
+                            style={{ fontSize:10, fontWeight:700, color:'#dc2626', background:'none', border:'none', cursor:'pointer', textDecoration:'underline' }}
+                          >
+                            Rejeter
+                          </button>
+                        )}
+                        {isRejecting && (
+                          <div style={{ display:'flex', flexDirection:'column', gap:4, width:'100%' }}>
+                            <input
+                              autoFocus
+                              placeholder="Motif"
+                              value={reason}
+                              onChange={e => setReason(e.target.value)}
+                              style={{ ...glassInput, fontSize:11, padding:'4px 8px' }}
+                            />
+                            <div style={{ display:'flex', gap:4 }}>
+                              <button
+                                disabled={acting === `${d.id}:${field}`}
+                                onClick={() => handleReject(d.id, field)}
+                                style={{ ...btnRefuse, fontSize:10, padding:'3px 8px', flex:1, justifyContent:'center' }}
+                              >
+                                OK
+                              </button>
+                              <button
+                                onClick={() => { setRejectingField(null); setReason('') }}
+                                style={{ fontSize:10, padding:'3px 8px', flex:1, borderRadius:8, border:'none', background:'rgba(0,0,0,.06)', color:'var(--text-muted)', cursor:'pointer' }}
+                              >
+                                Annuler
+                              </button>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    )
+                  })}
+                </div>
+
+                <button
+                  style={{ ...btnAccept, alignSelf:'flex-start', ...(!canVerify ? btnDisabled : {}) }}
+                  disabled={acting === d.id || !canVerify}
+                  onClick={() => canVerify && handleVerify(d.id)}
+                  title={!canVerify ? 'Documents manquants ou rejets non corrigés' : ''}
+                >
+                  <CheckCircle size={13} /> Vérifier — certifier ce livreur
+                </button>
               </div>
             )}
           </div>
