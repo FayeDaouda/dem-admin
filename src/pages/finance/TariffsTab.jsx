@@ -160,14 +160,12 @@ export default function TariffsTab() {
 
       <Section title="Tarif de base des courses">
         <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', marginBottom: 14 }}>
-          <Field label="Course (base)" value={data.baseFare.ride} unit=" F" />
           <Field label="Livraison (base)" value={data.baseFare.delivery} unit=" F" />
           <Field label="Prix par km" value={data.baseFare.perKm} unit=" F/km" />
         </div>
         <ProposeForm
           submitting={submitting}
           fields={[
-            { key: 'base_fare_ride', label: 'Course (base)', current: data.baseFare.ride },
             { key: 'base_fare_delivery', label: 'Livraison (base)', current: data.baseFare.delivery },
             { key: 'price_per_km', label: 'Prix par km', current: data.baseFare.perKm },
           ]}
