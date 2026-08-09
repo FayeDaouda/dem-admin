@@ -6,8 +6,9 @@ import { glass, glassInput } from '../lib/glassStyles'
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 const CONFIG_META = {
-  base_fare_delivery: { label: 'Tarif de base – Livraison (F)', description: 'Montant fixe ajouté à chaque commande DELIVERY' },
-  price_per_km:       { label: 'Prix par kilomètre (F)',        description: 'Montant facturé par km de distance haversine' },
+  base_fare_delivery:      { label: 'Tarif de base – Livraison (F)', description: 'Montant fixe ajouté à chaque commande DELIVERY' },
+  price_per_km:            { label: 'Prix par kilomètre (F)',        description: 'Montant facturé par km de distance haversine' },
+  dem_pro_commission_rate: { label: 'Commission DEM Pro – Wallet (%)', description: 'Prélevée sur la part "produit" des commandes payées via le paiement intégré DEM Pro (wallet)' },
 }
 
 function computeDemFeeFromGrid(price, grid) {
