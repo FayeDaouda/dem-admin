@@ -35,6 +35,9 @@ const VOLUME_LABELS = {
   high:   '9+ / sem.',
 }
 
+const PLAN_LABELS = { FREE: 'Gratuit', PRO: 'Pro', BUSINESS: 'Business' }
+const PLAN_COLORS = { FREE: '#888', PRO: '#0077b6', BUSINESS: '#6366f1' }
+
 // ── Modal Créer / Modifier ────────────────────────────────────────────────────
 function EditModal({ initial, onClose, onSaved }) {
   const isEdit = !!initial?.id
@@ -137,6 +140,7 @@ function ProStats({ accounts }) {
   const active    = accounts.filter(a => a.proStatus === 'ACTIVE' && a.isActive).length
   const pending   = accounts.filter(a => a.proStatus === 'PENDING').length
   const totalOrders = accounts.reduce((s, a) => s + (a._count?.ordersAsClient ?? 0), 0)
+  const paying    = accounts.filter(a => a.proPlan === 'PRO' || a.proPlan === 'BUSINESS').length
 
   return (
     <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginBottom: 20 }}>
@@ -144,6 +148,7 @@ function ProStats({ accounts }) {
         { label: 'Total comptes', value: accounts.length, color: 'var(--primary)' },
         { label: 'Actifs',        value: active,           color: 'var(--success)' },
         { label: 'En attente',    value: pending,          color: '#f59e0b' },
+        { label: 'Payants (Pro/Business)', value: paying,  color: '#6366f1' },
         { label: 'Commandes',     value: totalOrders,      color: '#6366f1' },
       ].map(s => (
         <div key={s.label} style={{ ...glass, padding: '14px 18px', flex: '1 1 140px' }}>
@@ -195,6 +200,16 @@ export default function DemPro() {
       alert(e.response?.data?.message ?? 'Erreur.')
     } finally {
       setSaving(false)
+    }
+  }
+
+  async function changePlan(account, plan) {
+    if (plan === account.proPlan) return
+    try {
+      const res = await api.patch(`/admin/dem-pro/${account.id}/plan`, { plan })
+      setAccounts(prev => prev.map(a => a.id === account.id ? res.data.account : a))
+    } catch (e) {
+      alert(e.response?.data?.message ?? 'Erreur.')
     }
   }
 
@@ -309,7 +324,7 @@ export default function DemPro() {
             <table style={tableStyle}>
               <thead>
                 <tr>
-                  {['#', 'Entreprise', 'Téléphone', 'Secteur', 'Volume', 'Commandes', 'Statut', 'Inscription', 'Actions'].map((h, i) => (
+                  {['#', 'Entreprise', 'Téléphone', 'Secteur', 'Volume', 'Plan', 'Commandes', 'Statut', 'Inscription', 'Actions'].map((h, i) => (
                     <th key={h} style={{ ...thStyle, ...(i === 1 ? stickyThCol : stickyTh) }}>{h}</th>
                   ))}
                 </tr>
@@ -355,6 +370,33 @@ export default function DemPro() {
                       ) : '—'}
                     </td>
                     <td style={tdStyle}>{VOLUME_LABELS[a.proWeeklyVolume] ?? '—'}</td>
+                    <td style={tdStyle}>
+                      {isSuper ? (
+                        <select
+                          value={a.proPlan ?? 'FREE'}
+                          onChange={e => changePlan(a, e.target.value)}
+                          style={{
+                            fontSize: 11, fontWeight: 700, padding: '3px 6px', borderRadius: 8,
+                            border: `1px solid ${(PLAN_COLORS[a.proPlan] ?? '#888')}55`,
+                            background: (PLAN_COLORS[a.proPlan] ?? '#888') + '18',
+                            color: PLAN_COLORS[a.proPlan] ?? '#888',
+                            cursor: 'pointer',
+                          }}
+                        >
+                          {Object.entries(PLAN_LABELS).map(([k, v]) => (
+                            <option key={k} value={k}>{v}</option>
+                          ))}
+                        </select>
+                      ) : (
+                        <span style={{
+                          fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 10,
+                          background: (PLAN_COLORS[a.proPlan] ?? '#888') + '18',
+                          color: PLAN_COLORS[a.proPlan] ?? '#888',
+                        }}>
+                          {PLAN_LABELS[a.proPlan] ?? a.proPlan ?? 'Gratuit'}
+                        </span>
+                      )}
+                    </td>
                     <td style={{ ...tdStyle, textAlign: 'center', fontWeight: 600 }}>
                       {a._count?.ordersAsClient ?? 0}
                     </td>
