@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react'
 import api from '../lib/api'
 import { useAuth } from '../contexts/AuthContext'
 import Badge from '../components/Badge'
-import { RefreshCw, CheckCircle, XCircle, Pencil, Trash2, Ban, RotateCcw, X, Search, Phone, Flag, Plus } from 'lucide-react'
+import { RefreshCw, CheckCircle, XCircle, Pencil, Trash2, Ban, RotateCcw, X, Search, Phone, Flag, Plus, Gift, XSquare } from 'lucide-react'
 import { glass, glassModal, glassInput, pageWrap, pageScroll, stickyTh, stickyThCol, stickyCol } from '../lib/glassStyles'
 import SubmitRequestModal from './service-client/components/SubmitRequestModal'
 
@@ -125,6 +125,118 @@ function EditModal({ initial, onClose, onSaved }) {
   )
 }
 
+// ── Modal "Offrir un palier" — promo/bonus groupée ────────────────────────────
+const DURATION_PRESETS = [
+  ['7', '1 semaine'],
+  ['30', '1 mois'],
+  ['90', '3 mois'],
+]
+
+function GrantModal({ count, onClose, onConfirm, saving }) {
+  const [plan, setPlan] = useState('PRO')
+  const [days, setDays] = useState('30')
+  const [customDays, setCustomDays] = useState('')
+  const [now] = useState(() => Date.now())
+  const effectiveDays = days === 'custom' ? Number(customDays) : Number(days)
+
+  return (
+    <div style={overlay} onClick={onClose}>
+      <div style={{ ...glass, width: 420, maxWidth: '92vw', borderRadius: 16, padding: 24 }} onClick={e => e.stopPropagation()}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
+          <h2 style={{ fontSize: 17, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 8 }}>
+            <Gift size={18} /> Offrir un palier
+          </h2>
+          <button onClick={onClose} style={btnIcon}><X size={16} /></button>
+        </div>
+        <div style={{ marginBottom: 16, color: 'var(--text-muted)', fontSize: 13 }}>
+          {count} compte{count > 1 ? 's' : ''} sélectionné{count > 1 ? 's' : ''}
+        </div>
+
+        <div style={{ marginBottom: 14 }}>
+          <label style={labelStyle}>Palier</label>
+          <div style={{ display: 'flex', gap: 8 }}>
+            {['PRO', 'BUSINESS'].map(p => (
+              <button
+                key={p}
+                onClick={() => setPlan(p)}
+                style={{
+                  flex: 1, padding: '9px 12px', borderRadius: 10, cursor: 'pointer',
+                  border: `1.5px solid ${plan === p ? PLAN_COLORS[p] : 'rgba(0,119,182,0.2)'}`,
+                  background: plan === p ? PLAN_COLORS[p] + '18' : 'rgba(255,255,255,0.5)',
+                  color: plan === p ? PLAN_COLORS[p] : 'var(--text-muted)',
+                  fontWeight: 700, fontSize: 13,
+                }}
+              >
+                {PLAN_LABELS[p]}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div style={{ marginBottom: 14 }}>
+          <label style={labelStyle}>Durée offerte</label>
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+            {DURATION_PRESETS.map(([val, label]) => (
+              <button
+                key={val}
+                onClick={() => setDays(val)}
+                style={{
+                  padding: '7px 14px', borderRadius: 20, cursor: 'pointer',
+                  border: `1px solid ${days === val ? 'var(--primary)' : 'rgba(0,119,182,0.2)'}`,
+                  background: days === val ? 'var(--primary)' : 'rgba(255,255,255,0.5)',
+                  color: days === val ? '#fff' : 'var(--text-muted)',
+                  fontSize: 12, fontWeight: 600,
+                }}
+              >
+                {label}
+              </button>
+            ))}
+            <button
+              onClick={() => setDays('custom')}
+              style={{
+                padding: '7px 14px', borderRadius: 20, cursor: 'pointer',
+                border: `1px solid ${days === 'custom' ? 'var(--primary)' : 'rgba(0,119,182,0.2)'}`,
+                background: days === 'custom' ? 'var(--primary)' : 'rgba(255,255,255,0.5)',
+                color: days === 'custom' ? '#fff' : 'var(--text-muted)',
+                fontSize: 12, fontWeight: 600,
+              }}
+            >
+              Personnalisé
+            </button>
+          </div>
+          {days === 'custom' && (
+            <input
+              type="number"
+              min="1"
+              value={customDays}
+              onChange={e => setCustomDays(e.target.value)}
+              placeholder="Nombre de jours"
+              style={{ ...inputStyle, marginTop: 10 }}
+            />
+          )}
+        </div>
+
+        <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 20 }}>
+          {effectiveDays > 0
+            ? `Expire le ${new Date(now + effectiveDays * 86400000).toLocaleDateString('fr-FR')}.`
+            : 'Choisissez une durée valide.'}
+        </div>
+
+        <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
+          <button onClick={onClose} style={btnOutline}>Annuler</button>
+          <button
+            disabled={saving || !(effectiveDays > 0)}
+            onClick={() => onConfirm(plan, effectiveDays)}
+            style={btnPrimary}
+          >
+            {saving ? 'Envoi...' : `Offrir à ${count} compte${count > 1 ? 's' : ''}`}
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 // ── Helpers statut ───────────────────────────────────────────────────────────
 function proStatusInfo(a) {
   if (!a.isActive && a.proStatus === 'ACTIVE') return { text: '⚠ Suspendu', color: '#ef4444' }
@@ -175,6 +287,10 @@ export default function DemPro() {
   const [editTarget, setEditTarget] = useState(null)
   const [saving, setSaving]     = useState(false)
   const [requestTarget, setRequestTarget] = useState(null)
+  // Sélection multiple — offre/retrait de palier groupé (SUPER uniquement)
+  const [selected, setSelected] = useState(new Set())
+  const [grantModalOpen, setGrantModalOpen] = useState(false)
+  const [bulkSaving, setBulkSaving] = useState(false)
 
   const fetch = useCallback(async () => {
     setLoading(true)
@@ -211,6 +327,54 @@ export default function DemPro() {
     } catch (e) {
       alert(e.response?.data?.message ?? 'Erreur.')
     }
+  }
+
+  function toggleSelect(id) {
+    setSelected(prev => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }
+
+  function toggleSelectAll() {
+    setSelected(prev =>
+      prev.size === filtered.length ? new Set() : new Set(filtered.map(a => a.id))
+    )
+  }
+
+  // Offre groupée — statut TRIAL (voir dem_pro.plans VALID_PLAN_STATUSES) :
+  // distingue un cadeau d'un vrai abonnement payé, et le cron d'expiration
+  // (checkPlanExpiry) le rétrograde en FREE normalement une fois expiresAt
+  // dépassé — pas besoin d'y repenser plus tard.
+  async function bulkGrant(plan, days) {
+    setBulkSaving(true)
+    const expiresAt = new Date(Date.now() + days * 86400000).toISOString()
+    const ids = [...selected]
+    const results = await Promise.allSettled(
+      ids.map(id => api.patch(`/admin/dem-pro/${id}/plan`, { plan, status: 'TRIAL', expiresAt }))
+    )
+    const failed = results.filter(r => r.status === 'rejected').length
+    setBulkSaving(false)
+    setGrantModalOpen(false)
+    setSelected(new Set())
+    fetch()
+    if (failed > 0) alert(`${failed} compte(s) sur ${ids.length} n'ont pas pu être mis à jour.`)
+  }
+
+  async function bulkRevoke() {
+    const ids = [...selected]
+    if (!confirm(`Retirer l'accès payant pour ${ids.length} compte(s) ? Ils repassent immédiatement en Gratuit.`)) return
+    setBulkSaving(true)
+    const results = await Promise.allSettled(
+      ids.map(id => api.patch(`/admin/dem-pro/${id}/plan`, { plan: 'FREE', status: 'ACTIVE', expiresAt: null }))
+    )
+    const failed = results.filter(r => r.status === 'rejected').length
+    setBulkSaving(false)
+    setSelected(new Set())
+    fetch()
+    if (failed > 0) alert(`${failed} compte(s) sur ${ids.length} n'ont pas pu être mis à jour.`)
   }
 
   async function toggleSuspend(account, reason) {
@@ -311,6 +475,27 @@ export default function DemPro() {
         </div>
       </div>
 
+      {/* Barre d'actions groupées — n'apparaît qu'avec une sélection active */}
+      {isSuper && selected.size > 0 && (
+        <div style={{
+          ...glass, padding: '10px 16px', marginBottom: 12, flexShrink: 0,
+          display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap',
+        }}>
+          <span style={{ fontSize: 13, fontWeight: 600 }}>
+            {selected.size} compte{selected.size > 1 ? 's' : ''} sélectionné{selected.size > 1 ? 's' : ''}
+          </span>
+          <button onClick={() => setGrantModalOpen(true)} disabled={bulkSaving} style={{ ...btnPrimary, background: '#6366f1' }}>
+            <Gift size={14} /> Offrir Pro/Business
+          </button>
+          <button onClick={bulkRevoke} disabled={bulkSaving} style={{ ...btnOutline, color: 'var(--danger)', borderColor: 'var(--danger)' }}>
+            <Ban size={14} /> Retirer l'accès payant
+          </button>
+          <button onClick={() => setSelected(new Set())} style={{ ...btnIcon, marginLeft: 'auto' }} title="Désélectionner">
+            <XSquare size={16} />
+          </button>
+        </div>
+      )}
+
       {/* Table */}
       <div style={pageScroll}>
         <div style={card}>
@@ -324,6 +509,16 @@ export default function DemPro() {
             <table style={tableStyle}>
               <thead>
                 <tr>
+                  {isSuper && (
+                    <th style={{ ...thStyle, ...stickyTh, width: 30 }}>
+                      <input
+                        type="checkbox"
+                        checked={selected.size > 0 && selected.size === filtered.length}
+                        onChange={toggleSelectAll}
+                        style={{ cursor: 'pointer' }}
+                      />
+                    </th>
+                  )}
                   {['#', 'Entreprise', 'Téléphone', 'Secteur', 'Volume', 'Plan', 'Commandes', 'Statut', 'Inscription', 'Actions'].map((h, i) => (
                     <th key={h} style={{ ...thStyle, ...(i === 1 ? stickyThCol : stickyTh) }}>{h}</th>
                   ))}
@@ -336,6 +531,16 @@ export default function DemPro() {
                   const sectorColor = SECTOR_COLORS[a.proSector] ?? '#888'
                   return (
                   <tr key={a.id} style={{ borderBottom: '1px solid var(--border)', opacity: isSuspended ? 0.6 : 1 }}>
+                    {isSuper && (
+                      <td style={tdStyle}>
+                        <input
+                          type="checkbox"
+                          checked={selected.has(a.id)}
+                          onChange={() => toggleSelect(a.id)}
+                          style={{ cursor: 'pointer' }}
+                        />
+                      </td>
+                    )}
                     <td style={{ ...tdStyle, color: 'var(--text-muted)', fontSize: 12, width: 40, textAlign: 'center' }}>{idx + 1}</td>
                     <td style={{ ...tdStyle, ...stickyCol }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
@@ -371,31 +576,47 @@ export default function DemPro() {
                     </td>
                     <td style={tdStyle}>{VOLUME_LABELS[a.proWeeklyVolume] ?? '—'}</td>
                     <td style={tdStyle}>
-                      {isSuper ? (
-                        <select
-                          value={a.proPlan ?? 'FREE'}
-                          onChange={e => changePlan(a, e.target.value)}
-                          style={{
-                            fontSize: 11, fontWeight: 700, padding: '3px 6px', borderRadius: 8,
-                            border: `1px solid ${(PLAN_COLORS[a.proPlan] ?? '#888')}55`,
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 3, alignItems: 'flex-start' }}>
+                        {isSuper ? (
+                          <select
+                            value={a.proPlan ?? 'FREE'}
+                            onChange={e => changePlan(a, e.target.value)}
+                            style={{
+                              fontSize: 11, fontWeight: 700, padding: '3px 6px', borderRadius: 8,
+                              border: `1px solid ${(PLAN_COLORS[a.proPlan] ?? '#888')}55`,
+                              background: (PLAN_COLORS[a.proPlan] ?? '#888') + '18',
+                              color: PLAN_COLORS[a.proPlan] ?? '#888',
+                              cursor: 'pointer',
+                            }}
+                          >
+                            {Object.entries(PLAN_LABELS).map(([k, v]) => (
+                              <option key={k} value={k}>{v}</option>
+                            ))}
+                          </select>
+                        ) : (
+                          <span style={{
+                            fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 10,
                             background: (PLAN_COLORS[a.proPlan] ?? '#888') + '18',
                             color: PLAN_COLORS[a.proPlan] ?? '#888',
-                            cursor: 'pointer',
-                          }}
-                        >
-                          {Object.entries(PLAN_LABELS).map(([k, v]) => (
-                            <option key={k} value={k}>{v}</option>
-                          ))}
-                        </select>
-                      ) : (
-                        <span style={{
-                          fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 10,
-                          background: (PLAN_COLORS[a.proPlan] ?? '#888') + '18',
-                          color: PLAN_COLORS[a.proPlan] ?? '#888',
-                        }}>
-                          {PLAN_LABELS[a.proPlan] ?? a.proPlan ?? 'Gratuit'}
-                        </span>
-                      )}
+                          }}>
+                            {PLAN_LABELS[a.proPlan] ?? a.proPlan ?? 'Gratuit'}
+                          </span>
+                        )}
+                        {a.proPlanStatus === 'TRIAL' && (
+                          <span style={{
+                            display: 'inline-flex', alignItems: 'center', gap: 3,
+                            fontSize: 10, fontWeight: 700, padding: '1px 6px', borderRadius: 8,
+                            background: '#f59e0b18', color: '#f59e0b',
+                          }}>
+                            <Gift size={10} /> Offert
+                          </span>
+                        )}
+                        {a.proPlanExpiresAt && (a.proPlan ?? 'FREE') !== 'FREE' && (
+                          <span style={{ fontSize: 10, color: 'var(--text-muted)' }}>
+                            jusqu'au {new Date(a.proPlanExpiresAt).toLocaleDateString('fr-FR')}
+                          </span>
+                        )}
+                      </div>
                     </td>
                     <td style={{ ...tdStyle, textAlign: 'center', fontWeight: 600 }}>
                       {a._count?.ordersAsClient ?? 0}
@@ -567,6 +788,16 @@ export default function DemPro() {
           targetUser={requestTarget.targetUser}
           onClose={() => setRequestTarget(null)}
           onSubmitted={() => { setRequestTarget(null); alert('Demande envoyée pour validation.') }}
+        />
+      )}
+
+      {/* Modal offre promo groupée */}
+      {grantModalOpen && (
+        <GrantModal
+          count={selected.size}
+          saving={bulkSaving}
+          onClose={() => setGrantModalOpen(false)}
+          onConfirm={bulkGrant}
         />
       )}
     </div>
