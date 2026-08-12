@@ -132,8 +132,12 @@ const DURATION_PRESETS = [
   ['90', '3 mois'],
 ]
 
+// Business masqué du produit pour l'instant (décision utilisateur — plus
+// aucune différence fonctionnelle réelle avec Pro, pas question d'offrir ou
+// de facturer un palier qui n'apporte rien). Seul Pro reste attribuable ici ;
+// Business reste éditable individuellement pour les comptes qui l'ont déjà.
 function GrantModal({ count, onClose, onConfirm, saving }) {
-  const [plan, setPlan] = useState('PRO')
+  const plan = 'PRO'
   const [days, setDays] = useState('30')
   const [customDays, setCustomDays] = useState('')
   const [now] = useState(() => Date.now())
@@ -144,33 +148,12 @@ function GrantModal({ count, onClose, onConfirm, saving }) {
       <div style={{ ...glass, width: 420, maxWidth: '92vw', borderRadius: 16, padding: 24 }} onClick={e => e.stopPropagation()}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
           <h2 style={{ fontSize: 17, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 8 }}>
-            <Gift size={18} /> Offrir un palier
+            <Gift size={18} /> Offrir le palier Pro
           </h2>
           <button onClick={onClose} style={btnIcon}><X size={16} /></button>
         </div>
         <div style={{ marginBottom: 16, color: 'var(--text-muted)', fontSize: 13 }}>
           {count} compte{count > 1 ? 's' : ''} sélectionné{count > 1 ? 's' : ''}
-        </div>
-
-        <div style={{ marginBottom: 14 }}>
-          <label style={labelStyle}>Palier</label>
-          <div style={{ display: 'flex', gap: 8 }}>
-            {['PRO', 'BUSINESS'].map(p => (
-              <button
-                key={p}
-                onClick={() => setPlan(p)}
-                style={{
-                  flex: 1, padding: '9px 12px', borderRadius: 10, cursor: 'pointer',
-                  border: `1.5px solid ${plan === p ? PLAN_COLORS[p] : 'rgba(0,119,182,0.2)'}`,
-                  background: plan === p ? PLAN_COLORS[p] + '18' : 'rgba(255,255,255,0.5)',
-                  color: plan === p ? PLAN_COLORS[p] : 'var(--text-muted)',
-                  fontWeight: 700, fontSize: 13,
-                }}
-              >
-                {PLAN_LABELS[p]}
-              </button>
-            ))}
-          </div>
         </div>
 
         <div style={{ marginBottom: 14 }}>
@@ -589,9 +572,14 @@ export default function DemPro() {
                               cursor: 'pointer',
                             }}
                           >
-                            {Object.entries(PLAN_LABELS).map(([k, v]) => (
-                              <option key={k} value={k}>{v}</option>
-                            ))}
+                            {Object.entries(PLAN_LABELS)
+                              // Business masqué du choix pour l'instant, sauf pour un
+                              // compte qui l'a déjà (jamais forcé au changement) —
+                              // voir la note au-dessus de GrantModal.
+                              .filter(([k]) => k !== 'BUSINESS' || a.proPlan === 'BUSINESS')
+                              .map(([k, v]) => (
+                                <option key={k} value={k}>{v}</option>
+                              ))}
                           </select>
                         ) : (
                           <span style={{
