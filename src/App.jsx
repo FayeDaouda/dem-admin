@@ -51,6 +51,29 @@ function ProtectedRoute({ children }) {
   return <Layout>{children}</Layout>
 }
 
+// Comme ProtectedRoute, mais réservée aux routes dont TOUTES les données
+// viennent d'endpoints strictement SUPER côté backend (voir admin.routes.js
+// — `onlySuper`) : gestion des comptes admin, approbation des demandes de
+// reset de mot de passe. Aucun autre rôle n'a le moindre accès légitime en
+// lecture ici (contrairement à la plupart des pages, où le backend autorise
+// déjà une lecture partagée à plusieurs rôles — les restreindre ici casserait
+// un accès réel, voir diagnostic pré-prod). Même règle de bypass que
+// `requireAdminRole()` côté backend : pas d'adminRole (vieux compte) ou SUPER.
+function SuperOnlyRoute({ children }) {
+  const { user, loading } = useAuth()
+  if (loading) return (
+    <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)' }}>
+      Chargement…
+    </div>
+  )
+  if (!user) return <Navigate to="/login" replace />
+  if (user.mustChangePassword) return <Navigate to="/change-password" replace />
+  if (user.adminRole && user.adminRole !== 'SUPER') {
+    return <Navigate to={homeRouteForRole(user.adminRole)} replace />
+  }
+  return <Layout>{children}</Layout>
+}
+
 // Accessible dès qu'une session existe, même si mustChangePassword est vrai
 // (sinon ProtectedRoute ci-dessus bouclerait indéfiniment vers cette page).
 function ChangePasswordRoute() {
@@ -96,7 +119,7 @@ function AppRoutes() {
       <Route path="/incidents"   element={<ProtectedRoute><Incidents /></ProtectedRoute>} />
       <Route path="/audit"       element={<ProtectedRoute><Audit /></ProtectedRoute>} />
       <Route path="/validation"      element={<ProtectedRoute><Validation /></ProtectedRoute>} />
-      <Route path="/equipes"         element={<ProtectedRoute><Equipes /></ProtectedRoute>} />
+      <Route path="/equipes"         element={<SuperOnlyRoute><Equipes /></SuperOnlyRoute>} />
       <Route path="/dem-pro"          element={<ProtectedRoute><DemPro /></ProtectedRoute>} />
       <Route path="/chefs-de-flotte" element={<ProtectedRoute><ChefsDeFlotte /></ProtectedRoute>} />
       <Route path="/chefs-de-flotte/:id" element={<ProtectedRoute><ChefDetailPage /></ProtectedRoute>} />
