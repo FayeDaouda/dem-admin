@@ -393,7 +393,7 @@ export default function OverviewTab() {
                             <tr key={o.id} style={{ borderBottom: '1px solid rgba(0,0,0,.04)' }}>
                               <td style={{ ...tdStyle, padding: '6px 8px' }}><StatusDot status={o.status} /></td>
                               <td style={{ ...tdStyle, padding: '6px 8px', fontWeight: 600 }}>{o.price?.toLocaleString()} F</td>
-                              <td style={{ ...tdStyle, padding: '6px 8px' }}><Badge status={o.paymentStatus ?? 'PENDING'} /></td>
+                              <td style={{ ...tdStyle, padding: '6px 8px' }}>{o.status === 'CANCELLED' ? '—' : <Badge status={o.paymentStatus ?? 'PENDING'} />}</td>
                               <td style={{ ...tdStyle, padding: '6px 8px', fontSize: 11, color: 'var(--text-muted)' }}>
                                 {o.createdAt ? new Date(o.createdAt).toLocaleDateString('fr-FR') : '—'}
                               </td>
@@ -449,7 +449,7 @@ export default function OverviewTab() {
               <Row label="Client" value={orderDetail.client?.name ?? orderDetail.client?.phone ?? '—'} />
               <Row label="Livreur" value={orderDetail.driver?.name ?? '—'} />
               <Row label="Prix" value={`${orderDetail.price?.toLocaleString()} F`} />
-              <Row label="Paiement" value={<Badge status={orderDetail.paymentStatus ?? 'PENDING'} />} />
+              <Row label="Paiement" value={orderDetail.status === 'CANCELLED' ? '—' : <Badge status={orderDetail.paymentStatus ?? 'PENDING'} />} />
               <Row label="Départ" value={orderDetail.pickupAddress ?? '—'} />
               <Row label="Arrivée" value={orderDetail.deliveryAddress ?? '—'} />
               {orderDetail.receiverName && <Row label="Destinataire" value={orderDetail.receiverName} />}
