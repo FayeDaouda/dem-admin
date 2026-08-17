@@ -26,6 +26,21 @@ const DOC_LIST = [
 const ONLINE_STATE_LABEL = { busy: 'En course', available: 'Disponible', offline: 'Hors ligne' }
 const ONLINE_STATE_COLOR = { busy: '#7c3aed', available: '#22c55e', offline: '#94a3b8' }
 
+const CONNECTION_PERIOD_TABS = [
+  ['today',       "Aujourd'hui"],
+  ['week',        '7 j'],
+  ['month',       '30 j'],
+  ['threeMonths', '3 mois'],
+]
+
+function formatConnectionTime(seconds) {
+  const totalMin = Math.round((seconds ?? 0) / 60)
+  if (totalMin < 60) return `${totalMin} min`
+  const h = Math.floor(totalMin / 60)
+  const m = totalMin % 60
+  return m === 0 ? `${h} h` : `${h} h ${String(m).padStart(2, '0')}`
+}
+
 const STATS_PERIOD_TABS = [
   ['total',     'Total'],
   ['today',     "Aujourd'hui"],
@@ -502,6 +517,7 @@ export default function FleetDrivers() {
   const [drivers, setDrivers] = useState([])
   const [loading, setLoading] = useState(true)
   const [statusFilter, setStatusFilter] = useState('all')
+  const [connectionPeriod, setConnectionPeriod] = useState('today')
   const [showNew, setShowNew] = useState(false)
   const [detailId, setDetailId] = useState(null)
 
@@ -530,12 +546,24 @@ export default function FleetDrivers() {
         </div>
       </div>
 
-      <div style={{ display: 'flex', gap: 6, marginBottom: 16, flexWrap: 'wrap', flexShrink: 0 }}>
+      <div style={{ display: 'flex', gap: 6, marginBottom: 10, flexWrap: 'wrap', flexShrink: 0 }}>
         {STATUS_TABS.map(([key, label]) => (
           <button key={key} onClick={() => setStatusFilter(key)} style={{
             padding: '4px 14px', borderRadius: 20, border: '1px solid rgba(0,119,182,.25)',
             background: statusFilter === key ? 'var(--primary)' : 'rgba(255,255,255,.5)',
             color: statusFilter === key ? '#fff' : 'var(--text-muted)',
+            fontSize: 12, fontWeight: 600, cursor: 'pointer',
+          }}>{label}</button>
+        ))}
+      </div>
+
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16, flexWrap: 'wrap', flexShrink: 0 }}>
+        <span style={{ fontSize: 12, color: 'var(--text-muted)', fontWeight: 600 }}>Connexion sur :</span>
+        {CONNECTION_PERIOD_TABS.map(([key, label]) => (
+          <button key={key} onClick={() => setConnectionPeriod(key)} style={{
+            padding: '4px 14px', borderRadius: 20, border: `1px solid ${connectionPeriod === key ? '#7c3aed' : 'rgba(124,58,237,.25)'}`,
+            background: connectionPeriod === key ? '#7c3aed' : 'rgba(124,58,237,.06)',
+            color: connectionPeriod === key ? '#fff' : '#7c3aed',
             fontSize: 12, fontWeight: 600, cursor: 'pointer',
           }}>{label}</button>
         ))}
@@ -551,7 +579,7 @@ export default function FleetDrivers() {
             <table style={tableStyle}>
               <thead>
                 <tr>
-                  {['Livreur', 'Téléphone', 'Véhicule', 'Statut', 'Activité', 'Note', 'Courses livrées', 'Inscription', ''].map((h, i) => (
+                  {['Livreur', 'Téléphone', 'Véhicule', 'Statut', 'Activité', 'Connexion', 'Note', 'Courses livrées', 'Inscription', ''].map((h, i) => (
                     <th key={h} style={{ ...thStyle, ...(i === 0 ? stickyThCol : stickyTh) }}>{h}</th>
                   ))}
                 </tr>
@@ -584,6 +612,9 @@ export default function FleetDrivers() {
                             {ONLINE_STATE_LABEL[d.onlineState]}
                           </span>
                         ) : <span style={{ color: 'var(--text-muted)', fontSize: 12 }}>—</span>}
+                      </td>
+                      <td style={{ ...tdStyle, fontSize: 12, fontWeight: 600, color: '#7c3aed' }}>
+                        {formatConnectionTime(d.connectionSecondsByPeriod?.[connectionPeriod])}
                       </td>
                       <td style={tdStyle}>
                         {d.avgRating != null ? (

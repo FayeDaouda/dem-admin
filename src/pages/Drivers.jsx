@@ -19,6 +19,21 @@ const DOC_LIST = [
   { key: 'assurance',      label: 'Assurance' },
 ]
 
+const CONNECTION_PERIOD_TABS = [
+  ['today',       "Aujourd'hui"],
+  ['week',        '7 j'],
+  ['month',       '30 j'],
+  ['threeMonths', '3 mois'],
+]
+
+function formatConnectionTime(seconds) {
+  const totalMin = Math.round((seconds ?? 0) / 60)
+  if (totalMin < 60) return `${totalMin} min`
+  const h = Math.floor(totalMin / 60)
+  const m = totalMin % 60
+  return m === 0 ? `${h} h` : `${h} h ${String(m).padStart(2, '0')}`
+}
+
 // ── Modal Créer / Modifier livreur ────────────────────────────────────────────
 function DriverFormModal({ initial, onClose, onSaved }) {
   const isEdit = !!initial
@@ -229,6 +244,7 @@ export default function Drivers() {
   const [onlineFilter, setOnlineFilter] = useState('all')
   const [verifFilter, setVerifFilter]   = useState('all')
   const [badgeFilter, setBadgeFilter]   = useState('all')
+  const [connectionPeriod, setConnectionPeriod] = useState('today')
   const [sortCourses, setSortCourses]   = useState(null)
   const [stats, setStats]               = useState(null)
   const [detail, setDetail]             = useState(null)
@@ -639,6 +655,18 @@ export default function Drivers() {
           ))}
         </select>
       </div>
+
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16, flexWrap: 'wrap', flexShrink: 0 }}>
+        <span style={{ fontSize: 12, color: 'var(--text-muted)', fontWeight: 600 }}>Connexion sur :</span>
+        {CONNECTION_PERIOD_TABS.map(([key, label]) => (
+          <button key={key} onClick={() => setConnectionPeriod(key)} style={{
+            padding: '4px 14px', borderRadius: 20, border: `1px solid ${connectionPeriod === key ? '#7c3aed' : 'rgba(124,58,237,.25)'}`,
+            background: connectionPeriod === key ? '#7c3aed' : 'rgba(124,58,237,.06)',
+            color: connectionPeriod === key ? '#fff' : '#7c3aed',
+            fontSize: 12, fontWeight: 600, cursor: 'pointer',
+          }}>{label}</button>
+        ))}
+      </div>
       <div style={pageScroll}>
       <div style={card}>
         {loading ? (
@@ -647,7 +675,7 @@ export default function Drivers() {
           <table style={{ ...tableStyle, minWidth: 900 }}>
             <thead>
               <tr>
-                {['#', 'Nom', 'Badge', 'Courses', 'Téléphone', 'Véhicule', 'Statut', 'Vérifié', 'Actions'].map((h, i) => (
+                {['#', 'Nom', 'Badge', 'Courses', 'Connexion', 'Téléphone', 'Véhicule', 'Statut', 'Vérifié', 'Actions'].map((h, i) => (
                   <th
                     key={h}
                     style={{
@@ -689,6 +717,9 @@ export default function Drivers() {
                     {d.avgRating > 0 && (
                       <div style={{ fontSize: 11, color: '#f59e0b' }}>★ {d.avgRating}</div>
                     )}
+                  </td>
+                  <td style={{ ...tdStyle, fontSize: 12, fontWeight: 600, color: '#7c3aed' }}>
+                    {formatConnectionTime(d.connectionSecondsByPeriod?.[connectionPeriod])}
                   </td>
                   <td style={tdStyle}>
                     {d.phone ? <a href={`tel:${d.phone}`} style={{ color: '#0077b6' }}>{d.phone}</a> : '—'}
