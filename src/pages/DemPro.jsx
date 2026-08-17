@@ -14,6 +14,12 @@ const STATUS_FILTERS = [
   ['SUSPENDED', 'Suspendus'],
 ]
 
+const PLAN_FILTERS = [
+  ['all',   'Tous les plans'],
+  ['FREE',  'Gratuit'],
+  ['PAID',  'Payant (Pro/Business)'],
+]
+
 const SECTOR_LABELS = {
   commerce:     'Commerce',
   restauration: 'Restauration',
@@ -265,6 +271,7 @@ export default function DemPro() {
   const [accounts, setAccounts] = useState([])
   const [loading, setLoading]   = useState(true)
   const [filter, setFilter]     = useState('all')
+  const [planFilter, setPlanFilter] = useState('all')
   const [search, setSearch]     = useState('')
   const [modal, setModal]       = useState(null)
   const [editTarget, setEditTarget] = useState(null)
@@ -401,6 +408,11 @@ export default function DemPro() {
       return a.proStatus === filter
     })
     .filter(a => {
+      if (planFilter === 'all') return true
+      const isPaid = a.proPlan === 'PRO' || a.proPlan === 'BUSINESS'
+      return planFilter === 'PAID' ? isPaid : !isPaid
+    })
+    .filter(a => {
       const q = search.trim().toLowerCase()
       if (!q) return true
       return (a.name ?? '').toLowerCase().includes(q)
@@ -426,8 +438,8 @@ export default function DemPro() {
 
       <ProStats accounts={accounts} />
 
-      {/* Filtres */}
-      <div style={{ display: 'flex', gap: 6, marginBottom: 16, flexWrap: 'wrap', flexShrink: 0 }}>
+      {/* Filtres statut */}
+      <div style={{ display: 'flex', gap: 6, marginBottom: 10, flexWrap: 'wrap', flexShrink: 0 }}>
         {STATUS_FILTERS.map(([val, label]) => (
           <button
             key={val}
@@ -437,6 +449,25 @@ export default function DemPro() {
               border: '1px solid rgba(0,119,182,.25)',
               background: filter === val ? 'var(--primary)' : 'rgba(255,255,255,.5)',
               color: filter === val ? '#fff' : 'var(--text-muted)',
+              fontSize: 12, fontWeight: 600, cursor: 'pointer',
+            }}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+
+      {/* Filtres plan — Gratuit vs Payant */}
+      <div style={{ display: 'flex', gap: 6, marginBottom: 16, flexWrap: 'wrap', flexShrink: 0 }}>
+        {PLAN_FILTERS.map(([val, label]) => (
+          <button
+            key={val}
+            onClick={() => setPlanFilter(val)}
+            style={{
+              padding: '4px 14px', borderRadius: 20,
+              border: `1px solid ${planFilter === val ? '#6366f1' : 'rgba(99,102,241,.25)'}`,
+              background: planFilter === val ? '#6366f1' : 'rgba(99,102,241,.06)',
+              color: planFilter === val ? '#fff' : '#6366f1',
               fontSize: 12, fontWeight: 600, cursor: 'pointer',
             }}
           >
@@ -486,7 +517,7 @@ export default function DemPro() {
             <div style={{ color: 'var(--text-muted)', padding: 20 }}>Chargement...</div>
           ) : filtered.length === 0 ? (
             <div style={{ color: 'var(--text-muted)', padding: 20 }}>
-              Aucun compte DEM Pro{filter !== 'all' || search ? ' pour ce filtre' : ''}.
+              Aucun compte DEM Pro{filter !== 'all' || planFilter !== 'all' || search ? ' pour ce filtre' : ''}.
             </div>
           ) : (
             <table style={tableStyle}>
