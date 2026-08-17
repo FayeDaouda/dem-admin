@@ -37,33 +37,39 @@ const DRIVER_TIER_ORDER = ['xarit', 'mbokk', 'doorWarr', 'domouNdey', 'buur', 'g
 // (OR entre les lignes, AND entre les critères d'une même ligne) — même principe
 // que les badges livreur.
 const DEFAULT_CLIENT_TIERS = [
-  { id: 'vip', name: 'DEM VIP', criteria: [
+  { id: 'vip', name: 'DEM VIP', emoji: '💎', advantage: '', criteria: [
     { courses: 200, referrals: 12, rating: 4.5 },
     { courses: 55,  referrals: 65, rating: 4.5 },
     { courses: 130, referrals: 50, rating: 4.5 },
   ] },
-  { id: 'buur', name: 'DEM Buur', criteria: [
+  { id: 'buur', name: 'DEM Buur', emoji: '👑', advantage: '', criteria: [
     { courses: 130, referrals: 8,  rating: 4.2 },
     { courses: 38,  referrals: 40, rating: 4.2 },
     { courses: 85,  referrals: 28, rating: 4.2 },
   ] },
-  { id: 'djambar', name: 'DEM Djambar', criteria: [
+  { id: 'djambar', name: 'DEM Djambar', emoji: '🏆', advantage: '', criteria: [
     { courses: 85, referrals: 5,  rating: 4.0 },
     { courses: 25, referrals: 25, rating: 4.0 },
     { courses: 50, referrals: 15, rating: 4.0 },
   ] },
-  { id: 'mbokk', name: 'DEM Mbokk', requiresValidation: true, criteria: [
+  { id: 'mbokk', name: 'DEM Mbokk', emoji: '⭐', advantage: '', requiresValidation: true, criteria: [
     { courses: 50, referrals: 6,  profileComplete: true },
     { courses: 18, referrals: 16, profileComplete: true },
     { courses: 25, referrals: 10, profileComplete: true },
   ] },
-  { id: 'xarit', name: 'DEM Xarit', criteria: [
+  { id: 'xarit', name: 'DEM Xarit', emoji: '🤝', advantage: '', criteria: [
     { courses: 12, referrals: 3 },
     { courses: 5,  referrals: 4 },
     { courses: 7,  referrals: 4 },
   ] },
-  { id: 'classic', name: 'DEM Classic', criteria: [{ courses: 1, referrals: 0 }] },
+  { id: 'classic', name: 'DEM Classic', emoji: '✅', advantage: '', criteria: [{ courses: 1, referrals: 0 }] },
 ]
+
+// Ordre d'affichage imposé côté admin (du plus bas au plus haut palier, comme
+// pour les badges livreur) — indépendant de l'ordre de calcul backend
+// (DEFAULT_TIERS y reste du plus haut au plus bas, nécessaire pour trouver le
+// palier le plus haut atteint en premier).
+const CLIENT_TIER_ORDER = ['classic', 'xarit', 'mbokk', 'djambar', 'buur', 'vip']
 
 const CLIENT_VISUALS = {
   classic: { emoji: '✅', color: '#00838F', bg: 'rgba(0,131,143,.08)', border: 'rgba(0,131,143,.25)',  name: 'DEM Classic' },
@@ -164,8 +170,10 @@ function ClientBadgesTab() {
 
   if (loading) return <div style={{ color: 'var(--text-muted)', padding: 40, textAlign: 'center' }}>Chargement...</div>
 
+  const orderedTiers = [...tiers].sort((a, b) => CLIENT_TIER_ORDER.indexOf(a.id) - CLIENT_TIER_ORDER.indexOf(b.id))
+
   const counts = {}
-  for (const id of Object.keys(CLIENT_VISUALS)) counts[id] = 0
+  for (const t of tiers) counts[t.id] = 0
   let none = 0
   for (const c of clients) {
     if (c.clientBadge && counts[c.clientBadge] !== undefined) counts[c.clientBadge]++
@@ -175,7 +183,10 @@ function ClientBadgesTab() {
   const selectedClients = selected
     ? (selected === 'none' ? clients.filter(c => !c.clientBadge) : clients.filter(c => c.clientBadge === selected))
     : []
-  const selectedVisual = selected === 'none' ? NONE_VISUAL : CLIENT_VISUALS[selected]
+  const selectedTier   = tiers.find(t => t.id === selected)
+  const selectedVisual = selected === 'none'
+    ? NONE_VISUAL
+    : { ...(CLIENT_VISUALS[selected] ?? {}), emoji: selectedTier?.emoji, name: selectedTier?.name }
 
   return (
     <>
@@ -189,14 +200,19 @@ function ClientBadgesTab() {
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 12 }}>
         <BadgeCard v={NONE_VISUAL} count={none} onClick={() => setSelected('none')} />
-        {Object.entries(CLIENT_VISUALS).map(([id, v]) => (
-          <BadgeCard key={id} v={v} count={counts[id]} onClick={() => setSelected(id)} />
+        {orderedTiers.map(t => (
+          <BadgeCard
+            key={t.id}
+            v={{ ...(CLIENT_VISUALS[t.id] ?? { color: '#888', bg: 'var(--surface2)', border: 'var(--border)' }), emoji: t.emoji, name: t.name }}
+            count={counts[t.id]}
+            onClick={() => setSelected(t.id)}
+          />
         ))}
       </div>
 
       {editing && (
         <EditClientBadgeTiersModal
-          tiers={tiers}
+          tiers={orderedTiers}
           onClose={() => setEditing(false)}
           onSaved={() => { setEditing(false); load() }}
         />
@@ -506,6 +522,10 @@ function EditClientBadgeTiersModal({ tiers, onClose, onSaved }) {
 
   const selected = rows.find(r => r.id === selectedTier) ?? null
 
+  function setField(tierId, key, value) {
+    setRows(rs => rs.map(r => r.id === tierId ? { ...r, [key]: value } : r))
+  }
+
   function setCriteriaField(tierId, idx, field, value) {
     setRows(rs => rs.map(r => r.id !== tierId ? r : {
       ...r,
@@ -537,6 +557,7 @@ function EditClientBadgeTiersModal({ tiers, onClose, onSaved }) {
   async function save() {
     setError('')
     for (const r of rows) {
+      if (!r.name?.trim()) { setError('Le nom de chaque palier est requis.'); return }
       if (r.criteria.length === 0) { setError(`${r.name} doit avoir au moins une ligne de critères.`); return }
       for (const c of r.criteria) {
         if (c.courses === '' || Number.isNaN(Number(c.courses)) || Number(c.courses) < 0) { setError(`Nombre de courses invalide pour ${r.name}.`); return }
@@ -548,7 +569,7 @@ function EditClientBadgeTiersModal({ tiers, onClose, onSaved }) {
     setSaving(true)
     try {
       const payload = rows.map(r => ({
-        id: r.id, name: r.name,
+        id: r.id, name: r.name.trim(), emoji: r.emoji, advantage: r.advantage ?? '',
         criteria: r.criteria.map(c => ({
           courses: Number(c.courses), referrals: Number(c.referrals), rating: Number(c.rating),
           ...(c.profileComplete ? { profileComplete: true } : {}),
@@ -587,8 +608,8 @@ function EditClientBadgeTiersModal({ tiers, onClose, onSaved }) {
                   color: r.id === selectedTier ? 'var(--primary)' : 'var(--text)',
                 }}
               >
-                <span style={{ fontSize: 16 }}>{CLIENT_VISUALS[r.id]?.emoji ?? '🏅'}</span>
-                <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.name}</span>
+                <span style={{ fontSize: 16 }}>{r.emoji || '🏅'}</span>
+                <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.name || 'Sans nom'}</span>
               </button>
             ))}
           </div>
@@ -596,11 +617,12 @@ function EditClientBadgeTiersModal({ tiers, onClose, onSaved }) {
           <div style={{ flex: 1, padding: '16px 24px', overflowY: 'auto' }}>
             {selected && (
               <div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 14 }}>
-                  <span style={{ fontSize: 20 }}>{CLIENT_VISUALS[selected.id]?.emoji ?? '🏅'}</span>
-                  <span style={{ fontWeight: 700, fontSize: 15 }}>{selected.name}</span>
+                <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 14 }}>
+                  <input value={selected.emoji} onChange={e => setField(selected.id, 'emoji', e.target.value)} style={{ ...rowInput, width: 48, textAlign: 'center', fontSize: 18, flex: 'none' }} />
+                  <input value={selected.name} onChange={e => setField(selected.id, 'name', e.target.value)} style={{ ...rowInput, width: 180, fontWeight: 700, flex: 'none' }} placeholder="Nom du badge" />
+                  <input value={selected.advantage ?? ''} onChange={e => setField(selected.id, 'advantage', e.target.value)} style={rowInput} placeholder="Avantage affiché (ex : Livraison prioritaire)" />
                   {selected.requiresValidation && (
-                    <span style={{ fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 6, background: 'rgba(245,158,11,.15)', color: '#b45309' }}>
+                    <span style={{ fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 6, background: 'rgba(245,158,11,.15)', color: '#b45309', flex: 'none' }}>
                       validation admin requise
                     </span>
                   )}
