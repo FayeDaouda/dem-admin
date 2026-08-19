@@ -207,6 +207,100 @@ const DEFAULT_BADGE_TIERS = [
   { tier: 'xarit',     name: 'DEM Xarit',      criteria: [{ courses: 3, referrals: 0, rating: 0 }, { courses: 0, referrals: 3, rating: 0 }] },
 ]
 
+// ── Modal choix suppression : archiver (réversible, défaut) vs définitif ──────
+// La suppression définitive efface aussi l'historique (commandes, notes,
+// transactions wallet...) — protégée par une saisie du numéro pour éviter un
+// clic accidentel sur une action irréversible.
+function DeleteDriverModal({ driver, onClose, onArchive, onHardDelete }) {
+  const [mode, setMode] = useState(null) // null | 'archive' | 'hard'
+  const [confirmText, setConfirmText] = useState('')
+  const [busy, setBusy] = useState(false)
+  const label = driver.name?.trim() || driver.phone
+
+  async function run(action) {
+    setBusy(true)
+    try { await action() } finally { setBusy(false) }
+  }
+
+  return (
+    <div style={overlay} onClick={onClose}>
+      <div style={modalBox} onClick={e => e.stopPropagation()}>
+        <h2 style={{ marginBottom: 8, fontSize: 16 }}>Supprimer {label}</h2>
+
+        {mode === null && (
+          <>
+            <p style={{ color: 'var(--text-muted)', fontSize: 13, marginBottom: 20 }}>
+              Choisissez comment supprimer ce livreur.
+            </p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              <button onClick={() => setMode('archive')} style={{ ...btnOutline, justifyContent: 'flex-start', padding: '12px 14px' }}>
+                <div style={{ textAlign: 'left' }}>
+                  <div style={{ fontWeight: 700, fontSize: 13 }}>Archiver</div>
+                  <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2 }}>
+                    Compte désactivé, numéro libéré — commandes/transactions conservées. Réversible.
+                  </div>
+                </div>
+              </button>
+              <button onClick={() => setMode('hard')} style={{ ...btnOutline, justifyContent: 'flex-start', padding: '12px 14px', color: 'var(--danger)', borderColor: 'var(--danger)' }}>
+                <div style={{ textAlign: 'left' }}>
+                  <div style={{ fontWeight: 700, fontSize: 13 }}>Supprimer définitivement</div>
+                  <div style={{ fontSize: 12, marginTop: 2 }}>
+                    Efface aussi les commandes, notes, transactions wallet et tout l'historique. Irréversible.
+                  </div>
+                </div>
+              </button>
+            </div>
+            <div style={{ marginTop: 20, textAlign: 'right' }}>
+              <button onClick={onClose} style={btnOutline}>Annuler</button>
+            </div>
+          </>
+        )}
+
+        {mode === 'archive' && (
+          <>
+            <p style={{ color: 'var(--text-muted)', fontSize: 13, marginBottom: 20 }}>
+              {label} sera désactivé et son numéro libéré. Son historique (commandes, transactions…) reste consultable via "Voir les comptes supprimés".
+            </p>
+            <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
+              <button onClick={() => setMode(null)} style={btnOutline}>Retour</button>
+              <button onClick={() => run(onArchive)} disabled={busy} style={btnPrimary}>
+                {busy ? 'Archivage…' : 'Confirmer l\'archivage'}
+              </button>
+            </div>
+          </>
+        )}
+
+        {mode === 'hard' && (
+          <>
+            <p style={{ color: 'var(--danger)', fontSize: 13, marginBottom: 14, fontWeight: 600 }}>
+              Action irréversible : {label} et tout son historique (commandes, notes, transactions wallet, tournées, parrainages) seront définitivement effacés.
+            </p>
+            <label style={{ display: 'block', fontSize: 12, color: 'var(--text-muted)', marginBottom: 6 }}>
+              Tapez le numéro <strong>{driver.phone}</strong> pour confirmer :
+            </label>
+            <input
+              value={confirmText}
+              onChange={e => setConfirmText(e.target.value)}
+              placeholder={driver.phone}
+              style={{ width: '100%', padding: '8px 10px', borderRadius: 8, border: '1px solid rgba(239,68,68,.4)', background: 'rgba(255,255,255,.6)', fontSize: 13, outline: 'none', boxSizing: 'border-box', marginBottom: 20 }}
+            />
+            <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
+              <button onClick={() => setMode(null)} style={btnOutline}>Retour</button>
+              <button
+                onClick={() => run(onHardDelete)}
+                disabled={busy || confirmText.trim() !== driver.phone}
+                style={{ padding: '7px 16px', borderRadius: 'var(--radius-sm)', border: 'none', background: 'var(--danger)', color: '#fff', fontWeight: 600, fontSize: 13, cursor: (busy || confirmText.trim() !== driver.phone) ? 'default' : 'pointer', opacity: (busy || confirmText.trim() !== driver.phone) ? 0.5 : 1 }}
+              >
+                {busy ? 'Suppression…' : 'Supprimer définitivement'}
+              </button>
+            </div>
+          </>
+        )}
+      </div>
+    </div>
+  )
+}
+
 // Un badge est atteint si AU MOINS une ligne de critères est entièrement remplie.
 function computeBadge(courses, referrals, rating, tiers) {
   for (const tier of (tiers ?? DEFAULT_BADGE_TIERS)) {
@@ -374,10 +468,22 @@ export default function Drivers() {
     }
   }
 
-  async function deleteDriver(driver) {
-    if (!confirm(`Supprimer ${driver.name ?? driver.phone} ? Le compte sera désactivé et son numéro libéré — son historique (commandes, transactions...) reste conservé.`)) return
+  const [deleteTarget, setDeleteTarget] = useState(null)
+
+  async function archiveDriver(driver) {
     try {
       await api.delete(`/admin/drivers/${driver.id}`)
+      setDeleteTarget(null)
+      fetch()
+    } catch (e) {
+      alert(e.response?.data?.message ?? 'Erreur.')
+    }
+  }
+
+  async function hardDeleteDriver(driver) {
+    try {
+      await api.delete(`/admin/drivers/${driver.id}`, { params: { permanent: true } })
+      setDeleteTarget(null)
       fetch()
     } catch (e) {
       alert(e.response?.data?.message ?? 'Erreur.')
@@ -790,7 +896,7 @@ export default function Drivers() {
                           ) : (
                             <button onClick={() => activateDriver(d)} style={{ ...btnSmall, color: 'var(--success)', borderColor: 'var(--success)' }}>Réactiver</button>
                           )}
-                          <button onClick={() => deleteDriver(d)} style={{ ...btnSmall, color: 'var(--danger)', borderColor: 'var(--danger)' }} title="Supprimer">
+                          <button onClick={() => setDeleteTarget(d)} style={{ ...btnSmall, color: 'var(--danger)', borderColor: 'var(--danger)' }} title="Supprimer">
                             <Trash2 size={13} />
                           </button>
                         </>
@@ -957,6 +1063,16 @@ export default function Drivers() {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Modal choix suppression : archiver (réversible) vs définitif */}
+      {deleteTarget && (
+        <DeleteDriverModal
+          driver={deleteTarget}
+          onClose={() => setDeleteTarget(null)}
+          onArchive={() => archiveDriver(deleteTarget)}
+          onHardDelete={() => hardDeleteDriver(deleteTarget)}
+        />
       )}
 
       {/* Modal demande suspension (SERVICE_CLIENT) */}
