@@ -12,6 +12,7 @@ const STATUS_TABS = [
 ]
 
 const DOC_LIST = [
+  { key: 'avatar',         label: 'Photo de profil' },
   { key: 'idCardFront',    label: 'CNI recto' },
   { key: 'idCardBack',     label: 'CNI verso' },
   { key: 'licenseFront',   label: 'Permis recto' },

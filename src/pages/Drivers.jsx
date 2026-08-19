@@ -9,6 +9,7 @@ import SubmitRequestModal from './service-client/components/SubmitRequestModal'
 import DocThumb from '../components/DocThumb'
 
 const DOC_LIST = [
+  { key: 'avatar',         label: 'Photo de profil' },
   { key: 'idCardFront',    label: 'CNI recto' },
   { key: 'idCardBack',     label: 'CNI verso' },
   { key: 'licenseFront',   label: 'Permis recto' },
