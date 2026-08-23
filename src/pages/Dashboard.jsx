@@ -12,6 +12,7 @@ import { useResponsive } from '../lib/useResponsive'
 import { useAuth } from '../contexts/AuthContext'
 import MarketingKpiRow from './marketing/components/MarketingKpiRow'
 import ServiceClientKpiRow from './service-client/components/KpiRow'
+import ValidationNotifications from '../components/ValidationNotifications'
 
 function TrendBadge({ current, previous }) {
   if (previous == null || previous === 0) return null
@@ -833,6 +834,7 @@ export default function Dashboard() {
             <button onClick={() => toggleSection('dashboard.showServiceClient', setShowServiceClient)} style={visibilityToggle(showServiceClient)}>
               {showServiceClient ? <Eye size={13} /> : <EyeOff size={13} />} Service Client
             </button>
+            <ValidationNotifications />
           </div>
         )}
       </div>

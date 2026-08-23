@@ -15,19 +15,57 @@ function timeAgo(dateStr) {
   return `il y a ${j} j`
 }
 
+const SEEN_KEY = 'dem_admin_validation_seen'
+
+function loadSeen() {
+  try { return new Set(JSON.parse(localStorage.getItem(SEEN_KEY) ?? '[]')) }
+  catch { return new Set() }
+}
+function saveSeen(set) {
+  try { localStorage.setItem(SEEN_KEY, JSON.stringify([...set])) } catch { /* stockage indispo, tant pis */ }
+}
+
 // Cloche de notifications — résumé de tout ce qui attend une décision du
-// Super Admin sur la page Validation (profils + demandes Service Client/Finance)
+// Super Admin sur la page Validation (profils + demandes Service Client/Finance).
+// Le badge compte les demandes "non vues" (pas encore ouvertes par cet admin,
+// suivi en local) — distinct de "en attente" : une demande déjà ouverte mais
+// toujours en attente ne recompte plus tant qu'elle n'est pas remplacée par
+// une nouvelle demande.
 export default function ValidationNotifications() {
-  const [total, setTotal] = useState(0)
-  const [open, setOpen] = useState(false)
   const [items, setItems] = useState([])
+  const [seen, setSeen] = useState(loadSeen)
+  const [open, setOpen] = useState(false)
   const [loading, setLoading] = useState(false)
   const ref = useRef(null)
   const navigate = useNavigate()
 
+  const unseenCount = items.filter(n => !seen.has(`${n.type}-${n.id}`)).length
+
+  function markSeen(key) {
+    setSeen(prev => {
+      if (prev.has(key)) return prev
+      const next = new Set(prev)
+      next.add(key)
+      saveSeen(next)
+      return next
+    })
+  }
+
   const fetchSummary = useCallback(() => {
     api.get('/admin/validations/summary')
-      .then(r => { setTotal(r.data?.total ?? 0); setItems(r.data?.items ?? []) })
+      .then(r => {
+        const nextItems = r.data?.items ?? []
+        setItems(nextItems)
+        // Nettoie les ids "vus" qui ne correspondent plus à aucune demande
+        // en attente (traitée entretemps) — évite un stockage qui grossit
+        // indéfiniment.
+        const liveKeys = new Set(nextItems.map(n => `${n.type}-${n.id}`))
+        setSeen(prev => {
+          const trimmed = new Set([...prev].filter(k => liveKeys.has(k)))
+          if (trimmed.size !== prev.size) saveSeen(trimmed)
+          return trimmed
+        })
+      })
       .catch(() => {})
   }, [])
 
@@ -55,6 +93,7 @@ export default function ValidationNotifications() {
   }
 
   function goTo(item) {
+    markSeen(`${item.type}-${item.id}`)
     setOpen(false)
     navigate(`/validation?tab=${item.tab}&highlight=${item.id}`)
   }
@@ -71,13 +110,13 @@ export default function ValidationNotifications() {
         title="Demandes en attente de validation"
       >
         <Bell size={20} />
-        {total > 0 && (
+        {unseenCount > 0 && (
           <span style={{
             position: 'absolute', top: 2, right: 2, minWidth: 16, height: 16, padding: '0 4px',
             borderRadius: 8, background: '#ef4444', color: '#fff', fontSize: 10, fontWeight: 700,
             display: 'flex', alignItems: 'center', justifyContent: 'center', lineHeight: 1,
           }}>
-            {total > 9 ? '9+' : total}
+            {unseenCount > 9 ? '9+' : unseenCount}
           </span>
         )}
       </button>
@@ -89,7 +128,7 @@ export default function ValidationNotifications() {
         }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 14px', borderBottom: '1px solid rgba(0,119,182,.12)' }}>
             <span style={{ fontSize: 13, fontWeight: 700 }}>Validations en attente</span>
-            {total > 0 && <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>{total} au total</span>}
+            {items.length > 0 && <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>{items.length} au total</span>}
           </div>
 
           <div style={{ maxHeight: 360, overflowY: 'auto' }}>
@@ -97,23 +136,27 @@ export default function ValidationNotifications() {
               <div style={{ padding: 20, textAlign: 'center', color: 'var(--text-muted)', fontSize: 12 }}>Chargement…</div>
             ) : items.length === 0 ? (
               <div style={{ padding: 20, textAlign: 'center', color: 'var(--text-muted)', fontSize: 12 }}>Aucune demande en attente.</div>
-            ) : items.map(n => (
-              <div
-                key={`${n.type}-${n.id}`}
-                onClick={() => goTo(n)}
-                style={{
-                  display: 'flex', gap: 8, padding: '10px 14px', cursor: 'pointer',
-                  borderBottom: '1px solid rgba(0,119,182,.06)',
-                }}
-              >
-                <span style={{ marginTop: 5, width: 7, height: 7, borderRadius: '50%', flexShrink: 0, background: '#0077b6' }} />
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontSize: 12, fontWeight: 700 }}>{n.label}</div>
-                  <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2 }}>{n.detail}</div>
-                  <div style={{ fontSize: 10, color: 'var(--text-muted)', marginTop: 4 }}>{timeAgo(n.createdAt)}</div>
+            ) : items.map(n => {
+              const isUnseen = !seen.has(`${n.type}-${n.id}`)
+              return (
+                <div
+                  key={`${n.type}-${n.id}`}
+                  onClick={() => goTo(n)}
+                  style={{
+                    display: 'flex', gap: 8, padding: '10px 14px', cursor: 'pointer',
+                    borderBottom: '1px solid rgba(0,119,182,.06)',
+                    background: isUnseen ? 'rgba(239,68,68,.04)' : 'transparent',
+                  }}
+                >
+                  <span style={{ marginTop: 5, width: 7, height: 7, borderRadius: '50%', flexShrink: 0, background: isUnseen ? '#ef4444' : 'rgba(0,119,182,.25)' }} />
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: 12, fontWeight: 700 }}>{n.label}</div>
+                    <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2 }}>{n.detail}</div>
+                    <div style={{ fontSize: 10, color: 'var(--text-muted)', marginTop: 4 }}>{timeAgo(n.createdAt)}</div>
+                  </div>
                 </div>
-              </div>
-            ))}
+              )
+            })}
           </div>
 
           {items.length > 0 && (
