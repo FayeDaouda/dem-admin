@@ -3,10 +3,10 @@ import { Send, RefreshCw } from 'lucide-react'
 import api from '../../lib/api'
 import { glass, glassInput, stickyTh, stickyCol, stickyThCol } from '../../lib/glassStyles'
 
-const ORDER_TYPES = [
-  ['DELIVERY', 'Livraison'],
-  ['RIDE', 'Course (Thiak Thiak)'],
-]
+// RIDE (Thiak Thiak) retiré — plus d'actualité. Seul DELIVERY reste tarifé
+// par zone ; si RIDE revient un jour, réintroduire un sélecteur ici (voir
+// ORDER_TYPES côté zone-pricing.js backend).
+const ORDER_TYPE = 'DELIVERY'
 
 function Section({ title, children }) {
   return (
@@ -63,7 +63,6 @@ export default function ZonesTab() {
   const [togglingFlag, setTogglingFlag] = useState(null)
   const [previewedFromOsrm, setPreviewedFromOsrm] = useState(false)
   const [error, setError] = useState('')
-  const [orderType, setOrderType] = useState('DELIVERY')
   const [reason, setReason] = useState('')
 
   const load = useCallback(async () => {
@@ -113,7 +112,7 @@ export default function ZonesTab() {
   function updatePrice(idA, idB, value) {
     const [zoneA, zoneB] = sortedPair(idA, idB)
     const price = Number.parseInt(value, 10) || 0
-    setDraft(prev => prev.map(f => (f.zoneA === zoneA && f.zoneB === zoneB && f.orderType === orderType) ? { ...f, price } : f))
+    setDraft(prev => prev.map(f => (f.zoneA === zoneA && f.zoneB === zoneB && f.orderType === ORDER_TYPE) ? { ...f, price } : f))
   }
 
   if (loading || !data || !draft) return <div style={{ color: 'var(--text-muted)', padding: 20 }}>Chargement…</div>
@@ -163,19 +162,7 @@ export default function ZonesTab() {
           </div>
         )}
 
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12, flexWrap: 'wrap', gap: 8 }}>
-          <div style={{ display: 'flex', gap: 4, background: 'var(--surface2)', borderRadius: 'var(--radius-sm)', padding: 4 }}>
-            {ORDER_TYPES.map(([key, label]) => (
-              <button key={key} onClick={() => setOrderType(key)} style={{
-                padding: '6px 14px', borderRadius: 'var(--radius-sm)', border: 'none', cursor: 'pointer',
-                background: orderType === key ? 'var(--primary)' : 'transparent',
-                color: orderType === key ? '#fff' : 'var(--text-muted)',
-                fontWeight: orderType === key ? 700 : 500, fontSize: 12.5,
-              }}>
-                {label}
-              </button>
-            ))}
-          </div>
+        <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 12 }}>
           <button onClick={regeneratePreview} disabled={regenerating} style={btnOutline}>
             <RefreshCw size={13} /> {regenerating ? 'Calcul en cours…' : 'Régénérer un aperçu (OSRM)'}
           </button>
@@ -196,8 +183,8 @@ export default function ZonesTab() {
                 <tr key={rowZone.id}>
                   <td style={{ ...stickyCol, padding: '4px 10px', fontSize: 11.5, fontWeight: 700, whiteSpace: 'nowrap' }}>{rowZone.name}</td>
                   {zones.map((colZone, j) => {
-                    const entry = findPrice(draft, rowZone.id, colZone.id, orderType)
-                    const original = findPrice(data.fares, rowZone.id, colZone.id, orderType)
+                    const entry = findPrice(draft, rowZone.id, colZone.id, ORDER_TYPE)
+                    const original = findPrice(data.fares, rowZone.id, colZone.id, ORDER_TYPE)
                     const changed = entry?.price !== original?.price
                     const editable = i <= j
                     return (
