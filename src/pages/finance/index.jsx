@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { RefreshCw, Wallet, Receipt, Ticket, Package, SlidersHorizontal, TrendingUp, ShieldAlert, MapPin } from 'lucide-react'
+import { RefreshCw, Wallet, Receipt, Ticket, Package, SlidersHorizontal, TrendingUp, ShieldAlert } from 'lucide-react'
 import { pageWrap, pageScroll } from '../../lib/glassStyles'
 import FinanceKpiRow from './components/FinanceKpiRow'
 import RevenueTab from './RevenueTab'
@@ -7,7 +7,6 @@ import TransactionsTab from './TransactionsTab'
 import PassTab from './PassTab'
 import CoursesTab from './CoursesTab'
 import TariffsTab from './TariffsTab'
-import ZonesTab from './ZonesTab'
 import CaCoursesTab from './CaCoursesTab'
 import SamirpayTab from './SamirpayTab'
 
@@ -17,7 +16,6 @@ const TABS = [
   ['pass',         'Pass livreurs', Ticket,             PassTab],
   ['courses',      'Courses',      Package,            CoursesTab],
   ['tariffs',      'Tarifs',       SlidersHorizontal,  TariffsTab],
-  ['zones',        'Zones',        MapPin,             ZonesTab],
   ['ca-courses',   'CA courses',   TrendingUp,          CaCoursesTab],
   ['samirpay',     'Paiement en ligne', ShieldAlert,    SamirpayTab],
 ]

@@ -3,6 +3,7 @@ import { Send } from 'lucide-react'
 import api from '../../lib/api'
 import { glass, glassInput } from '../../lib/glassStyles'
 import StatusBadge from '../../components/StatusBadge'
+import ZoneMatrixSection from './ZoneMatrixSection'
 
 const KIND_LABELS = { TARIFF_CHANGE: 'Modification tarifaire' }
 
@@ -226,6 +227,8 @@ export default function TariffsTab() {
         </p>
         <ProposeGridForm grid={data.feesGrid} submitting={submitting} onSubmit={(draft, reason) => submitProposal('fees_grid', { grid: draft }, reason)} />
       </Section>
+
+      <ZoneMatrixSection />
 
       <Section title="Mes propositions">
         {data.myProposals.length === 0 ? (

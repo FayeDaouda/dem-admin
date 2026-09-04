@@ -54,7 +54,11 @@ function findPrice(fares, idA, idB, orderType) {
   return fares.find(f => f.zoneA === zoneA && f.zoneB === zoneB && f.orderType === orderType)
 }
 
-export default function ZonesTab() {
+// Section "Zones (Dakar)" de la page Tarifs — pas un onglet à part, elle
+// gère son propre chargement/soumission (endpoints /admin/zone-fares/*,
+// distincts de /admin/finance/tariffs) mais s'affiche au fil de la même
+// page que le tarif de base, le pass livreurs et la grille de commissions.
+export default function ZoneMatrixSection() {
   const [data, setData] = useState(null)
   const [draft, setDraft] = useState(null)
   const [loading, setLoading] = useState(true)
@@ -115,16 +119,16 @@ export default function ZonesTab() {
     setDraft(prev => prev.map(f => (f.zoneA === zoneA && f.zoneB === zoneB && f.orderType === ORDER_TYPE) ? { ...f, price } : f))
   }
 
-  if (loading || !data || !draft) return <div style={{ color: 'var(--text-muted)', padding: 20 }}>Chargement…</div>
+  if (loading || !data || !draft) return <Section title="Zones (Dakar)"><div style={{ color: 'var(--text-muted)', padding: 20 }}>Chargement…</div></Section>
 
   const zones = data.zones
   const hasChanges = JSON.stringify(draft) !== JSON.stringify(data.fares)
 
   return (
-    <div>
+    <>
       {error && <div style={{ fontSize: 12, color: 'var(--danger)', background: 'rgba(239,68,68,.08)', borderRadius: 6, padding: '8px 12px', marginBottom: 14 }}>{error}</div>}
 
-      <Section title="Interrupteurs">
+      <Section title="Zones (Dakar) — interrupteurs">
         <Toggle
           label="Pricing par zone activé"
           description={data.enabled
@@ -230,7 +234,7 @@ export default function ZonesTab() {
           <Send size={13} /> {submitting ? 'Envoi…' : 'Soumettre pour validation'}
         </button>
       </Section>
-    </div>
+    </>
   )
 }
 
