@@ -151,6 +151,10 @@ export default function ZonesTab() {
           la cellule symétrique en dessous suit automatiquement. Les quartiers hors de cette liste (Sébikotane, Yenne, Sangalkam…) retombent
           sur la formule de repli tant qu'ils n'ont pas été ajoutés.
         </p>
+        <p style={{ fontSize: 11.5, color: 'var(--text-muted)', marginBottom: 4 }}>
+          Chaque montant est le <strong>prix total payé par le client</strong> — les 100F de commission de mise en relation DEM sont déjà inclus dedans
+          (le livreur touche le montant saisi moins ces 100F). Ne s'applique pas aux courses EXPRESS, qui gardent leur propre commission en %.
+        </p>
         {data.isDefault && !previewedFromOsrm && (
           <div style={{ fontSize: 11.5, color: 'var(--primary)', background: 'rgba(0,119,182,.08)', borderRadius: 6, padding: '8px 12px', marginBottom: 10 }}>
             Aucune matrice enregistrée — valeurs par défaut calculées à la formule vol d'oiseau actuelle (identiques au tarif d'aujourd'hui). Cliquez « Régénérer un aperçu » pour des tarifs basés sur la distance routière réelle (OSRM).
