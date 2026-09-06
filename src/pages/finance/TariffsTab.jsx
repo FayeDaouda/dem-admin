@@ -2,10 +2,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { Send } from 'lucide-react'
 import api from '../../lib/api'
 import { glass, glassInput } from '../../lib/glassStyles'
-import StatusBadge from '../../components/StatusBadge'
 import ZoneMatrixSection from './ZoneMatrixSection'
-
-const KIND_LABELS = { TARIFF_CHANGE: 'Modification tarifaire' }
 
 function Section({ title, children }) {
   return (
@@ -100,14 +97,18 @@ function GatingToggle({ active, onToggle, toggling }) {
   )
 }
 
+// Page Tarifs, recentrée sur ce qui n'a pas d'équivalent ailleurs dans
+// l'admin : tarif de base/prix au km, grille de commissions et historique
+// tarifaire complet sont gérés depuis Config (édition directe SUPER) et
+// Validation (file d'approbation Finance, mêmes demandes TARIFF_CHANGE) —
+// les dupliquer ici n'apportait rien. Ne restent que Pass livreurs et la
+// matrice de pricing par zone, qui n'ont pas d'autre écran.
 export default function TariffsTab() {
   const [data, setData] = useState(null)
   const [loading, setLoading] = useState(true)
   const [submitting, setSubmitting] = useState(false)
   const [togglingGating, setTogglingGating] = useState(false)
   const [error, setError] = useState('')
-  const [history, setHistory] = useState(null)
-  const [historyLoading, setHistoryLoading] = useState(true)
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -118,16 +119,7 @@ export default function TariffsTab() {
     finally { setLoading(false) }
   }, [])
 
-  const loadHistory = useCallback(async () => {
-    setHistoryLoading(true)
-    try {
-      const res = await api.get('/admin/finance/tariffs/history')
-      setHistory(res.data.history)
-    } catch (e) { console.error(e) }
-    finally { setHistoryLoading(false) }
-  }, [])
-
-  useEffect(() => { load(); loadHistory() }, [load, loadHistory])
+  useEffect(() => { load() }, [load])
 
   async function submitProposal(target, changes, reason) {
     setSubmitting(true); setError('')
@@ -159,23 +151,7 @@ export default function TariffsTab() {
     <div>
       {error && <div style={{ fontSize: 12, color: 'var(--danger)', background: 'rgba(239,68,68,.08)', borderRadius: 6, padding: '8px 12px', marginBottom: 14 }}>{error}</div>}
 
-      <Section title="Tarif de base des courses">
-        <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', marginBottom: 14 }}>
-          <Field label="Livraison (base)" value={data.baseFare.delivery} unit=" F" />
-          <Field label="Prix par km" value={data.baseFare.perKm} unit=" F/km" />
-        </div>
-        <ProposeForm
-          submitting={submitting}
-          fields={[
-            { key: 'base_fare_delivery', label: 'Livraison (base)', current: data.baseFare.delivery },
-            { key: 'price_per_km', label: 'Prix par km', current: data.baseFare.perKm },
-          ]}
-          onSubmit={(values, reason) => {
-            const changes = Object.fromEntries(Object.entries(values).filter(([, v]) => v !== '').map(([k, v]) => [k, Number(v)]))
-            return submitProposal('base_fare', changes, reason)
-          }}
-        />
-      </Section>
+      <ZoneMatrixSection />
 
       <Section title="Pass livreurs">
         <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', marginBottom: 14 }}>
@@ -200,168 +176,6 @@ export default function TariffsTab() {
           toggling={togglingGating}
         />
       </Section>
-
-      <Section title="Grille de commissions">
-        <div style={{ overflowX: 'auto', marginBottom: 14 }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 400 }}>
-            <thead>
-              <tr>
-                {['Prix min', 'Prix max', 'Commission'].map(h => (
-                  <th key={h} style={{ textAlign: 'left', padding: '6px 10px', fontSize: 11, color: 'var(--text-muted)', fontWeight: 700 }}>{h}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {data.feesGrid.map((row, i) => (
-                <tr key={i} style={{ borderBottom: '1px solid rgba(0,0,0,.04)' }}>
-                  <td style={{ padding: '6px 10px', fontSize: 13 }}>{row.min.toLocaleString()} F</td>
-                  <td style={{ padding: '6px 10px', fontSize: 13 }}>{row.max.toLocaleString()} F</td>
-                  <td style={{ padding: '6px 10px', fontSize: 13, fontWeight: 600 }}>{row.fee.toLocaleString()} F</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-        <p style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 10 }}>
-          Modifie les tranches ci-dessous, la grille éditée sera appliquée automatiquement dès que la proposition est validée.
-        </p>
-        <ProposeGridForm grid={data.feesGrid} submitting={submitting} onSubmit={(draft, reason) => submitProposal('fees_grid', { grid: draft }, reason)} />
-      </Section>
-
-      <ZoneMatrixSection />
-
-      <Section title="Mes propositions">
-        {data.myProposals.length === 0 ? (
-          <div style={{ color: 'var(--text-muted)', fontSize: 13, textAlign: 'center', padding: 20 }}>Aucune proposition soumise.</div>
-        ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-            {data.myProposals.map(r => (
-              <div key={r.id} style={{ padding: '10px 14px', borderRadius: 10, background: 'var(--surface2)' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
-                  <div style={{ flex: 1, minWidth: 180 }}>
-                    <div style={{ fontWeight: 600, fontSize: 13 }}>{KIND_LABELS[r.kind] ?? r.kind} — {r.payload?.target}</div>
-                    <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>{new Date(r.createdAt).toLocaleString('fr-FR')}</div>
-                  </div>
-                  <StatusBadge status={r.status} />
-                </div>
-                {r.reason && <div style={{ marginTop: 6, fontSize: 12, color: 'var(--text-muted)', fontStyle: 'italic' }}>« {r.reason} »</div>}
-                {r.status !== 'PENDING' && r.reviewNotes && (
-                  <div style={{ marginTop: 6, fontSize: 12, color: 'var(--text-muted)' }}><strong>Réponse :</strong> {r.reviewNotes}</div>
-                )}
-              </div>
-            ))}
-          </div>
-        )}
-      </Section>
-
-      <Section title="Historique des modifications">
-        {historyLoading ? (
-          <div style={{ color: 'var(--text-muted)', fontSize: 13, padding: 20 }}>Chargement…</div>
-        ) : !history?.length ? (
-          <div style={{ color: 'var(--text-muted)', fontSize: 13, textAlign: 'center', padding: 20 }}>Aucun changement de tarif enregistré.</div>
-        ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-            {history.map((h, i) => (
-              <div key={i} style={{ padding: '10px 14px', borderRadius: 10, background: 'var(--surface2)' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-                  <div style={{ flex: 1, minWidth: 180, fontWeight: 600, fontSize: 13 }}>{h.label}</div>
-                  <span style={{
-                    fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 10,
-                    background: h.source === 'DIRECT' ? 'rgba(99,102,241,.12)' : 'rgba(34,197,94,.12)',
-                    color: h.source === 'DIRECT' ? '#6366f1' : '#15803d',
-                  }}>
-                    {h.source === 'DIRECT' ? 'Édition directe' : 'Demande approuvée'}
-                  </span>
-                  <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>{new Date(h.at).toLocaleString('fr-FR')}</div>
-                </div>
-                <div style={{ marginTop: 6, fontSize: 12, color: 'var(--text-muted)' }}>
-                  {h.by && <>Par <strong style={{ color: 'var(--text)' }}>{h.by.name ?? h.by.email}</strong></>}
-                  {h.submittedBy && <> · Proposé par <strong style={{ color: 'var(--text)' }}>{h.submittedBy.name ?? h.submittedBy.email}</strong></>}
-                </div>
-                {h.reason && <div style={{ marginTop: 4, fontSize: 12, color: 'var(--text-muted)', fontStyle: 'italic' }}>« {h.reason} »</div>}
-                {h.changes && (
-                  <div style={{ marginTop: 6, fontSize: 12, display: 'flex', gap: 12, flexWrap: 'wrap' }}>
-                    {Object.entries(h.changes).map(([k, v]) => (
-                      Array.isArray(v) ? null : (
-                        <span key={k} style={{ color: 'var(--text-muted)' }}>
-                          {k} : <strong style={{ color: 'var(--text)' }}>{typeof v === 'boolean' ? (v ? 'Oui' : 'Non') : String(v)}</strong>
-                        </span>
-                      )
-                    ))}
-                  </div>
-                )}
-              </div>
-            ))}
-          </div>
-        )}
-      </Section>
-    </div>
-  )
-}
-
-function ProposeGridForm({ grid, onSubmit, submitting }) {
-  const [open, setOpen] = useState(false)
-  const [draft, setDraft] = useState(() => grid.map(t => ({ ...t })))
-  const [reason, setReason] = useState('')
-
-  if (!open) return <button onClick={() => setOpen(true)} style={btnOutline}>Proposer une modification</button>
-
-  function update(i, field, val) {
-    setDraft(prev => prev.map((t, idx) => idx === i ? { ...t, [field]: Number.parseInt(val, 10) || 0 } : t))
-  }
-
-  const hasChanges = JSON.stringify(draft) !== JSON.stringify(grid)
-
-  return (
-    <div style={{ padding: '14px 16px', background: 'var(--surface2)', borderRadius: 10 }}>
-      <div style={{ overflowX: 'auto', marginBottom: 12 }}>
-        <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 380 }}>
-          <thead>
-            <tr>
-              {['Prix min', 'Prix max', 'Commission'].map(h => (
-                <th key={h} style={{ textAlign: 'left', padding: '4px 8px', fontSize: 10, color: 'var(--text-muted)', fontWeight: 700 }}>{h}</th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {draft.map((t, i) => {
-              const changed = t.min !== grid[i]?.min || t.max !== grid[i]?.max || t.fee !== grid[i]?.fee
-              return (
-                <tr key={i}>
-                  <td style={{ padding: '4px 8px' }}>
-                    <input type="number" min={0} value={t.min} onChange={e => update(i, 'min', e.target.value)}
-                      style={{ ...glassInput, width: 90, border: `1px solid ${t.min !== grid[i]?.min ? 'var(--primary)' : 'rgba(0,119,182,.2)'}` }} />
-                  </td>
-                  <td style={{ padding: '4px 8px' }}>
-                    <input type="number" min={0} value={t.max} onChange={e => update(i, 'max', e.target.value)}
-                      style={{ ...glassInput, width: 90, border: `1px solid ${t.max !== grid[i]?.max ? 'var(--primary)' : 'rgba(0,119,182,.2)'}` }} />
-                  </td>
-                  <td style={{ padding: '4px 8px' }}>
-                    <input type="number" min={0} value={t.fee} onChange={e => update(i, 'fee', e.target.value)}
-                      style={{ ...glassInput, width: 90, fontWeight: 700, color: changed ? 'var(--primary)' : undefined, border: `1px solid ${t.fee !== grid[i]?.fee ? 'var(--primary)' : 'rgba(0,119,182,.2)'}` }} />
-                  </td>
-                </tr>
-              )
-            })}
-          </tbody>
-        </table>
-      </div>
-      <textarea
-        value={reason}
-        onChange={e => setReason(e.target.value)}
-        placeholder="Motif de la proposition (optionnel)…"
-        rows={2}
-        style={{ ...glassInput, resize: 'vertical', marginBottom: 10 }}
-      />
-      {!hasChanges && (
-        <div style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 10 }}>Modifie au moins une valeur pour pouvoir soumettre.</div>
-      )}
-      <div style={{ display: 'flex', gap: 8 }}>
-        <button onClick={() => setOpen(false)} style={btnOutline}>Annuler</button>
-        <button onClick={() => onSubmit(draft, reason).then(() => setOpen(false))} disabled={submitting || !hasChanges} style={btnPrimary}>
-          <Send size={13} /> {submitting ? 'Envoi…' : 'Soumettre pour validation'}
-        </button>
-      </div>
     </div>
   )
 }

@@ -128,27 +128,6 @@ export default function ZoneMatrixSection() {
     <>
       {error && <div style={{ fontSize: 12, color: 'var(--danger)', background: 'rgba(239,68,68,.08)', borderRadius: 6, padding: '8px 12px', marginBottom: 14 }}>{error}</div>}
 
-      <Section title="Zones (Dakar) — interrupteurs">
-        <Toggle
-          label="Pricing par zone activé"
-          description={data.enabled
-            ? 'Actif — les courses entre deux zones couvertes utilisent le tarif fixe ci-dessous.'
-            : 'Désactivé — comportement actuel inchangé (formule distance × prix/km pour toutes les courses).'}
-          active={data.enabled}
-          onToggle={() => toggleFlag('enabled')}
-          toggling={togglingFlag === 'enabled'}
-        />
-        <Toggle
-          label="Distance réelle OSRM pour le repli"
-          description={data.usesOsrmDistance
-            ? 'Actif — les courses hors zone (ou si le pricing par zone est désactivé) sont tarifées sur la distance routière réelle.'
-            : 'Désactivé — les courses hors zone retombent sur la distance à vol d\'oiseau (comportement actuel).'}
-          active={data.usesOsrmDistance}
-          onToggle={() => toggleFlag('usesOsrmDistance')}
-          toggling={togglingFlag === 'usesOsrmDistance'}
-        />
-      </Section>
-
       <Section title="Matrice tarifaire zone-à-zone (Dakar)">
         <p style={{ fontSize: 11.5, color: 'var(--text-muted)', marginBottom: 4 }}>
           {zones.length} quartiers couvrant Dakar et sa proche banlieue. Tarif symétrique (A→B = B→A) : éditez une cellule au-dessus de la diagonale,
@@ -233,6 +212,27 @@ export default function ZoneMatrixSection() {
         <button onClick={() => submitProposal(reason)} disabled={submitting || !hasChanges} style={btnPrimary}>
           <Send size={13} /> {submitting ? 'Envoi…' : 'Soumettre pour validation'}
         </button>
+      </Section>
+
+      <Section title="Zones (Dakar) — interrupteurs">
+        <Toggle
+          label="Pricing par zone activé"
+          description={data.enabled
+            ? 'Actif — les courses entre deux zones couvertes utilisent le tarif fixe ci-dessus.'
+            : 'Désactivé — comportement actuel inchangé (formule distance × prix/km pour toutes les courses).'}
+          active={data.enabled}
+          onToggle={() => toggleFlag('enabled')}
+          toggling={togglingFlag === 'enabled'}
+        />
+        <Toggle
+          label="Distance réelle OSRM pour le repli"
+          description={data.usesOsrmDistance
+            ? 'Actif — les courses hors zone (ou si le pricing par zone est désactivé) sont tarifées sur la distance routière réelle.'
+            : 'Désactivé — les courses hors zone retombent sur la distance à vol d\'oiseau (comportement actuel).'}
+          active={data.usesOsrmDistance}
+          onToggle={() => toggleFlag('usesOsrmDistance')}
+          toggling={togglingFlag === 'usesOsrmDistance'}
+        />
       </Section>
     </>
   )
