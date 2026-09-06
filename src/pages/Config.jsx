@@ -3,6 +3,8 @@ import api from '../lib/api'
 import { Save, RotateCcw, Plus, Trash2, Clock } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { glass, glassInput } from '../lib/glassStyles'
+import ZoneMatrixSection from './ZoneMatrixSection'
+import PassLivreursSection from './PassLivreursSection'
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 const CONFIG_META = {
@@ -190,6 +192,15 @@ function TarifsTab() {
           </div>
         </div>
       )}
+
+      {/* Pricing par zone (Dakar) + Pass livreurs — sections indépendantes,
+          chacune gère son propre chargement/soumission (endpoints distincts
+          de /admin/config). Ne pas les dupliquer sur une autre page (voir
+          commentaire au-dessus de TarifsTab). */}
+      <div style={{ marginTop: 16 }}>
+        <ZoneMatrixSection />
+        <PassLivreursSection />
+      </div>
     </div>
   )
 }

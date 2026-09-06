@@ -1,9 +1,16 @@
 import { useState, useEffect, useCallback } from 'react'
 import { Send } from 'lucide-react'
-import api from '../../lib/api'
-import { glass, glassInput } from '../../lib/glassStyles'
-import ZoneMatrixSection from './ZoneMatrixSection'
+import api from '../lib/api'
+import { glass, glassInput } from '../lib/glassStyles'
 
+// Section "Pass livreurs" de la page Tarifs (Config) — déplacée depuis
+// Finance > Tarifs (finance/TariffsTab.jsx), qui ne contenait plus rien
+// d'autre. Ne PAS la dupliquer sur une deuxième page : un même toggle
+// (dispatchGatingActive) éditable depuis deux endroits avec chacun son
+// propre état local a déjà écrasé silencieusement un changement fait sur
+// l'autre page par le passé (voir le commentaire au-dessus de TarifsTab
+// dans Config.jsx) — cause probable d'un pass resté actif en prod après une
+// tentative de désactivation.
 function Section({ title, children }) {
   return (
     <div style={{ ...glass, padding: '18px 20px', marginBottom: 16 }}>
@@ -97,13 +104,7 @@ function GatingToggle({ active, onToggle, toggling }) {
   )
 }
 
-// Page Tarifs, recentrée sur ce qui n'a pas d'équivalent ailleurs dans
-// l'admin : tarif de base/prix au km, grille de commissions et historique
-// tarifaire complet sont gérés depuis Config (édition directe SUPER) et
-// Validation (file d'approbation Finance, mêmes demandes TARIFF_CHANGE) —
-// les dupliquer ici n'apportait rien. Ne restent que Pass livreurs et la
-// matrice de pricing par zone, qui n'ont pas d'autre écran.
-export default function TariffsTab() {
+export default function PassLivreursSection() {
   const [data, setData] = useState(null)
   const [loading, setLoading] = useState(true)
   const [submitting, setSubmitting] = useState(false)
@@ -145,13 +146,11 @@ export default function TariffsTab() {
     } finally { setTogglingGating(false) }
   }
 
-  if (loading || !data) return <div style={{ color: 'var(--text-muted)', padding: 20 }}>Chargement…</div>
+  if (loading || !data) return <Section title="Pass livreurs"><div style={{ color: 'var(--text-muted)', padding: 20 }}>Chargement…</div></Section>
 
   return (
-    <div>
+    <>
       {error && <div style={{ fontSize: 12, color: 'var(--danger)', background: 'rgba(239,68,68,.08)', borderRadius: 6, padding: '8px 12px', marginBottom: 14 }}>{error}</div>}
-
-      <ZoneMatrixSection />
 
       <Section title="Pass livreurs">
         <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', marginBottom: 14 }}>
@@ -176,7 +175,7 @@ export default function TariffsTab() {
           toggling={togglingGating}
         />
       </Section>
-    </div>
+    </>
   )
 }
 

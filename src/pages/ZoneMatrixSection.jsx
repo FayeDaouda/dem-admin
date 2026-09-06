@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { Send, RefreshCw } from 'lucide-react'
-import api from '../../lib/api'
-import { glass, glassInput, stickyTh, stickyCol, stickyThCol } from '../../lib/glassStyles'
+import api from '../lib/api'
+import { glass, glassInput, stickyTh, stickyCol, stickyThCol } from '../lib/glassStyles'
 
 // RIDE (Thiak Thiak) retiré — plus d'actualité. Seul DELIVERY reste tarifé
 // par zone ; si RIDE revient un jour, réintroduire un sélecteur ici (voir
@@ -54,10 +54,10 @@ function findPrice(fares, idA, idB, orderType) {
   return fares.find(f => f.zoneA === zoneA && f.zoneB === zoneB && f.orderType === orderType)
 }
 
-// Section "Zones (Dakar)" de la page Tarifs — pas un onglet à part, elle
-// gère son propre chargement/soumission (endpoints /admin/zone-fares/*,
-// distincts de /admin/finance/tariffs) mais s'affiche au fil de la même
-// page que le tarif de base, le pass livreurs et la grille de commissions.
+// Section "Zones (Dakar)" de la page Tarifs (Config) — pas un onglet à part,
+// elle gère son propre chargement/soumission (endpoints /admin/zone-fares/*,
+// distincts de /admin/config) mais s'affiche au fil de l'onglet Tarifs, avec
+// le tarif de base et le pass livreurs (voir PassLivreursSection.jsx).
 export default function ZoneMatrixSection() {
   const [data, setData] = useState(null)
   const [draft, setDraft] = useState(null)
