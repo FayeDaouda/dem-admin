@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { Send, RefreshCw } from 'lucide-react'
 import api from '../lib/api'
+import { useAuth } from '../contexts/AuthContext'
 import { glass, glassInput, stickyTh, stickyCol, stickyThCol } from '../lib/glassStyles'
 
 // RIDE (Thiak Thiak) retiré — plus d'actualité. Seul DELIVERY reste tarifé
@@ -69,6 +70,13 @@ export default function ZoneMatrixSection() {
   const [error, setError] = useState('')
   const [reason, setReason] = useState('')
 
+  // Seul un SUPER peut écrire la matrice/les interrupteurs directement
+  // (PUT /admin/zone-fares/config + PATCH /flags sont gardés `onlySuper`
+  // côté back). Les autres rôles autorisés sur cette page (DEV) passent par
+  // une demande de validation (POST /admin/requests, TARIFF_CHANGE).
+  const { user } = useAuth()
+  const isSuper = user?.adminRole === 'SUPER'
+
   const load = useCallback(async () => {
     setLoading(true)
     try {
@@ -113,6 +121,18 @@ export default function ZoneMatrixSection() {
     finally { setSubmitting(false) }
   }
 
+  // Écriture directe SUPER — pas de file de validation (raccourci équivalent
+  // à celui de fees_grid, voir updateZoneFaresConfig côté back).
+  async function saveDirect() {
+    setSubmitting(true); setError('')
+    try {
+      await api.put('/admin/zone-fares/config', { fares: draft })
+      await load()
+      setReason('')
+    } catch (e) { setError(e.response?.data?.message ?? 'Erreur.') }
+    finally { setSubmitting(false) }
+  }
+
   function updatePrice(idA, idB, value) {
     const [zoneA, zoneB] = sortedPair(idA, idB)
     const price = Number.parseInt(value, 10) || 0
@@ -146,7 +166,7 @@ export default function ZoneMatrixSection() {
         )}
         {previewedFromOsrm && (
           <div style={{ fontSize: 11.5, color: 'var(--primary)', background: 'rgba(0,119,182,.08)', borderRadius: 6, padding: '8px 12px', marginBottom: 10 }}>
-            Aperçu calculé automatiquement via OSRM — pas encore enregistré. Ajustez si besoin puis soumettez pour validation.
+            Aperçu calculé automatiquement via OSRM — pas encore enregistré. Ajustez si besoin puis {isSuper ? 'enregistrez' : 'soumettez pour validation'}.
           </div>
         )}
 
@@ -217,19 +237,29 @@ export default function ZoneMatrixSection() {
           </table>
         </div>
 
-        <textarea
-          value={reason}
-          onChange={e => setReason(e.target.value)}
-          placeholder="Motif de la proposition (optionnel)…"
-          rows={2}
-          style={{ ...glassInput, resize: 'vertical', marginBottom: 10 }}
-        />
-        {!hasChanges && (
-          <div style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 10 }}>Modifiez au moins une valeur (ou régénérez un aperçu) pour pouvoir soumettre.</div>
+        {!isSuper && (
+          <textarea
+            value={reason}
+            onChange={e => setReason(e.target.value)}
+            placeholder="Motif de la proposition (optionnel)…"
+            rows={2}
+            style={{ ...glassInput, resize: 'vertical', marginBottom: 10 }}
+          />
         )}
-        <button onClick={() => submitProposal(reason)} disabled={submitting || !hasChanges} style={btnPrimary}>
-          <Send size={13} /> {submitting ? 'Envoi…' : 'Soumettre pour validation'}
-        </button>
+        {!hasChanges && (
+          <div style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 10 }}>
+            Modifiez au moins une valeur (ou régénérez un aperçu) pour pouvoir {isSuper ? 'enregistrer' : 'soumettre'}.
+          </div>
+        )}
+        {isSuper ? (
+          <button onClick={saveDirect} disabled={submitting || !hasChanges} style={btnPrimary}>
+            <Send size={13} /> {submitting ? 'Enregistrement…' : 'Enregistrer les tarifs'}
+          </button>
+        ) : (
+          <button onClick={() => submitProposal(reason)} disabled={submitting || !hasChanges} style={btnPrimary}>
+            <Send size={13} /> {submitting ? 'Envoi…' : 'Soumettre pour validation'}
+          </button>
+        )}
       </Section>
 
       <Section title="Zones (Dakar) — interrupteurs">

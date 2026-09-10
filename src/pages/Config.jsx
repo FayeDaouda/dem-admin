@@ -122,7 +122,16 @@ function TarifsTab() {
 
   return (
     <div>
-      <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 16 }}>
+      {/* Matrice tarifaire zone-à-zone (Dakar) — tout en haut : c'est le
+          tarif principal. Section indépendante, gère son propre
+          chargement/soumission (endpoints /admin/zone-fares/*, distincts de
+          /admin/config). Ne pas la dupliquer ailleurs (voir commentaire
+          au-dessus de TarifsTab). */}
+      <ZoneMatrixSection />
+
+      {/* Le bouton Sauvegarder ci-dessous ne concerne QUE les champs
+          /admin/config en dessous (tarif de base, DEM Pro), pas la matrice. */}
+      <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 28, marginBottom: 16 }}>
         <button onClick={handleSave} disabled={!hasChanges || saving} style={btnSave(hasChanges)}>
           <Save size={14} />
           {saved ? 'Sauvegardé ✓' : saving ? 'Enregistrement…' : 'Sauvegarder'}
@@ -193,12 +202,10 @@ function TarifsTab() {
         </div>
       )}
 
-      {/* Pricing par zone (Dakar) + Pass livreurs — sections indépendantes,
-          chacune gère son propre chargement/soumission (endpoints distincts
-          de /admin/config). Ne pas les dupliquer sur une autre page (voir
+      {/* Pass livreurs — section indépendante (endpoint distinct de
+          /admin/config). Ne pas la dupliquer sur une autre page (voir
           commentaire au-dessus de TarifsTab). */}
       <div style={{ marginTop: 16 }}>
-        <ZoneMatrixSection />
         <PassLivreursSection />
       </div>
     </div>
