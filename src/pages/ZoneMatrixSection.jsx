@@ -130,9 +130,10 @@ export default function ZoneMatrixSection() {
 
       <Section title="Matrice tarifaire zone-à-zone (Dakar)">
         <p style={{ fontSize: 11.5, color: 'var(--text-muted)', marginBottom: 4 }}>
-          {zones.length} quartiers couvrant Dakar et sa proche banlieue. Tarif symétrique (A→B = B→A) : éditez une cellule au-dessus de la diagonale,
-          la cellule symétrique en dessous suit automatiquement. Les quartiers hors de cette liste (Sébikotane, Yenne, Sangalkam…) retombent
-          sur la formule de repli tant qu'ils n'ont pas été ajoutés.
+          {zones.length} zones couvrant Dakar et sa banlieue (survolez un nom de zone pour voir les sous-quartiers regroupés). Tarif symétrique
+          (A→B = B→A) : éditez une cellule au-dessus de la diagonale, la cellule symétrique en dessous suit automatiquement. Un point hors de ces
+          zones (Sébikotane, Yenne, Kayar…) retombe sur la formule de repli tant qu'une zone n'a pas été ajoutée. Avec ce nombre de zones,
+          partez de « Régénérer un aperçu (OSRM) » puis ajustez les paires qui comptent plutôt que de tout saisir à la main.
         </p>
         <p style={{ fontSize: 11.5, color: 'var(--text-muted)', marginBottom: 4 }}>
           Chaque montant est le <strong>prix total payé par le client</strong> — les 100F de commission de mise en relation DEM sont déjà inclus dedans
@@ -161,14 +162,31 @@ export default function ZoneMatrixSection() {
               <tr>
                 <th style={{ ...stickyThCol, padding: '6px 10px', fontSize: 10.5, textAlign: 'left', minWidth: 120 }}>Zone</th>
                 {zones.map(z => (
-                  <th key={z.id} style={{ ...stickyTh, padding: '6px 8px', fontSize: 10.5, fontWeight: 700, minWidth: 84 }}>{z.name}</th>
+                  <th
+                    key={z.id}
+                    title={z.covers?.length ? `${z.name} — ${z.covers.join(' · ')}` : undefined}
+                    style={{
+                      ...stickyTh, padding: '6px 8px', fontSize: 10.5, fontWeight: 700, minWidth: 84,
+                      cursor: z.covers?.length ? 'help' : undefined,
+                    }}
+                  >
+                    {z.name}
+                  </th>
                 ))}
               </tr>
             </thead>
             <tbody>
               {zones.map((rowZone, i) => (
                 <tr key={rowZone.id}>
-                  <td style={{ ...stickyCol, padding: '4px 10px', fontSize: 11.5, fontWeight: 700, whiteSpace: 'nowrap' }}>{rowZone.name}</td>
+                  <td
+                    title={rowZone.covers?.length ? `${rowZone.name} — ${rowZone.covers.join(' · ')}` : undefined}
+                    style={{
+                      ...stickyCol, padding: '4px 10px', fontSize: 11.5, fontWeight: 700, whiteSpace: 'nowrap',
+                      cursor: rowZone.covers?.length ? 'help' : undefined,
+                    }}
+                  >
+                    {rowZone.name}
+                  </td>
                   {zones.map((colZone, j) => {
                     const entry = findPrice(draft, rowZone.id, colZone.id, ORDER_TYPE)
                     const original = findPrice(data.fares, rowZone.id, colZone.id, ORDER_TYPE)
