@@ -102,10 +102,17 @@ export default function ZoneMatrixSection() {
   async function regeneratePreview() {
     setRegenerating(true); setError('')
     try {
-      const res = await api.post('/admin/zone-fares/regenerate-preview')
+      // ~1275 paires de zones × 2 sens à interroger sur OSRM (borné en
+      // concurrence côté back) — largement au-delà du timeout par défaut
+      // (10s) du client api, d'où un timeout dédié plus généreux ici.
+      const res = await api.post('/admin/zone-fares/regenerate-preview', null, { timeout: 180000 })
       setDraft(res.data.fares)
       setPreviewedFromOsrm(true)
-    } catch (e) { setError(e.response?.data?.message ?? 'Erreur.') }
+    } catch (e) {
+      setError(e.code === 'ECONNABORTED'
+        ? "La régénération a pris trop de temps (plus de 3 min). L'instance OSRM est peut-être surchargée ou injoignable — réessaie, ou vérifie OSRM_BASE_URL."
+        : e.response?.data?.message ?? 'Erreur.')
+    }
     finally { setRegenerating(false) }
   }
 
