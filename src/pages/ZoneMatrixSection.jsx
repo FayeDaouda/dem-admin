@@ -65,6 +65,7 @@ export default function ZoneMatrixSection() {
   const [loading, setLoading] = useState(true)
   const [submitting, setSubmitting] = useState(false)
   const [regenerating, setRegenerating] = useState(false)
+  const [bumping, setBumping] = useState(false)
   const [togglingFlag, setTogglingFlag] = useState(null)
   const [previewedFromOsrm, setPreviewedFromOsrm] = useState(false)
   const [error, setError] = useState('')
@@ -140,6 +141,20 @@ export default function ZoneMatrixSection() {
     finally { setSubmitting(false) }
   }
 
+  // Mesure temporaire (bug app livreur — voir bumpZoneFaresMatrix côté back) :
+  // ajuste directement la matrice ENREGISTRÉE (pas le brouillon en cours
+  // d'édition) de `delta` FCFA sur chaque cellule, puis recharge. -100 permet
+  // d'annuler la compensation une fois l'app livreur mise à jour.
+  async function bumpMatrix(delta) {
+    if (!window.confirm(`Ajuster TOUTES les cellules de la matrice enregistrée de ${delta > 0 ? '+' : ''}${delta} FCFA ? Action immédiate, pas de brouillon à valider.`)) return
+    setBumping(true); setError('')
+    try {
+      await api.post('/admin/zone-fares/bump', { delta })
+      await load()
+    } catch (e) { setError(e.response?.data?.message ?? 'Erreur.') }
+    finally { setBumping(false) }
+  }
+
   function updatePrice(idA, idB, value) {
     const [zoneA, zoneB] = sortedPair(idA, idB)
     const price = Number.parseInt(value, 10) || 0
@@ -174,6 +189,14 @@ export default function ZoneMatrixSection() {
         {previewedFromOsrm && (
           <div style={{ fontSize: 11.5, color: 'var(--primary)', background: 'rgba(0,119,182,.08)', borderRadius: 6, padding: '8px 12px', marginBottom: 10 }}>
             Aperçu calculé automatiquement via OSRM — pas encore enregistré. Ajustez si besoin puis {isSuper ? 'enregistrez' : 'soumettez pour validation'}.
+          </div>
+        )}
+
+        {isSuper && (
+          <div style={{ fontSize: 11, color: 'var(--text-muted)', background: 'rgba(239,68,68,.06)', borderRadius: 6, padding: '8px 12px', marginBottom: 10 }}>
+            Mesure temporaire (bug app livreur en attente de mise à jour) : <strong>+100</strong> compense la commission DEM non demandée au client par les livreurs sur l'app pas encore à jour ; repasser <strong>-100</strong> une fois la mise à jour diffusée.{' '}
+            <button onClick={() => bumpMatrix(100)} disabled={bumping} style={{ ...btnOutline, padding: '3px 10px', marginRight: 6 }}>+100F partout</button>
+            <button onClick={() => bumpMatrix(-100)} disabled={bumping} style={{ ...btnOutline, padding: '3px 10px' }}>-100F partout</button>
           </div>
         )}
 
