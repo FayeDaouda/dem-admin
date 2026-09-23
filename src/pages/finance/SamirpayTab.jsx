@@ -36,6 +36,7 @@ export default function SamirpayTab() {
   const [loading, setLoading]           = useState(true)
   const [range, setRange] = useState({ from: isoDaysAgo(0), to: isoDaysAgo(0) })
   const [exporting, setExporting] = useState(false)
+  const [confirmingId, setConfirmingId] = useState(null)
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -106,6 +107,23 @@ export default function SamirpayTab() {
     } catch (e) {
       alert(e.response?.data?.message ?? 'Erreur lors de l\'export.')
     } finally { setExporting(false) }
+  }
+
+  async function confirmOrphan(kind, id) {
+    const note = window.prompt(
+      'Confirme UNIQUEMENT après vérification auprès de SamirPay (support ou dashboard) que ce paiement a bien été encaissé.\n\nNote (référence SamirPay, qui a vérifié, etc.) :'
+    )
+    if (note === null) return // annulé
+    setConfirmingId(id)
+    try {
+      const path = kind === 'order'
+        ? `/admin/samirpay/orphans/order/${id}/confirm`
+        : `/admin/samirpay/orphans/topup/${id}/confirm`
+      await api.post(path, { note })
+      await load()
+    } catch (e) {
+      alert(e.response?.data?.message ?? 'Erreur lors de la confirmation.')
+    } finally { setConfirmingId(null) }
   }
 
   if (loading && !config) return <div style={{ color: 'var(--text-muted)', padding: 20 }}>Chargement…</div>
@@ -249,13 +267,22 @@ export default function SamirpayTab() {
                 <div style={{ fontSize: 12, fontWeight: 700, marginBottom: 6 }}>Recharges ({orphans.topups.length})</div>
                 <div style={{ overflowX: 'auto' }}>
                   <table style={{ width: '100%', minWidth: 480, borderCollapse: 'collapse' }}>
-                    <thead><tr><th style={thStyle}>Utilisateur</th><th style={thStyle}>Montant</th><th style={thStyle}>Depuis</th></tr></thead>
+                    <thead><tr><th style={thStyle}>Utilisateur</th><th style={thStyle}>Montant</th><th style={thStyle}>Depuis</th><th style={thStyle}></th></tr></thead>
                     <tbody>
                       {orphans.topups.map(tx => (
                         <tr key={tx.id}>
                           <td style={tdStyle}>{tx.user?.name ?? '—'} ({tx.user?.phone ?? '—'})</td>
                           <td style={tdStyle}>{tx.amount.toLocaleString()} F</td>
                           <td style={tdStyle}>{new Date(tx.createdAt).toLocaleString('fr-FR')}</td>
+                          <td style={tdStyle}>
+                            <button
+                              onClick={() => confirmOrphan('topup', tx.id)}
+                              disabled={confirmingId === tx.id}
+                              style={btnConfirm}
+                            >
+                              {confirmingId === tx.id ? '…' : 'Marquer payé'}
+                            </button>
+                          </td>
                         </tr>
                       ))}
                     </tbody>
@@ -268,7 +295,7 @@ export default function SamirpayTab() {
                 <div style={{ fontSize: 12, fontWeight: 700, marginBottom: 6 }}>Paiements de commande ({orphans.orders.length})</div>
                 <div style={{ overflowX: 'auto' }}>
                   <table style={{ width: '100%', minWidth: 560, borderCollapse: 'collapse' }}>
-                    <thead><tr><th style={thStyle}>Client</th><th style={thStyle}>Prix commande</th><th style={thStyle}>Opérateur</th><th style={thStyle}>Depuis</th></tr></thead>
+                    <thead><tr><th style={thStyle}>Client</th><th style={thStyle}>Prix commande</th><th style={thStyle}>Opérateur</th><th style={thStyle}>Depuis</th><th style={thStyle}></th></tr></thead>
                     <tbody>
                       {orphans.orders.map(a => (
                         <tr key={a.id}>
@@ -276,6 +303,15 @@ export default function SamirpayTab() {
                           <td style={tdStyle}>{a.order?.price != null ? `${a.order.price.toLocaleString()} F` : '—'}</td>
                           <td style={tdStyle}>{PM_LABELS[a.operatorName] ?? a.operatorName}</td>
                           <td style={tdStyle}>{new Date(a.createdAt).toLocaleString('fr-FR')}</td>
+                          <td style={tdStyle}>
+                            <button
+                              onClick={() => confirmOrphan('order', a.id)}
+                              disabled={confirmingId === a.id}
+                              style={btnConfirm}
+                            >
+                              {confirmingId === a.id ? '…' : 'Marquer payé'}
+                            </button>
+                          </td>
                         </tr>
                       ))}
                     </tbody>
@@ -307,3 +343,4 @@ export default function SamirpayTab() {
 const thStyle  = { textAlign: 'left', padding: '8px 10px', color: 'var(--text-muted)', fontSize: 11, fontWeight: 600, borderBottom: '1px solid rgba(0,119,182,0.12)' }
 const tdStyle  = { padding: '8px 10px', fontSize: 12.5, borderBottom: '1px solid rgba(0,0,0,0.04)' }
 const btnPrimary = { padding: '8px 16px', borderRadius: 'var(--radius-sm)', border: 'none', background: 'var(--primary)', color: '#fff', fontSize: 13, fontWeight: 600, cursor: 'pointer' }
+const btnConfirm  = { padding: '5px 10px', borderRadius: 'var(--radius-sm)', border: '1px solid rgba(56,161,105,0.4)', background: 'rgba(56,161,105,0.08)', color: '#38a169', fontSize: 11.5, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap' }
