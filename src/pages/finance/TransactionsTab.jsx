@@ -6,6 +6,7 @@ import DateRangeFilter from '../../components/DateRangeFilter'
 import { exportCsv } from '../../lib/exportCsv'
 import { useAuth } from '../../contexts/AuthContext'
 import PaymentStatusEditor from './components/PaymentStatusEditor'
+import { useAutoRefresh } from '../../lib/useAutoRefresh'
 
 const PM_LABELS = { CASH: 'Espèces', WAVE: 'Wave', ORANGE_MONEY: 'Orange Money' }
 
@@ -31,18 +32,19 @@ export default function TransactionsTab() {
   const [data, setData] = useState(null)
   const [loading, setLoading] = useState(true)
 
-  const fetch = useCallback(async () => {
-    setLoading(true)
+  const fetch = useCallback(async (silent = false) => {
+    if (!silent) setLoading(true)
     try {
       const res = await api.get('/admin/finance/transactions', {
         params: { from: range.from, to: range.to, method: method || undefined, status: status || undefined, minAmount: minAmount || undefined, maxAmount: maxAmount || undefined, page, limit: 50 },
       })
       setData(res.data)
     } catch (e) { console.error(e) }
-    finally { setLoading(false) }
+    finally { if (!silent) setLoading(false) }
   }, [range, method, status, minAmount, maxAmount, page])
 
   useEffect(() => { fetch() }, [fetch])
+  useAutoRefresh(() => fetch(true))
 
   function handleExport() {
     if (!data) return

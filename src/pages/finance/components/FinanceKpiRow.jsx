@@ -3,6 +3,7 @@ import api from '../../../lib/api'
 import { Wallet, Receipt, Ticket, BellRing, FileDown, Handshake } from 'lucide-react'
 import StatCard from '../../../components/StatCard'
 import { RevenueModal, FeesModal, TransactionsModal, PassModal, AlertsModal } from './FinanceKpiModals'
+import { useAutoRefresh } from '../../../lib/useAutoRefresh'
 
 const EXPORT_TYPE_LABELS = { pdf: 'PDF', csv: 'CSV' }
 
@@ -11,26 +12,29 @@ export default function FinanceKpiRow({ reloadKey }) {
   const [loading, setLoading] = useState(true)
   const [openModal, setOpenModal] = useState(null)
 
-  const load = useCallback(async () => {
-    setLoading(true)
+  const load = useCallback(async (silent = false) => {
+    if (!silent) setLoading(true)
     try {
       const res = await api.get('/admin/finance/kpis')
       setKpis(res.data)
     } catch (e) { console.error(e) }
-    finally { setLoading(false) }
+    finally { if (!silent) setLoading(false) }
   }, [])
 
   useEffect(() => { load() }, [load, reloadKey])
+  useAutoRefresh(() => load(true))
 
   const v = (x) => loading ? '…' : (x ?? 0).toLocaleString()
 
   return (
     <>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 10, marginBottom: 20 }}>
-        <StatCard icon={Wallet}     label="CA aujourd'hui"        value={loading ? '…' : `${v(kpis?.caToday)} F`} color="#22c55e" onClick={() => setOpenModal('revenue')} />
+        <StatCard icon={Wallet}     label="CA aujourd'hui"        value={loading ? '…' : `${v(kpis?.caToday)} F`}
+          sub="Commission DEM, pas le total payé par les clients" color="#22c55e" onClick={() => setOpenModal('revenue')} />
         <StatCard icon={Ticket}     label="Pass activés (jour)"   value={v(kpis?.passActivatedToday)} color="#f59e0b" onClick={() => setOpenModal('pass')} />
         <StatCard icon={Handshake}  label="Frais de mise en relation (jour)" value={loading ? '…' : `${v(kpis?.feesToday)} F`} color="#0ea5e9" onClick={() => setOpenModal('fees')} />
-        <StatCard icon={Receipt}    label="Transactions (jour)"   value={v(kpis?.transactionsToday)} color="#8b5cf6" onClick={() => setOpenModal('transactions')} />
+        <StatCard icon={Receipt}    label="Transactions (jour)"   value={v(kpis?.transactionsToday)}
+          sub="Livraisons payées (cash confirmé ou en ligne) — pas juste livrées" color="#8b5cf6" onClick={() => setOpenModal('transactions')} />
         <StatCard
           icon={BellRing}
           label="Dernière alerte financière"

@@ -3,6 +3,7 @@ import api from '../../lib/api'
 import { glass, glassInput } from '../../lib/glassStyles'
 import DateRangeFilter from '../../components/DateRangeFilter'
 import { exportCsv } from '../../lib/exportCsv'
+import { useAutoRefresh } from '../../lib/useAutoRefresh'
 
 function isoDaysAgo(days) {
   const d = new Date()
@@ -38,8 +39,8 @@ export default function SamirpayTab() {
   const [exporting, setExporting] = useState(false)
   const [confirmingId, setConfirmingId] = useState(null)
 
-  const load = useCallback(async () => {
-    setLoading(true)
+  const load = useCallback(async (silent = false) => {
+    if (!silent) setLoading(true)
     try {
       const [cfgRes, reviewRes, orphansRes, collectionsRes] = await Promise.all([
         api.get('/admin/samirpay/config'),
@@ -63,10 +64,11 @@ export default function SamirpayTab() {
         setHealth(null)
       }
     } catch (e) { console.error(e) }
-    finally { setLoading(false) }
+    finally { if (!silent) setLoading(false) }
   }, [])
 
   useEffect(() => { load() }, [load])
+  useAutoRefresh(() => load(true))
 
   async function toggleActive() {
     if (!config) return

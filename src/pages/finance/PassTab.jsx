@@ -4,6 +4,7 @@ import api from '../../lib/api'
 import { glass } from '../../lib/glassStyles'
 import ExportPdfButton from '../../components/ExportPdfButton'
 import { exportCsv } from '../../lib/exportCsv'
+import { useAutoRefresh } from '../../lib/useAutoRefresh'
 
 async function logExport(type) {
   try { await api.post('/admin/finance/export-log', { type }) } catch (e) { console.error(e) }
@@ -28,16 +29,17 @@ export default function PassTab() {
   const [data, setData] = useState(null)
   const [loading, setLoading] = useState(true)
 
-  const load = useCallback(async () => {
-    setLoading(true)
+  const load = useCallback(async (silent = false) => {
+    if (!silent) setLoading(true)
     try {
       const res = await api.get('/admin/finance/pass')
       setData(res.data)
     } catch (e) { console.error(e) }
-    finally { setLoading(false) }
+    finally { if (!silent) setLoading(false) }
   }, [])
 
   useEffect(() => { load() }, [load])
+  useAutoRefresh(() => load(true))
 
   if (loading || !data) return <div style={{ color: 'var(--text-muted)', padding: 20 }}>Chargement…</div>
 

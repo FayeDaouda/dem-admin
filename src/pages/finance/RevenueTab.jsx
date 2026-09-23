@@ -4,6 +4,7 @@ import api from '../../lib/api'
 import { glass } from '../../lib/glassStyles'
 import ExportPdfButton from '../../components/ExportPdfButton'
 import { exportCsv } from '../../lib/exportCsv'
+import { useAutoRefresh } from '../../lib/useAutoRefresh'
 
 const TOOLTIP_STYLE = { background: '#fff', border: '1px solid var(--border)', borderRadius: 6, color: 'var(--text)', fontSize: 12, boxShadow: '0 2px 8px rgba(0,0,0,0.10)' }
 
@@ -24,16 +25,19 @@ export default function RevenueTab() {
   const [data, setData] = useState(null)
   const [loading, setLoading] = useState(true)
 
-  const load = useCallback(async () => {
-    setLoading(true)
+  // silent=true (auto-refresh en tâche de fond) évite de re-flasher "Chargement…"
+  // toutes les 30s — seul le premier chargement et le clic manuel bloquent l'UI.
+  const load = useCallback(async (silent = false) => {
+    if (!silent) setLoading(true)
     try {
       const res = await api.get('/admin/finance/revenue')
       setData(res.data)
     } catch (e) { console.error(e) }
-    finally { setLoading(false) }
+    finally { if (!silent) setLoading(false) }
   }, [])
 
   useEffect(() => { load() }, [load])
+  useAutoRefresh(() => load(true))
 
   if (loading || !data) return <div style={{ color: 'var(--text-muted)', padding: 20 }}>Chargement…</div>
 
