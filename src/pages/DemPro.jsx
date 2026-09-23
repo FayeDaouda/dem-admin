@@ -5,6 +5,7 @@ import Badge from '../components/Badge'
 import { RefreshCw, CheckCircle, XCircle, Pencil, Trash2, Ban, RotateCcw, X, Search, Phone, Flag, Plus, Gift, XSquare } from 'lucide-react'
 import { glass, glassModal, glassInput, pageWrap, pageScroll, stickyTh, stickyThCol, stickyCol } from '../lib/glassStyles'
 import SubmitRequestModal from './service-client/components/SubmitRequestModal'
+import { useAutoRefresh } from '../lib/useAutoRefresh'
 
 const STATUS_FILTERS = [
   ['all',       'Tous'],
@@ -354,19 +355,20 @@ export default function DemPro() {
   const [grantModalOpen, setGrantModalOpen] = useState(false)
   const [bulkSaving, setBulkSaving] = useState(false)
 
-  const fetch = useCallback(async () => {
-    setLoading(true)
+  const fetch = useCallback(async (silent = false) => {
+    if (!silent) setLoading(true)
     try {
       const res = await api.get('/admin/dem-pro')
       setAccounts(res.data?.accounts ?? [])
     } catch (e) {
       console.error(e)
     } finally {
-      setLoading(false)
+      if (!silent) setLoading(false)
     }
   }, [])
 
   useEffect(() => { fetch() }, [fetch])
+  useAutoRefresh(() => fetch(true))
 
   async function validate(id, approve, reason) {
     setSaving(true)

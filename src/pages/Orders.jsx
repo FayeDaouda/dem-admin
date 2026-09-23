@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import api from '../lib/api'
 import { useAuth } from '../contexts/AuthContext'
+import { useAutoRefresh } from '../lib/useAutoRefresh'
 import Badge from '../components/Badge'
 import { RefreshCw, Search } from 'lucide-react'
 import { glass, glassInput, pageWrap, pageScroll, stickyTh, stickyCol, stickyThCol } from '../lib/glassStyles'
@@ -129,19 +130,20 @@ export default function Orders() {
     }
   }
 
-  const fetch = useCallback(async () => {
-    setLoading(true)
+  const fetch = useCallback(async (silent = false) => {
+    if (!silent) setLoading(true)
     try {
       const res = await api.get('/admin/orders?limit=100')
       setOrders(Array.isArray(res.data?.orders) ? res.data.orders : [])
     } catch (e) {
       console.error(e)
     } finally {
-      setLoading(false)
+      if (!silent) setLoading(false)
     }
   }, [])
 
   useEffect(() => { fetch() }, [fetch])
+  useAutoRefresh(() => fetch(true))
 
   const statusGroups = {
     all:        null,

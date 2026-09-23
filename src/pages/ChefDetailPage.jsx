@@ -4,6 +4,7 @@ import api from '../lib/api'
 import { ArrowLeft, CheckCircle, XCircle, ChevronDown, ChevronUp, Ban, RotateCcw, Trash2, UserPlus, Search, X, KeyRound } from 'lucide-react'
 import { glass, pageWrap, pageScroll } from '../lib/glassStyles'
 import SuspendModal from '../components/SuspendModal'
+import { useAutoRefresh } from '../lib/useAutoRefresh'
 
 const DOC_LIST = [
   { key: 'idCardFront',    label: 'CNI recto' },
@@ -92,6 +93,7 @@ export default function ChefDetailPage() {
   useEffect(() => {
     refetch().finally(() => setLoading(false))
   }, [refetch])
+  useAutoRefresh(() => refetch())
 
   async function validateDriver(driver, approve) {
     setActingId(driver.id)

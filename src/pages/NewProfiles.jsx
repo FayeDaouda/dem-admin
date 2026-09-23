@@ -3,6 +3,7 @@ import api from '../lib/api'
 import { RefreshCw, UserPlus, Bike, Briefcase, UserCog, Phone } from 'lucide-react'
 import StatCard from '../components/StatCard'
 import { glass, pageWrap, pageScroll, stickyTh, stickyCol, stickyThCol } from '../lib/glassStyles'
+import { useAutoRefresh } from '../lib/useAutoRefresh'
 
 const PERIODS = [
   ['week',        'Semaine (7j)'],
@@ -26,19 +27,20 @@ export default function NewProfiles() {
   const [list, setList]         = useState(null)
   const [listLoading, setListLoading] = useState(false)
 
-  const fetch = useCallback(async () => {
-    setLoading(true)
+  const fetch = useCallback(async (silent = false) => {
+    if (!silent) setLoading(true)
     try {
       const res = await api.get('/admin/marketing/acquisition')
       setData(res.data)
     } catch (e) {
       console.error(e)
     } finally {
-      setLoading(false)
+      if (!silent) setLoading(false)
     }
   }, [])
 
   useEffect(() => { fetch() }, [fetch])
+  useAutoRefresh(() => fetch(true))
 
   const loadList = useCallback(async (role, p) => {
     setListLoading(true)

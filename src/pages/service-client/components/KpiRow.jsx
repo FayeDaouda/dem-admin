@@ -7,6 +7,7 @@ import {
   CoursesModal, ActiveOrdersModal, StuckPendingOrdersModal, DriverActivityModal,
   IncidentsModal, LowRatingModal, CancellationRateModal, DemProAccountsModal,
 } from './ServiceClientKpiModals'
+import { useAutoRefresh } from '../../../lib/useAutoRefresh'
 
 export default function KpiRow({ reloadKey }) {
   const [stats, setStats] = useState(null)
@@ -16,8 +17,8 @@ export default function KpiRow({ reloadKey }) {
   const [loading, setLoading] = useState(true)
   const [openModal, setOpenModal] = useState(null)
 
-  const load = useCallback(async () => {
-    setLoading(true)
+  const load = useCallback(async (silent = false) => {
+    if (!silent) setLoading(true)
     try {
       const [statsRes, kpisRes, acqRes, retRes] = await Promise.all([
         api.get('/admin/stats'),
@@ -30,10 +31,11 @@ export default function KpiRow({ reloadKey }) {
       setAcquisition(acqRes.data)
       setRetention(retRes.data)
     } catch (e) { console.error(e) }
-    finally { setLoading(false) }
+    finally { if (!silent) setLoading(false) }
   }, [])
 
   useEffect(() => { load() }, [load, reloadKey])
+  useAutoRefresh(() => load(true))
 
   const v = (x) => loading ? '…' : x ?? 0
 

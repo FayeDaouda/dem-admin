@@ -7,6 +7,7 @@ import { RefreshCw, BarChart2, Phone, CheckCircle, XCircle, Eye, Plus, Pencil, T
 import { glass, glassInput, pageWrap, pageScroll, stickyTh, stickyCol, stickyThCol } from '../lib/glassStyles'
 import SubmitRequestModal from './service-client/components/SubmitRequestModal'
 import DocThumb from '../components/DocThumb'
+import { useAutoRefresh } from '../lib/useAutoRefresh'
 
 const DOC_LIST = [
   { key: 'avatar',         label: 'Photo de profil' },
@@ -356,8 +357,8 @@ export default function Drivers() {
   const [resolving, setResolving]       = useState(null)
   const [requestTarget, setRequestTarget] = useState(null)
 
-  const fetch = useCallback(async () => {
-    setLoading(true)
+  const fetch = useCallback(async (silent = false) => {
+    if (!silent) setLoading(true)
     try {
       const res = await api.get('/admin/drivers', { params: { page, limit: LIMIT } })
       setDrivers(Array.isArray(res.data?.drivers) ? res.data.drivers : (Array.isArray(res.data) ? res.data : []))
@@ -365,7 +366,7 @@ export default function Drivers() {
     } catch (e) {
       console.error(e)
     } finally {
-      setLoading(false)
+      if (!silent) setLoading(false)
     }
   }, [page])
 
@@ -388,15 +389,15 @@ export default function Drivers() {
     }
   }
 
-  const fetchPhoneRequests = useCallback(async () => {
-    setPhoneLoading(true)
+  const fetchPhoneRequests = useCallback(async (silent = false) => {
+    if (!silent) setPhoneLoading(true)
     try {
       const res = await api.get('/admin/drivers', { params: { status: 'phone-change', limit: 50 } })
       setPhoneReqs(Array.isArray(res.data?.drivers) ? res.data.drivers : [])
     } catch (e) {
       console.error(e)
     } finally {
-      setPhoneLoading(false)
+      if (!silent) setPhoneLoading(false)
     }
   }, [])
 
@@ -407,6 +408,7 @@ export default function Drivers() {
       .then(r => setBadgeTiers(r.data.badges))
       .catch(() => {})
   }, [fetch, fetchPhoneRequests])
+  useAutoRefresh(() => { fetch(true); fetchPhoneRequests(true) })
 
   async function showStats(driverId) {
     setStats({ driverId, loading: true })

@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { RefreshCw, Search, Shield } from 'lucide-react'
 import api from '../lib/api'
 import { glass, glassInput, pageWrap, pageScroll, stickyTh, stickyCol, stickyThCol } from '../lib/glassStyles'
+import { useAutoRefresh } from '../lib/useAutoRefresh'
 
 // ── Couleurs par catégorie d'action ──────────────────────────────────────────
 function actionColor(action = '') {
@@ -39,8 +40,8 @@ export default function Audit() {
   const [detail, setDetail]     = useState(null)
   const LIMIT = 50
 
-  const fetch = useCallback(async () => {
-    setLoading(true)
+  const fetch = useCallback(async (silent = false) => {
+    if (!silent) setLoading(true)
     try {
       const params = { page, limit: LIMIT }
       if (search.trim()) params.action = search.trim()
@@ -50,11 +51,12 @@ export default function Audit() {
     } catch (e) {
       console.error(e)
     } finally {
-      setLoading(false)
+      if (!silent) setLoading(false)
     }
   }, [page, search])
 
   useEffect(() => { fetch() }, [fetch])
+  useAutoRefresh(() => fetch(true))
 
   // Reset page quand la recherche change
   const handleSearch = (v) => { setSearch(v); setPage(1) }

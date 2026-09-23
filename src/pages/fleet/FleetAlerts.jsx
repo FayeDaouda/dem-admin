@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react'
 import fleetApi from '../../lib/fleetApi'
 import { RefreshCw, AlertTriangle } from 'lucide-react'
 import { glass, pageWrap, pageScroll } from '../../lib/glassStyles'
+import { useAutoRefresh } from '../../lib/useAutoRefresh'
 
 const SEVERITY_LABEL = { critical: 'Critique', high: 'Élevée', medium: 'Moyenne', low: 'Faible' }
 const SEVERITY_COLOR = { critical: '#ef4444', high: '#f97316', medium: '#f59e0b', low: '#94a3b8' }
@@ -26,17 +27,18 @@ export default function FleetAlerts() {
   const [actingId, setActingId] = useState(null)
   const [error, setError] = useState('')
 
-  const fetchAlerts = useCallback(async () => {
-    setLoading(true); setError('')
+  const fetchAlerts = useCallback(async (silent = false) => {
+    if (!silent) { setLoading(true); setError('') }
     try {
       const { data } = await fleetApi.get('/chefs-de-flotte/me/incidents')
       setAlerts(Array.isArray(data.incidents) ? data.incidents : [])
     } catch (e) {
-      setError(e.response?.data?.message ?? 'Erreur de chargement.')
-    } finally { setLoading(false) }
+      if (!silent) setError(e.response?.data?.message ?? 'Erreur de chargement.')
+    } finally { if (!silent) setLoading(false) }
   }, [])
 
   useEffect(() => { fetchAlerts() }, [fetchAlerts])
+  useAutoRefresh(() => fetchAlerts(true))
 
   async function setStatus(id, status) {
     setActingId(id); setError('')

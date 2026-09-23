@@ -3,6 +3,7 @@ import api from '../lib/api'
 import { useAuth } from '../contexts/AuthContext'
 import { RefreshCw, Eye, X, Plus, Pencil, Trash2, Search, Phone, CheckCircle, XCircle, Briefcase, Flag } from 'lucide-react'
 import { glass, glassInput, pageWrap, pageScroll, stickyTh, stickyCol, stickyThCol } from '../lib/glassStyles'
+import { useAutoRefresh } from '../lib/useAutoRefresh'
 
 // Ordre d'affichage : Sans badge en premier, puis progression des tiers.
 const CLIENT_BADGE_OPTIONS = [
@@ -193,13 +194,13 @@ export default function Clients() {
   const [phoneLoading, setPhoneLoading] = useState(true)
   const [resolving, setResolving]   = useState(null)
 
-  const fetchPhoneRequests = useCallback(async () => {
-    setPhoneLoading(true)
+  const fetchPhoneRequests = useCallback(async (silent = false) => {
+    if (!silent) setPhoneLoading(true)
     try {
       const res = await api.get('/admin/clients/phone-requests')
       setPhoneReqs(res.data?.requests ?? [])
     } catch (e) { console.error(e) }
-    finally { setPhoneLoading(false) }
+    finally { if (!silent) setPhoneLoading(false) }
   }, [])
 
   async function resolvePhoneChange(clientId, approve) {
@@ -212,8 +213,8 @@ export default function Clients() {
     } finally { setResolving(null) }
   }
 
-  const fetch = useCallback(async () => {
-    setLoading(true)
+  const fetch = useCallback(async (silent = false) => {
+    if (!silent) setLoading(true)
     try {
       const params = { page, limit: LIMIT }
       if (search.trim()) params.search = search.trim()
@@ -227,11 +228,12 @@ export default function Clients() {
     } catch (e) {
       console.error(e)
     } finally {
-      setLoading(false)
+      if (!silent) setLoading(false)
     }
   }, [page, search, status, period, hasOrders, sortByCourses])
 
   useEffect(() => { fetch(); fetchPhoneRequests() }, [fetch, fetchPhoneRequests])
+  useAutoRefresh(() => { fetch(true); fetchPhoneRequests(true) })
 
   const totalPages = Math.max(1, Math.ceil(total / LIMIT))
   const hasFilters = !!(search || status || period || hasOrders || badgeFilter !== 'all')

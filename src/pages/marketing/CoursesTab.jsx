@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { LineChart, Line, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts'
 import api from '../../lib/api'
 import { glass } from '../../lib/glassStyles'
+import { useAutoRefresh } from '../../lib/useAutoRefresh'
 
 const TOOLTIP_STYLE = { background: '#fff', border: '1px solid var(--border)', borderRadius: 6, color: 'var(--text)', fontSize: 12, boxShadow: '0 2px 8px rgba(0,0,0,0.10)' }
 
@@ -27,16 +28,17 @@ export default function CoursesTab() {
   const [data, setData] = useState(null)
   const [loading, setLoading] = useState(true)
 
-  const load = useCallback(async () => {
-    setLoading(true)
+  const load = useCallback(async (silent = false) => {
+    if (!silent) setLoading(true)
     try {
       const res = await api.get('/admin/marketing/courses')
       setData(res.data)
     } catch (e) { console.error(e) }
-    finally { setLoading(false) }
+    finally { if (!silent) setLoading(false) }
   }, [])
 
   useEffect(() => { load() }, [load])
+  useAutoRefresh(() => load(true))
 
   if (loading || !data) return <div style={{ color: 'var(--text-muted)', padding: 20 }}>Chargement…</div>
 

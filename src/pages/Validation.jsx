@@ -6,6 +6,7 @@ import { glass, glassInput, pageWrap, pageScroll } from '../lib/glassStyles'
 import { RefreshCw, CheckCircle, XCircle, ChevronDown, ChevronUp, Shield, Truck, Layers, AlertTriangle, Briefcase, ClipboardList, Wallet, FileWarning } from 'lucide-react'
 import SuspendModal from '../components/SuspendModal'
 import AmbassadorDetailModal from '../components/AmbassadorDetailModal'
+import { useAutoRefresh } from '../lib/useAutoRefresh'
 
 // ── Styles partagés ───────────────────────────────────────────────────────────
 const card      = { ...glass, padding: '18px 20px' }
@@ -143,16 +144,17 @@ function AmbassadorsTab({ isServiceClient, highlightId }) {
   const [detailAmId,    setDetailAmId]    = useState(null)
   const rowRefs = useRef({})
 
-  const load = useCallback(async () => {
-    setLoading(true)
+  const load = useCallback(async (silent = false) => {
+    if (!silent) setLoading(true)
     try {
       const res = await api.get('/admin/chefs-de-flotte', { params: { status: filter } })
       setList(res.data.chefs ?? [])
     } catch (e) { console.error(e) }
-    finally { setLoading(false) }
+    finally { if (!silent) setLoading(false) }
   }, [filter])
 
   useEffect(() => { load() }, [load])
+  useAutoRefresh(() => load(true))
 
   useEffect(() => {
     if (!highlightId || !list.some(am => am.id === highlightId)) return
@@ -317,16 +319,17 @@ function DriversTab({ highlightId }) {
   const [acting,   setActing]   = useState(null)
   const rowRefs = useRef({})
 
-  const load = useCallback(async () => {
-    setLoading(true)
+  const load = useCallback(async (silent = false) => {
+    if (!silent) setLoading(true)
     try {
       const res = await api.get('/admin/drivers/pending')
       setList(res.data.drivers ?? [])
     } catch (e) { console.error(e) }
-    finally { setLoading(false) }
+    finally { if (!silent) setLoading(false) }
   }, [])
 
   useEffect(() => { load() }, [load])
+  useAutoRefresh(() => load(true))
 
   useEffect(() => {
     if (!highlightId || !list.some(d => d.id === highlightId)) return
@@ -490,16 +493,17 @@ function KycReviewTab({ highlightId }) {
   const [reason,   setReason]   = useState('')
   const rowRefs = useRef({})
 
-  const load = useCallback(async () => {
-    setLoading(true)
+  const load = useCallback(async (silent = false) => {
+    if (!silent) setLoading(true)
     try {
       const res = await api.get('/admin/drivers', { params: { status: 'kyc-review', limit: 50 } })
       setList(res.data.drivers ?? [])
     } catch (e) { console.error(e) }
-    finally { setLoading(false) }
+    finally { if (!silent) setLoading(false) }
   }, [])
 
   useEffect(() => { load() }, [load])
+  useAutoRefresh(() => load(true))
 
   useEffect(() => {
     if (!highlightId || !list.some(d => d.id === highlightId)) return
@@ -661,16 +665,17 @@ function DemProTab({ highlightId }) {
   const [acting,   setActing]   = useState(null)
   const rowRefs = useRef({})
 
-  const load = useCallback(async () => {
-    setLoading(true)
+  const load = useCallback(async (silent = false) => {
+    if (!silent) setLoading(true)
     try {
       const res = await api.get('/admin/dem-pro', { params: { status: filter } })
       setList(res.data.accounts ?? [])
     } catch (e) { console.error(e) }
-    finally { setLoading(false) }
+    finally { if (!silent) setLoading(false) }
   }, [filter])
 
   useEffect(() => { load() }, [load])
+  useAutoRefresh(() => load(true))
 
   useEffect(() => {
     if (!highlightId || !list.some(pro => pro.id === highlightId)) return
@@ -814,16 +819,17 @@ function AdminRequestsTab({ highlightId, kindFilter, emptyText }) {
   const [notes,   setNotes]   = useState({})
   const rowRefs = useRef({})
 
-  const load = useCallback(async () => {
-    setLoading(true)
+  const load = useCallback(async (silent = false) => {
+    if (!silent) setLoading(true)
     try {
       const res = await api.get('/admin/requests', { params: filter === 'all' ? {} : { status: filter } })
       setList((res.data.requests ?? []).filter(r => kindFilter(r.kind)))
     } catch (e) { console.error(e) }
-    finally { setLoading(false) }
+    finally { if (!silent) setLoading(false) }
   }, [filter, kindFilter])
 
   useEffect(() => { load() }, [load])
+  useAutoRefresh(() => load(true))
 
   useEffect(() => {
     if (!highlightId || !list.some(r => r.id === highlightId)) return
@@ -921,16 +927,17 @@ function FleetTab({ highlightId }) {
   const [notes,   setNotes]   = useState({})
   const rowRefs = useRef({})
 
-  const load = useCallback(async () => {
-    setLoading(true)
+  const load = useCallback(async (silent = false) => {
+    if (!silent) setLoading(true)
     try {
       const res = await api.get('/admin/fleet-extensions', { params: { status: 'PENDING' } })
       setList(res.data.extensions ?? [])
     } catch (e) { console.error(e) }
-    finally { setLoading(false) }
+    finally { if (!silent) setLoading(false) }
   }, [])
 
   useEffect(() => { load() }, [load])
+  useAutoRefresh(() => load(true))
 
   useEffect(() => {
     if (!highlightId || !list.some(ext => ext.id === highlightId)) return

@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react'
 import fleetApi from '../../lib/fleetApi'
 import { RefreshCw } from 'lucide-react'
 import { glass, glassInput, pageWrap, pageScroll } from '../../lib/glassStyles'
+import { useAutoRefresh } from '../../lib/useAutoRefresh'
 
 function statusLabel(s) {
   return { PENDING: '⏳ En attente', APPROVED: '✓ Approuvée', REJECTED: '✗ Refusée' }[s] ?? s
@@ -21,8 +22,8 @@ export default function FleetExtension() {
   const [success, setSuccess] = useState('')
   const [saving, setSaving]   = useState(false)
 
-  const fetchAll = useCallback(async () => {
-    setLoading(true)
+  const fetchAll = useCallback(async (silent = false) => {
+    if (!silent) setLoading(true)
     try {
       const [statsRes, reqRes] = await Promise.all([
         fleetApi.get('/chefs-de-flotte/me/stats'),
@@ -33,11 +34,12 @@ export default function FleetExtension() {
     } catch (e) {
       console.error(e)
     } finally {
-      setLoading(false)
+      if (!silent) setLoading(false)
     }
   }, [])
 
   useEffect(() => { fetchAll() }, [fetchAll])
+  useAutoRefresh(() => fetchAll(true))
 
   const hasPending = requests.some(r => r.status === 'PENDING')
 

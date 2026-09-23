@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { AlertTriangle, RefreshCw, Flag } from 'lucide-react'
 import api from '../../lib/api'
 import { glass, glassInput, stickyTh } from '../../lib/glassStyles'
+import { useAutoRefresh } from '../../lib/useAutoRefresh'
 
 const SEVERITY_CFG = {
   critical: { bg: '#ef444420', color: '#ef4444', label: 'Critique' },
@@ -29,16 +30,17 @@ export default function IncidentsTab() {
   const [filterStatus, setFilterStatus] = useState('')
   const [reportOpen, setReportOpen] = useState(false)
 
-  const fetch = useCallback(async () => {
-    setLoading(true)
+  const fetch = useCallback(async (silent = false) => {
+    if (!silent) setLoading(true)
     try {
       const res = await api.get('/admin/incidents', { params: filterStatus ? { status: filterStatus } : {} })
       setIncidents(res.data?.incidents ?? [])
     } catch (e) { console.error(e) }
-    finally { setLoading(false) }
+    finally { if (!silent) setLoading(false) }
   }, [filterStatus])
 
   useEffect(() => { fetch() }, [fetch])
+  useAutoRefresh(() => fetch(true))
 
   return (
     <div>

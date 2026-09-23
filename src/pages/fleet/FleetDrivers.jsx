@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react'
 import fleetApi from '../../lib/fleetApi'
 import { RefreshCw, Plus, X, Star, Eye, Pencil, Check } from 'lucide-react'
 import { glass, glassSolid, pageWrap, pageScroll, stickyTh, stickyCol, stickyThCol } from '../../lib/glassStyles'
+import { useAutoRefresh } from '../../lib/useAutoRefresh'
 
 const STATUS_TABS = [
   ['all',       'Tous'],
@@ -522,8 +523,8 @@ export default function FleetDrivers() {
   const [showNew, setShowNew] = useState(false)
   const [detailId, setDetailId] = useState(null)
 
-  const fetchDrivers = useCallback(async () => {
-    setLoading(true)
+  const fetchDrivers = useCallback(async (silent = false) => {
+    if (!silent) setLoading(true)
     try {
       const params = statusFilter === 'all' ? {} : { status: statusFilter }
       const res = await fleetApi.get('/chefs-de-flotte/me/drivers', { params })
@@ -531,11 +532,12 @@ export default function FleetDrivers() {
     } catch (e) {
       console.error(e)
     } finally {
-      setLoading(false)
+      if (!silent) setLoading(false)
     }
   }, [statusFilter])
 
   useEffect(() => { fetchDrivers() }, [fetchDrivers])
+  useAutoRefresh(() => fetchDrivers(true))
 
   return (
     <div style={pageWrap}>

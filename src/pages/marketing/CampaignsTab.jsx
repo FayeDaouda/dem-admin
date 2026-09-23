@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import { Send, MessageSquareWarning, Trophy, ArrowRight } from 'lucide-react'
 import api from '../../lib/api'
 import { glass, glassInput } from '../../lib/glassStyles'
+import { useAutoRefresh } from '../../lib/useAutoRefresh'
 
 const TARGET_LABELS = { all: 'Tous', clients: 'Clients', drivers: 'Livreurs', dem_pro: 'DEM Pro' }
 const AUDIENCE_OPTIONS = [['all', 'Tous'], ['clients', 'Clients'], ['drivers', 'Livreurs']]
@@ -89,12 +90,17 @@ function BroadcastHistory() {
   const [broadcasts, setBroadcasts] = useState([])
   const [loading, setLoading] = useState(true)
 
-  useEffect(() => {
-    api.get('/admin/marketing/broadcasts', { params: { limit: 15 } })
-      .then(res => setBroadcasts(res.data?.broadcasts ?? []))
-      .catch(e => console.error(e))
-      .finally(() => setLoading(false))
+  const load = useCallback(async (silent = false) => {
+    if (!silent) setLoading(true)
+    try {
+      const res = await api.get('/admin/marketing/broadcasts', { params: { limit: 15 } })
+      setBroadcasts(res.data?.broadcasts ?? [])
+    } catch (e) { console.error(e) }
+    finally { if (!silent) setLoading(false) }
   }, [])
+
+  useEffect(() => { load() }, [load])
+  useAutoRefresh(() => load(true))
 
   if (loading) return <div style={{ color: 'var(--text-muted)' }}>Chargement…</div>
   if (broadcasts.length === 0) return <div style={{ color: 'var(--text-muted)', textAlign: 'center', padding: 20 }}>Aucune campagne envoyée.</div>
@@ -121,9 +127,15 @@ function BroadcastHistory() {
 function Milestones() {
   const [data, setData] = useState(null)
 
-  useEffect(() => {
-    api.get('/admin/marketing/milestones').then(res => setData(res.data)).catch(e => console.error(e))
+  const load = useCallback(async () => {
+    try {
+      const res = await api.get('/admin/marketing/milestones')
+      setData(res.data)
+    } catch (e) { console.error(e) }
   }, [])
+
+  useEffect(() => { load() }, [load])
+  useAutoRefresh(() => load())
 
   if (!data) return <div style={{ color: 'var(--text-muted)' }}>Chargement…</div>
 

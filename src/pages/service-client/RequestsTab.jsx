@@ -3,6 +3,7 @@ import { RefreshCw } from 'lucide-react'
 import api from '../../lib/api'
 import { glass } from '../../lib/glassStyles'
 import StatusBadge from '../../components/StatusBadge'
+import { useAutoRefresh } from '../../lib/useAutoRefresh'
 
 const KIND_LABELS = {
   DEM_PRO_CREATE:   'Création compte DEM Pro',
@@ -19,16 +20,17 @@ export default function RequestsTab() {
   const [loading, setLoading]   = useState(true)
   const [filter, setFilter]     = useState('all')
 
-  const fetch = useCallback(async () => {
-    setLoading(true)
+  const fetch = useCallback(async (silent = false) => {
+    if (!silent) setLoading(true)
     try {
       const res = await api.get('/admin/requests', { params: filter === 'all' ? {} : { status: filter } })
       setRequests(res.data?.requests ?? [])
     } catch (e) { console.error(e) }
-    finally { setLoading(false) }
+    finally { if (!silent) setLoading(false) }
   }, [filter])
 
   useEffect(() => { fetch() }, [fetch])
+  useAutoRefresh(() => fetch(true))
 
   return (
     <div>

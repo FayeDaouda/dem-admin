@@ -5,6 +5,7 @@ import {
   Zap, Users, GitBranch, DollarSign, Award, Truck,
   ToggleLeft, ToggleRight, Play, RefreshCw, CheckCircle, Circle,
 } from 'lucide-react'
+import { useAutoRefresh } from '../lib/useAutoRefresh'
 
 const TAB_STYLE = (active) => ({
   padding: '8px 18px',
@@ -295,12 +296,17 @@ function ClientsTab() {
   const [loading, setLoading] = useState(true)
   const [search,  setSearch]  = useState('')
 
-  useEffect(() => {
-    api.get('/admin/acquisition/free-course')
-      .then(r => setData(r.data))
-      .catch(() => {})
-      .finally(() => setLoading(false))
+  const load = useCallback(async (silent = false) => {
+    if (!silent) setLoading(true)
+    try {
+      const r = await api.get('/admin/acquisition/free-course')
+      setData(r.data)
+    } catch { /* silencieux */ }
+    finally { if (!silent) setLoading(false) }
   }, [])
+
+  useEffect(() => { load() }, [load])
+  useAutoRefresh(() => load(true))
 
   if (loading) return <div style={{ color: 'var(--text-muted)' }}>Chargement…</div>
 
@@ -624,12 +630,17 @@ function FeesTab() {
   const [data,    setData]    = useState(null)
   const [loading, setLoading] = useState(true)
 
-  useEffect(() => {
-    api.get('/admin/acquisition/fees')
-      .then(r => setData(r.data))
-      .catch(() => {})
-      .finally(() => setLoading(false))
+  const load = useCallback(async (silent = false) => {
+    if (!silent) setLoading(true)
+    try {
+      const r = await api.get('/admin/acquisition/fees')
+      setData(r.data)
+    } catch { /* silencieux */ }
+    finally { if (!silent) setLoading(false) }
   }, [])
+
+  useEffect(() => { load() }, [load])
+  useAutoRefresh(() => load(true))
 
   if (loading) return <div style={{ color: 'var(--text-muted)' }}>Chargement…</div>
 

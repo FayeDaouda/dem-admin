@@ -7,6 +7,7 @@ import {
 import { glass, glassInput, stickyTh } from '../../lib/glassStyles'
 import Row from './components/Row'
 import StatusDot from './components/StatusDot'
+import { useAutoRefresh } from '../../lib/useAutoRefresh'
 
 export default function OverviewTab() {
   // Recherche client
@@ -31,7 +32,8 @@ export default function OverviewTab() {
   const [unpaid, setUnpaid]         = useState([])
   const [unpaidLoading, setUnpaidLoading] = useState(true)
 
-  const fetchAll = useCallback(async () => {
+  const fetchAll = useCallback(async (silent = false) => {
+    if (!silent) { setOrdersLoading(true); setIncLoading(true); setUnpaidLoading(true) }
     try {
       const [oRes, iRes, pRes] = await Promise.all([
         api.get('/admin/orders', { params: { limit: 30 } }),
@@ -51,6 +53,7 @@ export default function OverviewTab() {
   }, [])
 
   useEffect(() => { fetchAll() }, [fetchAll])
+  useAutoRefresh(() => fetchAll(true))
 
   async function searchClients(q) {
     if (!q.trim()) { setClients([]); return }

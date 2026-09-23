@@ -5,6 +5,7 @@ import { useAuth } from '../contexts/AuthContext'
 import { RefreshCw, Plus, Pencil, Trash2, X, Search, CheckCircle, Phone, Flag } from 'lucide-react'
 import { glass, glassInput, pageWrap, pageScroll, stickyTh, stickyCol, stickyThCol } from '../lib/glassStyles'
 import SubmitRequestModal from './service-client/components/SubmitRequestModal'
+import { useAutoRefresh } from '../lib/useAutoRefresh'
 
 // ── Modal Créer / Modifier ────────────────────────────────────────────────────
 function ChefFormModal({ initial, onClose, onSaved }) {
@@ -133,19 +134,20 @@ export default function ChefsDeFlotte() {
   const [acting, setActing]       = useState(null)
   const [requestTarget, setRequestTarget] = useState(null)
 
-  const fetch = useCallback(async () => {
-    setLoading(true)
+  const fetch = useCallback(async (silent = false) => {
+    if (!silent) setLoading(true)
     try {
       const res = await api.get('/admin/chefs-de-flotte', { params: { status: 'all' } })
       setChefs(Array.isArray(res.data?.chefs) ? res.data.chefs : [])
     } catch (e) {
       console.error(e)
     } finally {
-      setLoading(false)
+      if (!silent) setLoading(false)
     }
   }, [])
 
   useEffect(() => { fetch() }, [fetch])
+  useAutoRefresh(() => fetch(true))
 
   async function deleteChef(chef) {
     if (!confirm(`Supprimer définitivement ${chef.name ?? chef.phone} ? Cette action est irréversible.`)) return

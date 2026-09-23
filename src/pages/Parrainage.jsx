@@ -1,6 +1,7 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import api from '../lib/api'
 import { glass, glassInput, pageWrap, pageScroll } from '../lib/glassStyles'
+import { useAutoRefresh } from '../lib/useAutoRefresh'
 
 const Card = ({ children, style = {} }) => (
   <div style={{ ...glass, padding: '20px 24px', ...style }}>{children}</div>
@@ -19,12 +20,17 @@ export default function Parrainage() {
   const [search,   setSearch]   = useState('')
   const [expanded, setExpanded] = useState(null)
 
-  useEffect(() => {
-    api.get('/admin/acquisition/referrals')
-      .then(r => setData(r.data))
-      .catch(() => {})
-      .finally(() => setLoading(false))
+  const load = useCallback(async (silent = false) => {
+    if (!silent) setLoading(true)
+    try {
+      const r = await api.get('/admin/acquisition/referrals')
+      setData(r.data)
+    } catch { /* silencieux */ }
+    finally { if (!silent) setLoading(false) }
   }, [])
+
+  useEffect(() => { load() }, [load])
+  useAutoRefresh(() => load(true))
 
   const total    = data?.totalReferrals ?? 0
   const credits  = data?.totalCreditsDistributed ?? 0

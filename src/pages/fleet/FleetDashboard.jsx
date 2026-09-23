@@ -4,6 +4,7 @@ import fleetApi from '../../lib/fleetApi'
 import { useFleetAuth } from '../../contexts/FleetAuthContext'
 import { Radio, Navigation, Wallet, WifiOff, Bell, ShieldCheck, AlertTriangle, RefreshCw, Package } from 'lucide-react'
 import { glass, pageWrap, pageScroll } from '../../lib/glassStyles'
+import { useAutoRefresh } from '../../lib/useAutoRefresh'
 
 const PERIOD_TABS = [
   ['today',     "Aujourd'hui"],
@@ -43,19 +44,20 @@ export default function FleetDashboard() {
   const [loading, setLoading] = useState(true)
   const [period, setPeriod]   = useState('today')
 
-  const fetchStats = useCallback(async () => {
-    setLoading(true)
+  const fetchStats = useCallback(async (silent = false) => {
+    if (!silent) setLoading(true)
     try {
       const res = await fleetApi.get('/chefs-de-flotte/me/stats')
       setStats(res.data)
     } catch (e) {
       console.error(e)
     } finally {
-      setLoading(false)
+      if (!silent) setLoading(false)
     }
   }, [])
 
   useEffect(() => { fetchStats() }, [fetchStats])
+  useAutoRefresh(() => fetchStats(true))
 
   return (
     <div style={pageWrap}>

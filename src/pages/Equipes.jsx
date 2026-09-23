@@ -4,6 +4,7 @@ import { useAuth } from '../contexts/AuthContext'
 import { RefreshCw, UserPlus, Trash2, Power, XCircle, Pencil, Search, KeyRound, Check } from 'lucide-react'
 import { glass, glassInput, pageWrap, pageScroll, stickyTh } from '../lib/glassStyles'
 import { PASSWORD_PATTERN, PASSWORD_HINT } from '../lib/passwordPolicy'
+import { useAutoRefresh } from '../lib/useAutoRefresh'
 
 const ROLE_COLORS = {
   SUPER: '#f59e0b', DEV: '#6366f1', FINANCE: '#22c55e', MARKETING: '#ec4899', SERVICE_CLIENT: '#06b6d4', ASSISTANCE_EXECUTIVE: '#a855f7',
@@ -38,8 +39,8 @@ export default function Equipes() {
   const [resetRequests, setResetRequests] = useState([])
   const [resetBusy, setResetBusy]         = useState(null) // id de la demande en cours de traitement
 
-  const fetch = useCallback(async () => {
-    setLoading(true)
+  const fetch = useCallback(async (silent = false) => {
+    if (!silent) setLoading(true)
     try {
       const res = await api.get('/admin/admins')
       setAdmins(res.data?.admins ?? [])
@@ -48,10 +49,11 @@ export default function Equipes() {
         setResetRequests(rr.data?.requests ?? [])
       }
     } catch (e) { console.error(e) }
-    finally { setLoading(false) }
+    finally { if (!silent) setLoading(false) }
   }, [isSuper])
 
   useEffect(() => { fetch() }, [fetch])
+  useAutoRefresh(() => fetch(true))
 
   // ── Actions ──
   async function handleCreate(e) {

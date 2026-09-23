@@ -3,6 +3,7 @@ import api from '../lib/api'
 import Badge from '../components/Badge'
 import { RefreshCw } from 'lucide-react'
 import { glass, glassModal, glassInput, pageWrap, pageScroll, stickyTh } from '../lib/glassStyles'
+import { useAutoRefresh } from '../lib/useAutoRefresh'
 
 const PAYMENT_METHODS = ['CASH', 'WAVE', 'ORANGE_MONEY']
 const PM_LABELS = { CASH: 'Espèces', WAVE: 'Wave', ORANGE_MONEY: 'Orange Money' }
@@ -16,8 +17,8 @@ export default function Payments() {
   const [form, setForm]       = useState({ paymentStatus: 'PAID', paymentMethod: 'CASH', disputeNotes: '' })
   const [saving, setSaving]   = useState(false)
 
-  const fetch = useCallback(async () => {
-    setLoading(true)
+  const fetch = useCallback(async (silent = false) => {
+    if (!silent) setLoading(true)
     try {
       const params = {}
       if (filter !== 'all') params.paymentStatus = filter
@@ -27,11 +28,12 @@ export default function Payments() {
     } catch (e) {
       console.error(e)
     } finally {
-      setLoading(false)
+      if (!silent) setLoading(false)
     }
   }, [filter, period])
 
   useEffect(() => { fetch() }, [fetch])
+  useAutoRefresh(() => fetch(true))
 
   function openModal(order) {
     setModal({ order })

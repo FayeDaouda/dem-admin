@@ -4,6 +4,7 @@ import { Search, Gift, Percent } from 'lucide-react'
 import { glass, glassInput } from '../../lib/glassStyles'
 import StatusBadge from '../../components/StatusBadge'
 import SubmitRequestModal from './components/SubmitRequestModal'
+import { useAutoRefresh } from '../../lib/useAutoRefresh'
 
 const KIND_LABELS = { GESTE_FREE_RIDE: 'Course gratuite', GESTE_DISCOUNT: 'Remise' }
 
@@ -14,16 +15,17 @@ export default function GestesTab() {
   const [results, setResults]   = useState([])
   const [modal, setModal]       = useState(null) // { kind, targetUser }
 
-  const fetch = useCallback(async () => {
-    setLoading(true)
+  const fetch = useCallback(async (silent = false) => {
+    if (!silent) setLoading(true)
     try {
       const res = await api.get('/admin/requests')
       setRequests((res.data?.requests ?? []).filter(r => r.kind === 'GESTE_FREE_RIDE' || r.kind === 'GESTE_DISCOUNT'))
     } catch (e) { console.error(e) }
-    finally { setLoading(false) }
+    finally { if (!silent) setLoading(false) }
   }, [])
 
   useEffect(() => { fetch() }, [fetch])
+  useAutoRefresh(() => fetch(true))
 
   useEffect(() => {
     if (!search.trim()) { setResults([]); return }

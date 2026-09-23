@@ -3,6 +3,7 @@ import api from '../../../lib/api'
 import { UserPlus, Repeat, XCircle, CheckCircle, UserCheck, UserMinus, Bell } from 'lucide-react'
 import StatCard from '../../../components/StatCard'
 import { NewClientsModal, RetentionModal, CancellationModal, CompletedOrdersModal, BroadcastHistoryModal } from './MarketingKpiModals'
+import { useAutoRefresh } from '../../../lib/useAutoRefresh'
 
 const TARGET_LABELS = { all: 'Tous', clients: 'Clients', drivers: 'Livreurs', dem_pro: 'DEM Pro' }
 
@@ -11,16 +12,17 @@ export default function MarketingKpiRow({ reloadKey }) {
   const [loading, setLoading] = useState(true)
   const [openModal, setOpenModal] = useState(null)
 
-  const load = useCallback(async () => {
-    setLoading(true)
+  const load = useCallback(async (silent = false) => {
+    if (!silent) setLoading(true)
     try {
       const res = await api.get('/admin/marketing/kpis')
       setKpis(res.data)
     } catch (e) { console.error(e) }
-    finally { setLoading(false) }
+    finally { if (!silent) setLoading(false) }
   }, [])
 
   useEffect(() => { load() }, [load, reloadKey])
+  useAutoRefresh(() => load(true))
 
   const v = (x) => loading ? '…' : x ?? 0
   const lastBroadcast = kpis?.lastBroadcast
