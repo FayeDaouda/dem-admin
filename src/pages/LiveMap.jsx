@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
-import { MapContainer, TileLayer, Marker, Popup, Polyline, useMap } from 'react-leaflet'
+import { MapContainer, Marker, Popup, Polyline, useMap } from 'react-leaflet'
+import MapBaseLayer from '../components/MapBaseLayer'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 import { connectSocket, disconnectSocket } from '../lib/socket'
@@ -160,10 +161,7 @@ export default function LiveMap() {
             zoom={12}
             style={{ height: '100%', width: '100%' }}
           >
-            <TileLayer
-              attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>'
-              url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png"
-            />
+            <MapBaseLayer />
 
             {allPoints.length > 0 && <AutoFit points={allPoints} />}
 
