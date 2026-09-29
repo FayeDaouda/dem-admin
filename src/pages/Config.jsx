@@ -5,6 +5,7 @@ import { useNavigate } from 'react-router-dom'
 import { glass, glassInput } from '../lib/glassStyles'
 import ZoneMatrixSection from './ZoneMatrixSection'
 import PassLivreursSection from './PassLivreursSection'
+import DemProTiersSection from './DemProTiersSection'
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 const CONFIG_META = {
@@ -207,6 +208,11 @@ function TarifsTab() {
           commentaire au-dessus de TarifsTab). */}
       <div style={{ marginTop: 16 }}>
         <PassLivreursSection />
+        {/* Nouveau système d'abonnement DEM Pro (Starter/Business/Premium) —
+            en construction, séparé de l'ancien (dem_pro_price_pro/business
+            juste au-dessus, ancien système, ne pas toucher tant que la
+            bascule n'a pas eu lieu — voir DemProTiersSection.jsx). */}
+        <DemProTiersSection />
       </div>
     </div>
   )

@@ -25,7 +25,7 @@ export const VOLUME_LABELS = {
 }
 
 export const PLAN_LABELS = { FREE: 'Gratuit', PRO: 'Pro', BUSINESS: 'Business' }
-export const PLAN_COLORS = { FREE: '#888', PRO: '#0077b6', BUSINESS: '#6366f1' }
+export const PLAN_COLORS = { FREE: '#888', PRO: '#0077b6', BUSINESS: '#6366f1', STARTER: '#0891b2', PREMIUM: '#b45309' }
 
 // Suspendu = compte désactivé, quel que soit son statut de validation (même
 // règle que le filtre "Suspendus" et la carte "Actifs").

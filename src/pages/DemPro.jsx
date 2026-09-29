@@ -7,7 +7,7 @@ import { glass, glassModal, glassInput, pageWrap, pageScroll, stickyTh, stickyTh
 import SubmitRequestModal from './service-client/components/SubmitRequestModal'
 import AccountDetailModal from './dem-pro/AccountDetailModal'
 import {
-  hasPaidTier, SECTOR_LABELS, SECTOR_COLORS, VOLUME_LABELS, PLAN_LABELS, PLAN_COLORS, proStatusInfo,
+  hasPaidTier, SECTOR_LABELS, SECTOR_COLORS, VOLUME_LABELS, PLAN_COLORS, proStatusInfo, planLabel,
 } from './dem-pro/labels'
 import { useAutoRefresh } from '../lib/useAutoRefresh'
 
@@ -124,12 +124,19 @@ const DURATION_PRESETS = [
   ['90', '3 mois'],
 ]
 
-// Business masqué du produit pour l'instant (décision utilisateur — plus
-// aucune différence fonctionnelle réelle avec Pro, pas question d'offrir ou
-// de facturer un palier qui n'apporte rien). Seul Pro reste attribuable ici ;
-// Business reste éditable individuellement pour les comptes qui l'ont déjà.
-function GrantModal({ count, onClose, onConfirm, saving }) {
-  const plan = 'PRO'
+// Paliers offrables = plans attribuables du système en vigueur (GET
+// /admin/dem-pro/plans), hors Gratuit. Ancien système : Pro seulement
+// (Business masqué — plus aucune différence fonctionnelle réelle avec Pro).
+// Nouveaux paliers : Starter / Business / Premium — c'est ainsi que l'admin
+// lance l'essai d'un compte gratuit, le compte à rebours part à l'offre.
+function giftablePlans(planSystem) {
+  if (!planSystem) return []
+  const plans = planSystem.plans.filter(p => p !== 'FREE')
+  return planSystem.system === 'legacy' ? plans.filter(p => p !== 'BUSINESS') : plans
+}
+function GrantModal({ count, planSystem, onClose, onConfirm, saving }) {
+  const options = giftablePlans(planSystem)
+  const [plan, setPlan] = useState(options[0] ?? 'PRO')
   const [days, setDays] = useState('30')
   const [customDays, setCustomDays] = useState('')
   const [now] = useState(() => Date.now())
@@ -140,7 +147,7 @@ function GrantModal({ count, onClose, onConfirm, saving }) {
       <div style={{ ...glass, width: 420, maxWidth: '92vw', borderRadius: 16, padding: 24 }} onClick={e => e.stopPropagation()}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
           <h2 style={{ fontSize: 17, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 8 }}>
-            <Gift size={18} /> Offrir le palier Pro
+            <Gift size={18} /> Offrir un palier
           </h2>
           <button onClick={onClose} style={btnIcon}><X size={16} /></button>
         </div>
@@ -148,8 +155,24 @@ function GrantModal({ count, onClose, onConfirm, saving }) {
           {count} compte{count > 1 ? 's' : ''} sélectionné{count > 1 ? 's' : ''}
         </div>
 
+        {options.length > 1 && (
+          <div style={{ marginBottom: 14 }}>
+            <label style={labelStyle}>Palier</label>
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+              {options.map(p => (
+                <button key={p} onClick={() => setPlan(p)} style={{
+                  padding: '7px 14px', borderRadius: 20, cursor: 'pointer', fontSize: 13,
+                  border: `1px solid ${plan === p ? 'var(--primary)' : 'rgba(0,119,182,0.2)'}`,
+                  background: plan === p ? 'var(--primary)' : 'rgba(255,255,255,0.5)',
+                  color: plan === p ? '#fff' : 'var(--text-muted)',
+                }}>{planSystem.labels[p] ?? p}</button>
+              ))}
+            </div>
+          </div>
+        )}
+
         <div style={{ marginBottom: 14 }}>
-          <label style={labelStyle}>Durée offerte</label>
+          <label style={labelStyle}>Durée offerte (le compte à rebours démarre maintenant)</label>
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
             {DURATION_PRESETS.map(([val, label]) => (
               <button
@@ -220,7 +243,7 @@ function GrantModal({ count, onClose, onConfirm, saving }) {
 // de `proPlan` en base — permet de déployer le backend séparément de son
 // activation réelle, synchronisée avec la sortie de la mise à jour
 // frontend correspondante.
-function TiersActiveToggle() {
+function TiersActiveToggle({ onChange }) {
   const [active, setActive]   = useState(null) // null = pas encore chargé
   const [saving, setSaving]   = useState(false)
   const [error, setError]     = useState('')
@@ -238,15 +261,17 @@ function TiersActiveToggle() {
   async function toggle() {
     const next = !active
     if (next && !confirm(
-      "Activer les nouveaux paliers Starter/Business/Premium ? Assurez-vous que la migration de données " +
-      "(migrate_pro_plan_tiers.sql) a déjà tourné et que la mise à jour de l'app est sortie — sinon les comptes " +
-      "restent sur l'ancien système sans effet visible."
+      "Activer les nouveaux paliers Starter/Business/Premium ?\n\n" +
+      "Prérequis : prix des paliers posés (seed) et mise à jour de l'app publiée.\n" +
+      "Juste après l'activation : lancer la migration de données (migrate_pro_plan_tiers.sql) — " +
+      "tant qu'elle n'a pas tourné, les comptes Pro restent sur l'ancien système, sans perte d'accès."
     )) return
 
     setSaving(true); setError('')
     try {
       await api.put('/admin/config', { updates: [{ key: 'dem_pro_tiers_active', value: next ? 'true' : 'false' }] })
       setActive(next)
+      onChange?.()
     } catch (e) {
       setError(e.response?.data?.message ?? 'Erreur.')
     } finally { setSaving(false) }
@@ -260,7 +285,7 @@ function TiersActiveToggle() {
         <div style={{ fontWeight: 700, fontSize: 13 }}>Paliers Starter / Business / Premium</div>
         <div style={{ color: 'var(--text-muted)', fontSize: 12, marginTop: 2 }}>
           {active
-            ? 'Actif — les nouvelles règles de palier s\'appliquent aux comptes migrés.'
+            ? 'Actif — les nouvelles règles de palier s\'appliquent aux comptes Starter / Business / Premium.'
             : 'Inactif — comportement identique à aujourd\'hui, même avec le backend déployé.'}
         </div>
         {error && <div style={{ color: 'var(--danger)', fontSize: 11, marginTop: 4 }}>{error}</div>}
@@ -329,6 +354,12 @@ export default function DemPro() {
   const [saving, setSaving]     = useState(false)
   const [requestTarget, setRequestTarget] = useState(null)
   const [detailId, setDetailId] = useState(null) // fiche commerçant ouverte
+  // Plans attribuables selon le système en vigueur (ancien / nouveaux paliers)
+  const [planSystem, setPlanSystem] = useState(null)
+  const loadPlanSystem = useCallback(() => {
+    api.get('/admin/dem-pro/plans').then(r => setPlanSystem(r.data)).catch(() => setPlanSystem(null))
+  }, [])
+  useEffect(() => { loadPlanSystem() }, [loadPlanSystem])
   // Sélection multiple — offre/retrait de palier groupé (SUPER uniquement)
   const [selected, setSelected] = useState(new Set())
   const [grantModalOpen, setGrantModalOpen] = useState(false)
@@ -490,7 +521,7 @@ export default function DemPro() {
         </div>
       </div>
 
-      {isSuper && <TiersActiveToggle />}
+      {isSuper && <TiersActiveToggle onChange={() => { loadPlanSystem(); fetch() }} />}
 
       <ProStats accounts={accounts} />
 
@@ -555,7 +586,7 @@ export default function DemPro() {
             {selected.size} compte{selected.size > 1 ? 's' : ''} sélectionné{selected.size > 1 ? 's' : ''}
           </span>
           <button onClick={() => setGrantModalOpen(true)} disabled={bulkSaving} style={{ ...btnPrimary, background: '#6366f1' }}>
-            <Gift size={14} /> Offrir Pro/Business
+            <Gift size={14} /> Offrir un palier
           </button>
           <button onClick={bulkRevoke} disabled={bulkSaving} style={{ ...btnOutline, color: 'var(--danger)', borderColor: 'var(--danger)' }}>
             <Ban size={14} /> Retirer l'accès payant
@@ -659,14 +690,17 @@ export default function DemPro() {
                               cursor: 'pointer',
                             }}
                           >
-                            {Object.entries(PLAN_LABELS)
-                              // Business masqué du choix pour l'instant, sauf pour un
-                              // compte qui l'a déjà (jamais forcé au changement) —
-                              // voir la note au-dessus de GrantModal.
-                              .filter(([k]) => k !== 'BUSINESS' || a.proPlan === 'BUSINESS')
-                              .map(([k, v]) => (
-                                <option key={k} value={k}>{v}</option>
+                            {/* Plans du système en vigueur (Business masqué dans l'ancien,
+                                sauf pour un compte qui l'a déjà) ; le plan actuel reste
+                                affiché même s'il n'est plus attribuable (ex. Pro après bascule). */}
+                            {(planSystem?.plans ?? ['FREE', 'PRO'])
+                              .filter(k => planSystem?.system === 'tiers' || k !== 'BUSINESS' || a.proPlan === 'BUSINESS')
+                              .map(k => (
+                                <option key={k} value={k}>{planSystem?.labels?.[k] ?? planLabel(k)}</option>
                               ))}
+                            {planSystem && !planSystem.plans.includes(a.proPlan ?? 'FREE') && (
+                              <option value={a.proPlan} disabled>{planLabel(a.proPlan)} (ancien)</option>
+                            )}
                           </select>
                         ) : (
                           <span style={{
@@ -674,7 +708,7 @@ export default function DemPro() {
                             background: (PLAN_COLORS[a.proPlan] ?? '#888') + '18',
                             color: PLAN_COLORS[a.proPlan] ?? '#888',
                           }}>
-                            {PLAN_LABELS[a.proPlan] ?? a.proPlan ?? 'Gratuit'}
+                            {planLabel(a.proPlan ?? 'FREE')}
                           </span>
                         )}
                         {hasPaidTier(a) && !a.paidPlanActive && (
@@ -886,6 +920,7 @@ export default function DemPro() {
       {grantModalOpen && (
         <GrantModal
           count={selected.size}
+          planSystem={planSystem}
           saving={bulkSaving}
           onClose={() => setGrantModalOpen(false)}
           onConfirm={bulkGrant}
