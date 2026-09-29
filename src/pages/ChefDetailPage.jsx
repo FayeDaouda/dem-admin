@@ -173,9 +173,13 @@ export default function ChefDetailPage() {
     setSearching(true)
     setSearchResult(null)
     try {
-      const r = await api.get('/admin/drivers', { params: { phone: searchPhone.trim() } })
-      const found = r.data?.drivers ?? r.data
-      const driver = Array.isArray(found) ? found[0] : found
+      // Avant : paramètre `phone` ignoré par le serveur → renvoyait le livreur
+      // inscrit le plus récemment, quel que soit le numéro saisi. Recherche
+      // réelle, puis correspondance exacte du numéro (chiffres, indicatif toléré).
+      const local = searchPhone.replace(/\D/g, '').slice(-9) // numéro local sénégalais (9 chiffres)
+      if (local.length < 9) { setSearchResult('not-found'); return }
+      const r = await api.get('/admin/drivers', { params: { search: local, limit: 20 } })
+      const driver = (r.data?.drivers ?? []).find(d => (d.phone ?? '').replace(/\D/g, '').slice(-9) === local)
       setSearchResult(driver || 'not-found')
     } catch {
       setSearchResult('not-found')

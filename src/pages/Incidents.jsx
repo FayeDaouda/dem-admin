@@ -13,7 +13,7 @@ const SEVERITY_CFG = {
 }
 
 const STATUS_CFG = {
-  OPEN:          { bg: '#ef444420', color: '#ef4444', label: 'Ouvert'       },
+  OPEN:          { bg: '#ef444420', color: '#ef4444', label: 'Nouveau'      },
   INVESTIGATING: { bg: '#f59e0b20', color: '#f59e0b', label: 'En cours'     },
   RESOLVED:      { bg: '#22c55e20', color: '#22c55e', label: 'Résolu'       },
 }
@@ -41,6 +41,7 @@ function Chip({ cfg, text }) {
 // ── Composant principal ───────────────────────────────────────────────────────
 export default function Incidents() {
   const [incidents, setIncidents] = useState([])
+  const [counts, setCounts]       = useState(null)
   const [loading, setLoading]     = useState(true)
   const [detail, setDetail]       = useState(null)
   const [filterStatus, setFilterStatus] = useState('')
@@ -58,6 +59,7 @@ export default function Incidents() {
       if (filterType)   params.type   = filterType
       const res = await api.get('/admin/incidents', { params })
       setIncidents(res.data?.incidents ?? [])
+      setCounts(res.data?.counts ?? null)
     } catch (e) {
       console.error(e)
     } finally {
@@ -101,6 +103,7 @@ export default function Incidents() {
       })
       setDetail(res.data)
       setIncidents(prev => prev.map(i => i.id === res.data.id ? res.data : i))
+      if (res.data.status !== detail.status) fetch() // compteurs globaux à jour
     } catch (e) {
       alert(e.response?.data?.message ?? 'Erreur')
     } finally {
@@ -109,11 +112,12 @@ export default function Incidents() {
   }
 
   // ── Compteurs pour le header ───────────────────────────────────────────────
-  const openCount   = incidents.filter(i => i.status === 'OPEN').length
-  const critCount   = incidents.filter(i => i.severity === 'critical' && i.status !== 'RESOLVED').length
-  const resolveRate = incidents.length
-    ? Math.round(incidents.filter(i => i.status === 'RESOLVED').length / incidents.length * 100)
-    : 0
+  // Calculés côté serveur sur TOUS les incidents : les filtres ne changent que
+  // la liste. Ouvert = non résolu (nouveau + en cours), comme la carte
+  // "Incidents ouverts" du Service Client.
+  const openCount   = counts?.open ?? 0
+  const critCount   = counts?.criticalOpen ?? 0
+  const resolveRate = counts?.resolveRate ?? 0
 
   return (
     <div style={pageWrap}>
@@ -136,10 +140,10 @@ export default function Incidents() {
       {/* ── Stat cards ── */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 12, marginBottom: 24, flexShrink: 0 }}>
         {[
-          { label: 'Ouverts',   value: openCount,                                         color: '#ef4444' },
-          { label: 'Critiques', value: critCount,                                          color: '#f97316' },
-          { label: 'En cours',  value: incidents.filter(i => i.status === 'INVESTIGATING').length, color: '#f59e0b' },
-          { label: 'Résolus %', value: resolveRate + '%',                                  color: '#22c55e' },
+          { label: 'Ouverts (non résolus)', value: openCount,                     color: '#ef4444' },
+          { label: 'Critiques ouverts',     value: critCount,                     color: '#f97316' },
+          { label: 'Dont en cours',         value: counts?.investigating ?? 0,   color: '#f59e0b' },
+          { label: 'Résolus %',             value: resolveRate + '%',            color: '#22c55e' },
         ].map(({ label, value, color }) => (
           <div key={label} style={{ ...glass, padding: '14px 18px' }}>
             <div style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 4 }}>{label}</div>
@@ -153,7 +157,7 @@ export default function Incidents() {
         <Filter size={14} style={{ color: 'var(--text-muted)' }} />
         <select value={filterStatus} onChange={e => setFilterStatus(e.target.value)} style={{ ...glassInput, width: 160 }}>
           <option value="">Tous les statuts</option>
-          <option value="OPEN">Ouvert</option>
+          <option value="OPEN">Nouveau</option>
           <option value="INVESTIGATING">En cours</option>
           <option value="RESOLVED">Résolu</option>
         </select>

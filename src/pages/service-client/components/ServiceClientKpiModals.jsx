@@ -26,6 +26,7 @@ function Shell({ icon: Icon, color, title, onClose, children, width = 720 }) {
 }
 
 function PeriodTabs({ periods, active, onChange, color, prefix = '' }) {
+  // prefix : chaîne, ou fonction (période) → préfixe (ex. aucun pour "Toutes")
   return (
     <div style={{ display: 'flex', gap: 6, marginBottom: 20, flexWrap: 'wrap' }}>
       {periods.map(p => (
@@ -36,7 +37,7 @@ function PeriodTabs({ periods, active, onChange, color, prefix = '' }) {
           color: active === p.key ? '#fff' : 'var(--text-muted)',
           transition: 'all .15s',
         }}>
-          {prefix}{p.label}
+          {typeof prefix === 'function' ? prefix(p) : prefix}{p.label}
         </button>
       ))}
     </div>
@@ -104,8 +105,11 @@ export function CoursesModal({ icon, color, onClose }) {
   )
 }
 
-// ── KPI : Courses en cours — activité récente ─────────────────────────────────
+// ── KPI : Courses en cours ────────────────────────────────────────────────────
+// "Toutes" = même population que la carte ; les autres onglets restreignent
+// aux courses prises en charge récemment (acceptedAt dans la fenêtre).
 const RECENT_ACTIVE_PERIODS = [
+  { key: 'all', label: 'Toutes' },
   { key: '5m',  label: '5 min' },
   { key: '10m', label: '10 min' },
   { key: '30m', label: '30 min' },
@@ -115,7 +119,7 @@ const RECENT_ACTIVE_PERIODS = [
 ]
 
 export function ActiveOrdersModal({ icon, color, onClose }) {
-  const [period, setPeriod] = useState('30m')
+  const [period, setPeriod] = useState('all')
   const [data, setData]     = useState(null)
   const [loading, setLoading] = useState(true)
 
@@ -126,15 +130,15 @@ export function ActiveOrdersModal({ icon, color, onClose }) {
   }, [period])
 
   return (
-    <Shell icon={icon} color={color} title="Courses en cours — activité récente" onClose={onClose}>
-      <PeriodTabs periods={RECENT_ACTIVE_PERIODS} active={period} onChange={setPeriod} color={color} prefix="Derniers " />
+    <Shell icon={icon} color={color} title="Courses en cours" onClose={onClose}>
+      <PeriodTabs periods={RECENT_ACTIVE_PERIODS} active={period} onChange={setPeriod} color={color} prefix={p => p.key === 'all' ? '' : 'Prises en charge — '} />
       <div style={{ marginBottom: 20 }}>
-        <StatBox label="Prises en charge récentes" value={data?.total ?? 0} color={color} />
+        <StatBox label={period === 'all' ? 'En cours maintenant' : 'Prises en charge sur la période'} value={data?.total ?? 0} color={color} />
       </div>
       {loading ? (
         <div style={{ color: 'var(--text-muted)', textAlign: 'center', padding: 40 }}>Chargement...</div>
       ) : !data || data.orders.length === 0 ? (
-        <div style={{ color: 'var(--text-muted)', textAlign: 'center', padding: 40 }}>Aucune course passée en cours sur cette période.</div>
+        <div style={{ color: 'var(--text-muted)', textAlign: 'center', padding: 40 }}>{period === 'all' ? 'Aucune course en cours.' : 'Aucune course prise en charge sur cette période.'}</div>
       ) : (
         <table style={tableStyle}>
           <thead>
@@ -159,8 +163,11 @@ export function ActiveOrdersModal({ icon, color, onClose }) {
   )
 }
 
-// ── KPI : Courses en attente — sans livreur depuis... ─────────────────────────
+// ── KPI : En attente d'un livreur ─────────────────────────────────────────────
+// "Toutes" = même population que la carte ; les autres onglets ne gardent
+// que les commandes en attente depuis plus du délai choisi.
 const STUCK_PENDING_PERIODS = [
+  { key: 'all', label: 'Toutes' },
   { key: '2m',  label: '2 min' },
   { key: '5m',  label: '5 min' },
   { key: '10m', label: '10 min' },
@@ -173,7 +180,7 @@ function waitingMinutes(createdAt) {
 }
 
 export function StuckPendingOrdersModal({ icon, color, onClose }) {
-  const [period, setPeriod] = useState('5m')
+  const [period, setPeriod] = useState('all')
   const [data, setData]     = useState(null)
   const [loading, setLoading] = useState(true)
 
@@ -184,15 +191,15 @@ export function StuckPendingOrdersModal({ icon, color, onClose }) {
   }, [period])
 
   return (
-    <Shell icon={icon} color={color} title="Courses en attente — sans livreur depuis..." onClose={onClose}>
-      <PeriodTabs periods={STUCK_PENDING_PERIODS} active={period} onChange={setPeriod} color={color} prefix="Plus de " />
+    <Shell icon={icon} color={color} title="Courses en attente d'un livreur" onClose={onClose}>
+      <PeriodTabs periods={STUCK_PENDING_PERIODS} active={period} onChange={setPeriod} color={color} prefix={p => p.key === 'all' ? '' : 'Depuis plus de '} />
       <div style={{ marginBottom: 20 }}>
-        <StatBox label="Commandes en attente" value={data?.total ?? 0} color={color} />
+        <StatBox label={period === 'all' ? 'En attente maintenant' : 'En attente depuis plus de ce délai'} value={data?.total ?? 0} color={color} />
       </div>
       {loading ? (
         <div style={{ color: 'var(--text-muted)', textAlign: 'center', padding: 40 }}>Chargement...</div>
       ) : !data || data.orders.length === 0 ? (
-        <div style={{ color: 'var(--text-muted)', textAlign: 'center', padding: 40 }}>Aucune course en attente depuis plus de ce délai.</div>
+        <div style={{ color: 'var(--text-muted)', textAlign: 'center', padding: 40 }}>{period === 'all' ? 'Aucune course en attente.' : 'Aucune course en attente depuis plus de ce délai.'}</div>
       ) : (
         <table style={tableStyle}>
           <thead>
@@ -289,10 +296,12 @@ export function DriverActivityModal({ icon, color, onClose }) {
 }
 
 // ── KPI : Incidents ouverts ────────────────────────────────────────────────────
+// Ouvert = non résolu (nouveau + en cours) — même définition que la carte
+// et la page Incidents (kpi-definitions:openIncidentWhere).
 const INCIDENT_TABS = [
-  { key: 'ALL',           label: 'Tous (non résolus)' },
-  { key: 'OPEN',          label: 'Ouverts' },
-  { key: 'INVESTIGATING', label: 'En investigation' },
+  { key: 'ALL',           label: 'Tous les ouverts' },
+  { key: 'OPEN',          label: 'Nouveaux' },
+  { key: 'INVESTIGATING', label: 'En cours' },
 ]
 
 const SEVERITY_COLORS = { low: '#94a3b8', medium: '#f59e0b', high: '#ef4444', critical: '#b91c1c' }
@@ -316,8 +325,10 @@ export function IncidentsModal({ icon, color, onClose }) {
   return (
     <Shell icon={icon} color={color} title="Incidents ouverts" onClose={onClose}>
       <PeriodTabs periods={INCIDENT_TABS} active={tab} onChange={setTab} color={color} />
-      <div style={{ marginBottom: 20 }}>
-        <StatBox label="Incidents affichés" value={filtered.length} color={color} />
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 12, marginBottom: 20 }}>
+        <StatBox label="Ouverts (non résolus)" value={data?.counts?.open ?? incidents.length} color={color} />
+        <StatBox label="Nouveaux" value={data?.counts?.new ?? 0} color={color} />
+        <StatBox label="En cours" value={data?.counts?.investigating ?? 0} color={color} />
       </div>
       {loading ? (
         <div style={{ color: 'var(--text-muted)', textAlign: 'center', padding: 40 }}>Chargement...</div>
@@ -336,7 +347,7 @@ export function IncidentsModal({ icon, color, onClose }) {
                   <span style={{ color: SEVERITY_COLORS[i.severity] ?? 'var(--text-muted)', fontWeight: 700, fontSize: 12 }}>{i.severity}</span>
                 </td>
                 <td style={tdStyle}>{i.driverName ?? '—'}</td>
-                <td style={tdStyle}><Badge status={i.status} label={i.status === 'OPEN' ? 'Ouvert' : i.status === 'INVESTIGATING' ? 'En investigation' : i.status} /></td>
+                <td style={tdStyle}><Badge status={i.status} label={i.status === 'OPEN' ? 'Nouveau' : i.status === 'INVESTIGATING' ? 'En cours' : i.status} /></td>
                 <td style={{ ...tdStyle, color: 'var(--text-muted)', fontSize: 12 }}>{new Date(i.openedAt).toLocaleString('fr-FR')}</td>
               </tr>
             ))}
@@ -348,6 +359,7 @@ export function IncidentsModal({ icon, color, onClose }) {
 }
 
 // ── KPI : Livreurs / Clients notés < 3/5 ──────────────────────────────────────
+// Livreurs : note moyenne REÇUE. Clients : note moyenne DONNÉE (insatisfaction).
 export function LowRatingModal({ icon, color, onClose, role, title }) {
   const [data, setData] = useState(null)
   const [loading, setLoading] = useState(true)
@@ -361,20 +373,21 @@ export function LowRatingModal({ icon, color, onClose, role, title }) {
   }, [role])
 
   const list = role === 'DRIVER' ? (data?.drivers ?? []) : (data?.clients ?? [])
+  const isDriver = role === 'DRIVER'
 
   return (
     <Shell icon={icon} color={color} title={title} onClose={onClose}>
       <div style={{ marginBottom: 20 }}>
-        <StatBox label="Notés en dessous de 3/5" value={list.length} color={color} />
+        <StatBox label={isDriver ? 'Note moyenne reçue < 3/5' : 'Note moyenne donnée < 3/5'} value={list.length} color={color} />
       </div>
       {loading ? (
         <div style={{ color: 'var(--text-muted)', textAlign: 'center', padding: 40 }}>Chargement...</div>
       ) : list.length === 0 ? (
-        <div style={{ color: 'var(--text-muted)', textAlign: 'center', padding: 40 }}>Personne en dessous de 3/5 pour le moment.</div>
+        <div style={{ color: 'var(--text-muted)', textAlign: 'center', padding: 40 }}>{isDriver ? 'Aucun livreur noté en dessous de 3/5.' : 'Aucun client ne donne une note moyenne sous 3/5.'}</div>
       ) : (
         <table style={tableStyle}>
           <thead>
-            <tr>{['Nom', 'Téléphone', 'Note moyenne', "Nb d'évaluations"].map(h => <th key={h} style={thStyle}>{h}</th>)}</tr>
+            <tr>{['Nom', 'Téléphone', isDriver ? 'Note moyenne reçue' : 'Note moyenne donnée', "Nb d'évaluations"].map(h => <th key={h} style={thStyle}>{h}</th>)}</tr>
           </thead>
           <tbody>
             {list.map(u => (
@@ -454,14 +467,26 @@ export function CancellationRateModal({ icon, color, onClose }) {
 }
 
 // ── KPI : DEM Pro actifs / total ──────────────────────────────────────────────
+// Actifs = validés ET non suspendus (même définition que la carte) ;
+// Tous = comptes non supprimés = dénominateur de la carte.
 const DEM_PRO_TABS = [
-  { key: 'active',  label: 'Actifs' },
-  { key: 'pending', label: 'En attente' },
-  { key: 'all',     label: 'Tous' },
+  { key: 'OPERATIONAL', label: 'Actifs' },
+  { key: 'SUSPENDED',   label: 'Suspendus' },
+  { key: 'PENDING',     label: 'En attente' },
+  { key: 'all',         label: 'Tous' },
 ]
 
+// status = clé de couleur du Badge (vert / orange / rouge)
+function demProStatusLabel(a) {
+  if (!a.isActive) return { status: 'CANCELLED', label: 'Suspendu' }
+  if (a.proStatus === 'ACTIVE')   return { status: 'DELIVERED', label: 'Actif' }
+  if (a.proStatus === 'PENDING')  return { status: 'PENDING',   label: 'En attente' }
+  if (a.proStatus === 'REJECTED') return { status: 'CANCELLED', label: 'Refusé' }
+  return { status: a.proStatus, label: a.proStatus }
+}
+
 export function DemProAccountsModal({ icon, color, onClose }) {
-  const [tab, setTab] = useState('active')
+  const [tab, setTab] = useState('OPERATIONAL')
   const [data, setData] = useState(null)
   const [loading, setLoading] = useState(true)
 
@@ -496,7 +521,7 @@ export function DemProAccountsModal({ icon, color, onClose }) {
                 <td style={tdStyle}>{a.proBusinessName ?? '—'}</td>
                 <td style={tdStyle}>{a.name ?? '—'}</td>
                 <td style={tdStyle}>{a.phone ?? '—'}</td>
-                <td style={tdStyle}><Badge status={a.proStatus} label={a.proStatus === 'ACTIVE' ? 'Actif' : a.proStatus === 'PENDING' ? 'En attente' : a.proStatus} /></td>
+                <td style={tdStyle}><Badge {...demProStatusLabel(a)} /></td>
                 <td style={{ ...tdStyle, color: 'var(--text-muted)', fontSize: 12 }}>{a.createdAt ? new Date(a.createdAt).toLocaleDateString('fr-FR') : '—'}</td>
               </tr>
             ))}

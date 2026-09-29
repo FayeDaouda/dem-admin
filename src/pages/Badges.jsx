@@ -21,14 +21,6 @@ const DEFAULT_DRIVER_BADGES = [
     criteria: [{ courses: 500, referrals: 0,  rating: 4.2 }] },
 ]
 
-// Un badge est atteint si AU MOINS une ligne de critères est entièrement remplie.
-function driverBadgeMatches(tier, courses, referrals, rating) {
-  return (tier.criteria ?? []).some(c => {
-    const okRating = !c.rating || rating >= c.rating
-    return courses >= c.courses && referrals >= c.referrals && okRating
-  })
-}
-
 // Ordre d'affichage imposé (Sans badge en premier, puis progression des tiers)
 // — indépendant de l'ordre renvoyé par /admin/badges/config.
 const DRIVER_TIER_ORDER = ['xarit', 'mbokk', 'doorWarr', 'domouNdey', 'buur', 'gainde']
@@ -147,7 +139,8 @@ function BadgeCard({ v, count, onClick }) {
 function ClientBadgesTab() {
   const { user } = useAuth()
   const isSuper = !user?.adminRole || user.adminRole === 'SUPER'
-  const [clients, setClients] = useState([])
+  const [stats,   setStats]   = useState(null)
+  const [clients, setClients] = useState([]) // liste du badge sélectionné (chargée à l'ouverture)
   const [tiers,   setTiers]   = useState(DEFAULT_CLIENT_TIERS)
   const [loading, setLoading] = useState(true)
   const [selected, setSelected] = useState(null) // badge id sélectionné (ou 'none') pour la popup
@@ -156,11 +149,13 @@ function ClientBadgesTab() {
   const load = useCallback(async () => {
     setLoading(true)
     try {
-      const [clientsRes, tiersRes] = await Promise.all([
-        api.get('/admin/clients', { params: { limit: 1000 } }),
+      // Répartition calculée par le serveur sur TOUS les comptes clients (avant :
+      // 1000 clients au plus, comptés dans le navigateur)
+      const [statsRes, tiersRes] = await Promise.all([
+        api.get('/admin/client-badges/stats'),
         api.get('/admin/client-badges/config').catch(() => ({ data: { tiers: DEFAULT_CLIENT_TIERS } })),
       ])
-      setClients(clientsRes.data.clients ?? [])
+      setStats(statsRes.data)
       setTiers(tiersRes.data.tiers ?? DEFAULT_CLIENT_TIERS)
     } catch (e) { console.error(e) }
     finally { setLoading(false) }
@@ -168,21 +163,25 @@ function ClientBadgesTab() {
 
   useEffect(() => { load() }, [load])
 
+  // Clients du badge sélectionné — filtrés par le serveur
+  useEffect(() => {
+    if (!selected) return
+    let cancelled = false
+    api.get('/admin/clients', { params: { badge: selected, limit: 1000 } })
+      .then(r => { if (!cancelled) setClients(r.data.clients ?? []) })
+      .catch(() => { if (!cancelled) setClients([]) })
+    return () => { cancelled = true; setClients([]) }
+  }, [selected])
+
   if (loading) return <div style={{ color: 'var(--text-muted)', padding: 40, textAlign: 'center' }}>Chargement...</div>
 
   const orderedTiers = [...tiers].sort((a, b) => CLIENT_TIER_ORDER.indexOf(a.id) - CLIENT_TIER_ORDER.indexOf(b.id))
 
   const counts = {}
-  for (const t of tiers) counts[t.id] = 0
-  let none = 0
-  for (const c of clients) {
-    if (c.clientBadge && counts[c.clientBadge] !== undefined) counts[c.clientBadge]++
-    else none++
-  }
+  for (const t of tiers) counts[t.id] = stats?.distribution?.find(d => d.badge === t.id)?.count ?? 0
+  const none = stats?.withoutBadge ?? 0
 
-  const selectedClients = selected
-    ? (selected === 'none' ? clients.filter(c => !c.clientBadge) : clients.filter(c => c.clientBadge === selected))
-    : []
+  const selectedClients = clients
   const selectedTier   = tiers.find(t => t.id === selected)
   const selectedVisual = selected === 'none'
     ? NONE_VISUAL
@@ -249,7 +248,8 @@ function ClientBadgesTab() {
 function DriverBadgesTab() {
   const { user } = useAuth()
   const isSuper = !user?.adminRole || user.adminRole === 'SUPER'
-  const [driversList, setDriversList] = useState([])
+  const [driversList, setDriversList] = useState([]) // liste du badge sélectionné (chargée à l'ouverture)
+  const [distribution, setDistribution] = useState(null)
   const [badgeTiers,  setBadgeTiers]  = useState(DEFAULT_DRIVER_BADGES)
   const [loading,     setLoading]     = useState(true)
   const [selected,    setSelected]    = useState(null) // tier sélectionné (ou 'none') pour la popup
@@ -258,46 +258,40 @@ function DriverBadgesTab() {
   const load = useCallback(async () => {
     setLoading(true)
     try {
-      const [badgeRes, driversRes] = await Promise.all([
+      // Répartition calculée par le serveur sur TOUS les livreurs, avec la même
+      // règle que la page Livreurs (palier de rang le plus élevé). Avant : 1000
+      // livreurs au plus, badge recalculé ici avec le premier palier atteint.
+      const [badgeRes, distRes] = await Promise.all([
         api.get('/admin/badges/config').catch(() => ({ data: { badges: DEFAULT_DRIVER_BADGES } })),
-        api.get('/admin/drivers', { params: { limit: 1000 } }).catch(() => ({ data: { drivers: [] } })),
+        api.get('/admin/badges/driver-distribution').catch(() => ({ data: null })),
       ])
-      const b = badgeRes.data.badges ?? DEFAULT_DRIVER_BADGES
-      setBadgeTiers(b)
-
-      const drivers = driversRes.data?.drivers ?? []
-      const withBadge = drivers.map(d => {
-        let matchedTier = null
-        for (const tier of b) {
-          if (driverBadgeMatches(tier, d.deliveredCourses ?? 0, d.referralCount ?? 0, d.avgRating ?? 0)) {
-            matchedTier = tier.tier
-            break
-          }
-        }
-        return { ...d, badgeTier: matchedTier }
-      })
-      setDriversList(withBadge)
+      setBadgeTiers(badgeRes.data.badges ?? DEFAULT_DRIVER_BADGES)
+      setDistribution(distRes.data)
     } catch (e) { console.error(e) }
     finally { setLoading(false) }
   }, [])
 
   useEffect(() => { load() }, [load])
 
+  // Livreurs du badge sélectionné — filtrés par le serveur (même calcul de badge)
+  useEffect(() => {
+    if (!selected) return
+    let cancelled = false
+    api.get('/admin/drivers', { params: { badge: selected === 'none' ? 'nouveau' : selected, limit: 1000 } })
+      .then(r => { if (!cancelled) setDriversList(r.data?.drivers ?? []) })
+      .catch(() => { if (!cancelled) setDriversList([]) })
+    return () => { cancelled = true; setDriversList([]) }
+  }, [selected])
+
   if (loading) return <div style={{ color: 'var(--text-muted)', padding: 40, textAlign: 'center' }}>Chargement...</div>
 
   const orderedBadgeTiers = [...badgeTiers].sort((a, b) => DRIVER_TIER_ORDER.indexOf(a.tier) - DRIVER_TIER_ORDER.indexOf(b.tier))
 
   const counts = {}
-  for (const tier of badgeTiers) counts[tier.tier] = 0
-  let none = 0
-  for (const d of driversList) {
-    if (d.badgeTier) counts[d.badgeTier]++
-    else none++
-  }
+  for (const tier of badgeTiers) counts[tier.tier] = distribution?.counts?.[tier.tier] ?? 0
+  const none = distribution?.none ?? 0
 
-  const selectedDrivers = selected
-    ? (selected === 'none' ? driversList.filter(d => !d.badgeTier) : driversList.filter(d => d.badgeTier === selected))
-    : []
+  const selectedDrivers = driversList
   const selectedTierName = badgeTiers.find(b => b.tier === selected)?.name
   const selectedVisual = selected === 'none' ? NONE_VISUAL : { ...(DRIVER_VISUALS[selected] ?? {}), name: selectedTierName }
 

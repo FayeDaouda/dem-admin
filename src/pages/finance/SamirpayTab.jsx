@@ -4,6 +4,8 @@ import { glass, glassInput } from '../../lib/glassStyles'
 import DateRangeFilter from '../../components/DateRangeFilter'
 import { exportCsv } from '../../lib/exportCsv'
 import { useAutoRefresh } from '../../lib/useAutoRefresh'
+import { formatF } from '../../lib/format'
+import { useAuth } from '../../contexts/AuthContext'
 
 function isoDaysAgo(days) {
   const d = new Date()
@@ -28,12 +30,17 @@ function StatusPill({ ok, label }) {
 }
 
 export default function SamirpayTab() {
+  const { user } = useAuth()
+  // Confirmations manuelles (orphelins, remboursements) : SUPER uniquement côté API
+  const isSuper = !user?.adminRole || user.adminRole === 'SUPER'
   const [config, setConfig]     = useState(null)   // { active }
   const [toggling, setToggling] = useState(false)
   const [health, setHealth]     = useState(null)
   const [manualReview, setManualReview] = useState(null)
   const [orphans, setOrphans]           = useState(null)
   const [collections, setCollections]   = useState(null)
+  const [refunds, setRefunds]           = useState(null)
+  const [duplicates, setDuplicates]     = useState(null)
   const [loading, setLoading]           = useState(true)
   const [range, setRange] = useState({ from: isoDaysAgo(0), to: isoDaysAgo(0) })
   const [exporting, setExporting] = useState(false)
@@ -42,16 +49,19 @@ export default function SamirpayTab() {
   const load = useCallback(async (silent = false) => {
     if (!silent) setLoading(true)
     try {
-      const [cfgRes, reviewRes, orphansRes, collectionsRes] = await Promise.all([
+      const [cfgRes, reviewRes, orphansRes, collectionsRes, refundsRes] = await Promise.all([
         api.get('/admin/samirpay/config'),
         api.get('/admin/samirpay/manual-review'),
         api.get('/admin/samirpay/orphans'),
         api.get('/admin/samirpay/collections-by-operator'),
+        api.get('/admin/samirpay/refunds'),
       ])
       setConfig(cfgRes.data)
       setManualReview(reviewRes.data.cashouts ?? [])
       setOrphans(orphansRes.data)
       setCollections(collectionsRes.data?.byOperator ?? null)
+      setRefunds(refundsRes.data?.refunds ?? [])
+      setDuplicates(refundsRes.data?.duplicates ?? [])
       // Le solde SamirPay n'est interrogeable que si le paiement en ligne
       // est actif (sinon 503, voir samirpay.service.js:_assertActive) — pas
       // une erreur à afficher, juste une donnée indisponible pour l'instant.
@@ -101,10 +111,17 @@ export default function SamirpayTab() {
       exportCsv({
         filename: `samirpay-commandes-${range.from}_${range.to}.csv`,
         columns: [
-          { header: 'ID commande', key: 'id' }, { header: 'Prix', key: 'price' },
-          { header: 'Transaction SamirPay', key: 'samirpayTransactionId' }, { header: 'Date', key: 'updatedAt' },
+          { header: 'ID commande', key: 'id' },
+          { header: 'Payé par le client', key: 'amount' },
+          { header: 'Part livreur', key: 'price' }, { header: 'Commission DEM', key: 'demFee' },
+          { header: 'Remise promo', key: 'discountAmount' },
+          { header: 'Opérateur', key: 'operatorLabel' },
+          { header: 'Transaction SamirPay', key: 'samirpayTransactionId' },
+          { header: 'Date du paiement', key: 'paidAt' }, { header: 'Statut commande', key: 'status' },
+          { header: 'Livrée le', key: 'deliveredAt' }, { header: 'Annulée le', key: 'cancelledAt' },
+          { header: 'Remboursée le', key: 'refundedAt' },
         ],
-        rows: orderPayments,
+        rows: orderPayments.map(o => ({ ...o, operatorLabel: PM_LABELS[o.operatorName] ?? o.operatorName })),
       })
     } catch (e) {
       alert(e.response?.data?.message ?? 'Erreur lors de l\'export.')
@@ -125,6 +142,34 @@ export default function SamirpayTab() {
       await load()
     } catch (e) {
       alert(e.response?.data?.message ?? 'Erreur lors de la confirmation.')
+    } finally { setConfirmingId(null) }
+  }
+
+  async function confirmDuplicateRefund(id) {
+    const note = window.prompt(
+      'Confirme UNIQUEMENT une fois le client effectivement remboursé de ce double paiement.\n\nNote (moyen de remboursement, référence, qui l\'a fait) :'
+    )
+    if (note === null) return // annulé
+    setConfirmingId(id)
+    try {
+      await api.post(`/admin/samirpay/duplicate-payments/${id}/refunded`, { note })
+      await load()
+    } catch (e) {
+      alert(e.response?.data?.message ?? 'Erreur lors de l\'enregistrement du remboursement.')
+    } finally { setConfirmingId(null) }
+  }
+
+  async function confirmRefund(orderId) {
+    const note = window.prompt(
+      'Confirme UNIQUEMENT une fois le client effectivement remboursé (SamirPay, Wave, Orange Money, espèces…).\n\nNote (moyen de remboursement, référence, qui l\'a fait) :'
+    )
+    if (note === null) return // annulé
+    setConfirmingId(orderId)
+    try {
+      await api.post(`/admin/samirpay/refunds/${orderId}/confirm`, { note })
+      await load()
+    } catch (e) {
+      alert(e.response?.data?.message ?? 'Erreur lors de l\'enregistrement du remboursement.')
     } finally { setConfirmingId(null) }
   }
 
@@ -172,17 +217,30 @@ export default function SamirpayTab() {
             <div style={{ display: 'flex', gap: 24, flexWrap: 'wrap' }}>
               <div>
                 <div style={{ fontSize: 10, color: 'var(--text-muted)', fontWeight: 700, letterSpacing: '.5px' }}>SOLDE SAMIRPAY</div>
-                <div style={{ fontSize: 20, fontWeight: 800 }}>{health.samirpaySolde.toLocaleString()} F</div>
+                <div style={{ fontSize: 20, fontWeight: 800 }}>{formatF(health.samirpaySolde)}</div>
                 {health.lowBalance && <div style={{ fontSize: 11, color: '#e53e3e', fontWeight: 600 }}>⚠ Solde bas</div>}
               </div>
               <div>
-                <div style={{ fontSize: 10, color: 'var(--text-muted)', fontWeight: 700, letterSpacing: '.5px' }}>RETIRABLE ATTENDU (LIVREURS)</div>
-                <div style={{ fontSize: 20, fontWeight: 800 }}>{health.expectedWithdrawable.toLocaleString()} F</div>
+                <div style={{ fontSize: 10, color: 'var(--text-muted)', fontWeight: 700, letterSpacing: '.5px' }}>RETIRABLE DÛ (LIVREURS + COMMERÇANTS)</div>
+                <div style={{ fontSize: 20, fontWeight: 800 }}>{formatF(health.expectedWithdrawable)}</div>
+                {health.expectedWithdrawableByRole && (
+                  <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>
+                    Livreurs : {formatF(health.expectedWithdrawableByRole.drivers)} · Commerçants DEM Pro : {formatF(health.expectedWithdrawableByRole.merchants)}
+                  </div>
+                )}
+              </div>
+              <div>
+                <div style={{ fontSize: 10, color: 'var(--text-muted)', fontWeight: 700, letterSpacing: '.5px' }}>REMBOURSEMENTS DUS AUX CLIENTS</div>
+                <div style={{ fontSize: 20, fontWeight: 800, color: health.refundsDue > 0 ? '#e53e3e' : undefined }}>{formatF(health.refundsDue)}</div>
+                {health.duplicatesDue > 0 && (
+                  <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>dont doubles paiements : {formatF(health.duplicatesDue)}</div>
+                )}
+                <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>Total à couvrir : {formatF(health.obligations)}</div>
               </div>
               {health.shortfall > 0 && (
                 <div>
                   <div style={{ fontSize: 10, color: '#e53e3e', fontWeight: 700, letterSpacing: '.5px' }}>ÉCART</div>
-                  <div style={{ fontSize: 20, fontWeight: 800, color: '#e53e3e' }}>{health.shortfall.toLocaleString()} F</div>
+                  <div style={{ fontSize: 20, fontWeight: 800, color: '#e53e3e' }}>{formatF(health.shortfall)}</div>
                 </div>
               )}
             </div>
@@ -194,7 +252,9 @@ export default function SamirpayTab() {
       <div style={{ ...glass, padding: '18px 20px' }}>
         <h2 style={{ fontSize: 14, fontWeight: 600, marginBottom: 4 }}>Collecté par opérateur</h2>
         <p style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 14 }}>
-          Recharges livreur + paiements de commande confirmés en ligne, toutes plateformes confondues.
+          Argent réellement reçu via SamirPay depuis le début : recharges wallet (y compris achats directs de pass et d'abonnements DEM Pro)
+          + commandes payées en ligne (livrées, en cours ou annulées), au montant payé par le client, hors commandes déjà remboursées.
+          L'opérateur est celui réellement utilisé pour le paiement.
         </p>
         {!collections ? (
           <div style={{ color: 'var(--text-muted)', fontSize: 12 }}>Chargement…</div>
@@ -203,12 +263,95 @@ export default function SamirpayTab() {
             {['WAVE', 'ORANGE_MONEY'].map(op => (
               <div key={op} style={{ flex: '1 1 220px', padding: '12px 14px', borderRadius: 'var(--radius-sm)', background: 'rgba(0,119,182,0.06)' }}>
                 <div style={{ fontSize: 12, fontWeight: 700, marginBottom: 8 }}>{PM_LABELS[op]}</div>
-                <div style={{ fontSize: 22, fontWeight: 800 }}>{collections[op].total.toLocaleString()} F</div>
+                <div style={{ fontSize: 22, fontWeight: 800 }}>{formatF(collections[op].total)}</div>
                 <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 4 }}>
-                  Recharges : {collections[op].topups.toLocaleString()} F · Commandes : {collections[op].deliveries.toLocaleString()} F
+                  Recharges, pass et abonnements : {formatF(collections[op].topups)} · Commandes : {formatF(collections[op].orders)}
                 </div>
+                {collections[op].toRefund > 0 && (
+                  <div style={{ fontSize: 11, color: '#e53e3e', marginTop: 2 }}>
+                    dont {formatF(collections[op].toRefund)} à rembourser (commandes annulées{collections[op].duplicates > 0 ? `, dont ${formatF(collections[op].duplicates)} de doubles paiements` : ''})
+                  </div>
+                )}
               </div>
             ))}
+          </div>
+        )}
+      </div>
+
+      {/* Paiements en ligne sur commandes annulées — à rembourser */}
+      <div style={{ ...glass, padding: '18px 20px' }}>
+        <h2 style={{ fontSize: 14, fontWeight: 600, marginBottom: 4 }}>
+          Paiements à rembourser {(refunds?.length > 0 || duplicates?.length > 0) && (
+            <span style={{ color: '#e53e3e' }}>
+              ({(refunds?.length ?? 0) + (duplicates?.length ?? 0)} · {formatF((refunds ?? []).reduce((s, r) => s + r.amountDue, 0) + (duplicates ?? []).reduce((s, d) => s + d.amount, 0))})
+            </span>
+          )}
+        </h2>
+        <p style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 14 }}>
+          Commandes payées en ligne puis annulées, et doubles paiements : l'argent est chez SamirPay mais appartient au client. Aucun remboursement n'est automatique —
+          rembourser le client hors application, puis le déclarer ici (tracé dans l'audit).
+        </p>
+        {duplicates?.length > 0 && (
+          <div style={{ overflowX: 'auto', marginBottom: 14 }}>
+            <div style={{ fontSize: 12, fontWeight: 700, marginBottom: 6 }}>Doubles paiements</div>
+            <p style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 8 }}>
+              Payés en ligne alors que la commande était déjà payée (au livreur, ou par un autre paiement en ligne) : montant réellement encaissé par SamirPay.
+            </p>
+            <table style={{ width: '100%', minWidth: 640, borderCollapse: 'collapse' }}>
+              <thead><tr>
+                <th style={thStyle}>Client</th><th style={thStyle}>Montant à rembourser</th><th style={thStyle}>Opérateur</th>
+                <th style={thStyle}>Transaction SamirPay</th><th style={thStyle}>Reçu le</th><th style={thStyle}>Déjà payée</th><th style={thStyle}></th>
+              </tr></thead>
+              <tbody>
+                {duplicates.map(d => (
+                  <tr key={d.id}>
+                    <td style={tdStyle}>{d.order?.clientName ?? '—'} ({d.order?.clientPhone ?? '—'})</td>
+                    <td style={{ ...tdStyle, fontWeight: 700 }}>{formatF(d.amount)}</td>
+                    <td style={tdStyle}>{PM_LABELS[d.operatorName] ?? d.operatorName ?? '—'}</td>
+                    <td style={tdStyle}><code style={{ fontSize: 11 }}>{d.transactionId}</code></td>
+                    <td style={tdStyle}>{new Date(d.receivedAt).toLocaleString('fr-FR')}</td>
+                    <td style={tdStyle}>{d.reason === 'ALREADY_PAID_ONLINE' ? 'En ligne (autre paiement)' : 'Au livreur'}</td>
+                    <td style={tdStyle}>
+                      {isSuper && (
+                        <button onClick={() => confirmDuplicateRefund(d.id)} disabled={confirmingId === d.id} style={btnConfirm}>
+                          {confirmingId === d.id ? '…' : 'Marquer remboursé'}
+                        </button>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+        {!refunds || refunds.length === 0 ? (
+          (!duplicates || duplicates.length === 0) && <div style={{ color: 'var(--text-muted)', fontSize: 12 }}>Aucun remboursement dû. ✓</div>
+        ) : (
+          <div style={{ overflowX: 'auto' }}>
+            <table style={{ width: '100%', minWidth: 640, borderCollapse: 'collapse' }}>
+              <thead><tr>
+                <th style={thStyle}>Client</th><th style={thStyle}>Montant à rembourser</th><th style={thStyle}>Opérateur</th>
+                <th style={thStyle}>Payée le</th><th style={thStyle}>Annulée le</th><th style={thStyle}></th>
+              </tr></thead>
+              <tbody>
+                {refunds.map(r => (
+                  <tr key={r.id}>
+                    <td style={tdStyle}>{r.clientName ?? '—'} ({r.clientPhone ?? '—'})</td>
+                    <td style={{ ...tdStyle, fontWeight: 700 }}>{formatF(r.amountDue)}</td>
+                    <td style={tdStyle}>{PM_LABELS[r.operatorName] ?? r.operatorName ?? '—'}</td>
+                    <td style={tdStyle}>{new Date(r.paidOnlineAt).toLocaleString('fr-FR')}</td>
+                    <td style={tdStyle}>{r.cancelledAt ? new Date(r.cancelledAt).toLocaleString('fr-FR') : '—'}</td>
+                    <td style={tdStyle}>
+                      {isSuper && (
+                        <button onClick={() => confirmRefund(r.id)} disabled={confirmingId === r.id} style={btnConfirm}>
+                          {confirmingId === r.id ? '…' : 'Marquer remboursé'}
+                        </button>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         )}
       </div>
@@ -297,12 +440,12 @@ export default function SamirpayTab() {
                 <div style={{ fontSize: 12, fontWeight: 700, marginBottom: 6 }}>Paiements de commande ({orphans.orders.length})</div>
                 <div style={{ overflowX: 'auto' }}>
                   <table style={{ width: '100%', minWidth: 560, borderCollapse: 'collapse' }}>
-                    <thead><tr><th style={thStyle}>Client</th><th style={thStyle}>Prix commande</th><th style={thStyle}>Opérateur</th><th style={thStyle}>Depuis</th><th style={thStyle}></th></tr></thead>
+                    <thead><tr><th style={thStyle}>Client</th><th style={thStyle}>Montant demandé au client</th><th style={thStyle}>Opérateur</th><th style={thStyle}>Depuis</th><th style={thStyle}></th></tr></thead>
                     <tbody>
                       {orphans.orders.map(a => (
                         <tr key={a.id}>
                           <td style={tdStyle}>{a.order?.client?.name ?? '—'} ({a.order?.client?.phone ?? '—'})</td>
-                          <td style={tdStyle}>{a.order?.price != null ? `${a.order.price.toLocaleString()} F` : '—'}</td>
+                          <td style={tdStyle}>{a.order?.amountDue != null ? formatF(a.order.amountDue) : '—'}</td>
                           <td style={tdStyle}>{PM_LABELS[a.operatorName] ?? a.operatorName}</td>
                           <td style={tdStyle}>{new Date(a.createdAt).toLocaleString('fr-FR')}</td>
                           <td style={tdStyle}>
@@ -335,7 +478,8 @@ export default function SamirpayTab() {
           </button>
         </div>
         <p style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 10 }}>
-          Génère un CSV des recharges/retraits wallet et un CSV des paiements de commande en ligne sur la période choisie.
+          Génère un CSV des recharges/retraits wallet et un CSV de toutes les commandes payées en ligne sur la période (heure exacte de
+          confirmation SamirPay, montant payé par le client, opérateur, statut de la commande et remboursement éventuel).
         </p>
       </div>
     </div>

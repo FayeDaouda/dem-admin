@@ -13,18 +13,24 @@ import { useAuth } from '../contexts/AuthContext'
 import MarketingKpiRow from './marketing/components/MarketingKpiRow'
 import ServiceClientKpiRow from './service-client/components/KpiRow'
 import ValidationNotifications from '../components/ValidationNotifications'
+import { formatF, formatAxisF } from '../lib/format'
+
+// Tendance = aujourd'hui jusqu'à maintenant vs hier jusqu'à la même heure
+// (fourni par /admin/stats → trend / yesterdaySameTime). Comparer la journée
+// en cours à la journée COMPLÈTE d'hier affichait une baisse chaque matin.
+const TREND_TITLE = "Comparé à hier à la même heure"
 
 function TrendBadge({ current, previous }) {
-  if (previous == null || previous === 0) return null
+  if (current == null || previous == null || previous === 0) return null
   const pct = Math.round(((current - previous) / previous) * 100)
   if (pct === 0) return (
-    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 2, fontSize: 10, fontWeight: 700, color: '#94a3b8', background: '#94a3b818', padding: '1px 6px', borderRadius: 8 }}>
+    <span title={TREND_TITLE} style={{ display: 'inline-flex', alignItems: 'center', gap: 2, fontSize: 10, fontWeight: 700, color: '#94a3b8', background: '#94a3b818', padding: '1px 6px', borderRadius: 8 }}>
       <Minus size={10} /> 0%
     </span>
   )
   const up = pct > 0
   return (
-    <span style={{
+    <span title={TREND_TITLE} style={{
       display: 'inline-flex', alignItems: 'center', gap: 2,
       fontSize: 10, fontWeight: 700,
       color: up ? '#22c55e' : '#ef4444',
@@ -108,11 +114,14 @@ const TOOLTIP_STYLE = {
   boxShadow: '0 2px 8px rgba(0,0,0,0.10)',
 }
 
+// Parts de stats.todayBreakdown — commandes CRÉÉES aujourd'hui, selon leur
+// statut actuel : une seule population, la somme des parts = total du jour.
 const STATUS_PIE = [
-  { key: 'pending',       label: 'En attente',  color: '#f59e0b' },
-  { key: 'active',        label: 'En cours',    color: '#6366f1' },
-  { key: 'deliveredToday',label: 'Livrées/j',   color: '#22c55e' },
-  { key: 'cancelled',     label: 'Annulées',    color: '#ef4444' },
+  { key: 'scheduled', label: 'Programmées', color: '#0ea5e9' },
+  { key: 'pending',   label: 'En attente',  color: '#f59e0b' },
+  { key: 'active',    label: 'En cours',    color: '#6366f1' },
+  { key: 'delivered', label: 'Livrées',     color: '#22c55e' },
+  { key: 'cancelled', label: 'Annulées',    color: '#ef4444' },
 ]
 
 const PERIODS = [
@@ -152,7 +161,7 @@ function KpiModal({ kpi, onClose }) {
   const max    = data.reduce((m, d) => Math.max(m, d[kpi.dataKey] ?? 0), 0)
   const isMoney = kpi.unit === 'F'
 
-  const fmt = (v) => isMoney ? `${v.toLocaleString()} F` : v.toLocaleString()
+  const fmt = (v) => isMoney ? formatF(v) : v.toLocaleString('fr-FR')
 
   return (
     <div style={modalOverlay} onClick={onClose}>
@@ -183,6 +192,10 @@ function KpiModal({ kpi, onClose }) {
             ))}
           </div>
 
+          {kpi.note && (
+            <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: -10, marginBottom: 14 }}>{kpi.note}</div>
+          )}
+
           {/* KPIs résumé */}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 12, marginBottom: 20 }}>
             {[['Total', total], ['Moyenne / jour', avg], ['Max journalier', max]].map(([label, val]) => (
@@ -208,7 +221,7 @@ function KpiModal({ kpi, onClose }) {
                   textAnchor="end"
                   height={40}
                 />
-                <YAxis tick={{ fontSize: 10, fill: 'var(--text-muted)' }} axisLine={false} tickLine={false} allowDecimals={false} />
+                <YAxis tick={{ fontSize: 10, fill: 'var(--text-muted)' }} axisLine={false} tickLine={false} allowDecimals={false} tickFormatter={isMoney ? formatAxisF : undefined} />
                 <Tooltip contentStyle={TOOLTIP_STYLE} formatter={(v) => [fmt(v), kpi.title]} />
                 <Bar dataKey={kpi.dataKey} fill={kpi.color} radius={[3, 3, 0, 0]} />
               </BarChart>
@@ -241,9 +254,8 @@ function ClientAttemptsModal({ kpi, onClose }) {
 
   const totalClients  = data?.totalClients  ?? 0
   const totalAttempts = data?.totalAttempts ?? 0
-  const successRate   = totalAttempts > 0
-    ? Math.round((data.clients.reduce((s, c) => s + c.delivered, 0) / totalAttempts) * 100)
-    : 0
+  // livrées / (livrées + annulées) — calculé côté backend ; null = aucune course terminée
+  const successRate   = data?.successRate != null ? `${data.successRate}%` : '—'
 
   return (
     <div style={modalOverlay} onClick={onClose}>
@@ -276,7 +288,7 @@ function ClientAttemptsModal({ kpi, onClose }) {
 
           {/* Résumé */}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 12, marginBottom: 20 }}>
-            {[['Clients uniques', totalClients], ['Tentatives totales', totalAttempts], ['Taux de succès', `${successRate}%`]].map(([label, val]) => (
+            {[['Clients uniques', totalClients], ['Commandes passées', totalAttempts], ['Taux de succès (terminées)', successRate]].map(([label, val]) => (
               <div key={label} style={{ background: 'var(--surface2)', borderRadius: 10, padding: '14px 16px', borderLeft: `3px solid ${kpi.color}` }}>
                 <div style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 600 }}>{label}</div>
                 <div style={{ fontSize: 20, fontWeight: 800, color: kpi.color, marginTop: 4 }}>{val}</div>
@@ -351,13 +363,16 @@ function DriverActivityModal({ kpi, onClose }) {
             <div style={{ width: 36, height: 36, borderRadius: 10, background: kpi.color + '18', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
               <kpi.icon size={18} color={kpi.color} />
             </div>
-            <h2 style={{ fontSize: 16, fontWeight: 700, margin: 0 }}>Livreurs actifs</h2>
+            <h2 style={{ fontSize: 16, fontWeight: 700, margin: 0 }}>Livreurs — présence</h2>
           </div>
           <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', fontSize: 20 }}>✕</button>
         </div>
 
         <div style={{ padding: '16px 24px', overflowY: 'auto', flex: 1 }}>
           {/* Filtres période */}
+          <div style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 12 }}>
+            « En ligne » = disponible dans l'app et signal reçu il y a moins de 5 min — les mêmes livreurs que le dispatch peut solliciter.
+          </div>
           <div style={{ display: 'flex', gap: 6, marginBottom: 20, flexWrap: 'wrap' }}>
             {DRIVER_PRESENCE_PERIODS.map(p => (
               <button key={p.key} onClick={() => setPeriod(p.key)} style={{
@@ -374,7 +389,11 @@ function DriverActivityModal({ kpi, onClose }) {
 
           {/* Résumé */}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 12, marginBottom: 20 }}>
-            {[['Livreurs actifs', totalActive], ['En ligne maintenant', onlineNowCount], ['Flotte totale', totalRegistered]].map(([label, val]) => (
+            {[
+              [period === 'live' ? 'En ligne maintenant' : 'Connectés sur la période', totalActive],
+              ['App connectée (socket)', onlineNowCount],
+              ['Livreurs inscrits', totalRegistered],
+            ].map(([label, val]) => (
               <div key={label} style={{ background: 'var(--surface2)', borderRadius: 10, padding: '14px 16px', borderLeft: `3px solid ${kpi.color}` }}>
                 <div style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 600 }}>{label}</div>
                 <div style={{ fontSize: 20, fontWeight: 800, color: kpi.color, marginTop: 4 }}>{val}</div>
@@ -386,11 +405,11 @@ function DriverActivityModal({ kpi, onClose }) {
           {mLoading ? (
             <div style={{ color: 'var(--text-muted)', textAlign: 'center', padding: 40 }}>Chargement...</div>
           ) : !data || data.drivers.length === 0 ? (
-            <div style={{ color: 'var(--text-muted)', textAlign: 'center', padding: 40 }}>Aucun livreur actif sur cette période.</div>
+            <div style={{ color: 'var(--text-muted)', textAlign: 'center', padding: 40 }}>{period === 'live' ? 'Aucun livreur en ligne.' : 'Aucun livreur connecté sur cette période.'}</div>
           ) : (
             <table style={tableStyle}>
               <thead>
-                <tr>{['Livreur','Téléphone','Véhicule','Statut','Dernière connexion'].map(h => <th key={h} style={thStyle}>{h}</th>)}</tr>
+                <tr>{['Livreur','Téléphone','Véhicule','App','Dernier signal'].map(h => <th key={h} style={thStyle}>{h}</th>)}</tr>
               </thead>
               <tbody>
                 {data.drivers.map(d => (
@@ -398,7 +417,7 @@ function DriverActivityModal({ kpi, onClose }) {
                     <td style={tdStyle}>{d.name}</td>
                     <td style={tdStyle}>{d.phone ?? '—'}</td>
                     <td style={tdStyle}>{d.vehicleType ?? '—'}</td>
-                    <td style={tdStyle}><Badge status={d.isOnlineNow ? 'ONLINE' : 'OFFLINE'} /></td>
+                    <td style={tdStyle}><Badge status={d.isOnlineNow ? 'ONLINE' : 'OFFLINE'} label={d.isOnlineNow ? 'Connectée' : 'Déconnectée'} /></td>
                     <td style={{ ...tdStyle, color: 'var(--text-muted)', fontSize: 12 }}>{d.lastSeenAt ? new Date(d.lastSeenAt).toLocaleString('fr-FR') : '—'}</td>
                   </tr>
                 ))}
@@ -426,9 +445,8 @@ function DemProActivityModal({ kpi, onClose }) {
 
   const totalAccounts = data?.totalAccounts ?? 0
   const totalAttempts = data?.totalAttempts ?? 0
-  const successRate   = totalAttempts > 0
-    ? Math.round((data.accounts.reduce((s, a) => s + a.delivered, 0) / totalAttempts) * 100)
-    : 0
+  // livrées / (livrées + annulées) — calculé côté backend ; null = aucune course terminée
+  const successRate   = data?.successRate != null ? `${data.successRate}%` : '—'
 
   return (
     <div style={modalOverlay} onClick={onClose}>
@@ -438,7 +456,7 @@ function DemProActivityModal({ kpi, onClose }) {
             <div style={{ width: 36, height: 36, borderRadius: 10, background: kpi.color + '18', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
               <kpi.icon size={18} color={kpi.color} />
             </div>
-            <h2 style={{ fontSize: 16, fontWeight: 700, margin: 0 }}>Comptes DEM Pro actifs</h2>
+            <h2 style={{ fontSize: 16, fontWeight: 700, margin: 0 }}>Activité DEM Pro — comptes ayant commandé</h2>
           </div>
           <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', fontSize: 20 }}>✕</button>
         </div>
@@ -461,7 +479,7 @@ function DemProActivityModal({ kpi, onClose }) {
 
           {/* Résumé */}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 12, marginBottom: 20 }}>
-            {[['Comptes Pro actifs', totalAccounts], ['Courses passées', totalAttempts], ['Taux de succès', `${successRate}%`]].map(([label, val]) => (
+            {[['Comptes ayant commandé', totalAccounts], ['Commandes passées', totalAttempts], ['Taux de succès (terminées)', successRate]].map(([label, val]) => (
               <div key={label} style={{ background: 'var(--surface2)', borderRadius: 10, padding: '14px 16px', borderLeft: `3px solid ${kpi.color}` }}>
                 <div style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 600 }}>{label}</div>
                 <div style={{ fontSize: 20, fontWeight: 800, color: kpi.color, marginTop: 4 }}>{val}</div>
@@ -502,6 +520,7 @@ function DemProActivityModal({ kpi, onClose }) {
 }
 
 const RECENT_ACTIVE_PERIODS = [
+  { key: 'all', label: 'Toutes' },
   { key: '5m',  label: '5 min' },
   { key: '10m', label: '10 min' },
   { key: '30m', label: '30 min' },
@@ -511,7 +530,7 @@ const RECENT_ACTIVE_PERIODS = [
 ]
 
 function ActiveOrdersModal({ kpi, onClose }) {
-  const [period, setPeriod] = useState('30m')
+  const [period, setPeriod] = useState('all')
   const [data, setData]     = useState(null)
   const [mLoading, setMLoading] = useState(true)
 
@@ -533,7 +552,7 @@ function ActiveOrdersModal({ kpi, onClose }) {
             <div style={{ width: 36, height: 36, borderRadius: 10, background: kpi.color + '18', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
               <kpi.icon size={18} color={kpi.color} />
             </div>
-            <h2 style={{ fontSize: 16, fontWeight: 700, margin: 0 }}>Courses en cours — activité récente</h2>
+            <h2 style={{ fontSize: 16, fontWeight: 700, margin: 0 }}>Courses en cours</h2>
           </div>
           <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', fontSize: 20 }}>✕</button>
         </div>
@@ -549,7 +568,7 @@ function ActiveOrdersModal({ kpi, onClose }) {
                 color: period === p.key ? '#fff' : 'var(--text-muted)',
                 transition: 'all .15s',
               }}>
-                Derniers {p.label}
+                {p.key === 'all' ? p.label : `Prises en charge — ${p.label}`}
               </button>
             ))}
           </div>
@@ -557,7 +576,7 @@ function ActiveOrdersModal({ kpi, onClose }) {
           {/* Résumé */}
           <div style={{ marginBottom: 20 }}>
             <div style={{ background: 'var(--surface2)', borderRadius: 10, padding: '14px 16px', borderLeft: `3px solid ${kpi.color}`, display: 'inline-block' }}>
-              <div style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 600 }}>Prises en charge récentes</div>
+              <div style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 600 }}>{period === 'all' ? 'En cours maintenant' : 'Prises en charge sur la période'}</div>
               <div style={{ fontSize: 20, fontWeight: 800, color: kpi.color, marginTop: 4 }}>{total}</div>
             </div>
           </div>
@@ -566,7 +585,7 @@ function ActiveOrdersModal({ kpi, onClose }) {
           {mLoading ? (
             <div style={{ color: 'var(--text-muted)', textAlign: 'center', padding: 40 }}>Chargement...</div>
           ) : !data || data.orders.length === 0 ? (
-            <div style={{ color: 'var(--text-muted)', textAlign: 'center', padding: 40 }}>Aucune course passée en cours sur cette période.</div>
+            <div style={{ color: 'var(--text-muted)', textAlign: 'center', padding: 40 }}>{period === 'all' ? 'Aucune course en cours.' : 'Aucune course prise en charge sur cette période.'}</div>
           ) : (
             <table style={tableStyle}>
               <thead>
@@ -580,7 +599,7 @@ function ActiveOrdersModal({ kpi, onClose }) {
                     <td style={tdStyle}>{o.driver?.name ?? '—'}</td>
                     <td style={{ ...tdStyle, fontSize: 12 }}>{o.pickupAddress}</td>
                     <td style={{ ...tdStyle, fontSize: 12 }}>{o.deliveryAddress}</td>
-                    <td style={tdStyle}>{o.price?.toLocaleString()} F</td>
+                    <td style={tdStyle}>{formatF(o.price)}</td>
                     <td style={{ ...tdStyle, color: 'var(--text-muted)', fontSize: 12 }}>{o.acceptedAt ? new Date(o.acceptedAt).toLocaleString('fr-FR') : '—'}</td>
                   </tr>
                 ))}
@@ -594,6 +613,7 @@ function ActiveOrdersModal({ kpi, onClose }) {
 }
 
 const STUCK_PENDING_PERIODS = [
+  { key: 'all', label: 'Toutes' },
   { key: '2m',  label: '2 min' },
   { key: '5m',  label: '5 min' },
   { key: '10m', label: '10 min' },
@@ -606,7 +626,7 @@ function waitingMinutes(createdAt) {
 }
 
 function StuckPendingOrdersModal({ kpi, onClose }) {
-  const [period, setPeriod] = useState('5m')
+  const [period, setPeriod] = useState('all')
   const [data, setData]     = useState(null)
   const [mLoading, setMLoading] = useState(true)
 
@@ -628,7 +648,7 @@ function StuckPendingOrdersModal({ kpi, onClose }) {
             <div style={{ width: 36, height: 36, borderRadius: 10, background: kpi.color + '18', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
               <kpi.icon size={18} color={kpi.color} />
             </div>
-            <h2 style={{ fontSize: 16, fontWeight: 700, margin: 0 }}>Courses en attente — sans livreur depuis...</h2>
+            <h2 style={{ fontSize: 16, fontWeight: 700, margin: 0 }}>Courses en attente d'un livreur</h2>
           </div>
           <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', fontSize: 20 }}>✕</button>
         </div>
@@ -644,7 +664,7 @@ function StuckPendingOrdersModal({ kpi, onClose }) {
                 color: period === p.key ? '#fff' : 'var(--text-muted)',
                 transition: 'all .15s',
               }}>
-                Plus de {p.label}
+                {p.key === 'all' ? p.label : `Depuis plus de ${p.label}`}
               </button>
             ))}
           </div>
@@ -652,7 +672,7 @@ function StuckPendingOrdersModal({ kpi, onClose }) {
           {/* Résumé */}
           <div style={{ marginBottom: 20 }}>
             <div style={{ background: 'var(--surface2)', borderRadius: 10, padding: '14px 16px', borderLeft: `3px solid ${kpi.color}`, display: 'inline-block' }}>
-              <div style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 600 }}>Commandes en attente</div>
+              <div style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 600 }}>{period === 'all' ? 'En attente maintenant' : 'En attente depuis plus de ce délai'}</div>
               <div style={{ fontSize: 20, fontWeight: 800, color: kpi.color, marginTop: 4 }}>{total}</div>
             </div>
           </div>
@@ -661,7 +681,7 @@ function StuckPendingOrdersModal({ kpi, onClose }) {
           {mLoading ? (
             <div style={{ color: 'var(--text-muted)', textAlign: 'center', padding: 40 }}>Chargement...</div>
           ) : !data || data.orders.length === 0 ? (
-            <div style={{ color: 'var(--text-muted)', textAlign: 'center', padding: 40 }}>Aucune course en attente depuis plus de ce délai.</div>
+            <div style={{ color: 'var(--text-muted)', textAlign: 'center', padding: 40 }}>{period === 'all' ? 'Aucune course en attente.' : 'Aucune course en attente depuis plus de ce délai.'}</div>
           ) : (
             <table style={tableStyle}>
               <thead>
@@ -675,7 +695,7 @@ function StuckPendingOrdersModal({ kpi, onClose }) {
                       <td style={tdStyle}>{o.client?.name ?? '—'}</td>
                       <td style={{ ...tdStyle, fontSize: 12 }}>{o.pickupAddress}</td>
                       <td style={{ ...tdStyle, fontSize: 12 }}>{o.deliveryAddress}</td>
-                      <td style={tdStyle}>{o.price?.toLocaleString()} F</td>
+                      <td style={tdStyle}>{formatF(o.price)}</td>
                       <td style={{ ...tdStyle, fontWeight: 700, color: '#f59e0b' }}>{waitingMinutes(o.createdAt)} min</td>
                       <td style={tdStyle}><Badge status={hasOffer ? 'PENDING' : 'CANCELLED'} label={hasOffer ? 'Offre en cours' : 'Aucune offre'} /></td>
                     </tr>
@@ -747,9 +767,7 @@ export default function Dashboard() {
       setSnapshot(lRes.data)
       setTimeseries(tRes.data.map(d => ({
         ...d,
-        dateLabel:      new Date(d.date + 'T00:00:00').toLocaleDateString('fr-FR', { weekday: 'short', day: 'numeric' }),
-        driverRevenueK: Math.round((d.driverRevenue ?? 0) / 1000),
-        demRevenueK:    Math.round((d.demRevenue    ?? 0) / 1000),
+        dateLabel: new Date(d.date + 'T00:00:00').toLocaleDateString('fr-FR', { weekday: 'short', day: 'numeric' }),
       })))
       if (fRes) setFinanceKpis(fRes.data)
     } catch (e) {
@@ -787,9 +805,9 @@ export default function Dashboard() {
   const activeOrders = snapshot?.activeOrders   ?? []
   const availDrivers = snapshot?.availableDrivers ?? []
 
-  const pieData = stats ? STATUS_PIE.map(s => ({
+  const pieData = stats?.todayBreakdown ? STATUS_PIE.map(s => ({
     name: s.label,
-    value: stats.orders[s.key] ?? 0,
+    value: stats.todayBreakdown[s.key] ?? 0,
     color: s.color,
   })).filter(d => d.value > 0) : []
 
@@ -797,19 +815,30 @@ export default function Dashboard() {
   const chartCols = isMobile ? '1fr' : isTablet ? '1fr 1fr' : '1fr 1fr 300px'
   const livecols  = isMobile ? '1fr' : '1fr 320px'
 
-  const todayTs    = timeseries[timeseries.length - 1]
-  const yesterdayTs = timeseries[timeseries.length - 2]
+  const busyDrivers = availDrivers.filter(d => d.busy).length
+  const activeCount  = activeOrders.filter(o => o.status !== 'PENDING').length
+  const pendingCount = activeOrders.length - activeCount
 
+  // Chaque carte : valeur, tendance (vs hier même heure) et courbe portent sur
+  // LA MÊME mesure — courses créées (createdAt), gains/commission livrés
+  // (deliveredAt). Les définitions sont centralisées côté backend
+  // (admin.kpi-definitions.js).
   const ALL_KPI_CARDS = [
-    { id: 'courses',    icon: Package,      color: '#0077b6', label: 'Total courses',    value: stats?.orders.total ?? 0,      title: 'Courses',          dataKey: 'orders',        unit: '', sparkKey: 'orders' },
-    { id: 'active',     icon: TrendingUp,   color: '#6366f1', label: 'En cours',         value: stats?.orders.active ?? 0,     title: 'Courses en cours', dataKey: 'orders',        unit: '' },
-    { id: 'pending',    icon: AlertTriangle, color: '#f59e0b', label: 'En attente',       value: stats?.orders.pending ?? 0,    title: 'Courses en attente', dataKey: 'orders',     unit: '' },
-    { id: 'drivers',    icon: Bike,         color: '#22c55e', label: 'Livreurs dispo',    value: stats?.drivers.available ?? 0, title: 'Livreurs',         dataKey: 'delivered',     unit: '', sub: `/ ${stats?.drivers.total ?? 0}` },
-    { id: 'clients',    icon: Users,        color: '#a78bfa', label: 'Clients',           value: stats?.clients.total ?? 0,     title: 'Clients',          dataKey: 'orders',        unit: '' },
-    { id: 'demPro',     icon: Briefcase,    color: '#0ea5e9', label: 'DEM Pro',           value: stats?.demPro?.active ?? 0,    title: 'DEM Pro',          dataKey: 'orders',        unit: '', sub: `${stats?.demPro?.pending ?? 0} en attente` },
-    { id: 'revDriver',  icon: CreditCard,   color: '#22c55e', label: 'Rev. livreurs',     value: `${(stats?.revenue?.driver?.today ?? 0).toLocaleString()} F`, title: 'Revenus livreurs', dataKey: 'driverRevenue', unit: 'F', sub: `Total ${((stats?.revenue?.driver?.total ?? 0) / 1000).toFixed(0)}k`, sparkKey: 'driverRevenue' },
-    { id: 'revDem',     icon: CreditCard,   color: '#f59e0b', label: 'Frais DEM',         value: `${(stats?.revenue?.dem?.today ?? 0).toLocaleString()} F`,    title: 'Frais DEM',        dataKey: 'demRevenue',    unit: 'F', sub: `Estimé · Total ${((stats?.revenue?.dem?.total ?? 0) / 1000).toFixed(0)}k`, sparkKey: 'demRevenue' },
-    { id: 'passActivated', icon: Ticket,    color: '#8b5cf6', label: 'Pass activés (jour)', value: financeKpis?.passActivatedToday ?? 0, clickable: false },
+    { id: 'courses',    icon: Package,      color: '#0077b6', label: 'Courses (jour)',      value: stats?.orders.createdToday ?? 0, sub: `Total historique : ${(stats?.orders.total ?? 0).toLocaleString('fr-FR')}`,
+      trendNow: stats?.trend?.ordersCreated?.today, trendPrev: stats?.trend?.ordersCreated?.yesterdaySameTime,
+      title: 'Courses créées', note: 'Commandes comptées à leur date de création.', dataKey: 'orders', unit: '', sparkKey: 'orders' },
+    { id: 'active',     icon: TrendingUp,   color: '#6366f1', label: 'En cours',            value: stats?.orders.active ?? 0,       sub: 'Livreur engagé, course non terminée', title: 'Courses en cours' },
+    { id: 'pending',    icon: AlertTriangle, color: '#f59e0b', label: 'En attente',         value: stats?.orders.pending ?? 0,      sub: `+ ${stats?.orders.scheduled ?? 0} programmée(s)`, title: 'Courses en attente' },
+    { id: 'drivers',    icon: Bike,         color: '#22c55e', label: 'Livreurs en ligne',   value: stats?.drivers.available ?? 0,   sub: `${stats?.drivers.free ?? 0} libres · ${stats?.drivers.total ?? 0} inscrits`, title: 'Livreurs' },
+    { id: 'clients',    icon: Users,        color: '#a78bfa', label: 'Clients inscrits',    value: stats?.clients.total ?? 0,       title: 'Clients' },
+    { id: 'demPro',     icon: Briefcase,    color: '#0ea5e9', label: 'DEM Pro actifs',      value: stats?.demPro?.active ?? 0,      sub: `${stats?.demPro?.pending ?? 0} en attente · ${stats?.demPro?.total ?? 0} comptes`, title: 'DEM Pro' },
+    { id: 'revDriver',  icon: CreditCard,   color: '#22c55e', label: 'Gains livreurs (jour)', value: formatF(stats?.revenue?.driver?.today), sub: `Total : ${formatF(stats?.revenue?.driver?.total)}`,
+      trendNow: stats?.revenue?.driver?.today, trendPrev: stats?.revenue?.driver?.yesterdaySameTime,
+      title: 'Gains livreurs', note: 'Prix des courses livrées (part livreur), comptés à la date de livraison.', dataKey: 'driverRevenue', unit: 'F', sparkKey: 'driverRevenue' },
+    { id: 'revDem',     icon: CreditCard,   color: '#f59e0b', label: 'Commission DEM (jour)', value: formatF(stats?.revenue?.dem?.today),  sub: `Réelle · Total : ${formatF(stats?.revenue?.dem?.total)}`,
+      trendNow: stats?.revenue?.dem?.today, trendPrev: stats?.revenue?.dem?.yesterdaySameTime,
+      title: 'Commission DEM', note: 'Commission réellement facturée (frais DEM des courses livrées), comptée à la date de livraison.', dataKey: 'demRevenue', unit: 'F', sparkKey: 'demRevenue' },
+    { id: 'passActivated', icon: Ticket,    color: '#8b5cf6', label: 'Pass achetés (jour)', value: financeKpis?.passActivatedToday ?? 0, sub: `+ ${financeKpis?.passGiftedToday ?? 0} offert(s)`, clickable: false },
   ]
 
   // Service Client et Assistant Exécutif ne voient pas les KPI de chiffre d'affaires (dashboard sans finance).
@@ -848,7 +877,7 @@ export default function Dashboard() {
             label={k.label} value={loading ? '…' : k.value}
             sub={k.sub}
             sparkData={k.sparkKey ? timeseries : null} sparkKey={k.sparkKey}
-            trend={k.sparkKey ? <TrendBadge current={todayTs?.[k.sparkKey]} previous={yesterdayTs?.[k.sparkKey]} /> : null}
+            trend={k.trendNow != null ? <TrendBadge current={k.trendNow} previous={k.trendPrev} /> : null}
             onClick={k.clickable === false ? undefined : () => setOpenKpi(k)}
           />
         ))}
@@ -918,35 +947,35 @@ export default function Dashboard() {
               <XAxis dataKey="dateLabel" tick={{ fontSize: 11, fill: 'var(--text-muted)' }} axisLine={false} tickLine={false} />
               <YAxis tick={{ fontSize: 11, fill: 'var(--text-muted)' }} axisLine={false} tickLine={false} allowDecimals={false} />
               <Tooltip contentStyle={TOOLTIP_STYLE} cursor={{ fill: '#ffffff08' }} />
-              <Bar dataKey="orders"    name="Créées"  fill="#6366f1" radius={[4,4,0,0]} />
-              <Bar dataKey="delivered" name="Livrées" fill="#22c55e" radius={[4,4,0,0]} />
+              <Bar dataKey="orders"    name="Créées ce jour"  fill="#6366f1" radius={[4,4,0,0]} />
+              <Bar dataKey="delivered" name="Livrées ce jour" fill="#22c55e" radius={[4,4,0,0]} />
             </BarChart>
           </ResponsiveContainer>
         </div>
 
         {/* Line chart — revenus livreurs + frais DEM */}
         <div style={card}>
-          <h2 style={cardTitle}>Revenus — 7 derniers jours (k F)</h2>
+          <h2 style={cardTitle}>Revenus — 7 derniers jours (par date de livraison)</h2>
           <div style={{ display: 'flex', gap: 16, marginBottom: 10 }}>
-            <span style={{ fontSize: 11, color: '#f59e0b', fontWeight: 600 }}>● Livreurs</span>
-            <span style={{ fontSize: 11, color: 'var(--primary)', fontWeight: 600 }}>● Frais DEM</span>
+            <span style={{ fontSize: 11, color: '#f59e0b', fontWeight: 600 }}>● Gains livreurs</span>
+            <span style={{ fontSize: 11, color: 'var(--primary)', fontWeight: 600 }}>● Commission DEM (réelle)</span>
           </div>
           <ResponsiveContainer width="100%" height={200}>
             <LineChart data={timeseries} margin={{ top: 0, right: 8, left: -20, bottom: 0 }}>
               <XAxis dataKey="dateLabel" tick={{ fontSize: 11, fill: 'var(--text-muted)' }} axisLine={false} tickLine={false} />
-              <YAxis tick={{ fontSize: 11, fill: 'var(--text-muted)' }} axisLine={false} tickLine={false} />
-              <Tooltip contentStyle={TOOLTIP_STYLE} formatter={(v, name) => [`${v}k F`, name === 'driverRevenueK' ? 'Livreurs' : 'Frais DEM']} />
-              <Line type="monotone" dataKey="driverRevenueK" stroke="#f59e0b"        strokeWidth={2} dot={{ fill: '#f59e0b',        r: 3 }} />
-              <Line type="monotone" dataKey="demRevenueK"    stroke="var(--primary)" strokeWidth={2} dot={{ fill: 'var(--primary)', r: 3 }} />
+              <YAxis tick={{ fontSize: 11, fill: 'var(--text-muted)' }} axisLine={false} tickLine={false} tickFormatter={formatAxisF} />
+              <Tooltip contentStyle={TOOLTIP_STYLE} formatter={(v, name) => [formatF(v), name === 'driverRevenue' ? 'Gains livreurs' : 'Commission DEM']} />
+              <Line type="monotone" dataKey="driverRevenue" stroke="#f59e0b"        strokeWidth={2} dot={{ fill: '#f59e0b',        r: 3 }} />
+              <Line type="monotone" dataKey="demRevenue"    stroke="var(--primary)" strokeWidth={2} dot={{ fill: 'var(--primary)', r: 3 }} />
             </LineChart>
           </ResponsiveContainer>
         </div>
 
         {/* Pie chart — répartition statuts */}
         <div style={{ ...card, gridColumn: isTablet ? 'span 2' : 'auto' }}>
-          <h2 style={cardTitle}>Répartition aujourd'hui</h2>
+          <h2 style={cardTitle}>Commandes créées aujourd'hui — statut actuel ({stats?.todayBreakdown?.total ?? 0})</h2>
           {pieData.length === 0 ? (
-            <div style={{ color: 'var(--text-muted)', fontSize: 13, paddingTop: 60, textAlign: 'center' }}>Pas de données</div>
+            <div style={{ color: 'var(--text-muted)', fontSize: 13, paddingTop: 60, textAlign: 'center' }}>Aucune commande aujourd'hui</div>
           ) : (
             <ResponsiveContainer width="100%" height={200}>
               <PieChart>
@@ -966,11 +995,11 @@ export default function Dashboard() {
 
         {/* Courses actives */}
         <div style={card}>
-          <h2 style={cardTitle}>Courses actives ({activeOrders.length})</h2>
+          <h2 style={cardTitle}>Courses en attente et en cours ({activeOrders.length}) — {pendingCount} en attente · {activeCount} en cours</h2>
           {loading ? (
             <div style={{ color: 'var(--text-muted)', padding: 12 }}>Chargement…</div>
           ) : activeOrders.length === 0 ? (
-            <div style={{ color: 'var(--text-muted)', padding: 12 }}>Aucune course active.</div>
+            <div style={{ color: 'var(--text-muted)', padding: 12 }}>Aucune course en attente ni en cours.</div>
           ) : (
             <table style={tableStyle}>
               <thead>
@@ -984,7 +1013,7 @@ export default function Dashboard() {
                     <td style={tdStyle}><Badge status={o.status} /></td>
                     <td style={tdStyle}>{o.client?.name ?? '—'}</td>
                     <td style={tdStyle}>{o.driver?.name ?? <span style={{ color: 'var(--text-muted)' }}>—</span>}</td>
-                    <td style={tdStyle}>{o.price?.toLocaleString()} F</td>
+                    <td style={tdStyle}>{formatF(o.price)}</td>
                   </tr>
                 ))}
               </tbody>
@@ -1051,17 +1080,17 @@ export default function Dashboard() {
               {
                 label: 'Commandes live',
                 items: [
-                  { k: 'En attente',   v: health.orders?.pending   ?? 0, warn: health.orders?.pending > 10 },
-                  { k: 'Acceptées',    v: health.orders?.accepted  ?? 0 },
-                  { k: 'En transit',   v: health.orders?.picked_up ?? 0 },
+                  { k: 'En attente',      v: health.orders?.pending   ?? 0, warn: health.orders?.pending > 10 },
+                  { k: 'Acceptées',       v: health.orders?.accepted  ?? 0 },
+                  { k: 'Colis récupérés', v: (health.orders?.picked_up ?? 0) + (health.orders?.in_transit ?? 0) },
                 ],
               },
               {
                 label: 'Livreurs',
                 items: [
-                  { k: 'Total',        v: health.drivers?.total     ?? 0 },
-                  { k: 'En ligne',     v: health.drivers?.online    ?? 0 },
-                  { k: 'Disponibles',  v: health.drivers?.available ?? 0 },
+                  { k: 'Inscrits',  v: health.drivers?.total     ?? 0 },
+                  { k: 'En ligne',  v: health.drivers?.online    ?? 0 },
+                  { k: 'Libres',    v: health.drivers?.available ?? 0 },
                 ],
               },
               {
@@ -1089,13 +1118,13 @@ export default function Dashboard() {
 
       {/* Livreurs disponibles */}
       <div style={card}>
-        <h2 style={cardTitle}>Livreurs disponibles ({availDrivers.length})</h2>
+        <h2 style={cardTitle}>Livreurs en ligne ({availDrivers.length}) — {availDrivers.length - busyDrivers} libres · {busyDrivers} en course</h2>
         {availDrivers.length === 0 ? (
           <div style={{ color: 'var(--text-muted)', fontSize: 13 }}>Aucun livreur en ligne.</div>
         ) : (
           <table style={tableStyle}>
             <thead>
-              <tr>{['Nom','Téléphone','Véhicule','Position GPS'].map(h => <th key={h} style={thStyle}>{h}</th>)}</tr>
+              <tr>{['Nom','Téléphone','Véhicule','Statut','Position GPS'].map(h => <th key={h} style={thStyle}>{h}</th>)}</tr>
             </thead>
             <tbody>
               {availDrivers.map(d => (
@@ -1103,6 +1132,7 @@ export default function Dashboard() {
                   <td style={tdStyle}>{d.name}</td>
                   <td style={tdStyle}>{d.phone}</td>
                   <td style={tdStyle}>{d.vehicleType ?? '—'}</td>
+                  <td style={tdStyle}><Badge status={d.busy ? 'ACCEPTED' : 'ONLINE'} label={d.busy ? 'En course' : 'Libre'} /></td>
                   <td style={{ ...tdStyle, color: 'var(--text-muted)', fontSize: 12 }}>
                     {d.latitude != null ? `${d.latitude.toFixed(4)}, ${d.longitude.toFixed(4)}` : '—'}
                   </td>

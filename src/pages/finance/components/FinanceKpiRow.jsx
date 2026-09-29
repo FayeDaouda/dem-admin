@@ -1,12 +1,15 @@
 import { useState, useEffect, useCallback } from 'react'
 import api from '../../../lib/api'
-import { Wallet, Receipt, Ticket, BellRing, FileDown, Handshake } from 'lucide-react'
+import { Wallet, Receipt, Ticket, BellRing, FileDown, Handshake, HandCoins } from 'lucide-react'
 import StatCard from '../../../components/StatCard'
 import { RevenueModal, FeesModal, TransactionsModal, PassModal, AlertsModal } from './FinanceKpiModals'
 import { useAutoRefresh } from '../../../lib/useAutoRefresh'
+import { formatF, formatCount } from '../../../lib/format'
 
 const EXPORT_TYPE_LABELS = { pdf: 'PDF', csv: 'CSV' }
 
+// Toutes les cartes "du jour" = jour calendaire en cours ; chaque modal
+// s'ouvre sur ce même jour, donc sur le même chiffre que sa carte.
 export default function FinanceKpiRow({ reloadKey }) {
   const [kpis, setKpis] = useState(null)
   const [loading, setLoading] = useState(true)
@@ -24,17 +27,28 @@ export default function FinanceKpiRow({ reloadKey }) {
   useEffect(() => { load() }, [load, reloadKey])
   useAutoRefresh(() => load(true))
 
-  const v = (x) => loading ? '…' : (x ?? 0).toLocaleString()
+  const money = (x) => loading ? '…' : formatF(x)
+  const count = (x) => loading ? '…' : formatCount(x)
+  const outstanding = kpis?.outstandingCommission
 
   return (
     <>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 10, marginBottom: 20 }}>
-        <StatCard icon={Wallet}     label="CA aujourd'hui"        value={loading ? '…' : `${v(kpis?.caToday)} F`}
-          sub="Commission DEM, pas le total payé par les clients" color="#22c55e" onClick={() => setOpenModal('revenue')} />
-        <StatCard icon={Ticket}     label="Pass activés (jour)"   value={v(kpis?.passActivatedToday)} color="#f59e0b" onClick={() => setOpenModal('pass')} />
-        <StatCard icon={Handshake}  label="Frais de mise en relation (jour)" value={loading ? '…' : `${v(kpis?.feesToday)} F`} color="#0ea5e9" onClick={() => setOpenModal('fees')} />
-        <StatCard icon={Receipt}    label="Transactions (jour)"   value={v(kpis?.transactionsToday)}
-          sub="Livraisons payées (cash confirmé ou en ligne) — pas juste livrées" color="#8b5cf6" onClick={() => setOpenModal('transactions')} />
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(190px, 1fr))', gap: 10, marginBottom: 20 }}>
+        <StatCard icon={Wallet} label="Revenus DEM facturés (jour)" value={money(kpis?.caToday)}
+          sub={loading ? undefined : `Encaissés : ${formatF(kpis?.caCollectedToday)}`}
+          color="#22c55e" onClick={() => setOpenModal('revenue')} />
+        <StatCard icon={Handshake} label="Commission courses (jour)" value={money(kpis?.feesToday)}
+          sub={loading ? undefined : `En ligne : ${formatF(kpis?.feesCollectedToday)} · À recouvrer : ${formatF(kpis?.feesToRecoverToday)}`}
+          color="#0ea5e9" onClick={() => setOpenModal('fees')} />
+        <StatCard icon={HandCoins} label="Commission à recouvrer (cumul)" value={money(outstanding?.total)}
+          sub={loading ? undefined : `Cash chez les livreurs : ${formatF(outstanding?.cash)} · Non payée : ${formatF((outstanding?.unpaid ?? 0) + (outstanding?.disputed ?? 0))}`}
+          color="#f97316" />
+        <StatCard icon={Receipt} label="Livraisons payées (jour)" value={count(kpis?.transactionsToday)}
+          sub={loading ? undefined : `sur ${formatCount(kpis?.deliveredToday)} livrée(s) aujourd'hui`}
+          color="#8b5cf6" onClick={() => setOpenModal('transactions')} />
+        <StatCard icon={Ticket} label="Pass achetés (jour)" value={count(kpis?.passActivatedToday)}
+          sub={loading ? undefined : `+ ${formatCount(kpis?.passGiftedToday)} offert(s)`}
+          color="#f59e0b" onClick={() => setOpenModal('pass')} />
         <StatCard
           icon={BellRing}
           label="Dernière alerte financière"

@@ -15,11 +15,17 @@ const STATUS_FILTERS = [
   ['SUSPENDED', 'Suspendus'],
 ]
 
+// Payé = abonnement réglé via SamirPay et en cours (paidPlanActive, calculé
+// côté serveur) ; Offert = palier donné sans paiement (essai TRIAL ou
+// attribution manuelle par un admin).
 const PLAN_FILTERS = [
-  ['all',   'Tous les plans'],
-  ['FREE',  'Gratuit'],
-  ['PAID',  'Payant (Pro/Business)'],
+  ['all',     'Tous les plans'],
+  ['FREE',    'Gratuit'],
+  ['PAID',    'Abonnement payé'],
+  ['OFFERED', 'Accès offert / manuel'],
 ]
+
+const hasPaidTier = a => (a.proPlan ?? 'FREE') !== 'FREE'
 
 const SECTOR_LABELS = {
   commerce:     'Commerce',
@@ -228,8 +234,10 @@ function GrantModal({ count, onClose, onConfirm, saving }) {
 }
 
 // ── Helpers statut ───────────────────────────────────────────────────────────
+// Suspendu = compte désactivé, quel que soit son statut de validation (même
+// règle que le filtre "Suspendus" et la carte "Actifs").
 function proStatusInfo(a) {
-  if (!a.isActive && a.proStatus === 'ACTIVE') return { text: '⚠ Suspendu', color: '#ef4444' }
+  if (!a.isActive) return { text: '⚠ Suspendu', color: '#ef4444' }
   if (a.proStatus === 'PENDING')  return { text: '⏳ En attente', color: '#f59e0b' }
   if (a.proStatus === 'ACTIVE')   return { text: '✓ Actif', color: '#22c55e' }
   if (a.proStatus === 'REJECTED') return { text: '✗ Refusé', color: '#ef4444' }
@@ -314,7 +322,8 @@ function ProStats({ accounts }) {
   const active    = accounts.filter(a => a.proStatus === 'ACTIVE' && a.isActive).length
   const pending   = accounts.filter(a => a.proStatus === 'PENDING').length
   const totalOrders = accounts.reduce((s, a) => s + (a._count?.ordersAsClient ?? 0), 0)
-  const paying    = accounts.filter(a => a.proPlan === 'PRO' || a.proPlan === 'BUSINESS').length
+  const paying    = accounts.filter(a => a.paidPlanActive).length
+  const offered   = accounts.filter(a => hasPaidTier(a) && !a.paidPlanActive).length
 
   return (
     <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginBottom: 20 }}>
@@ -322,8 +331,9 @@ function ProStats({ accounts }) {
         { label: 'Total comptes', value: accounts.length, color: 'var(--primary)' },
         { label: 'Actifs',        value: active,           color: 'var(--success)' },
         { label: 'En attente',    value: pending,          color: '#f59e0b' },
-        { label: 'Payants (Pro/Business)', value: paying,  color: '#6366f1' },
-        { label: 'Commandes',     value: totalOrders,      color: '#6366f1' },
+        { label: 'Abonnés payants', value: paying,         color: '#6366f1' },
+        { label: 'Accès offert / manuel', value: offered,  color: '#f59e0b' },
+        { label: 'Commandes (historique)', value: totalOrders, color: '#6366f1' },
       ].map(s => (
         <div key={s.label} style={{ ...glass, padding: '14px 18px', flex: '1 1 140px' }}>
           <div style={{ fontSize: 10, color: 'var(--text-muted)', fontWeight: 700, letterSpacing: '.5px', marginBottom: 4 }}>{s.label}</div>
@@ -387,7 +397,7 @@ export default function DemPro() {
     if (plan === account.proPlan) return
     try {
       const res = await api.patch(`/admin/dem-pro/${account.id}/plan`, { plan })
-      setAccounts(prev => prev.map(a => a.id === account.id ? res.data.account : a))
+      setAccounts(prev => prev.map(a => a.id === account.id ? { ...res.data.account, paidPlanActive: a.paidPlanActive && (res.data.account.proPlan ?? 'FREE') !== 'FREE' } : a))
     } catch (e) {
       alert(e.response?.data?.message ?? 'Erreur.')
     }
@@ -482,9 +492,10 @@ export default function DemPro() {
       return a.proStatus === filter
     })
     .filter(a => {
-      if (planFilter === 'all') return true
-      const isPaid = a.proPlan === 'PRO' || a.proPlan === 'BUSINESS'
-      return planFilter === 'PAID' ? isPaid : !isPaid
+      if (planFilter === 'all')     return true
+      if (planFilter === 'PAID')    return a.paidPlanActive
+      if (planFilter === 'OFFERED') return hasPaidTier(a) && !a.paidPlanActive
+      return !hasPaidTier(a)
     })
     .filter(a => {
       const q = search.trim().toLowerCase()
@@ -697,13 +708,21 @@ export default function DemPro() {
                             {PLAN_LABELS[a.proPlan] ?? a.proPlan ?? 'Gratuit'}
                           </span>
                         )}
-                        {a.proPlanStatus === 'TRIAL' && (
+                        {hasPaidTier(a) && !a.paidPlanActive && (
                           <span style={{
                             display: 'inline-flex', alignItems: 'center', gap: 3,
                             fontSize: 10, fontWeight: 700, padding: '1px 6px', borderRadius: 8,
                             background: '#f59e0b18', color: '#f59e0b',
                           }}>
-                            <Gift size={10} /> Offert
+                            <Gift size={10} /> {a.proPlanStatus === 'TRIAL' ? 'Offert' : 'Sans paiement'}
+                          </span>
+                        )}
+                        {a.paidPlanActive && (
+                          <span style={{
+                            fontSize: 10, fontWeight: 700, padding: '1px 6px', borderRadius: 8,
+                            background: '#22c55e18', color: '#22c55e',
+                          }}>
+                            Payé
                           </span>
                         )}
                         {a.proPlanExpiresAt && (a.proPlan ?? 'FREE') !== 'FREE' && (

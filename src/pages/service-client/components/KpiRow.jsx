@@ -24,7 +24,7 @@ export default function KpiRow({ reloadKey }) {
         api.get('/admin/stats'),
         api.get('/admin/service-client/kpis'),
         api.get('/admin/marketing/acquisition'),
-        api.get('/admin/marketing/retention', { params: { days: 7 } }),
+        api.get('/admin/marketing/retention', { params: { days: 30 } }),
       ])
       setStats(statsRes.data)
       setKpis(kpisRes.data)
@@ -43,15 +43,19 @@ export default function KpiRow({ reloadKey }) {
     <>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 10, marginBottom: 20 }}>
         <StatCard icon={Package}       label="Courses"                              value={v(stats?.orders?.total)}   color="#0077b6" onClick={() => setOpenModal('courses')} />
-        <StatCard icon={TrendingUp}    label="Courses en cours — activité récente"  value={v(stats?.orders?.active)}  color="#6366f1" onClick={() => setOpenModal('active')} />
-        <StatCard icon={AlertTriangle} label="Courses en attente — sans livreur..." value={v(stats?.orders?.pending)} color="#f59e0b" onClick={() => setOpenModal('pending')} />
+        <StatCard icon={TrendingUp}    label="Courses en cours"                     value={v(stats?.orders?.active)}  color="#6366f1" onClick={() => setOpenModal('active')} />
+        <StatCard icon={AlertTriangle} label="En attente d'un livreur"              value={v(stats?.orders?.pending)} color="#f59e0b" onClick={() => setOpenModal('pending')} />
         <StatCard icon={Bike}          label="Livreurs actifs"                      value={v(stats?.drivers?.available)} sub={`/ ${stats?.drivers?.total ?? 0}`} color="#22c55e" onClick={() => setOpenModal('drivers')} />
+        {/* Ouvert = non résolu (nouveau + en cours) — même chiffre que la page Incidents */}
         <StatCard icon={AlertTriangle} label="Incidents ouverts"                    value={v(kpis?.openIncidents)}    color="#ef4444" onClick={() => setOpenModal('incidents')} />
         <StatCard icon={Star}          label="Livreurs notés < 3/5"                 value={v(kpis?.lowRatingDrivers)} color="#f59e0b" onClick={() => setOpenModal('lowDrivers')} />
-        <StatCard icon={Star}          label="Clients notés < 3/5"                  value={v(kpis?.lowRatingClients)} color="#f59e0b" onClick={() => setOpenModal('lowClients')} />
+        {/* Moyenne des notes DONNÉES par le client (clients mécontents à recontacter) */}
+        <StatCard icon={Star}          label="Clients insatisfaits (note donnée < 3/5)" value={v(kpis?.lowRatingClients)} color="#f59e0b" onClick={() => setOpenModal('lowClients')} />
         <StatCard icon={XCircle}       label="Taux annulation (jour)"               value={loading ? '…' : `${kpis?.cancellationRateToday ?? 0}%`} color="#6366f1" onClick={() => setOpenModal('cancellation')} />
+        {/* Actif = validé et non suspendu ; total = comptes non supprimés */}
         <StatCard icon={Briefcase}     label="DEM Pro actifs / total"               value={loading ? '…' : `${kpis?.activeProAccounts ?? 0} / ${kpis?.totalProAccounts ?? 0}`} color="#06b6d4" onClick={() => setOpenModal('demPro')} />
-        <StatCard icon={Repeat}        label="Taux de rétention"                    value={loading ? '…' : `${retention?.retentionRate ?? 0}%`} color="#8b5cf6" onClick={() => setOpenModal('retention')} />
+        {/* Même indicateur que la carte "Rétention 30 jours" de la rangée Community */}
+        <StatCard icon={Repeat}        label="Rétention 30 jours"                   value={loading ? '…' : `${retention?.retention30d?.rate ?? 0}%`} color="#8b5cf6" onClick={() => setOpenModal('retention')} />
         <StatCard icon={UserPlus}      label="Nouveau client"                       value={v(acquisition?.newClients?.today)} color="#06b6d4" onClick={() => setOpenModal('newClients')} />
       </div>
 
@@ -61,7 +65,7 @@ export default function KpiRow({ reloadKey }) {
       {openModal === 'drivers'      && <DriverActivityModal     icon={Bike}          color="#22c55e" onClose={() => setOpenModal(null)} />}
       {openModal === 'incidents'    && <IncidentsModal          icon={AlertTriangle} color="#ef4444" onClose={() => setOpenModal(null)} />}
       {openModal === 'lowDrivers'   && <LowRatingModal          icon={Star}          color="#f59e0b" onClose={() => setOpenModal(null)} role="DRIVER" title="Livreurs notés < 3/5" />}
-      {openModal === 'lowClients'   && <LowRatingModal          icon={Star}          color="#f59e0b" onClose={() => setOpenModal(null)} role="CLIENT" title="Clients notés < 3/5" />}
+      {openModal === 'lowClients'   && <LowRatingModal          icon={Star}          color="#f59e0b" onClose={() => setOpenModal(null)} role="CLIENT" title="Clients insatisfaits (note moyenne donnée < 3/5)" />}
       {openModal === 'cancellation' && <CancellationRateModal   icon={XCircle}       color="#6366f1" onClose={() => setOpenModal(null)} />}
       {openModal === 'demPro'       && <DemProAccountsModal     icon={Briefcase}     color="#06b6d4" onClose={() => setOpenModal(null)} />}
       {openModal === 'retention'    && <RetentionModal          icon={Repeat}        color="#8b5cf6" onClose={() => setOpenModal(null)} focus="retention" />}

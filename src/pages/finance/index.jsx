@@ -15,10 +15,10 @@ import SamirpayTab from './SamirpayTab'
 // commissions s'éditent déjà là-bas aussi. Ne pas les remettre en double ici.
 const TABS = [
   ['revenue',      'Revenus',      Wallet,             RevenueTab],
-  ['transactions', 'Transactions', Receipt,            TransactionsTab],
+  ['transactions', 'Paiements des courses', Receipt,    TransactionsTab],
   ['pass',         'Pass livreurs', Ticket,             PassTab],
   ['courses',      'Courses',      Package,            CoursesTab],
-  ['ca-courses',   'CA courses',   TrendingUp,          CaCoursesTab],
+  ['ca-courses',   'Commission courses', TrendingUp,    CaCoursesTab],
   ['samirpay',     'Paiement en ligne', ShieldAlert,    SamirpayTab],
 ]
 

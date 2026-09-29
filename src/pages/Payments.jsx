@@ -6,10 +6,16 @@ import { glass, glassModal, glassInput, pageWrap, pageScroll, stickyTh } from '.
 import { useAutoRefresh } from '../lib/useAutoRefresh'
 
 const PAYMENT_METHODS = ['CASH', 'WAVE', 'ORANGE_MONEY']
-const PM_LABELS = { CASH: 'Espèces', WAVE: 'Wave', ORANGE_MONEY: 'Orange Money' }
+// Toujours un paiement reçu PAR LE LIVREUR (Wave / OM sur son numéro) — un
+// paiement en ligne DEM (SamirPay) se confirme tout seul et n'arrive jamais ici.
+const PM_LABELS = { CASH: 'Espèces', WAVE: 'Wave (au livreur)', ORANGE_MONEY: 'Orange Money (au livreur)' }
+const LIMIT = 50
 
 export default function Payments() {
   const [orders, setOrders]   = useState([])
+  const [total, setTotal]     = useState(0)
+  const [counts, setCounts]   = useState(null)
+  const [page, setPage]       = useState(1)
   const [loading, setLoading] = useState(true)
   const [filter, setFilter]   = useState('PENDING') // PENDING | DISPUTED | all
   const [period, setPeriod]   = useState('all')      // all | today | week | month
@@ -20,19 +26,22 @@ export default function Payments() {
   const fetch = useCallback(async (silent = false) => {
     if (!silent) setLoading(true)
     try {
-      const params = {}
+      const params = { page, limit: LIMIT }
       if (filter !== 'all') params.paymentStatus = filter
       if (period !== 'all') params.period = period
       const res = await api.get('/admin/payments/unpaid', { params })
-      setOrders(res.data?.orders ?? res.data ?? [])
+      setOrders(res.data?.orders ?? [])
+      setTotal(res.data?.total ?? 0)
+      setCounts(res.data?.counts ?? null)
     } catch (e) {
       console.error(e)
     } finally {
       if (!silent) setLoading(false)
     }
-  }, [filter, period])
+  }, [filter, period, page])
 
   useEffect(() => { fetch() }, [fetch])
+  useEffect(() => { setPage(1) }, [filter, period])
   useAutoRefresh(() => fetch(true))
 
   function openModal(order) {
@@ -43,7 +52,10 @@ export default function Payments() {
   async function handleSave() {
     setSaving(true)
     try {
-      await api.patch(`/admin/orders/${modal.order.id}/payment`, form)
+      const res = await api.patch(`/admin/orders/${modal.order.id}/payment`, form)
+      if (res.data?.promoSubsidyCredited) {
+        alert(`Paiement confirmé. Remboursement promo de ${res.data.promoSubsidyCredited.toLocaleString()} F crédité au livreur.`)
+      }
       setModal(null)
       fetch()
     } catch (e) {
@@ -53,7 +65,9 @@ export default function Payments() {
     }
   }
 
-  const disputed = orders.filter(o => o.paymentStatus === 'DISPUTED')
+  // Total réel des litiges (serveur, toutes dates) — plus compté sur la page chargée
+  const disputedCount = counts?.disputed ?? 0
+  const totalPages = Math.max(1, Math.ceil(total / LIMIT))
 
   return (
     <div style={pageWrap}>
@@ -65,7 +79,7 @@ export default function Payments() {
       </div>
 
       {/* Litiges en cours */}
-      {disputed.length > 0 && (
+      {disputedCount > 0 && (
         <div style={{
           background: '#ef444415',
           border: '1px solid #ef444440',
@@ -79,13 +93,17 @@ export default function Payments() {
           fontWeight: 600,
           flexShrink: 0,
         }}>
-          ⚠ {disputed.length} litige{disputed.length > 1 ? 's' : ''} en attente de résolution
+          ⚠ {disputedCount} litige{disputedCount > 1 ? 's' : ''} en attente de résolution
         </div>
       )}
 
       {/* Filtres */}
       <div style={{ display: 'flex', gap: 8, marginBottom: 12, flexShrink: 0, flexWrap: 'wrap' }}>
-        {[['PENDING', 'En attente'], ['DISPUTED', 'Litiges'], ['all', 'Tout']].map(([val, label]) => (
+        {[
+          ['PENDING',  `En attente${counts ? ` (${counts.pending})` : ''}`],
+          ['DISPUTED', `Litiges${counts ? ` (${counts.disputed})` : ''}`],
+          ['all',      'Tout'],
+        ].map(([val, label]) => (
           <button
             key={val}
             onClick={() => setFilter(val)}
@@ -136,7 +154,7 @@ export default function Payments() {
           <table style={tableStyle}>
             <thead>
               <tr>
-                {['#', 'ID', 'Type', 'Client', 'Livreur', 'Prix', 'Statut paiement', 'Note litige', 'Action'].map(h => (
+                {['#', 'ID', 'Type', 'Client', 'Livreur', 'Dû par le client', 'Statut paiement', 'Note litige', 'Action'].map(h => (
                   <th key={h} style={{ ...thStyle, ...stickyTh }}>{h}</th>
                 ))}
               </tr>
@@ -144,12 +162,13 @@ export default function Payments() {
             <tbody>
               {orders.map((o, idx) => (
                 <tr key={o.id} style={{ borderBottom: '1px solid var(--border)' }}>
-                  <td style={{ ...tdStyle, color: 'var(--text-muted)', fontSize: 12, width: 40, textAlign: 'center' }}>{idx + 1}</td>
+                  <td style={{ ...tdStyle, color: 'var(--text-muted)', fontSize: 12, width: 40, textAlign: 'center' }}>{(page - 1) * LIMIT + idx + 1}</td>
                   <td style={tdStyle}><code style={{ fontSize: 11, color: 'var(--text-muted)' }}>{o.id.slice(0,8)}</code></td>
                   <td style={tdStyle}><Badge status={o.orderType} /></td>
                   <td style={tdStyle}>{o.client?.name ?? o.client?.phone ?? '—'}</td>
                   <td style={tdStyle}>{o.driver?.name ?? '—'}</td>
-                  <td style={{ ...tdStyle, fontWeight: 600 }}>{o.price?.toLocaleString()} F</td>
+                  {/* Prix livreur + frais DEM − promo (+ produits en paiement intégré) */}
+                  <td style={{ ...tdStyle, fontWeight: 600 }} title={`Part livreur : ${o.price?.toLocaleString()} F`}>{(o.amountDue ?? o.price)?.toLocaleString()} F</td>
                   <td style={tdStyle}><Badge status={o.paymentStatus} /></td>
                   <td style={tdStyle}>
                     {o.disputeNotes
@@ -167,6 +186,13 @@ export default function Payments() {
           </table>
         )}
       </div>
+      {total > LIMIT && (
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 12, marginTop: 12 }}>
+          <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page <= 1} style={btnOutline}>← Préc.</button>
+          <span style={{ fontSize: 13, color: 'var(--text-muted)' }}>Page {page} / {totalPages} — {total} paiements</span>
+          <button onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page >= totalPages} style={btnOutline}>Suiv. →</button>
+        </div>
+      )}
       </div>
 
       {/* Modal résolution */}
@@ -176,7 +202,7 @@ export default function Payments() {
             <h2 style={{ marginBottom: 20, fontSize: 16 }}>Résoudre le paiement</h2>
 
             <div style={{ marginBottom: 12, color: 'var(--text-muted)', fontSize: 13 }}>
-              Commande <code>{modal.order.id.slice(0,8)}</code> — {modal.order.price?.toLocaleString()} F
+              Commande <code>{modal.order.id.slice(0,8)}</code> — {(modal.order.amountDue ?? modal.order.price)?.toLocaleString()} F dus par le client
             </div>
 
             <div style={field}>

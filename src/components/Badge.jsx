@@ -1,6 +1,8 @@
 const STATUS_COLORS = {
+  SCHEDULED:  { bg: '#0ea5e922', color: '#0ea5e9', label: 'Programmée' },
   PENDING:    { bg: '#f59e0b22', color: '#f59e0b', label: 'En attente' },
   ACCEPTED:   { bg: '#6366f122', color: '#818cf8', label: 'Acceptée' },
+  PICKED_UP:  { bg: '#38bdf822', color: '#38bdf8', label: 'Colis récupéré' },
   IN_TRANSIT: { bg: '#38bdf822', color: '#38bdf8', label: 'En transit' },
   DELIVERED:  { bg: '#22c55e22', color: '#22c55e', label: 'Livrée' },
   CANCELLED:  { bg: '#ef444422', color: '#ef4444', label: 'Annulée' },

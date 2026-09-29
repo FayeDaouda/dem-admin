@@ -145,8 +145,10 @@ function ClientDetailModal({ client, onClose }) {
               <div style={{ ...infoBox, marginTop: 14 }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
                   <div style={sectionLabel}>Commandes récentes</div>
-                  <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>
-                    Total dépensé : <strong>{(detail.totalSpent ?? 0).toLocaleString()} F</strong>
+                  {/* Totaux sur tout l'historique (serveur), pas sur la liste affichée */}
+                  <span style={{ fontSize: 11, color: 'var(--text-muted)', textAlign: 'right' }}>
+                    {detail.deliveredCount ?? 0} livrée{(detail.deliveredCount ?? 0) > 1 ? 's' : ''} / {detail.ordersCount ?? 0} commande{(detail.ordersCount ?? 0) > 1 ? 's' : ''}
+                    {' · '}Total payé : <strong>{(detail.totalSpent ?? 0).toLocaleString()} F</strong>
                   </span>
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
@@ -222,6 +224,7 @@ export default function Clients() {
       if (period)        params.period = period
       if (hasOrders)     params.hasOrders = hasOrders
       if (sortByCourses) params.sortBy = 'courses'
+      if (badgeFilter !== 'all') params.badge = badgeFilter // filtré par le serveur, sur tous les clients
       const res = await api.get('/admin/clients', { params })
       setClients(Array.isArray(res.data?.clients) ? res.data.clients : (Array.isArray(res.data) ? res.data : []))
       setTotal(res.data?.total ?? 0)
@@ -230,7 +233,7 @@ export default function Clients() {
     } finally {
       if (!silent) setLoading(false)
     }
-  }, [page, search, status, period, hasOrders, sortByCourses])
+  }, [page, search, status, period, hasOrders, sortByCourses, badgeFilter])
 
   useEffect(() => { fetch(); fetchPhoneRequests() }, [fetch, fetchPhoneRequests])
   useAutoRefresh(() => { fetch(true); fetchPhoneRequests(true) })
@@ -242,9 +245,7 @@ export default function Clients() {
     return (v) => { setter(v); setPage(1) }
   }
 
-  const visibleClients = badgeFilter === 'all'
-    ? clients
-    : clients.filter(c => badgeFilter === 'none' ? !c.clientBadge : c.clientBadge === badgeFilter)
+  const visibleClients = clients
 
   async function toggleBan(client) {
     const action = client.isBanned ? 'unban' : 'ban'
@@ -401,7 +402,7 @@ export default function Clients() {
           <option value="some">Avec courses</option>
           <option value="none">Sans course</option>
         </select>
-        <select value={badgeFilter} onChange={e => setBadgeFilter(e.target.value)} style={{ ...glassInput, width: 170 }}>
+        <select value={badgeFilter} onChange={e => updateFilter(setBadgeFilter)(e.target.value)} style={{ ...glassInput, width: 170 }}>
           <option value="all">Badge : Tous</option>
           {CLIENT_BADGE_OPTIONS.map(([val, label]) => (
             <option key={val} value={val}>{label}</option>

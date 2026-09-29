@@ -116,7 +116,10 @@ function BroadcastHistory() {
           <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--primary)', background: 'rgba(0,119,182,.08)', padding: '2px 8px', borderRadius: 8 }}>
             {TARGET_LABELS[b.data?.target] ?? b.data?.target ?? '—'}
           </span>
-          <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>{b.data?.sent ?? 0} envoyée(s)</span>
+          <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>
+            {b.data?.sent ?? 0} envoyée(s){b.data?.totalUsers != null ? ` sur ${b.data.totalUsers}` : ''}
+            {b.data?.failed > 0 && <span style={{ color: '#ef4444' }}> · {b.data.failed} échec(s)</span>}
+          </span>
           <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>{new Date(b.createdAt).toLocaleString('fr-FR')}</span>
         </div>
       ))}
@@ -142,10 +145,10 @@ function Milestones() {
   return (
     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
       <div>
-        <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', marginBottom: 8 }}>CLIENTS ({data.totalClients})</div>
+        <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', marginBottom: 8 }}>INSCRIPTIONS CLIENTS ({data.totalClients})</div>
         {data.clients.map(m => (
           <div key={m.threshold} style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', fontSize: 13, opacity: m.reached ? 1 : 0.4 }}>
-            <span>{m.reached ? '🎉' : '⏳'} {m.threshold}e client</span>
+            <span>{m.reached ? '🎉' : '⏳'} {m.threshold}e inscription client</span>
             <span style={{ color: 'var(--text-muted)', fontSize: 12 }}>{m.reachedAt ? new Date(m.reachedAt).toLocaleDateString('fr-FR') : '—'}</span>
           </div>
         ))}

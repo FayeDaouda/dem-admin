@@ -24,12 +24,14 @@ export default function OverviewTab() {
   const [orderFilter, setOrderFilter]       = useState('all')
   const [orderDetail, setOrderDetail]       = useState(null)
 
-  // Incidents
+  // Incidents (liste limitée à l'affichage, compteur = total réel)
   const [incidents, setIncidents]   = useState([])
+  const [incOpenCount, setIncOpenCount] = useState(0)
   const [incLoading, setIncLoading] = useState(true)
 
-  // Paiements en attente
+  // Paiements en attente (20 plus récents affichés, compteur = total réel)
   const [unpaid, setUnpaid]         = useState([])
+  const [unpaidTotal, setUnpaidTotal] = useState(0)
   const [unpaidLoading, setUnpaidLoading] = useState(true)
 
   const fetchAll = useCallback(async (silent = false) => {
@@ -37,12 +39,16 @@ export default function OverviewTab() {
     try {
       const [oRes, iRes, pRes] = await Promise.all([
         api.get('/admin/orders', { params: { limit: 30 } }),
+        // Ouvert = non résolu (OPEN + INVESTIGATING), même définition que la carte
         api.get('/admin/incidents').catch(() => ({ data: { incidents: [] } })),
         api.get('/admin/payments/unpaid', { params: { limit: 20 } }).catch(() => ({ data: { orders: [] } })),
       ])
       setRecentOrders(oRes.data?.orders ?? [])
-      setIncidents((iRes.data?.incidents ?? []).filter(i => i.status !== 'RESOLVED').slice(0, 15))
+      const openIncidents = (iRes.data?.incidents ?? []).filter(i => i.status !== 'RESOLVED')
+      setIncOpenCount(iRes.data?.counts?.open ?? openIncidents.length)
+      setIncidents(openIncidents.slice(0, 15))
       setUnpaid(pRes.data?.orders ?? [])
+      setUnpaidTotal(pRes.data?.total ?? (pRes.data?.orders ?? []).length)
     } catch (e) {
       console.error(e)
     } finally {
@@ -262,10 +268,10 @@ export default function OverviewTab() {
               <span style={{
                 marginLeft: 'auto', fontSize: 10, fontWeight: 700,
                 padding: '2px 8px', borderRadius: 10,
-                background: incidents.length > 0 ? '#ef444418' : '#22c55e18',
-                color: incidents.length > 0 ? '#ef4444' : '#22c55e',
+                background: incOpenCount > 0 ? '#ef444418' : '#22c55e18',
+                color: incOpenCount > 0 ? '#ef4444' : '#22c55e',
               }}>
-                {incidents.length}
+                {incOpenCount}
               </span>
             </div>
             {incLoading ? (
@@ -282,7 +288,7 @@ export default function OverviewTab() {
                   }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 3 }}>
                       <span style={{ fontWeight: 600 }}>{inc.label ?? inc.type?.replace(/_/g, ' ')}</span>
-                      <Badge status={inc.status} />
+                      <Badge status={inc.status === 'OPEN' ? 'PENDING' : 'ACCEPTED'} label={inc.status === 'OPEN' ? 'Nouveau' : 'En cours'} />
                     </div>
                     <div style={{ color: 'var(--text-muted)', fontSize: 11 }}>
                       {inc.driverName ?? 'Livreur inconnu'} {inc.orderId ? `· ${inc.orderId.slice(0, 8)}` : ''}
@@ -290,6 +296,9 @@ export default function OverviewTab() {
                   </div>
                 ))}
               </div>
+            )}
+            {!incLoading && incOpenCount > incidents.length && (
+              <div style={truncNote}>{incidents.length} plus récents sur {incOpenCount} — voir l'onglet Incidents</div>
             )}
           </div>
 
@@ -300,10 +309,10 @@ export default function OverviewTab() {
               <span style={{
                 marginLeft: 'auto', fontSize: 10, fontWeight: 700,
                 padding: '2px 8px', borderRadius: 10,
-                background: unpaid.length > 0 ? '#f59e0b18' : '#22c55e18',
-                color: unpaid.length > 0 ? '#f59e0b' : '#22c55e',
+                background: unpaidTotal > 0 ? '#f59e0b18' : '#22c55e18',
+                color: unpaidTotal > 0 ? '#f59e0b' : '#22c55e',
               }}>
-                {unpaid.length}
+                {unpaidTotal}
               </span>
             </div>
             {unpaidLoading ? (
@@ -319,7 +328,7 @@ export default function OverviewTab() {
                     borderLeft: `3px solid ${o.paymentStatus === 'DISPUTED' ? '#ef4444' : '#f59e0b'}`,
                   }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 2 }}>
-                      <span style={{ fontWeight: 600 }}>{o.price?.toLocaleString()} F</span>
+                      <span style={{ fontWeight: 600 }}>{(o.amountDue ?? o.price)?.toLocaleString()} F</span>
                       <Badge status={o.paymentStatus} />
                     </div>
                     <div style={{ color: 'var(--text-muted)', fontSize: 11 }}>
@@ -331,6 +340,9 @@ export default function OverviewTab() {
                   </div>
                 ))}
               </div>
+            )}
+            {!unpaidLoading && unpaidTotal > unpaid.length && (
+              <div style={truncNote}>{unpaid.length} plus récents sur {unpaidTotal} — voir la page Paiements</div>
             )}
           </div>
         </div>
@@ -373,14 +385,17 @@ export default function OverviewTab() {
                   <Row label="Email" value={clientDetail.email ?? '—'} />
                   <Row label="Inscrit le" value={clientDetail.createdAt ? new Date(clientDetail.createdAt).toLocaleDateString('fr-FR') : '—'} />
                   <Row label="Code parrainage" value={clientDetail.referralCode ?? '—'} />
-                  <Row label="Total dépensé" value={`${(clientDetail.totalSpent ?? 0).toLocaleString()} F`} />
-                  <Row label="Commandes" value={clientDetail.ordersAsClient?.length ?? 0} />
+                  {/* Totaux sur tout l'historique (serveur) — la liste ci-dessous n'affiche que les 20 dernières */}
+                  <Row label="Total payé (courses livrées)" value={`${(clientDetail.totalSpent ?? 0).toLocaleString()} F`} />
+                  <Row label="Commandes" value={`${clientDetail.deliveredCount ?? 0} livrées / ${clientDetail.ordersCount ?? clientDetail.ordersAsClient?.length ?? 0}`} />
                 </div>
 
                 {clientDetail.ordersAsClient?.length > 0 && (
                   <div style={{ marginBottom: 16 }}>
                     <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 8 }}>
-                      Historique commandes ({clientDetail.ordersAsClient.length})
+                      {clientDetail.ordersCount > clientDetail.ordersAsClient.length
+                        ? `${clientDetail.ordersAsClient.length} dernières commandes sur ${clientDetail.ordersCount}`
+                        : `Historique commandes (${clientDetail.ordersAsClient.length})`}
                     </div>
                     <div style={{ maxHeight: 220, overflowY: 'auto' }}>
                       <table style={tableStyle}>
@@ -495,4 +510,5 @@ const tableStyle = { width: '100%', borderCollapse: 'collapse' }
 const thStyle    = { textAlign: 'left', padding: '6px 8px', color: 'var(--text-muted)', fontSize: 11, fontWeight: 600, borderBottom: '1px solid rgba(0,119,182,0.12)' }
 const tdStyle    = { padding: '8px 8px', verticalAlign: 'middle', fontSize: 13 }
 const btnAction  = { display: 'inline-flex', alignItems: 'center', gap: 5, padding: '6px 14px', borderRadius: 8, border: '1px solid', background: 'transparent', fontSize: 12, fontWeight: 600, cursor: 'pointer', textDecoration: 'none' }
+const truncNote  = { color: 'var(--text-muted)', fontSize: 11, marginTop: 8, textAlign: 'center' }
 const overlay    = { position: 'fixed', inset: 0, background: 'rgba(0,40,80,0.45)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 200 }

@@ -260,10 +260,16 @@ function PassTab({ notify }) {
 
       {/* Résumé */}
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12 }}>
-        <StatBox label="Total dû" value={`${totalOwed.toLocaleString()} F`} color={totalOwed > 0 ? '#ef4444' : '#22c55e'} />
-        <StatBox label="Enregistrements" value={records} />
+        {/* Dette = passe impayée d'un jour où le livreur a livré (même règle que le prélèvement) */}
+        <StatBox label="Dû par les livreurs" value={`${totalOwed.toLocaleString()} F`} color={totalOwed > 0 ? '#ef4444' : '#22c55e'} />
+        <StatBox label="Passes impayées (jours travaillés)" value={records} />
         <StatBox label="Livreurs concernés" value={drivers} />
       </div>
+      {data?.abandonedPurchases?.count > 0 && (
+        <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>
+          + {data.abandonedPurchases.count} achat{data.abandonedPurchases.count > 1 ? 's' : ''} en ligne abandonné{data.abandonedPurchases.count > 1 ? 's' : ''} ({data.abandonedPurchases.amount.toLocaleString()} F) — pas une dette : le livreur n'a pas livré ce jour-là.
+        </div>
+      )}
 
       {/* Déclenchement manuel */}
       <Card>
@@ -404,7 +410,7 @@ function ReferralsTab() {
   if (loading) return <div style={{ color: 'var(--text-muted)' }}>Chargement…</div>
 
   const total   = data?.totalReferrals ?? 0
-  const credits = data?.totalCreditsDistributed ?? 0
+  const bonusRecorded = data?.bonusRecorded ?? 0
   const referrers = (data?.referrers ?? []).filter(r =>
     !search || r.name?.toLowerCase().includes(search.toLowerCase()) || r.phone?.includes(search)
   )
@@ -413,7 +419,9 @@ function ReferralsTab() {
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12 }}>
         <StatBox label="Total parrainages" value={total} />
-        <StatBox label="Crédits MLM distribués" value={`${credits.toLocaleString()} F`} color="var(--primary)" />
+        {/* Aucun crédit de parrainage n'est versé dans l'app — l'ancien chiffre était 20 % de toutes les commissions */}
+        <StatBox label="Bonus promis (non versés)" value={`${bonusRecorded.toLocaleString()} F`} color="#f59e0b" />
+        <StatBox label="Bonus versés" value="0 F" color="var(--text-muted)" />
       </div>
 
       <input
@@ -499,8 +507,8 @@ function AmbassadeursTab() {
   useEffect(() => { load() }, [load])
 
   const ambassadors = data?.ambassadors ?? []
-  const totalDrivers    = ambassadors.reduce((s, a) => s + a.referredCount, 0)
-  const totalDelivered  = ambassadors.reduce((s, a) => s + a.totalDelivered, 0)
+  // Totaux serveur dédoublonnés (un livreur peut figurer dans deux réseaux)
+  const summary = data?.summary
 
   if (loading) return <div style={{ color: 'var(--text-muted)' }}>Chargement…</div>
 
@@ -508,9 +516,9 @@ function AmbassadeursTab() {
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
       {/* Stats globales */}
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12 }}>
-        <StatBox label="Chefs de flotte actifs"  value={ambassadors.length}           color="#B8860B" />
-        <StatBox label="Livreurs recrutés"        value={totalDrivers}                 color="var(--primary)" />
-        <StatBox label="Courses livrées (réseau)" value={totalDelivered.toLocaleString()} color="var(--success)" />
+        <StatBox label="Chefs de flotte actifs"    value={summary?.fleetChiefs ?? ambassadors.length} color="#B8860B" />
+        <StatBox label="Livreurs recrutés"        value={summary?.recruitedDrivers ?? 0}                     color="var(--primary)" />
+        <StatBox label="Courses livrées (réseau)" value={(summary?.networkDelivered ?? 0).toLocaleString()} color="var(--success)" />
       </div>
 
       {ambassadors.length === 0 ? (
@@ -645,16 +653,22 @@ function FeesTab() {
   if (loading) return <div style={{ color: 'var(--text-muted)' }}>Chargement…</div>
 
   const grid  = data?.grid ?? []
-  const total = data?.totalFeesCollected ?? 0
+  const billed    = data?.commissionBilled ?? 0
+  const collected = data?.commissionCollected ?? 0
+  const deliveredCount = data?.deliveredCount ?? 0
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16, maxWidth: 600 }}>
-      <StatBox label="Total frais collectés depuis le lancement" value={`${total.toLocaleString()} FCFA`} color="var(--primary)" />
+      {/* Mêmes définitions que Finance : facturée = demFee réel des courses livrées ; encaissée = payées en ligne */}
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12 }}>
+        <StatBox label="Commission facturée depuis le lancement" value={`${billed.toLocaleString()} FCFA`} color="var(--primary)" />
+        <StatBox label="Dont encaissée par DEM (en ligne)" value={`${collected.toLocaleString()} FCFA`} color="var(--success)" />
+      </div>
 
       <Card>
         <Label>Grille tarifaire DEM</Label>
         <p style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 16 }}>
-          Appliquée automatiquement à chaque commande. Frais non prélevés sur la part du livreur.
+          Grille en vigueur (modifiable dans Configuration), appliquée aux commandes hors tarif par zone. Frais non prélevés sur la part du livreur.
         </p>
 
         {/* En-tête */}
@@ -686,8 +700,13 @@ function FeesTab() {
           </div>
         ))}
 
+        {data?.outOfGrid?.count > 0 && (
+          <div style={{ fontSize: 12, color: 'var(--text-muted)', padding: '9px 0' }}>
+            Hors grille (prix hors tranches, tarif par zone…) : {data.outOfGrid.count} ({data.outOfGrid.pct}%)
+          </div>
+        )}
         <div style={{ marginTop: 14, padding: '10px 12px', background: 'rgba(0,180,216,.06)', borderRadius: 8, fontSize: 12, color: 'var(--text-muted)' }}>
-          Frais moyen pondéré : ~120 FCFA · Net MLM (–20%) : ~96 FCFA/course
+          Commission moyenne réelle : {deliveredCount > 0 ? Math.round(billed / deliveredCount).toLocaleString() : 0} FCFA par course livrée ({deliveredCount.toLocaleString()} courses)
         </div>
       </Card>
     </div>
@@ -720,14 +739,15 @@ function BadgesTab() {
         api.get('/admin/client-badges/stats'),
         api.get('/admin/client-badges/top-referrers'),
         api.get('/admin/client-badges/tiers'),
-        api.get('/admin/clients', { params: { needsBadgeValidation: true } }).catch(() => ({ data: { clients: [] } })),
+        // Clients qui remplissent les critères d'un palier soumis à validation (serveur)
+        api.get('/admin/client-badges/pending-validation').catch(() => ({ data: { clients: [] } })),
       ])
       setStats(s.data)
       setReferrers(r.data.referrers ?? [])
       setTiers(t.data.tiers ?? [])
-      // Pending validation = clients who reached mbokk+ but not yet validated
-      const allClients = p.data.clients ?? []
-      setPending(allClients.filter(c => ['mbokk','djambar','buur','vip'].includes(c.clientBadge) && !c.clientBadgeValidated))
+      // Avant : "badge Mbokk+ ET non validé" — impossible (un palier à valider
+      // n'est jamais atteint sans validation), la liste était toujours vide.
+      setPending(p.data.clients ?? [])
     } catch (e) { console.error(e) }
     finally { setLoading(false) }
   }, [])
@@ -775,7 +795,7 @@ function BadgesTab() {
           <div style={{ flex: '1 1 140px', background: 'var(--surface2)', borderRadius: 12, padding: '12px 14px' }}>
             <div style={{ fontWeight: 700, fontSize: 13, color: 'var(--text-muted)', marginBottom: 8 }}>Sans badge</div>
             <div style={{ fontSize: 26, fontWeight: 800, color: 'var(--text-muted)' }}>
-              {total - dist.reduce((s, d) => s + (d.count ?? d._count ?? 0), 0)}
+              {stats?.withoutBadge ?? (total - dist.reduce((s, d) => s + (d.count ?? d._count ?? 0), 0))}
             </div>
             <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 14 }}>Nouveau ou 0 course</div>
           </div>
@@ -792,13 +812,16 @@ function BadgesTab() {
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
             {pending.map(c => {
-              const v = BADGE_VISUALS[c.clientBadge] ?? {}
+              const v = BADGE_VISUALS[c.tierId] ?? {} // palier atteignable une fois validé
               return (
                 <div key={c.id} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 12px', background: 'var(--surface2)', borderRadius: 10 }}>
                   <span style={{ fontSize: 18 }}>{v.emoji ?? '🎯'}</span>
                   <div style={{ flex: 1 }}>
                     <div style={{ fontWeight: 600, fontSize: 13 }}>{c.name ?? '—'}</div>
-                    <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>{c.phone} · <span style={{ color: v.color, fontWeight: 700 }}>{v.name}</span></div>
+                    <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>
+                      {c.phone} · critères remplis pour <span style={{ color: v.color, fontWeight: 700 }}>{c.tierName ?? v.name}</span>
+                      {c.stats && ` · ${c.stats.courses} courses, ${c.stats.referrals} filleuls`}
+                    </div>
                   </div>
                   <button
                     onClick={() => validate(c.id)}

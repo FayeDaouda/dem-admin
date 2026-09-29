@@ -17,7 +17,7 @@ function PeriodBox({ label, completed, cancelled }) {
     <div style={{ ...glass, padding: '14px 16px', flex: '1 1 160px' }}>
       <div style={{ fontSize: 10, color: 'var(--text-muted)', fontWeight: 700, letterSpacing: '.5px', marginBottom: 8 }}>{label}</div>
       <div style={{ display: 'flex', gap: 16 }}>
-        <div><div style={{ fontSize: 20, fontWeight: 800, color: '#22c55e' }}>{completed}</div><div style={{ fontSize: 10, color: 'var(--text-muted)' }}>complétées</div></div>
+        <div><div style={{ fontSize: 20, fontWeight: 800, color: '#22c55e' }}>{completed}</div><div style={{ fontSize: 10, color: 'var(--text-muted)' }}>livrées</div></div>
         <div><div style={{ fontSize: 20, fontWeight: 800, color: '#ef4444' }}>{cancelled}</div><div style={{ fontSize: 10, color: 'var(--text-muted)' }}>annulées</div></div>
       </div>
     </div>
@@ -42,22 +42,36 @@ export default function CoursesTab() {
 
   if (loading || !data) return <div style={{ color: 'var(--text-muted)', padding: 20 }}>Chargement…</div>
 
-  const trend = data.cancellationRateTrend.map(t => ({ ...t, dateLabel: new Date(t.date).toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit' }) }))
+  const trend = data.cancellationRateTrend.map(t => ({ ...t, dateLabel: new Date(t.date + 'T00:00:00Z').toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', timeZone: 'UTC' }) }))
   const reasons = data.reasons.map(r => ({ ...r, label: REASON_LABELS[r.reason] ?? r.reason }))
 
   return (
     <div>
+      <p style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 0, marginBottom: 14, lineHeight: 1.5 }}>
+        Livrées / annulées = courses livrées ou annulées ce jour-là (date de l'événement). <strong>Taux d'annulation</strong> = part des commandes
+        créées sur les 30 derniers jours aujourd'hui annulées (une seule population). <strong>Délai d'acceptation</strong> = temps entre la commande
+        et son acceptation par un livreur, commandes immédiates uniquement (une commande programmée est acceptée à l'avance).
+      </p>
       <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginBottom: 20 }}>
         <PeriodBox label="AUJOURD'HUI" completed={data.completed.today} cancelled={data.cancelled.today} />
         <PeriodBox label="7 JOURS" completed={data.completed.week} cancelled={data.cancelled.week} />
         <PeriodBox label="30 JOURS" completed={data.completed.month} cancelled={data.cancelled.month} />
         <div style={{ ...glass, padding: '14px 16px', flex: '1 1 160px' }}>
-          <div style={{ fontSize: 10, color: 'var(--text-muted)', fontWeight: 700, letterSpacing: '.5px', marginBottom: 4 }}>DÉLAI MOYEN PRISE EN CHARGE</div>
-          <div style={{ fontSize: 20, fontWeight: 800 }}>{data.avgPickupDelayMin != null ? `${data.avgPickupDelayMin} min` : '—'}</div>
+          <div style={{ fontSize: 10, color: 'var(--text-muted)', fontWeight: 700, letterSpacing: '.5px', marginBottom: 4 }}>TAUX D'ANNULATION (30 J)</div>
+          <div style={{ fontSize: 20, fontWeight: 800, color: '#ef4444' }}>{data.cancellation.rate}%</div>
+          <div style={{ fontSize: 10, color: 'var(--text-muted)' }}>{data.cancellation.cancelled} sur {data.cancellation.created} commandes créées</div>
         </div>
         <div style={{ ...glass, padding: '14px 16px', flex: '1 1 160px' }}>
-          <div style={{ fontSize: 10, color: 'var(--text-muted)', fontWeight: 700, letterSpacing: '.5px', marginBottom: 4 }}>NOTE MOYENNE CLIENTS</div>
+          <div style={{ fontSize: 10, color: 'var(--text-muted)', fontWeight: 700, letterSpacing: '.5px', marginBottom: 4 }}>DÉLAI D'ACCEPTATION (30 J)</div>
+          <div style={{ fontSize: 20, fontWeight: 800 }}>{data.acceptance.medianMin != null ? `${data.acceptance.medianMin} min` : '—'}</div>
+          <div style={{ fontSize: 10, color: 'var(--text-muted)' }}>
+            {data.acceptance.orders > 0 ? `médiane · moyenne ${data.acceptance.avgMin} min · ${data.acceptance.orders} commandes` : 'aucune commande immédiate acceptée'}
+          </div>
+        </div>
+        <div style={{ ...glass, padding: '14px 16px', flex: '1 1 160px' }}>
+          <div style={{ fontSize: 10, color: 'var(--text-muted)', fontWeight: 700, letterSpacing: '.5px', marginBottom: 4 }}>NOTE DONNÉE PAR LES CLIENTS (30 J)</div>
           <div style={{ fontSize: 20, fontWeight: 800 }}>{data.avgClientRating != null ? `★ ${data.avgClientRating}` : '—'}</div>
+          <div style={{ fontSize: 10, color: 'var(--text-muted)' }}>{data.ratingsCount} note(s)</div>
         </div>
       </div>
 
@@ -68,14 +82,14 @@ export default function CoursesTab() {
             <LineChart data={trend} margin={{ top: 0, right: 8, left: -20, bottom: 0 }}>
               <XAxis dataKey="dateLabel" tick={{ fontSize: 11, fill: 'var(--text-muted)' }} axisLine={false} tickLine={false} />
               <YAxis tick={{ fontSize: 11, fill: 'var(--text-muted)' }} axisLine={false} tickLine={false} unit="%" />
-              <Tooltip contentStyle={TOOLTIP_STYLE} formatter={v => [`${v}%`, 'Taux']} />
+              <Tooltip contentStyle={TOOLTIP_STYLE} formatter={(v, _n, item) => [`${v}% (${item.payload.cancelled}/${item.payload.created})`, 'Annulées']} />
               <Line type="monotone" dataKey="rate" stroke="#ef4444" strokeWidth={2} dot={{ fill: '#ef4444', r: 3 }} />
             </LineChart>
           </ResponsiveContainer>
         </div>
 
         <div style={{ ...glass, padding: '18px 20px' }}>
-          <h2 style={{ fontSize: 14, fontWeight: 600, marginBottom: 14 }}>Motifs d'annulation</h2>
+          <h2 style={{ fontSize: 14, fontWeight: 600, marginBottom: 14 }}>Motifs d'annulation (30 j)</h2>
           {reasons.length === 0 ? (
             <div style={{ color: 'var(--text-muted)', fontSize: 13, textAlign: 'center', paddingTop: 40 }}>Pas de données</div>
           ) : (

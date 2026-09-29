@@ -11,7 +11,7 @@ const SEVERITY_CFG = {
   low:      { bg: '#6366f120', color: '#818cf8', label: 'Faible'  },
 }
 const STATUS_CFG = {
-  OPEN:          { bg: '#ef444420', color: '#ef4444', label: 'Ouvert'   },
+  OPEN:          { bg: '#ef444420', color: '#ef4444', label: 'Nouveau'  },
   INVESTIGATING: { bg: '#f59e0b20', color: '#f59e0b', label: 'En cours' },
   RESOLVED:      { bg: '#22c55e20', color: '#22c55e', label: 'Résolu'   },
 }
@@ -45,7 +45,7 @@ export default function IncidentsTab() {
   return (
     <div>
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 14, flexWrap: 'wrap' }}>
-        {[['', 'Tous'], ['OPEN', 'Ouverts'], ['INVESTIGATING', 'En cours'], ['RESOLVED', 'Résolus']].map(([s, label]) => (
+        {[['', 'Tous'], ['OPEN', 'Nouveaux'], ['INVESTIGATING', 'En cours'], ['RESOLVED', 'Résolus']].map(([s, label]) => (
           <button key={s} onClick={() => setFilterStatus(s)} style={{
             padding: '4px 12px', borderRadius: 20, border: '1px solid rgba(0,119,182,.25)',
             background: filterStatus === s ? 'var(--primary)' : 'rgba(255,255,255,.5)',

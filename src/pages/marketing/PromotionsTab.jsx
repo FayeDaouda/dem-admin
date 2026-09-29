@@ -122,7 +122,9 @@ export default function PromotionsTab() {
           <table style={tableStyle}>
             <thead>
               <tr>
-                {['Nom', 'Code', 'Type', 'Cible', 'Utilisations', 'Budget', 'Statut', ''].map(h => (
+                {/* Une commande annulée rend sa promo (promo.service.js:releaseOrderPromo) :
+                    utilisations et budget ne comptent que les commandes non annulées */}
+                {['Nom', 'Code', 'Type', 'Cible', 'Utilisations (hors annulées)', 'Budget engagé / coût réel', 'Statut', ''].map(h => (
                   <th key={h} style={thStyle}>{h}</th>
                 ))}
               </tr>
@@ -147,10 +149,15 @@ export default function PromotionsTab() {
                       : TARGET_LABELS[c.targetRole]}
                   </td>
                   <td style={tdStyle}>{c.usedCount}{c.maxUsesTotal != null ? ` / ${c.maxUsesTotal}` : ''}</td>
+                  {/* Engagé = réservé (commandes en cours comprises, rendu si annulée) — c'est lui que le plafond limite.
+                      Coût réel = remises sur commandes livrées et passes payées (même source que Finance). */}
                   <td style={tdStyle}>
                     {c.budgetCap != null
                       ? `${c.budgetSpent.toLocaleString()} / ${c.budgetCap.toLocaleString()} F`
                       : `${c.budgetSpent.toLocaleString()} F`}
+                    <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>
+                      coût réel : {(c.realCost ?? 0).toLocaleString()} F ({c.realUses ?? 0} utilisation{(c.realUses ?? 0) > 1 ? 's' : ''})
+                    </div>
                   </td>
                   <td style={tdStyle}>
                     <button onClick={() => toggleActive(c)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: c.active ? 'var(--primary)' : 'var(--text-muted)', display: 'flex', alignItems: 'center' }}>

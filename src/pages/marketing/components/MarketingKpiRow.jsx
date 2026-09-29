@@ -30,12 +30,18 @@ export default function MarketingKpiRow({ reloadKey }) {
   return (
     <>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 10, marginBottom: 20 }}>
-        <StatCard icon={UserPlus}    label="Nouveaux clients (jour)"   value={v(kpis?.newClientsToday)} color="#06b6d4" onClick={() => setOpenModal('newClients')} />
-        <StatCard icon={Repeat}      label="Taux rétention (mois)"     value={loading ? '…' : `${kpis?.monthlyRetentionRate ?? 0}%`} color="#8b5cf6" onClick={() => setOpenModal('retention')} />
-        <StatCard icon={XCircle}     label="Taux annulation (jour)"    value={loading ? '…' : `${kpis?.cancellationRateToday ?? 0}%`} color="#ef4444" onClick={() => setOpenModal('cancellation')} />
-        <StatCard icon={CheckCircle} label="Courses complétées (jour)" value={v(kpis?.completedToday)} color="#22c55e" onClick={() => setOpenModal('completed')} />
-        <StatCard icon={UserCheck}   label="Clients actifs"           value={v(kpis?.activeClients)} color="#22c55e" onClick={() => setOpenModal('active')} />
-        <StatCard icon={UserMinus}   label="Clients inactifs"         value={v(kpis?.inactiveClients)} color="#f59e0b" onClick={() => setOpenModal('inactive')} />
+        <StatCard icon={UserPlus}    label="Nouveaux clients (jour)"   value={v(kpis?.newClientsToday)}
+          sub="inscriptions du jour" color="#06b6d4" onClick={() => setOpenModal('newClients')} />
+        <StatCard icon={Repeat}      label="Rétention 30 jours"        value={loading ? '…' : `${kpis?.retentionRate30d ?? 0}%`}
+          sub="clients servis revenus d'une période à l'autre" color="#8b5cf6" onClick={() => setOpenModal('retention')} />
+        <StatCard icon={XCircle}     label="Taux annulation (jour)"    value={loading ? '…' : `${kpis?.cancellationRateToday ?? 0}%`}
+          sub={loading ? undefined : `${kpis?.cancellationToday?.cancelled ?? 0} annulée(s) sur ${kpis?.cancellationToday?.created ?? 0} créée(s) aujourd'hui`}
+          color="#ef4444" onClick={() => setOpenModal('cancellation')} />
+        <StatCard icon={CheckCircle} label="Courses livrées (jour)"    value={v(kpis?.completedToday)} color="#22c55e" onClick={() => setOpenModal('completed')} />
+        <StatCard icon={UserCheck}   label="Clients actifs"           value={v(kpis?.activeClients)}
+          sub="servis sur les 30 derniers jours" color="#22c55e" onClick={() => setOpenModal('active')} />
+        <StatCard icon={UserMinus}   label="Clients inactifs"         value={v(kpis?.inactiveClients)}
+          sub="déjà servis, pas depuis 30 jours" color="#f59e0b" onClick={() => setOpenModal('inactive')} />
         <StatCard
           icon={Bell}
           label="Dernière notification push"

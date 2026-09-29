@@ -118,7 +118,7 @@ export default function NewProfiles() {
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
               <div style={{ fontSize: 14, fontWeight: 700 }}>{activeCategory[2]}</div>
               <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>
-                {listLoading ? 'Chargement…' : `${list?.total ?? 0} résultat${(list?.total ?? 0) !== 1 ? 's' : ''}`}
+                {listLoading ? 'Chargement…' : `${list?.total ?? 0} résultat${(list?.total ?? 0) !== 1 ? 's' : ''}${list?.truncated ? ` — ${list.shown} plus récents affichés` : ''}`}
               </div>
             </div>
 

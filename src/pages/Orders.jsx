@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import api from '../lib/api'
 import { useAuth } from '../contexts/AuthContext'
 import { useAutoRefresh } from '../lib/useAutoRefresh'
@@ -18,9 +18,13 @@ const clientDisplayName = (client, clientName, clientPhone) =>
 export default function Orders() {
   const { user } = useAuth()
   const isFinance = user?.adminRole === 'FINANCE'
+  const LIMIT = 50
   const [orders, setOrders]     = useState([])
+  const [total, setTotal]       = useState(0)
+  const [page, setPage]         = useState(1)
   const [loading, setLoading]   = useState(true)
   const [search, setSearch]     = useState('')
+  const [debouncedSearch, setDebouncedSearch] = useState('')
   const [detail, setDetail]     = useState(null)
   const [statusFilter, setStatusFilter] = useState('all')
   const [cancelling, setCancelling]     = useState(false)
@@ -130,43 +134,39 @@ export default function Orders() {
     }
   }
 
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedSearch(search.trim()), 350)
+    return () => clearTimeout(t)
+  }, [search])
+  useEffect(() => { setPage(1) }, [statusFilter, debouncedSearch])
+
+  // Statut et recherche appliqués par le serveur sur TOUTES les commandes
+  // (avant : sur les 100 dernières seulement). "En cours" = acceptée,
+  // récupérée ou en transit — même définition que le Dashboard.
+  const lastRequest = useRef(0)
   const fetch = useCallback(async (silent = false) => {
+    const requestId = ++lastRequest.current
     if (!silent) setLoading(true)
     try {
-      const res = await api.get('/admin/orders?limit=100')
+      const params = { page, limit: LIMIT }
+      if (statusFilter !== 'all') params.group = statusFilter
+      if (debouncedSearch)        params.search = debouncedSearch
+      const res = await api.get('/admin/orders', { params })
+      if (requestId !== lastRequest.current) return // réponse périmée
       setOrders(Array.isArray(res.data?.orders) ? res.data.orders : [])
+      setTotal(res.data?.total ?? 0)
     } catch (e) {
       console.error(e)
     } finally {
-      if (!silent) setLoading(false)
+      if (!silent && requestId === lastRequest.current) setLoading(false)
     }
-  }, [])
+  }, [page, statusFilter, debouncedSearch])
 
   useEffect(() => { fetch() }, [fetch])
   useAutoRefresh(() => fetch(true))
 
-  const statusGroups = {
-    all:        null,
-    pending:    ['PENDING'],
-    active:     ['ACCEPTED', 'PICKED_UP'],
-    delivered:  ['DELIVERED'],
-    cancelled:  ['CANCELLED'],
-  }
-
-  const filtered = orders.filter(o => {
-    // Filtre par statut
-    const group = statusGroups[statusFilter]
-    if (group && !group.includes(o.status)) return false
-    // Filtre par recherche
-    const q = search.toLowerCase()
-    return !q
-      || o.id.includes(q)
-      || o.client?.name?.toLowerCase().includes(q)
-      || o.client?.proBusinessName?.toLowerCase().includes(q)
-      || o.driver?.name?.toLowerCase().includes(q)
-      || o.pickupAddress?.toLowerCase().includes(q)
-      || o.deliveryAddress?.toLowerCase().includes(q)
-  })
+  const filtered = orders
+  const totalPages = Math.max(1, Math.ceil(total / LIMIT))
 
   return (
     <div style={pageWrap}>
@@ -192,6 +192,7 @@ export default function Orders() {
       <div style={{ display: 'flex', gap: 8, marginBottom: 20, flexWrap: 'wrap', flexShrink: 0 }}>
         {[
           { key: 'all',       label: 'Toutes' },
+          { key: 'scheduled', label: 'Programmées' },
           { key: 'pending',   label: 'En attente' },
           { key: 'active',    label: 'En cours' },
           { key: 'delivered', label: 'Livrées' },
@@ -232,7 +233,7 @@ export default function Orders() {
                   style={{ borderBottom: '1px solid var(--border)', cursor: 'pointer' }}
                   onClick={() => setDetail(o)}
                 >
-                  <td style={{ ...tdStyle, color: 'var(--text-muted)', fontSize: 12, width: 40, textAlign: 'center' }}>{idx + 1}</td>
+                  <td style={{ ...tdStyle, color: 'var(--text-muted)', fontSize: 12, width: 40, textAlign: 'center' }}>{(page - 1) * LIMIT + idx + 1}</td>
                   <td style={{ ...tdStyle, ...stickyCol }}><code style={{ fontSize: 11, color: 'var(--text-muted)' }}>{o.id.slice(0,8)}</code></td>
                   <td style={tdStyle}><Badge status={o.orderType} /></td>
                   <td style={tdStyle}><Badge status={o.status} /></td>
@@ -248,6 +249,13 @@ export default function Orders() {
             </tbody>
           </table>
         )}
+      </div>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 12, marginTop: 12 }}>
+        <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page <= 1} style={btnOutline}>← Préc.</button>
+        <span style={{ fontSize: 13, color: 'var(--text-muted)' }}>
+          Page {page} / {totalPages} — {total} commande{total > 1 ? 's' : ''}
+        </span>
+        <button onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page >= totalPages} style={btnOutline}>Suiv. →</button>
       </div>
       </div>
 

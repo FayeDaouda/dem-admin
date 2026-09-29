@@ -33,7 +33,7 @@ export default function Parrainage() {
   useAutoRefresh(() => load(true))
 
   const total    = data?.totalReferrals ?? 0
-  const credits  = data?.totalCreditsDistributed ?? 0
+  const bonusRecorded = data?.bonusRecorded ?? 0
   const referrers = (data?.referrers ?? []).filter(r =>
     !search || r.name?.toLowerCase().includes(search.toLowerCase()) || r.phone?.includes(search)
   )
@@ -49,8 +49,9 @@ export default function Parrainage() {
 
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, marginBottom: 20, flexShrink: 0 }}>
         <StatBox label="Total parrainages" value={total} />
-        <StatBox label="Parrains actifs" value={data?.referrers?.length ?? 0} color="#22c55e" />
-        <StatBox label="Credits MLM distribues" value={`${credits.toLocaleString()} F`} color="var(--primary)" />
+        <StatBox label="Parrains (au moins 1 filleul)" value={data?.referrers?.length ?? 0} color="#22c55e" />
+        {/* Aucun crédit de parrainage n'est versé dans l'app — l'ancien chiffre était 20 % de toutes les commissions */}
+        <StatBox label="Bonus promis (non versés)" value={`${bonusRecorded.toLocaleString()} F`} color="#f59e0b" />
       </div>
 
       <input

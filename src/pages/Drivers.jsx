@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import api from '../lib/api'
 import { useAuth } from '../contexts/AuthContext'
 import Badge from '../components/Badge'
@@ -302,20 +302,10 @@ function DeleteDriverModal({ driver, onClose, onArchive, onHardDelete }) {
   )
 }
 
-// Un badge est atteint si AU MOINS une ligne de critères est entièrement remplie.
-function computeBadge(courses, referrals, rating, tiers) {
-  for (const tier of (tiers ?? DEFAULT_BADGE_TIERS)) {
-    const met = (tier.criteria ?? []).some(c => {
-      const okRating = !c.rating || rating >= c.rating
-      return courses >= c.courses && referrals >= c.referrals && okRating
-    })
-    if (met) return tier
-  }
-  return null
-}
-
-function DriverBadgeChip({ driver, badgeTiers }) {
-  const badge = computeBadge(driver.deliveredCourses ?? 0, driver.referralCount ?? 0, driver.avgRating ?? 0, badgeTiers)
+// Badge calculé par le serveur (driver-badges.service:matchBadge — palier de
+// rang le plus élevé), le même que celui que voit le livreur dans l'app.
+function DriverBadgeChip({ driver }) {
+  const badge = driver.badge
   if (!badge) return <span style={{ color: 'var(--text-muted)', fontSize: 12 }}>Nouveau</span>
   const v = BADGE_VISUALS[badge.tier] ?? { emoji: '🏅', color: '#888', bg: '#f5f5f5' }
   return (
@@ -356,19 +346,42 @@ export default function Drivers() {
   const [deletedLoading, setDeletedLoading] = useState(false)
   const [resolving, setResolving]       = useState(null)
   const [requestTarget, setRequestTarget] = useState(null)
+  const [chefs, setChefs]               = useState([])
+  const [debouncedSearch, setDebouncedSearch] = useState('')
 
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedSearch(search.trim()), 350)
+    return () => clearTimeout(t)
+  }, [search])
+
+  // Tout filtre / tri modifié → retour page 1
+  useEffect(() => { setPage(1) }, [fleetFilter, chefFilter, onlineFilter, verifFilter, badgeFilter, sortCourses, debouncedSearch])
+
+  // Filtres et tri appliqués par le serveur sur TOUS les livreurs (avant :
+  // uniquement sur les 50 de la page chargée).
+  const lastRequest = useRef(0)
   const fetch = useCallback(async (silent = false) => {
+    const requestId = ++lastRequest.current
     if (!silent) setLoading(true)
     try {
-      const res = await api.get('/admin/drivers', { params: { page, limit: LIMIT } })
+      const params = { page, limit: LIMIT }
+      if (fleetFilter  !== 'all') params.fleet    = fleetFilter
+      if (chefFilter   !== 'all') params.chefId   = chefFilter
+      if (onlineFilter !== 'all') params.online   = onlineFilter
+      if (verifFilter  !== 'all') params.verified = verifFilter
+      if (badgeFilter  !== 'all') params.badge    = badgeFilter
+      if (sortCourses)            params.sort     = `courses_${sortCourses}`
+      if (debouncedSearch)        params.search   = debouncedSearch
+      const res = await api.get('/admin/drivers', { params })
+      if (requestId !== lastRequest.current) return // réponse périmée (filtre changé entre-temps)
       setDrivers(Array.isArray(res.data?.drivers) ? res.data.drivers : (Array.isArray(res.data) ? res.data : []))
       setTotal(res.data?.total ?? 0)
     } catch (e) {
       console.error(e)
     } finally {
-      if (!silent) setLoading(false)
+      if (!silent && requestId === lastRequest.current) setLoading(false)
     }
-  }, [page])
+  }, [page, fleetFilter, chefFilter, onlineFilter, verifFilter, badgeFilter, sortCourses, debouncedSearch])
 
   // Comptes archivés (voir deleteDriver côté backend — jamais un vrai DELETE)
   // — chargés à la demande seulement, pas au chargement de la page (rare,
@@ -404,10 +417,17 @@ export default function Drivers() {
   useEffect(() => {
     fetch()
     fetchPhoneRequests()
+  }, [fetch, fetchPhoneRequests])
+
+  useEffect(() => {
     api.get('/admin/badges/config')
       .then(r => setBadgeTiers(r.data.badges))
       .catch(() => {})
-  }, [fetch, fetchPhoneRequests])
+    // Tous les chefs de flotte (avant : seulement ceux des livreurs de la page)
+    api.get('/admin/chefs-de-flotte', { params: { status: 'all' } })
+      .then(r => setChefs(Array.isArray(r.data?.chefs) ? r.data.chefs : []))
+      .catch(() => {})
+  }, [])
   useAutoRefresh(() => { fetch(true); fetchPhoneRequests(true) })
 
   async function showStats(driverId) {
@@ -515,45 +535,9 @@ export default function Drivers() {
     }
   }
 
-  const chefs = [...new Map(
-    drivers.filter(d => d.managedBy).map(d => [d.managedBy.id, d.managedBy])
-  ).values()]
-
   const chefIndexMap = new Map(chefs.map((c, i) => [c.id, i + 1]))
 
-  const visibleDrivers = drivers
-    .filter(d =>
-      fleetFilter === 'fleet'       ? !!d.managedById :
-      fleetFilter === 'independent' ? !d.managedById  : true
-    )
-    .filter(d =>
-      chefFilter === 'all' ? true : d.managedById === chefFilter
-    )
-    .filter(d =>
-      onlineFilter === 'online'  ? d.isAvailable :
-      onlineFilter === 'offline' ? !d.isAvailable : true
-    )
-    .filter(d =>
-      verifFilter === 'verified' ? d.isVerified :
-      verifFilter === 'pending'  ? !d.isVerified : true
-    )
-    .filter(d => {
-      if (badgeFilter === 'all') return true
-      const badge = computeBadge(d.deliveredCourses ?? 0, d.referralCount ?? 0, d.avgRating ?? 0, badgeTiers)
-      return badgeFilter === 'nouveau' ? !badge : badge?.tier === badgeFilter
-    })
-    .filter(d => {
-      const q = search.trim().toLowerCase()
-      if (!q) return true
-      return (d.name ?? '').toLowerCase().includes(q) || (d.phone ?? '').includes(q)
-    })
-
-  const sortedDrivers = sortCourses
-    ? [...visibleDrivers].sort((a, b) => {
-        const diff = (a.deliveredCourses ?? 0) - (b.deliveredCourses ?? 0)
-        return sortCourses === 'asc' ? diff : -diff
-      })
-    : visibleDrivers
+  const sortedDrivers = drivers
 
   return (
     <div style={pageWrap}>
@@ -808,7 +792,7 @@ export default function Drivers() {
                   <td style={{ ...tdStyle, ...stickyCol }}>
                     <div style={{ fontWeight: 600 }}>{d.name?.trim() || d.phone}</div>
                     <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', marginTop: 3 }}>
-                      <Badge status={d.isAvailable ? 'ONLINE' : 'OFFLINE'} />
+                      <Badge status={d.isOnlineNow ? 'ONLINE' : 'OFFLINE'} />
                       {d.managedById && (
                         <span title={d.managedBy?.companyName || d.managedBy?.name || d.managedBy?.phone || ''} style={{
                           fontSize: 10, fontWeight: 700, padding: '1px 6px', borderRadius: 8,
@@ -820,7 +804,7 @@ export default function Drivers() {
                       )}
                     </div>
                   </td>
-                  <td style={tdStyle}><DriverBadgeChip driver={d} badgeTiers={badgeTiers} /></td>
+                  <td style={tdStyle}><DriverBadgeChip driver={d} /></td>
                   <td style={{ ...tdStyle, textAlign: 'center' }}>
                     <div style={{ fontWeight: 700 }}>{d.deliveredCourses ?? 0}</div>
                     {d.avgRating > 0 && (
