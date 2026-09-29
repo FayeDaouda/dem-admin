@@ -26,6 +26,7 @@ import ServiceClient from './pages/service-client'
 import Marketing from './pages/marketing'
 import Finance from './pages/finance'
 import Equipes from './pages/Equipes'
+import Maintenance from './pages/Maintenance'
 import { ClientBadgesPage, DriverBadgesPage } from './pages/Badges'
 import Parrainage from './pages/Parrainage'
 import Broadcast from './pages/Broadcast'
@@ -120,6 +121,7 @@ function AppRoutes() {
       <Route path="/audit"       element={<ProtectedRoute><Audit /></ProtectedRoute>} />
       <Route path="/validation"      element={<ProtectedRoute><Validation /></ProtectedRoute>} />
       <Route path="/equipes"         element={<SuperOnlyRoute><Equipes /></SuperOnlyRoute>} />
+      <Route path="/maintenance"     element={<SuperOnlyRoute><Maintenance /></SuperOnlyRoute>} />
       <Route path="/dem-pro"          element={<ProtectedRoute><DemPro /></ProtectedRoute>} />
       <Route path="/chefs-de-flotte" element={<ProtectedRoute><ChefsDeFlotte /></ProtectedRoute>} />
       <Route path="/chefs-de-flotte/:id" element={<ProtectedRoute><ChefDetailPage /></ProtectedRoute>} />
