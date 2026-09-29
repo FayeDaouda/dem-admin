@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import api from '../lib/api'
 import { useAuth } from '../contexts/AuthContext'
 import Badge from '../components/Badge'
@@ -6,6 +7,7 @@ import { RefreshCw, CheckCircle, XCircle, Pencil, Trash2, Ban, RotateCcw, X, Sea
 import { glass, glassModal, glassInput, pageWrap, pageScroll, stickyTh, stickyThCol, stickyCol } from '../lib/glassStyles'
 import SubmitRequestModal from './service-client/components/SubmitRequestModal'
 import AccountDetailModal from './dem-pro/AccountDetailModal'
+import OffersTab from './dem-pro/OffersTab'
 import {
   hasPaidTier, SECTOR_LABELS, SECTOR_COLORS, VOLUME_LABELS, PLAN_COLORS, proStatusInfo, planLabel,
 } from './dem-pro/labels'
@@ -235,80 +237,6 @@ function GrantModal({ count, planSystem, onClose, onConfirm, saving }) {
   )
 }
 
-// ── Interrupteur global paliers Starter/Business/Premium ──────────────────────
-// AppConfig 'dem_pro_tiers_active' (même endpoint générique GET/PUT
-// /admin/config que la page Config — pas de endpoint dédié, voir
-// dem_pro.limits.js:getDemProTiersActive côté backend). À `false` (défaut),
-// tout le nouveau système de gating reste inerte quel que soit le contenu
-// de `proPlan` en base — permet de déployer le backend séparément de son
-// activation réelle, synchronisée avec la sortie de la mise à jour
-// frontend correspondante.
-function TiersActiveToggle({ onChange }) {
-  const [active, setActive]   = useState(null) // null = pas encore chargé
-  const [saving, setSaving]   = useState(false)
-  const [error, setError]     = useState('')
-
-  const load = useCallback(async () => {
-    try {
-      const res = await api.get('/admin/config')
-      const row = (res.data ?? []).find(r => r.key === 'dem_pro_tiers_active')
-      setActive(row?.value === 'true')
-    } catch (e) { console.error(e) }
-  }, [])
-
-  useEffect(() => { load() }, [load])
-
-  async function toggle() {
-    const next = !active
-    if (next && !confirm(
-      "Activer les nouveaux paliers Starter/Business/Premium ?\n\n" +
-      "Prérequis : prix des paliers posés (seed) et mise à jour de l'app publiée.\n" +
-      "Juste après l'activation : lancer la migration de données (migrate_pro_plan_tiers.sql) — " +
-      "tant qu'elle n'a pas tourné, les comptes Pro restent sur l'ancien système, sans perte d'accès."
-    )) return
-
-    setSaving(true); setError('')
-    try {
-      await api.put('/admin/config', { updates: [{ key: 'dem_pro_tiers_active', value: next ? 'true' : 'false' }] })
-      setActive(next)
-      onChange?.()
-    } catch (e) {
-      setError(e.response?.data?.message ?? 'Erreur.')
-    } finally { setSaving(false) }
-  }
-
-  if (active === null) return null // chargement initial
-
-  return (
-    <div style={{ ...glass, padding: '14px 18px', marginBottom: 16, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
-      <div>
-        <div style={{ fontWeight: 700, fontSize: 13 }}>Paliers Starter / Business / Premium</div>
-        <div style={{ color: 'var(--text-muted)', fontSize: 12, marginTop: 2 }}>
-          {active
-            ? 'Actif — les nouvelles règles de palier s\'appliquent aux comptes Starter / Business / Premium.'
-            : 'Inactif — comportement identique à aujourd\'hui, même avec le backend déployé.'}
-        </div>
-        {error && <div style={{ color: 'var(--danger)', fontSize: 11, marginTop: 4 }}>{error}</div>}
-      </div>
-      <button
-        onClick={toggle}
-        disabled={saving}
-        style={{
-          width: 48, height: 26, borderRadius: 13, border: 'none', cursor: saving ? 'default' : 'pointer',
-          background: active ? 'var(--primary)' : 'rgba(0,0,0,.15)',
-          position: 'relative', transition: 'background .2s', flexShrink: 0,
-        }}
-      >
-        <span style={{
-          position: 'absolute', top: 3, left: active ? 24 : 3,
-          width: 20, height: 20, borderRadius: '50%', background: '#fff',
-          transition: 'left .2s', boxShadow: '0 1px 3px rgba(0,0,0,.2)',
-        }} />
-      </button>
-    </div>
-  )
-}
-
 // ── Stats cards ──────────────────────────────────────────────────────────────
 function ProStats({ accounts }) {
   if (!accounts.length) return null
@@ -354,6 +282,9 @@ export default function DemPro() {
   const [saving, setSaving]     = useState(false)
   const [requestTarget, setRequestTarget] = useState(null)
   const [detailId, setDetailId] = useState(null) // fiche commerçant ouverte
+  const [searchParams, setSearchParams] = useSearchParams()
+  const view = searchParams.get('onglet') === 'offres' ? 'offres' : 'comptes'
+  const setView = (v) => setSearchParams(v === 'offres' ? { onglet: 'offres' } : {})
   // Plans attribuables selon le système en vigueur (ancien / nouveaux paliers)
   const [planSystem, setPlanSystem] = useState(null)
   const loadPlanSystem = useCallback(() => {
@@ -509,7 +440,7 @@ export default function DemPro() {
     <div style={pageWrap}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12, marginBottom: 24, flexShrink: 0 }}>
         <h1 style={{ fontSize: 22, fontWeight: 700 }}>DEM Pro</h1>
-        <div style={{ display: 'flex', gap: 8 }}>
+        {view === 'comptes' && <div style={{ display: 'flex', gap: 8 }}>
           <button onClick={fetch} style={btnOutline}>
             <RefreshCw size={14} /> Actualiser
           </button>
@@ -518,314 +449,331 @@ export default function DemPro() {
               <Plus size={14} /> Nouveau compte
             </button>
           )}
-        </div>
+        </div>}
       </div>
 
-      {isSuper && <TiersActiveToggle onChange={() => { loadPlanSystem(); fetch() }} />}
-
-      <ProStats accounts={accounts} />
-
-      {/* Filtres statut */}
-      <div style={{ display: 'flex', gap: 6, marginBottom: 10, flexWrap: 'wrap', flexShrink: 0 }}>
-        {STATUS_FILTERS.map(([val, label]) => (
-          <button
-            key={val}
-            onClick={() => setFilter(val)}
-            style={{
-              padding: '4px 14px', borderRadius: 20,
-              border: '1px solid rgba(0,119,182,.25)',
-              background: filter === val ? 'var(--primary)' : 'rgba(255,255,255,.5)',
-              color: filter === val ? '#fff' : 'var(--text-muted)',
-              fontSize: 12, fontWeight: 600, cursor: 'pointer',
-            }}
-          >
-            {label}
-          </button>
+      {/* Onglets : comptes commerçants / offres Starter-Business-Premium */}
+      <div style={{ display: 'flex', gap: 4, marginBottom: 18, background: 'rgba(255,255,255,.45)', borderRadius: 'var(--radius)', padding: 4, width: 'fit-content', flexShrink: 0 }}>
+        {[['comptes', 'Comptes'], ['offres', 'Offres DEM Pro']].map(([key, label]) => (
+          <button key={key} onClick={() => setView(key)} style={{
+            padding: '7px 16px', borderRadius: 'var(--radius-sm)', border: 'none', cursor: 'pointer', fontSize: 13,
+            background: view === key ? 'var(--primary)' : 'transparent',
+            color: view === key ? '#fff' : 'var(--text-muted)',
+            fontWeight: view === key ? 700 : 500,
+          }}>{label}</button>
         ))}
       </div>
 
-      {/* Filtres plan — Gratuit vs Payant */}
-      <div style={{ display: 'flex', gap: 6, marginBottom: 16, flexWrap: 'wrap', flexShrink: 0 }}>
-        {PLAN_FILTERS.map(([val, label]) => (
-          <button
-            key={val}
-            onClick={() => setPlanFilter(val)}
-            style={{
-              padding: '4px 14px', borderRadius: 20,
-              border: `1px solid ${planFilter === val ? '#6366f1' : 'rgba(99,102,241,.25)'}`,
-              background: planFilter === val ? '#6366f1' : 'rgba(99,102,241,.06)',
-              color: planFilter === val ? '#fff' : '#6366f1',
-              fontSize: 12, fontWeight: 600, cursor: 'pointer',
-            }}
-          >
-            {label}
-          </button>
-        ))}
-      </div>
+      {view === 'comptes' ? (
+        <>
 
-      {/* Recherche */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16, flexShrink: 0 }}>
-        <div style={{ position: 'relative', flex: '1 1 220px', maxWidth: 320 }}>
-          <Search size={14} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
-          <input
-            value={search}
-            onChange={e => setSearch(e.target.value)}
-            placeholder="Nom, téléphone ou entreprise…"
-            style={{ ...glassInput, paddingLeft: 36, width: '100%' }}
-          />
+        <ProStats accounts={accounts} />
+
+        {/* Filtres statut */}
+        <div style={{ display: 'flex', gap: 6, marginBottom: 10, flexWrap: 'wrap', flexShrink: 0 }}>
+          {STATUS_FILTERS.map(([val, label]) => (
+            <button
+              key={val}
+              onClick={() => setFilter(val)}
+              style={{
+                padding: '4px 14px', borderRadius: 20,
+                border: '1px solid rgba(0,119,182,.25)',
+                background: filter === val ? 'var(--primary)' : 'rgba(255,255,255,.5)',
+                color: filter === val ? '#fff' : 'var(--text-muted)',
+                fontSize: 12, fontWeight: 600, cursor: 'pointer',
+              }}
+            >
+              {label}
+            </button>
+          ))}
         </div>
-      </div>
 
-      {/* Barre d'actions groupées — n'apparaît qu'avec une sélection active */}
-      {isSuper && selected.size > 0 && (
-        <div style={{
-          ...glass, padding: '10px 16px', marginBottom: 12, flexShrink: 0,
-          display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap',
-        }}>
-          <span style={{ fontSize: 13, fontWeight: 600 }}>
-            {selected.size} compte{selected.size > 1 ? 's' : ''} sélectionné{selected.size > 1 ? 's' : ''}
-          </span>
-          <button onClick={() => setGrantModalOpen(true)} disabled={bulkSaving} style={{ ...btnPrimary, background: '#6366f1' }}>
-            <Gift size={14} /> Offrir un palier
-          </button>
-          <button onClick={bulkRevoke} disabled={bulkSaving} style={{ ...btnOutline, color: 'var(--danger)', borderColor: 'var(--danger)' }}>
-            <Ban size={14} /> Retirer l'accès payant
-          </button>
-          <button onClick={() => setSelected(new Set())} style={{ ...btnIcon, marginLeft: 'auto' }} title="Désélectionner">
-            <XSquare size={16} />
-          </button>
+        {/* Filtres plan — Gratuit vs Payant */}
+        <div style={{ display: 'flex', gap: 6, marginBottom: 16, flexWrap: 'wrap', flexShrink: 0 }}>
+          {PLAN_FILTERS.map(([val, label]) => (
+            <button
+              key={val}
+              onClick={() => setPlanFilter(val)}
+              style={{
+                padding: '4px 14px', borderRadius: 20,
+                border: `1px solid ${planFilter === val ? '#6366f1' : 'rgba(99,102,241,.25)'}`,
+                background: planFilter === val ? '#6366f1' : 'rgba(99,102,241,.06)',
+                color: planFilter === val ? '#fff' : '#6366f1',
+                fontSize: 12, fontWeight: 600, cursor: 'pointer',
+              }}
+            >
+              {label}
+            </button>
+          ))}
         </div>
-      )}
 
-      {/* Table */}
-      <div style={pageScroll}>
-        <div style={card}>
-          {loading ? (
-            <div style={{ color: 'var(--text-muted)', padding: 20 }}>Chargement...</div>
-          ) : filtered.length === 0 ? (
-            <div style={{ color: 'var(--text-muted)', padding: 20 }}>
-              Aucun compte DEM Pro{filter !== 'all' || planFilter !== 'all' || search ? ' pour ce filtre' : ''}.
-            </div>
-          ) : (
-            <table style={tableStyle}>
-              <thead>
-                <tr>
-                  {isSuper && (
-                    <th style={{ ...thStyle, ...stickyTh, width: 30 }}>
-                      <input
-                        type="checkbox"
-                        checked={selected.size > 0 && selected.size === filtered.length}
-                        onChange={toggleSelectAll}
-                        style={{ cursor: 'pointer' }}
-                      />
-                    </th>
-                  )}
-                  {['#', 'Entreprise', 'Téléphone', 'Secteur', 'Volume', 'Plan', 'Commandes', 'Statut', 'Inscription', 'Actions'].map((h, i) => (
-                    <th key={h} style={{ ...thStyle, ...(i === 1 ? stickyThCol : stickyTh) }}>{h}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {filtered.map((a, idx) => {
-                  const status = proStatusInfo(a)
-                  const isSuspended = !a.isActive && a.proStatus === 'ACTIVE'
-                  const sectorColor = SECTOR_COLORS[a.proSector] ?? '#888'
-                  return (
-                  <tr key={a.id} style={{ borderBottom: '1px solid var(--border)', opacity: isSuspended ? 0.6 : 1 }}>
+        {/* Recherche */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16, flexShrink: 0 }}>
+          <div style={{ position: 'relative', flex: '1 1 220px', maxWidth: 320 }}>
+            <Search size={14} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
+            <input
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              placeholder="Nom, téléphone ou entreprise…"
+              style={{ ...glassInput, paddingLeft: 36, width: '100%' }}
+            />
+          </div>
+        </div>
+
+        {/* Barre d'actions groupées — n'apparaît qu'avec une sélection active */}
+        {isSuper && selected.size > 0 && (
+          <div style={{
+            ...glass, padding: '10px 16px', marginBottom: 12, flexShrink: 0,
+            display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap',
+          }}>
+            <span style={{ fontSize: 13, fontWeight: 600 }}>
+              {selected.size} compte{selected.size > 1 ? 's' : ''} sélectionné{selected.size > 1 ? 's' : ''}
+            </span>
+            <button onClick={() => setGrantModalOpen(true)} disabled={bulkSaving} style={{ ...btnPrimary, background: '#6366f1' }}>
+              <Gift size={14} /> Offrir un palier
+            </button>
+            <button onClick={bulkRevoke} disabled={bulkSaving} style={{ ...btnOutline, color: 'var(--danger)', borderColor: 'var(--danger)' }}>
+              <Ban size={14} /> Retirer l'accès payant
+            </button>
+            <button onClick={() => setSelected(new Set())} style={{ ...btnIcon, marginLeft: 'auto' }} title="Désélectionner">
+              <XSquare size={16} />
+            </button>
+          </div>
+        )}
+
+        {/* Table */}
+        <div style={pageScroll}>
+          <div style={card}>
+            {loading ? (
+              <div style={{ color: 'var(--text-muted)', padding: 20 }}>Chargement...</div>
+            ) : filtered.length === 0 ? (
+              <div style={{ color: 'var(--text-muted)', padding: 20 }}>
+                Aucun compte DEM Pro{filter !== 'all' || planFilter !== 'all' || search ? ' pour ce filtre' : ''}.
+              </div>
+            ) : (
+              <table style={tableStyle}>
+                <thead>
+                  <tr>
                     {isSuper && (
-                      <td style={tdStyle}>
+                      <th style={{ ...thStyle, ...stickyTh, width: 30 }}>
                         <input
                           type="checkbox"
-                          checked={selected.has(a.id)}
-                          onChange={() => toggleSelect(a.id)}
+                          checked={selected.size > 0 && selected.size === filtered.length}
+                          onChange={toggleSelectAll}
                           style={{ cursor: 'pointer' }}
                         />
-                      </td>
+                      </th>
                     )}
-                    <td style={{ ...tdStyle, color: 'var(--text-muted)', fontSize: 12, width: 40, textAlign: 'center' }}>{idx + 1}</td>
-                    <td style={{ ...tdStyle, ...stickyCol }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                        <div style={{
-                          width: 34, height: 34, borderRadius: '50%', overflow: 'hidden',
-                          background: 'linear-gradient(135deg,rgba(99,102,241,.15),rgba(6,113,186,.15))',
-                          display: 'flex', alignItems: 'center', justifyContent: 'center',
-                          fontWeight: 700, color: '#6366f1', fontSize: 13, flexShrink: 0,
-                        }}>
-                          {a.avatar
-                            ? <img src={a.avatar} alt="" style={{ width: 34, height: 34, borderRadius: '50%', objectFit: 'cover' }} />
-                            : (a.proBusinessName?.trim() || a.name?.trim() || a.phone || '?')[0].toUpperCase()
-                          }
+                    {['#', 'Entreprise', 'Téléphone', 'Secteur', 'Volume', 'Plan', 'Commandes', 'Statut', 'Inscription', 'Actions'].map((h, i) => (
+                      <th key={h} style={{ ...thStyle, ...(i === 1 ? stickyThCol : stickyTh) }}>{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {filtered.map((a, idx) => {
+                    const status = proStatusInfo(a)
+                    const isSuspended = !a.isActive && a.proStatus === 'ACTIVE'
+                    const sectorColor = SECTOR_COLORS[a.proSector] ?? '#888'
+                    return (
+                    <tr key={a.id} style={{ borderBottom: '1px solid var(--border)', opacity: isSuspended ? 0.6 : 1 }}>
+                      {isSuper && (
+                        <td style={tdStyle}>
+                          <input
+                            type="checkbox"
+                            checked={selected.has(a.id)}
+                            onChange={() => toggleSelect(a.id)}
+                            style={{ cursor: 'pointer' }}
+                          />
+                        </td>
+                      )}
+                      <td style={{ ...tdStyle, color: 'var(--text-muted)', fontSize: 12, width: 40, textAlign: 'center' }}>{idx + 1}</td>
+                      <td style={{ ...tdStyle, ...stickyCol }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                          <div style={{
+                            width: 34, height: 34, borderRadius: '50%', overflow: 'hidden',
+                            background: 'linear-gradient(135deg,rgba(99,102,241,.15),rgba(6,113,186,.15))',
+                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            fontWeight: 700, color: '#6366f1', fontSize: 13, flexShrink: 0,
+                          }}>
+                            {a.avatar
+                              ? <img src={a.avatar} alt="" style={{ width: 34, height: 34, borderRadius: '50%', objectFit: 'cover' }} />
+                              : (a.proBusinessName?.trim() || a.name?.trim() || a.phone || '?')[0].toUpperCase()
+                            }
+                          </div>
+                          <div onClick={() => setDetailId(a.id)} style={{ cursor: 'pointer' }} title="Ouvrir la fiche">
+                            <div style={{ fontWeight: 600, color: 'var(--primary)' }}>{a.proBusinessName?.trim() || '—'}</div>
+                            {a.name && <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>{a.name}</div>}
+                          </div>
                         </div>
-                        <div onClick={() => setDetailId(a.id)} style={{ cursor: 'pointer' }} title="Ouvrir la fiche">
-                          <div style={{ fontWeight: 600, color: 'var(--primary)' }}>{a.proBusinessName?.trim() || '—'}</div>
-                          {a.name && <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>{a.name}</div>}
-                        </div>
-                      </div>
-                    </td>
-                    <td style={tdStyle}>
-                      {a.phone ? <a href={`tel:${a.phone}`} style={{ color: '#0077b6' }}>{a.phone}</a> : '—'}
-                    </td>
-                    <td style={tdStyle}>
-                      {a.proSector ? (
-                        <span style={{
-                          fontSize: 11, fontWeight: 600, padding: '2px 8px', borderRadius: 10,
-                          background: sectorColor + '18', color: sectorColor,
-                        }}>
-                          {SECTOR_LABELS[a.proSector] ?? a.proSector}
-                        </span>
-                      ) : '—'}
-                    </td>
-                    <td style={tdStyle}>{VOLUME_LABELS[a.proWeeklyVolume] ?? '—'}</td>
-                    <td style={tdStyle}>
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: 3, alignItems: 'flex-start' }}>
-                        {isSuper ? (
-                          <select
-                            value={a.proPlan ?? 'FREE'}
-                            onChange={e => changePlan(a, e.target.value)}
-                            style={{
-                              fontSize: 11, fontWeight: 700, padding: '3px 6px', borderRadius: 8,
-                              border: `1px solid ${(PLAN_COLORS[a.proPlan] ?? '#888')}55`,
+                      </td>
+                      <td style={tdStyle}>
+                        {a.phone ? <a href={`tel:${a.phone}`} style={{ color: '#0077b6' }}>{a.phone}</a> : '—'}
+                      </td>
+                      <td style={tdStyle}>
+                        {a.proSector ? (
+                          <span style={{
+                            fontSize: 11, fontWeight: 600, padding: '2px 8px', borderRadius: 10,
+                            background: sectorColor + '18', color: sectorColor,
+                          }}>
+                            {SECTOR_LABELS[a.proSector] ?? a.proSector}
+                          </span>
+                        ) : '—'}
+                      </td>
+                      <td style={tdStyle}>{VOLUME_LABELS[a.proWeeklyVolume] ?? '—'}</td>
+                      <td style={tdStyle}>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 3, alignItems: 'flex-start' }}>
+                          {isSuper ? (
+                            <select
+                              value={a.proPlan ?? 'FREE'}
+                              onChange={e => changePlan(a, e.target.value)}
+                              style={{
+                                fontSize: 11, fontWeight: 700, padding: '3px 6px', borderRadius: 8,
+                                border: `1px solid ${(PLAN_COLORS[a.proPlan] ?? '#888')}55`,
+                                background: (PLAN_COLORS[a.proPlan] ?? '#888') + '18',
+                                color: PLAN_COLORS[a.proPlan] ?? '#888',
+                                cursor: 'pointer',
+                              }}
+                            >
+                              {/* Plans du système en vigueur (Business masqué dans l'ancien,
+                                  sauf pour un compte qui l'a déjà) ; le plan actuel reste
+                                  affiché même s'il n'est plus attribuable (ex. Pro après bascule). */}
+                              {(planSystem?.plans ?? ['FREE', 'PRO'])
+                                .filter(k => planSystem?.system === 'tiers' || k !== 'BUSINESS' || a.proPlan === 'BUSINESS')
+                                .map(k => (
+                                  <option key={k} value={k}>{planSystem?.labels?.[k] ?? planLabel(k)}</option>
+                                ))}
+                              {planSystem && !planSystem.plans.includes(a.proPlan ?? 'FREE') && (
+                                <option value={a.proPlan} disabled>{planLabel(a.proPlan)} (ancien)</option>
+                              )}
+                            </select>
+                          ) : (
+                            <span style={{
+                              fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 10,
                               background: (PLAN_COLORS[a.proPlan] ?? '#888') + '18',
                               color: PLAN_COLORS[a.proPlan] ?? '#888',
-                              cursor: 'pointer',
-                            }}
-                          >
-                            {/* Plans du système en vigueur (Business masqué dans l'ancien,
-                                sauf pour un compte qui l'a déjà) ; le plan actuel reste
-                                affiché même s'il n'est plus attribuable (ex. Pro après bascule). */}
-                            {(planSystem?.plans ?? ['FREE', 'PRO'])
-                              .filter(k => planSystem?.system === 'tiers' || k !== 'BUSINESS' || a.proPlan === 'BUSINESS')
-                              .map(k => (
-                                <option key={k} value={k}>{planSystem?.labels?.[k] ?? planLabel(k)}</option>
-                              ))}
-                            {planSystem && !planSystem.plans.includes(a.proPlan ?? 'FREE') && (
-                              <option value={a.proPlan} disabled>{planLabel(a.proPlan)} (ancien)</option>
+                            }}>
+                              {planLabel(a.proPlan ?? 'FREE')}
+                            </span>
+                          )}
+                          {hasPaidTier(a) && !a.paidPlanActive && (
+                            <span style={{
+                              display: 'inline-flex', alignItems: 'center', gap: 3,
+                              fontSize: 10, fontWeight: 700, padding: '1px 6px', borderRadius: 8,
+                              background: '#f59e0b18', color: '#f59e0b',
+                            }}>
+                              <Gift size={10} /> {a.proPlanStatus === 'TRIAL' ? 'Offert' : 'Sans paiement'}
+                            </span>
+                          )}
+                          {a.paidPlanActive && (
+                            <span style={{
+                              fontSize: 10, fontWeight: 700, padding: '1px 6px', borderRadius: 8,
+                              background: '#22c55e18', color: '#22c55e',
+                            }}>
+                              Payé
+                            </span>
+                          )}
+                          {a.proPlanExpiresAt && (a.proPlan ?? 'FREE') !== 'FREE' && (
+                            <span style={{ fontSize: 10, color: 'var(--text-muted)' }}>
+                              jusqu'au {new Date(a.proPlanExpiresAt).toLocaleDateString('fr-FR')}
+                            </span>
+                          )}
+                        </div>
+                      </td>
+                      <td style={{ ...tdStyle, textAlign: 'center', fontWeight: 600 }}>
+                        {a._count?.ordersAsClient ?? 0}
+                      </td>
+                      <td style={tdStyle}>
+                        <span style={{ fontSize: 12, fontWeight: 600, color: status.color }}>{status.text}</span>
+                      </td>
+                      <td style={{ ...tdStyle, color: 'var(--text-muted)', fontSize: 12 }}>
+                        {a.createdAt ? new Date(a.createdAt).toLocaleDateString('fr-FR') : '—'}
+                      </td>
+                      <td style={tdStyle}>
+                        {isSuper ? (
+                          <div style={{ display: 'flex', gap: 5 }}>
+                            <button onClick={() => setDetailId(a.id)} style={btnSmall} title="Fiche commerçant">
+                              <Eye size={13} />
+                            </button>
+                            {a.proStatus === 'PENDING' && (
+                              <>
+                                <button onClick={() => validate(a.id, true)} disabled={saving} style={{ ...btnSmall, color: 'var(--success)', borderColor: 'var(--success)' }} title="Valider">
+                                  <CheckCircle size={13} />
+                                </button>
+                                <button onClick={() => setModal({ type: 'reject', account: a })} style={{ ...btnSmall, color: 'var(--danger)', borderColor: 'var(--danger)' }} title="Refuser">
+                                  <XCircle size={13} />
+                                </button>
+                              </>
                             )}
-                          </select>
+                            {a.proStatus === 'ACTIVE' && !isSuspended && (
+                              <button onClick={() => setModal({ type: 'suspend', account: a })} style={{ ...btnSmall, color: '#f59e0b', borderColor: '#f59e0b' }} title="Suspendre">
+                                <Ban size={13} />
+                              </button>
+                            )}
+                            {isSuspended && (
+                              <button onClick={() => toggleSuspend(a)} disabled={saving} style={{ ...btnSmall, color: 'var(--success)', borderColor: 'var(--success)' }} title="Réactiver">
+                                <RotateCcw size={13} />
+                              </button>
+                            )}
+                            <button onClick={() => setEditTarget(a)} style={btnSmall} title="Modifier">
+                              <Pencil size={13} />
+                            </button>
+                            {a.phone && (
+                              <a href={`tel:${a.phone}`} style={btnSmall} title="Appeler">
+                                <Phone size={13} />
+                              </a>
+                            )}
+                            <button onClick={() => deleteAccount(a)} style={{ ...btnSmall, color: 'var(--danger)', borderColor: 'var(--danger)' }} title="Supprimer">
+                              <Trash2 size={13} />
+                            </button>
+                          </div>
+                        ) : isServiceClient ? (
+                          <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap' }}>
+                            <button onClick={() => setDetailId(a.id)} style={btnSmall} title="Fiche commerçant">
+                              <Eye size={13} />
+                            </button>
+                            <button onClick={() => setEditTarget(a)} style={btnSmall} title="Modifier">
+                              <Pencil size={13} />
+                            </button>
+                            {a.phone && (
+                              <a href={`tel:${a.phone}`} style={btnSmall} title="Appeler">
+                                <Phone size={13} />
+                              </a>
+                            )}
+                            <button onClick={() => reportAccount(a)} style={{ ...btnSmall, color: '#dc2626', borderColor: '#dc2626' }} title="Signaler">
+                              <Flag size={13} />
+                            </button>
+                            {a.isActive ? (
+                              <button
+                                onClick={() => setRequestTarget({ kind: 'DEM_PRO_SUSPEND', targetUser: { id: a.id, label: a.proBusinessName ?? a.name ?? a.phone } })}
+                                style={{ ...btnSmall, color: '#f59e0b', borderColor: '#f59e0b' }}
+                              >
+                                Demander suspension
+                              </button>
+                            ) : (
+                              <button
+                                onClick={() => setRequestTarget({ kind: 'DEM_PRO_ACTIVATE', targetUser: { id: a.id, label: a.proBusinessName ?? a.name ?? a.phone } })}
+                                style={{ ...btnSmall, color: '#15803d', borderColor: '#15803d' }}
+                              >
+                                Demander réactivation
+                              </button>
+                            )}
+                          </div>
                         ) : (
-                          <span style={{
-                            fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 10,
-                            background: (PLAN_COLORS[a.proPlan] ?? '#888') + '18',
-                            color: PLAN_COLORS[a.proPlan] ?? '#888',
-                          }}>
-                            {planLabel(a.proPlan ?? 'FREE')}
-                          </span>
+                          <span style={{ color: 'var(--text-muted)', fontSize: 11 }}>Lecture seule</span>
                         )}
-                        {hasPaidTier(a) && !a.paidPlanActive && (
-                          <span style={{
-                            display: 'inline-flex', alignItems: 'center', gap: 3,
-                            fontSize: 10, fontWeight: 700, padding: '1px 6px', borderRadius: 8,
-                            background: '#f59e0b18', color: '#f59e0b',
-                          }}>
-                            <Gift size={10} /> {a.proPlanStatus === 'TRIAL' ? 'Offert' : 'Sans paiement'}
-                          </span>
-                        )}
-                        {a.paidPlanActive && (
-                          <span style={{
-                            fontSize: 10, fontWeight: 700, padding: '1px 6px', borderRadius: 8,
-                            background: '#22c55e18', color: '#22c55e',
-                          }}>
-                            Payé
-                          </span>
-                        )}
-                        {a.proPlanExpiresAt && (a.proPlan ?? 'FREE') !== 'FREE' && (
-                          <span style={{ fontSize: 10, color: 'var(--text-muted)' }}>
-                            jusqu'au {new Date(a.proPlanExpiresAt).toLocaleDateString('fr-FR')}
-                          </span>
-                        )}
-                      </div>
-                    </td>
-                    <td style={{ ...tdStyle, textAlign: 'center', fontWeight: 600 }}>
-                      {a._count?.ordersAsClient ?? 0}
-                    </td>
-                    <td style={tdStyle}>
-                      <span style={{ fontSize: 12, fontWeight: 600, color: status.color }}>{status.text}</span>
-                    </td>
-                    <td style={{ ...tdStyle, color: 'var(--text-muted)', fontSize: 12 }}>
-                      {a.createdAt ? new Date(a.createdAt).toLocaleDateString('fr-FR') : '—'}
-                    </td>
-                    <td style={tdStyle}>
-                      {isSuper ? (
-                        <div style={{ display: 'flex', gap: 5 }}>
-                          <button onClick={() => setDetailId(a.id)} style={btnSmall} title="Fiche commerçant">
-                            <Eye size={13} />
-                          </button>
-                          {a.proStatus === 'PENDING' && (
-                            <>
-                              <button onClick={() => validate(a.id, true)} disabled={saving} style={{ ...btnSmall, color: 'var(--success)', borderColor: 'var(--success)' }} title="Valider">
-                                <CheckCircle size={13} />
-                              </button>
-                              <button onClick={() => setModal({ type: 'reject', account: a })} style={{ ...btnSmall, color: 'var(--danger)', borderColor: 'var(--danger)' }} title="Refuser">
-                                <XCircle size={13} />
-                              </button>
-                            </>
-                          )}
-                          {a.proStatus === 'ACTIVE' && !isSuspended && (
-                            <button onClick={() => setModal({ type: 'suspend', account: a })} style={{ ...btnSmall, color: '#f59e0b', borderColor: '#f59e0b' }} title="Suspendre">
-                              <Ban size={13} />
-                            </button>
-                          )}
-                          {isSuspended && (
-                            <button onClick={() => toggleSuspend(a)} disabled={saving} style={{ ...btnSmall, color: 'var(--success)', borderColor: 'var(--success)' }} title="Réactiver">
-                              <RotateCcw size={13} />
-                            </button>
-                          )}
-                          <button onClick={() => setEditTarget(a)} style={btnSmall} title="Modifier">
-                            <Pencil size={13} />
-                          </button>
-                          {a.phone && (
-                            <a href={`tel:${a.phone}`} style={btnSmall} title="Appeler">
-                              <Phone size={13} />
-                            </a>
-                          )}
-                          <button onClick={() => deleteAccount(a)} style={{ ...btnSmall, color: 'var(--danger)', borderColor: 'var(--danger)' }} title="Supprimer">
-                            <Trash2 size={13} />
-                          </button>
-                        </div>
-                      ) : isServiceClient ? (
-                        <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap' }}>
-                          <button onClick={() => setDetailId(a.id)} style={btnSmall} title="Fiche commerçant">
-                            <Eye size={13} />
-                          </button>
-                          <button onClick={() => setEditTarget(a)} style={btnSmall} title="Modifier">
-                            <Pencil size={13} />
-                          </button>
-                          {a.phone && (
-                            <a href={`tel:${a.phone}`} style={btnSmall} title="Appeler">
-                              <Phone size={13} />
-                            </a>
-                          )}
-                          <button onClick={() => reportAccount(a)} style={{ ...btnSmall, color: '#dc2626', borderColor: '#dc2626' }} title="Signaler">
-                            <Flag size={13} />
-                          </button>
-                          {a.isActive ? (
-                            <button
-                              onClick={() => setRequestTarget({ kind: 'DEM_PRO_SUSPEND', targetUser: { id: a.id, label: a.proBusinessName ?? a.name ?? a.phone } })}
-                              style={{ ...btnSmall, color: '#f59e0b', borderColor: '#f59e0b' }}
-                            >
-                              Demander suspension
-                            </button>
-                          ) : (
-                            <button
-                              onClick={() => setRequestTarget({ kind: 'DEM_PRO_ACTIVATE', targetUser: { id: a.id, label: a.proBusinessName ?? a.name ?? a.phone } })}
-                              style={{ ...btnSmall, color: '#15803d', borderColor: '#15803d' }}
-                            >
-                              Demander réactivation
-                            </button>
-                          )}
-                        </div>
-                      ) : (
-                        <span style={{ color: 'var(--text-muted)', fontSize: 11 }}>Lecture seule</span>
-                      )}
-                    </td>
-                  </tr>
-                  )
-                })}
-              </tbody>
-            </table>
-          )}
+                      </td>
+                    </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
+            )}
+          </div>
         </div>
-      </div>
+        </>
+      ) : (
+        <OffersTab isSuper={isSuper} onSystemChange={loadPlanSystem} />
+      )}
 
       {/* Modal refus */}
       {modal?.type === 'reject' && (

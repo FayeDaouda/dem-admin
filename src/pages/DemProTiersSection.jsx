@@ -96,7 +96,7 @@ function Cell({ field, value, onChange, editable, changed }) {
   )
 }
 
-export default function DemProTiersSection() {
+export default function DemProTiersSection({ onSaved } = {}) {
   const [data, setData] = useState(null)   // { STARTER: {...}, BUSINESS: {...}, PREMIUM: {...} }
   const [draft, setDraft] = useState(null)
   const [loading, setLoading] = useState(true)
@@ -143,6 +143,7 @@ export default function DemProTiersSection() {
 
       await Promise.all(writes.map(({ plan, changes }) => api.put(`/admin/dem-pro-tiers/${plan}`, changes)))
       await load()
+      onSaved?.() // la page Offres rafraîchit ses chiffres (prix, préparation de la bascule)
       setSaved(true)
       setTimeout(() => setSaved(false), 2000)
     } catch (e) { setError(e.response?.data?.message ?? 'Erreur lors de la sauvegarde.') }
