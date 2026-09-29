@@ -1,17 +1,19 @@
 import { useState } from 'react'
-import { RefreshCw, LayoutGrid, AlertTriangle, Gift, ClipboardList } from 'lucide-react'
+import { RefreshCw, LayoutGrid, AlertTriangle, Gift, ClipboardList, MessageSquareLock } from 'lucide-react'
 import { pageWrap, pageScroll } from '../../lib/glassStyles'
 import KpiRow from './components/KpiRow'
 import OverviewTab from './OverviewTab'
 import IncidentsTab from './IncidentsTab'
 import GestesTab from './GestesTab'
 import RequestsTab from './RequestsTab'
+import OtpUnblockPanel from '../../components/OtpUnblockPanel'
 
 const TABS = [
   ['overview', "Vue d'ensemble", LayoutGrid, OverviewTab],
   ['incidents','Incidents',      AlertTriangle, IncidentsTab],
   ['gestes',   'Gestes commerciaux', Gift,   GestesTab],
   ['requests', 'Mes demandes',   ClipboardList, RequestsTab],
+  ['otp',      'Codes SMS',      MessageSquareLock, OtpUnblockPanel],
 ]
 
 export default function ServiceClient() {
