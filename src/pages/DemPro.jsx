@@ -2,9 +2,13 @@ import { useState, useEffect, useCallback } from 'react'
 import api from '../lib/api'
 import { useAuth } from '../contexts/AuthContext'
 import Badge from '../components/Badge'
-import { RefreshCw, CheckCircle, XCircle, Pencil, Trash2, Ban, RotateCcw, X, Search, Phone, Flag, Plus, Gift, XSquare } from 'lucide-react'
+import { RefreshCw, CheckCircle, XCircle, Pencil, Trash2, Ban, RotateCcw, X, Search, Phone, Flag, Plus, Gift, XSquare, Eye } from 'lucide-react'
 import { glass, glassModal, glassInput, pageWrap, pageScroll, stickyTh, stickyThCol, stickyCol } from '../lib/glassStyles'
 import SubmitRequestModal from './service-client/components/SubmitRequestModal'
+import AccountDetailModal from './dem-pro/AccountDetailModal'
+import {
+  hasPaidTier, SECTOR_LABELS, SECTOR_COLORS, VOLUME_LABELS, PLAN_LABELS, PLAN_COLORS, proStatusInfo,
+} from './dem-pro/labels'
 import { useAutoRefresh } from '../lib/useAutoRefresh'
 
 const STATUS_FILTERS = [
@@ -25,31 +29,6 @@ const PLAN_FILTERS = [
   ['OFFERED', 'Accès offert / manuel'],
 ]
 
-const hasPaidTier = a => (a.proPlan ?? 'FREE') !== 'FREE'
-
-const SECTOR_LABELS = {
-  commerce:     'Commerce',
-  restauration: 'Restauration',
-  services:     'Services',
-  artisanat:    'Artisanat',
-  autre:        'Autre',
-}
-const SECTOR_COLORS = {
-  commerce:     '#6366f1',
-  restauration: '#f59e0b',
-  services:     '#06b6d4',
-  artisanat:    '#ec4899',
-  autre:        '#8b5cf6',
-}
-
-const VOLUME_LABELS = {
-  low:    '1–4 / sem.',
-  medium: '5–8 / sem.',
-  high:   '9+ / sem.',
-}
-
-const PLAN_LABELS = { FREE: 'Gratuit', PRO: 'Pro', BUSINESS: 'Business' }
-const PLAN_COLORS = { FREE: '#888', PRO: '#0077b6', BUSINESS: '#6366f1' }
 
 // ── Modal Créer / Modifier ────────────────────────────────────────────────────
 function EditModal({ initial, onClose, onSaved }) {
@@ -233,17 +212,6 @@ function GrantModal({ count, onClose, onConfirm, saving }) {
   )
 }
 
-// ── Helpers statut ───────────────────────────────────────────────────────────
-// Suspendu = compte désactivé, quel que soit son statut de validation (même
-// règle que le filtre "Suspendus" et la carte "Actifs").
-function proStatusInfo(a) {
-  if (!a.isActive) return { text: '⚠ Suspendu', color: '#ef4444' }
-  if (a.proStatus === 'PENDING')  return { text: '⏳ En attente', color: '#f59e0b' }
-  if (a.proStatus === 'ACTIVE')   return { text: '✓ Actif', color: '#22c55e' }
-  if (a.proStatus === 'REJECTED') return { text: '✗ Refusé', color: '#ef4444' }
-  return { text: a.proStatus ?? '—', color: '#888' }
-}
-
 // ── Interrupteur global paliers Starter/Business/Premium ──────────────────────
 // AppConfig 'dem_pro_tiers_active' (même endpoint générique GET/PUT
 // /admin/config que la page Config — pas de endpoint dédié, voir
@@ -360,6 +328,7 @@ export default function DemPro() {
   const [editTarget, setEditTarget] = useState(null)
   const [saving, setSaving]     = useState(false)
   const [requestTarget, setRequestTarget] = useState(null)
+  const [detailId, setDetailId] = useState(null) // fiche commerçant ouverte
   // Sélection multiple — offre/retrait de palier groupé (SUPER uniquement)
   const [selected, setSelected] = useState(new Set())
   const [grantModalOpen, setGrantModalOpen] = useState(false)
@@ -656,8 +625,8 @@ export default function DemPro() {
                             : (a.proBusinessName?.trim() || a.name?.trim() || a.phone || '?')[0].toUpperCase()
                           }
                         </div>
-                        <div>
-                          <div style={{ fontWeight: 600 }}>{a.proBusinessName?.trim() || '—'}</div>
+                        <div onClick={() => setDetailId(a.id)} style={{ cursor: 'pointer' }} title="Ouvrir la fiche">
+                          <div style={{ fontWeight: 600, color: 'var(--primary)' }}>{a.proBusinessName?.trim() || '—'}</div>
                           {a.name && <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>{a.name}</div>}
                         </div>
                       </div>
@@ -744,6 +713,9 @@ export default function DemPro() {
                     <td style={tdStyle}>
                       {isSuper ? (
                         <div style={{ display: 'flex', gap: 5 }}>
+                          <button onClick={() => setDetailId(a.id)} style={btnSmall} title="Fiche commerçant">
+                            <Eye size={13} />
+                          </button>
                           {a.proStatus === 'PENDING' && (
                             <>
                               <button onClick={() => validate(a.id, true)} disabled={saving} style={{ ...btnSmall, color: 'var(--success)', borderColor: 'var(--success)' }} title="Valider">
@@ -778,6 +750,9 @@ export default function DemPro() {
                         </div>
                       ) : isServiceClient ? (
                         <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap' }}>
+                          <button onClick={() => setDetailId(a.id)} style={btnSmall} title="Fiche commerçant">
+                            <Eye size={13} />
+                          </button>
                           <button onClick={() => setEditTarget(a)} style={btnSmall} title="Modifier">
                             <Pencil size={13} />
                           </button>
@@ -896,6 +871,8 @@ export default function DemPro() {
       )}
 
       {/* Modal demande suspension/réactivation (SERVICE_CLIENT) */}
+      {detailId && <AccountDetailModal accountId={detailId} onClose={() => setDetailId(null)} />}
+
       {requestTarget && (
         <SubmitRequestModal
           kind={requestTarget.kind}
