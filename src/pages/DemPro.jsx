@@ -853,7 +853,7 @@ export default function DemPro() {
       )}
 
       {/* Modal demande suspension/réactivation (SERVICE_CLIENT) */}
-      {detailId && <AccountDetailModal accountId={detailId} onClose={() => setDetailId(null)} />}
+      {detailId && <AccountDetailModal accountId={detailId} onClose={() => setDetailId(null)} canEdit={isSuper || isServiceClient} />}
 
       {requestTarget && (
         <SubmitRequestModal
