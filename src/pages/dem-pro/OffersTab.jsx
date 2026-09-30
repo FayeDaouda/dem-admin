@@ -13,22 +13,25 @@ import { planLabel, PLAN_COLORS, PURCHASE_STATUS } from './labels'
 // répartition des comptes, abonnements, réglages.
 // Données : GET /admin/dem-pro/offers (admin.dem-pro-offers.service.js).
 
-// Contenu d'une offre, dans l'ordre d'affichage (champs ProPlanLimits)
+// Contenu d'une offre (champs ProPlanLimits) — mêmes noms et même ordre que
+// la grille commerciale des offres et que le tableau de réglage
+// (DemProTiersSection) ; les deux dernières lignes sont hors grille.
 const FEATURE_ROWS = [
-  ['maxProducts',              'Produits au catalogue', 'num'],
-  ['maxCatalogues',            'Catalogues (catégories)', 'num'],
-  ['maxAddresses',             'Points de vente', 'num'],
-  ['maxBatchSimultaneous',     'Tournées en parallèle', 'num'],
-  ['maxScheduledSimultaneous', 'Livraisons programmées en parallèle', 'num'],
-  ['analyticsMaxPeriodDays',   'Historique des statistiques', 'days'],
-  ['onlineSalesEnabled',       'Boutique en ligne, paiement intégré, wallet', 'bool'],
-  ['withdrawalWeeklyCapFcfa',  'Plafond de retrait par semaine', 'money'],
-  ['financeViewsEnabled',      'Ventes, livraisons, activité + export', 'bool'],
+  ['maxBatchSimultaneous',     'Course Groupée (simultanées)', 'num'],
+  ['maxScheduledSimultaneous', 'Course Programmée (simultanées)', 'num'],
+  ['maxCatalogues',            'Catalogue produits (cat)', 'num'],
+  ['maxProducts',              'Catalogue produits (prod)', 'num'],
+  ['onlineSalesEnabled',       'Vente en ligne (lien + paiement)', 'bool'],
+  ['withdrawalWeeklyCapFcfa',  'Wallet — plafond retrait', 'money'],
+  ['analyticsMaxPeriodDays',   'Analytics & filtres', 'days'],
+  ['financeViewsEnabled',      'Export CSV + PDF', 'bool'],
   ['crmEnabled',               'Mes clients (CRM)', 'bool'],
-  ['invoiceEnabled',           'Facture par commande', 'bool'],
-  ['invoiceBatchEnabled',      'Facturation groupée', 'bool'],
-  ['apiAccessEnabled',         'Accès API', 'bool'],
+  ['invoiceEnabled',           'Factures avec logo', 'bool'],
+  ['apiAccessEnabled',         'API DEM (brancher son site)', 'bool'],
+  ['maxUsers',                 'Utilisateurs par compte', 'num'],
   ['supportTier',              'Support', 'support'],
+  ['maxAddresses',             'Adresses / points de vente', 'num'],
+  ['invoiceBatchEnabled',      'Facturation groupée', 'bool'],
 ]
 const SUPPORT_LABELS = { standard: 'Standard', priority: 'Prioritaire', premium: 'Premium' }
 

@@ -22,23 +22,27 @@ const PLAN_ORDER = ['STARTER', 'BUSINESS', 'PREMIUM']
 const PLAN_LABELS = { STARTER: 'Starter', BUSINESS: 'Business', PREMIUM: 'Premium' }
 
 // type: 'number' | 'nullableNumber' (vide = illimité) | 'boolean' | 'select'
+// Noms et ordre = grille commerciale des offres DEM Pro (Course Groupée,
+// Catalogue produits « 1 cat · 3 prod », Vente en ligne (lien + paiement)…),
+// pour que le SUPER admin retrouve les mêmes lignes. Les deux dernières
+// lignes n'apparaissent pas dans la grille.
 const FIELDS = [
-  { key: 'priceMonthly',              label: 'Prix',                              type: 'number',          unit: 'F / mois' },
-  { key: 'maxBatchSimultaneous',      label: 'Tournées groupées simultanées',     type: 'nullableNumber' },
-  { key: 'maxScheduledSimultaneous',  label: 'Commandes programmées simultanées', type: 'nullableNumber' },
-  { key: 'maxCatalogues',             label: 'Catalogues',                        type: 'nullableNumber' },
-  { key: 'maxProducts',               label: 'Produits',                          type: 'nullableNumber' },
-  { key: 'maxAddresses',              label: 'Adresses / points de vente',        type: 'nullableNumber' },
-  { key: 'maxUsers',                  label: 'Utilisateurs par compte',           type: 'number' },
-  { key: 'withdrawalWeeklyCapFcfa',   label: 'Plafond de retrait',                type: 'nullableNumber', unit: 'F / sem' },
-  { key: 'analyticsMaxPeriodDays',    label: 'Fenêtre analytics',                 type: 'number',          unit: 'jours' },
-  { key: 'onlineSalesEnabled',        label: 'Vente en ligne',                    type: 'boolean' },
-  { key: 'apiAccessEnabled',          label: 'API DEM',                           type: 'boolean' },
-  { key: 'invoiceBatchEnabled',       label: 'Facturation groupée',               type: 'boolean' },
-  { key: 'financeViewsEnabled',       label: 'Vues Finances/Activité + export',   type: 'boolean' },
-  { key: 'crmEnabled',                label: 'Mes clients / CRM',                 type: 'boolean' },
-  { key: 'invoiceEnabled',            label: 'Facture par commande',              type: 'boolean' },
-  { key: 'supportTier',               label: 'Support',                           type: 'select', options: ['standard', 'priority', 'premium'] },
+  { key: 'priceMonthly',              label: 'Prix',                             type: 'number',          unit: 'F / mois' },
+  { key: 'maxBatchSimultaneous',      label: 'Course Groupée (simultanées)',     type: 'nullableNumber' },
+  { key: 'maxScheduledSimultaneous',  label: 'Course Programmée (simultanées)',  type: 'nullableNumber' },
+  { key: 'maxCatalogues',             label: 'Catalogue produits',               type: 'nullableNumber', unit: 'cat' },
+  { key: 'maxProducts',               label: 'Catalogue produits',               type: 'nullableNumber', unit: 'prod' },
+  { key: 'onlineSalesEnabled',        label: 'Vente en ligne (lien + paiement)', type: 'boolean' },
+  { key: 'withdrawalWeeklyCapFcfa',   label: 'Wallet — plafond retrait',         type: 'nullableNumber', unit: 'F / sem' },
+  { key: 'analyticsMaxPeriodDays',    label: 'Analytics & filtres',              type: 'number',          unit: 'jours' },
+  { key: 'financeViewsEnabled',       label: 'Export CSV + PDF',                 type: 'boolean' },
+  { key: 'crmEnabled',                label: 'Mes clients (CRM)',                type: 'boolean' },
+  { key: 'invoiceEnabled',            label: 'Factures avec logo',               type: 'boolean' },
+  { key: 'apiAccessEnabled',          label: 'API DEM (brancher son site)',      type: 'boolean' },
+  { key: 'maxUsers',                  label: 'Utilisateurs par compte',          type: 'number' },
+  { key: 'supportTier',               label: 'Support',                          type: 'select', options: [['standard', 'Standard'], ['priority', 'Prioritaire'], ['premium', 'Premium']] },
+  { key: 'maxAddresses',              label: 'Adresses / points de vente',       type: 'nullableNumber' },
+  { key: 'invoiceBatchEnabled',       label: 'Facturation groupée',              type: 'boolean' },
 ]
 
 function Section({ title, children }) {
@@ -56,6 +60,7 @@ function Cell({ field, value, onChange, editable, changed }) {
     if (field.type === 'nullableNumber') display = value == null ? 'Illimité' : value.toLocaleString()
     else if (field.type === 'number') display = value?.toLocaleString?.() ?? value
     else if (field.type === 'boolean') display = value ? '✓' : '—'
+    else if (field.type === 'select') display = field.options.find(([v]) => v === value)?.[1] ?? value
     return <div style={{ fontSize: 13, padding: '4px 6px', color: value === true ? 'var(--primary)' : undefined }}>{display}</div>
   }
 
@@ -75,7 +80,7 @@ function Cell({ field, value, onChange, editable, changed }) {
   if (field.type === 'select') {
     return (
       <select value={value} onChange={e => onChange(e.target.value)} style={{ ...glassInput, padding: '5px 6px', fontSize: 12, width: 100 }}>
-        {field.options.map(o => <option key={o} value={o}>{o}</option>)}
+        {field.options.map(([v, label]) => <option key={v} value={v}>{label}</option>)}
       </select>
     )
   }
