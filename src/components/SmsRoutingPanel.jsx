@@ -5,12 +5,11 @@ import { glass, glassInput } from '../lib/glassStyles'
 import { formatCount } from '../lib/format'
 
 // ── Envoi des SMS des codes OTP (SUPER) ───────────────────────────────────────
-// Deux fournisseurs : Africa's Talking (historique) et LAfricaMobile. Le
-// serveur bascule seul sur l'autre si le premier échoue. Ici : la part du
-// trafic envoyée d'abord à LAfricaMobile, les numéros de test (toujours
-// LAfricaMobile), le seuil d'alerte crédit, et la livraison mesurée par
-// fournisseur et opérateur. L'ordre par défaut reste dans les variables
-// Render (affiché seulement). Voir dem-backend/docs/sms-lafricamobile.md.
+// LAfricaMobile est le fournisseur principal ; Africa's Talking ne sert que
+// de secours automatique, jusqu'à sa suppression. Ici : l'état des
+// fournisseurs (variables Render, affiché seulement), le seuil d'alerte
+// crédit, et la livraison mesurée par fournisseur et opérateur.
+// Voir dem-backend/docs/sms-lafricamobile.md.
 
 const PROVIDER_LABELS = { lafricamobile: 'LAfricaMobile', africastalking: "Africa's Talking" }
 const OPERATOR_LABELS = { orange: 'Orange', free: 'Free', expresso: 'Expresso', promobile: 'Promobile', autre: 'Autre' }
@@ -18,11 +17,10 @@ const PERIODS = [[7, '7 jours'], [30, '30 jours']]
 
 const fmtDateTime = (d) => (d ? new Date(d).toLocaleString('fr-FR', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }) : '—')
 const fmtDelay = (s) => (s == null ? '—' : s < 60 ? `${s} s` : `${Math.floor(s / 60)} min ${String(s % 60).padStart(2, '0')} s`)
-const splitPhones = (text) => text.split(/[\n,;]+/).map(p => p.trim()).filter(Boolean)
 
 export default function SmsRoutingPanel() {
   const [routing, setRouting] = useState(null)
-  const [form, setForm]       = useState(null) // { lamPercent, lamTestPhones (texte), creditAlertThreshold }
+  const [threshold, setThreshold] = useState('') // seuil d'alerte crédit (saisie)
   const [unavailable, setUnavailable] = useState(false)
   const [error, setError]     = useState('')
   const [done, setDone]       = useState('')
@@ -30,11 +28,7 @@ export default function SmsRoutingPanel() {
 
   const apply = (data) => {
     setRouting(data)
-    setForm({
-      lamPercent:           String(data.lamPercent),
-      lamTestPhones:        data.lamTestPhones.join('\n'),
-      creditAlertThreshold: String(data.creditAlertThreshold),
-    })
+    setThreshold(String(data.creditAlertThreshold))
   }
 
   useEffect(() => {
@@ -48,28 +42,18 @@ export default function SmsRoutingPanel() {
 
   if (unavailable) return null
 
-  const set = (k, v) => { setForm(f => ({ ...f, [k]: v })); setDone('') }
-  const phones = form ? splitPhones(form.lamTestPhones) : []
-  const changed = routing && form && (
-    form.lamPercent !== String(routing.lamPercent)
-    || phones.join() !== routing.lamTestPhones.join()
-    || form.creditAlertThreshold !== String(routing.creditAlertThreshold)
-  )
+  const changed = routing && threshold !== String(routing.creditAlertThreshold)
 
   async function save() {
-    const percent = Number(form.lamPercent)
-    const threshold = Number(form.creditAlertThreshold)
-    if (!Number.isInteger(percent) || percent < 0 || percent > 100) { setError('La part doit être un nombre entier entre 0 et 100.'); return }
-    if (!Number.isInteger(threshold) || threshold < 0) { setError('Le seuil d\'alerte doit être un nombre entier positif.'); return }
-    const lines = [`Part envoyée à LAfricaMobile : ${percent} %`, `Numéros de test : ${phones.length}`, `Alerte crédit sous : ${formatCount(threshold)} SMS`]
-    if (!routing.configured.lafricamobile) lines.push('', 'LAfricaMobile n\'est pas encore configuré sur le serveur : sans effet pour l\'instant.')
-    if (!window.confirm(`${lines.join('\n')}\n\nConfirmer ?`)) return
+    const value = Number(threshold)
+    if (!Number.isInteger(value) || value < 0) { setError('Le seuil d\'alerte doit être un nombre entier positif.'); return }
+    if (!window.confirm(`Alerte quand le crédit LAfricaMobile passe sous ${formatCount(value)} SMS.\n\nConfirmer ?`)) return
 
     setSaving(true); setError(''); setDone('')
     try {
-      const { data } = await api.put('/admin/sms-routing', { lamPercent: percent, lamTestPhones: phones, creditAlertThreshold: threshold })
+      const { data } = await api.put('/admin/sms-routing', { creditAlertThreshold: value })
       apply(data)
-      setDone('Réglages enregistrés. Ils s\'appliquent en moins d\'une minute.')
+      setDone('Seuil enregistré. Il s\'applique au prochain relevé du crédit.')
     } catch (err) {
       setError(err.response?.data?.message ?? 'Enregistrement impossible.')
     } finally { setSaving(false) }
@@ -81,53 +65,28 @@ export default function SmsRoutingPanel() {
         <MessageSquare size={16} /> Envoi des SMS (codes de connexion et de retrait)
       </h2>
       <p style={{ fontSize: 12, color: 'var(--text-muted)', margin: '0 0 14px' }}>
-        Si un fournisseur échoue ou ne répond pas en 8 secondes, le même code part aussitôt par l'autre (si la bascule est
-        configurée). Commencez par les numéros de l'équipe, puis augmentez la part de LAfricaMobile en comparant les taux
-        de livraison ci-dessous.
+        Les codes partent par LAfricaMobile. S'il échoue ou ne répond pas en 8 secondes, le même code part aussitôt par
+        Africa's Talking, gardé en secours jusqu'à sa suppression. Tant que LAfricaMobile n'est pas configuré sur le
+        serveur, Africa's Talking reste seul.
       </p>
 
       {!routing && !error && <div style={{ fontSize: 13, color: 'var(--text-muted)' }}>Chargement…</div>}
 
-      {routing && form && (
+      {routing && (
         <>
           <ServerState routing={routing} />
 
-          <div style={{ display: 'grid', gridTemplateColumns: '210px 1fr 200px', gap: 16, alignItems: 'start', marginTop: 16 }}>
-            <div>
-              <Label>Part envoyée d'abord à LAfricaMobile</Label>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                <input value={form.lamPercent} onChange={e => set('lamPercent', e.target.value)} inputMode="numeric" style={{ ...glassInput, width: 70, textAlign: 'center' }} />
-                <span style={{ fontSize: 13 }}>%</span>
-              </div>
-              <div style={{ display: 'flex', gap: 4, marginTop: 6 }}>
-                {[0, 10, 50, 100].map(p => (
-                  <button key={p} onClick={() => set('lamPercent', String(p))} style={chip(form.lamPercent === String(p))}>{p} %</button>
-                ))}
-              </div>
+          <div style={{ marginTop: 16 }}>
+            <Label>Alerte crédit LAfricaMobile sous</Label>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+              <input value={threshold} onChange={e => { setThreshold(e.target.value); setDone('') }} inputMode="numeric" style={{ ...glassInput, width: 100, textAlign: 'center' }} />
+              <span style={{ fontSize: 13 }}>SMS</span>
+              <button onClick={save} disabled={!changed || saving} style={{ ...btnPrimary, opacity: !changed || saving ? 0.5 : 1 }}>
+                <Save size={14} /> {saving ? 'Enregistrement…' : 'Enregistrer'}
+              </button>
             </div>
-            <div>
-              <Label>Numéros de test ({phones.length}) — toujours LAfricaMobile, un par ligne</Label>
-              <textarea
-                value={form.lamTestPhones}
-                onChange={e => set('lamTestPhones', e.target.value)}
-                rows={4}
-                placeholder={'77 123 45 67\n78 765 43 21'}
-                style={{ ...glassInput, fontFamily: 'monospace', resize: 'vertical' }}
-              />
-            </div>
-            <div>
-              <Label>Alerte crédit LAfricaMobile sous</Label>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                <input value={form.creditAlertThreshold} onChange={e => set('creditAlertThreshold', e.target.value)} inputMode="numeric" style={{ ...glassInput, width: 100, textAlign: 'center' }} />
-                <span style={{ fontSize: 13 }}>SMS</span>
-              </div>
-              <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 6 }}>Un email par passage sous le seuil (vérifié toutes les heures).</div>
-            </div>
+            <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 6 }}>Crédit vérifié toutes les heures ; un email par passage sous le seuil.</div>
           </div>
-
-          <button onClick={save} disabled={!changed || saving} style={{ ...btnPrimary, marginTop: 14, opacity: !changed || saving ? 0.5 : 1 }}>
-            <Save size={14} /> {saving ? 'Enregistrement…' : 'Enregistrer'}
-          </button>
         </>
       )}
 
@@ -147,19 +106,25 @@ function ServerState({ routing }) {
     : c.available === null || c.available === undefined ? (c.error ? 'relevé impossible' : 'illimité')
     : `${formatCount(c.available)} SMS`
   const creditLow = c?.low === true
-  const order = [routing.primary, routing.fallback].filter(Boolean).map(p => PROVIDER_LABELS[p] ?? p)
+  // Ordre réellement appliqué : un fournisseur non configuré est sauté
+  const effective = [routing.primary, routing.fallback].filter(p => p && routing.configured[p])
+  const rollback = routing.primary !== 'lafricamobile'
+  const orderSub = rollback ? 'retour arrière d\'urgence actif (variables Render)'
+    : !routing.configured.lafricamobile ? 'LAfricaMobile pas encore configuré : Africa\'s Talking seul'
+    : effective.length > 1 ? 'Africa\'s Talking en secours automatique'
+    : 'sans secours'
 
   return (
     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(210px, 1fr))', gap: 10 }}>
       <Fact label="LAfricaMobile" ok={routing.configured.lafricamobile}
         value={routing.configured.lafricamobile ? `configuré — expéditeur « ${routing.lamSender} »` : 'non configuré (variables Render)'}
         sub={routing.configured.lafricamobile ? (routing.lamReportsEnabled ? 'accusés de livraison actifs' : 'accusés non configurés') : null} />
-      <Fact label="Africa's Talking" ok={routing.configured.africastalking}
+      <Fact label="Africa's Talking (secours)" ok={routing.configured.africastalking}
         value={routing.configured.africastalking ? 'configuré' : 'non configuré'}
         sub={routing.configured.africastalking ? (routing.atReportsEnabled ? 'accusés de livraison actifs' : 'accusés non configurés') : null} />
-      <Fact label="Ordre par défaut (Render)" ok
-        value={order.join(' → ') || '—'}
-        sub={routing.fallback ? 'bascule automatique active' : 'pas de bascule pour le trafic normal'} />
+      <Fact label="Ordre d'envoi" ok={!rollback && routing.configured.lafricamobile}
+        value={effective.map(p => PROVIDER_LABELS[p] ?? p).join(' → ') || 'aucun fournisseur configuré'}
+        sub={orderSub} />
       <Fact label="Crédit LAfricaMobile" ok={!creditLow && !c?.error}
         value={creditText}
         sub={c?.error ? `${c.error} (${fmtDateTime(c.errorAt)})` : c?.checkedAt ? `relevé le ${fmtDateTime(c.checkedAt)}${creditLow ? ' — sous le seuil' : ''}` : null} />
