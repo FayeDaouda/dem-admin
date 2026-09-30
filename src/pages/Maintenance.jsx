@@ -4,6 +4,7 @@ import api from '../lib/api'
 import { glass, pageWrap, pageScroll } from '../lib/glassStyles'
 import { formatF, formatCount } from '../lib/format'
 import OtpUnblockPanel from '../components/OtpUnblockPanel'
+import SmsRoutingPanel from '../components/SmsRoutingPanel'
 
 // ── Maintenance des données (SUPER) ───────────────────────────────────────────
 // Tâches ponctuelles exécutées CÔTÉ SERVEUR (qui accède à la base par le réseau
@@ -48,6 +49,8 @@ export default function Maintenance() {
             {tasks.map((t, i) => <TaskCard key={t.id} index={i + 1} task={t} onDone={load} />)}
           </div>
         )}
+        {/* Fournisseurs SMS des codes OTP (masqué tant que le backend n'a pas le routeur SMS) */}
+        <div style={{ marginTop: 24 }}><SmsRoutingPanel /></div>
         {/* Outil support aussi accessible au SUPER (le tableau Service Client lui est masqué) */}
         <div style={{ marginTop: 24 }}><OtpUnblockPanel /></div>
       </div>
