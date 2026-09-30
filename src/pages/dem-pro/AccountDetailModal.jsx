@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { X, Phone, Mail, Store, Package, Wallet, ExternalLink, ChevronDown, ChevronRight } from 'lucide-react'
+import { X, Phone, Mail, Store, Package, Wallet, ExternalLink, ChevronDown, ChevronRight, Plus, Pencil, Trash2, CheckCircle2 } from 'lucide-react'
 import api from '../../lib/api'
 import Badge from '../../components/Badge'
 import { glass } from '../../lib/glassStyles'
@@ -9,11 +9,13 @@ import {
   planLabel, PLAN_STATUS_LABELS, PURCHASE_STATUS, WALLET_TX_LABELS, SAMIRPAY_STATUS,
   REQUEST_STATUS, STOREFRONT_PAYMENT_LABELS, SITE_ICON_LABELS, BATCH_STATUS,
 } from './labels'
+import { ProductFormModal, DeleteProductModal } from './ProductModals'
 
 // ── Fiche commerçant DEM Pro (admin) ──────────────────────────────────────────
 // Données : GET /admin/dem-pro/:id (admin.dem-pro-accounts.service.js) — mêmes
 // définitions que le reste de l'admin, indépendantes du palier du commerçant.
 // Onglets : Vue d'ensemble, Commandes, Abonnement, Wallet, Boutique, Tournées.
+// `canEdit` (SUPER + Service client) : catalogue modifiable dans l'onglet Boutique.
 
 const PERIODS = [
   { key: 'today',       label: "Aujourd'hui" },
@@ -45,13 +47,14 @@ const fmtDate = (d, withTime = false) => d
     : { day: '2-digit', month: 'short', year: 'numeric' })
   : '—'
 
-export default function AccountDetailModal({ accountId, onClose }) {
+export default function AccountDetailModal({ accountId, onClose, canEdit = false }) {
   const [tab, setTab]       = useState('overview')
   const [period, setPeriod] = useState('month')
+  const [version, setVersion] = useState(0) // relit la fiche après une modification du catalogue
   // Dernière réponse reçue, étiquetée par sa requête : "chargement" = la
   // réponse affichée ne correspond pas encore à la période demandée.
   const [result, setResult] = useState(null) // { key, data?, error? }
-  const requestKey = `${accountId}|${period}`
+  const requestKey = `${accountId}|${period}|${version}`
 
   useEffect(() => {
     let cancelled = false
@@ -113,7 +116,7 @@ export default function AccountDetailModal({ accountId, onClose }) {
           ) : tab === 'wallet' ? (
             <WalletTab accountId={accountId} />
           ) : tab === 'shop' ? (
-            <ShopTab accountId={accountId} />
+            <ShopTab accountId={accountId} canEdit={canEdit} onCatalogueChange={() => setVersion(v => v + 1)} />
           ) : (
             <BatchesTab accountId={accountId} />
           )}
@@ -542,36 +545,72 @@ function WalletTab({ accountId }) {
   )
 }
 
-// ── Boutique (support, lecture seule) ───────────────────────────────────────
+// ── Boutique (support) ────────────────────────────────────────────────────────
 // GET /admin/dem-pro/:id/shop — boutique en ligne, catalogue & stock, points de vente.
+// Catalogue modifiable avec `canEdit` : ajouter un produit dans le catalogue
+// de son choix, le modifier (dont le changer de catalogue), le supprimer
+// (ProductModals.jsx — mêmes règles que l'app du commerçant).
 const STOCK_FILTERS = [['all', 'Tous'], ['out', 'En rupture'], ['low', 'Stock bas'], ['untracked', 'Stock non suivi']]
+const NO_CATALOGUE = '__none__'
+const catalogueOf = p => p.category?.trim() || null
 
-function ShopTab({ accountId }) {
-  const [result, setResult] = useState(null) // { key, data?, error? }
+function ShopTab({ accountId, canEdit, onCatalogueChange }) {
+  const [version, setVersion] = useState(0) // relit la boutique après une modification
+  const [result, setResult] = useState(null) // { key, accountId, data?, error? }
   const [stockFilter, setStockFilter] = useState('all')
+  const [catFilter, setCatFilter] = useState(null) // null = tous, NO_CATALOGUE, ou nom du catalogue
+  const [editing, setEditing]   = useState(null) // { product? } — formulaire ajout / modification
+  const [deleting, setDeleting] = useState(null) // produit à supprimer
+  const [notice, setNotice]     = useState('')
+  const requestKey = `${accountId}|${version}`
 
   useEffect(() => {
     let cancelled = false
     api.get(`/admin/dem-pro/${accountId}/shop`)
-      .then(r => { if (!cancelled) setResult({ key: accountId, data: r.data }) })
-      .catch(e => { if (!cancelled) setResult({ key: accountId, error: e.response?.data?.message ?? 'Erreur de chargement.' }) })
+      .then(r => { if (!cancelled) setResult({ key: requestKey, accountId, data: r.data }) })
+      .catch(e => { if (!cancelled) setResult({ key: requestKey, accountId, error: e.response?.data?.message ?? 'Erreur de chargement.' }) })
     return () => { cancelled = true }
-  }, [accountId])
+  }, [accountId, requestKey])
 
-  if (result?.key !== accountId) return <div style={{ color: 'var(--text-muted)', textAlign: 'center', padding: 30 }}>Chargement…</div>
+  // Pendant une relecture après modification, l'affichage précédent reste en place
+  if (result?.accountId !== accountId) return <div style={{ color: 'var(--text-muted)', textAlign: 'center', padding: 30 }}>Chargement…</div>
   if (result.error) return <div style={{ color: 'var(--danger)', textAlign: 'center', padding: 30 }}>{result.error}</div>
 
   const { catalogue, sites, storefront } = result.data
   const { stock } = catalogue
+  // Backend pas encore à jour (admin et backend ne se déploient pas en même
+  // temps) : ni catalogues ni limites renvoyés → onglet en lecture seule.
+  const categories    = catalogue.categories ?? []
+  const uncategorized = catalogue.uncategorized ?? 0
+  const limits        = catalogue.limits ?? null
+  const editable      = canEdit && limits !== null
   const rq = storefront.requests
   const siteLabel = new Map(sites.map(s => [s.id, s.label]))
+  const catalogueSize = new Map(categories.map(c => [c.name, c.products]))
+  // Le catalogue sélectionné a pu disparaître (dernier produit supprimé ou déplacé)
+  const activeCat = catFilter === NO_CATALOGUE
+    ? (uncategorized > 0 ? NO_CATALOGUE : null)
+    : (catalogueSize.has(catFilter) ? catFilter : null)
+  const atProductLimit = limits?.maxProducts != null && catalogue.total >= limits.maxProducts
   const products = catalogue.products.filter(p => {
+    if (activeCat === NO_CATALOGUE && catalogueOf(p) !== null) return false
+    if (activeCat && activeCat !== NO_CATALOGUE && catalogueOf(p) !== activeCat) return false
     const tracked = p.quantity !== null && p.quantity !== undefined
     if (stockFilter === 'out') return tracked && p.quantity <= 0
     if (stockFilter === 'low') return tracked && p.quantity > 0 && p.quantity <= stock.lowThreshold
     if (stockFilter === 'untracked') return !tracked
     return true
   })
+
+  function afterChange(message) {
+    setEditing(null)
+    setDeleting(null)
+    setNotice(message)
+    setVersion(v => v + 1)
+    onCatalogueChange?.()
+  }
+  const openForm = (product) => { setNotice(''); setEditing({ product }) }
+  const askDelete = (product) => { setNotice(''); setDeleting(product) }
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
@@ -616,30 +655,55 @@ function ShopTab({ accountId }) {
       </Section>
 
       {/* Catalogue & stock */}
-      <Section title="Catalogue & stock" hint={`Stock bas = ${stock.lowThreshold} unités ou moins (même seuil que l'alerte envoyée au commerçant).`}>
+      <Section
+        title="Catalogue & stock"
+        hint={`Stock bas = ${stock.lowThreshold} unités ou moins (même seuil que l'alerte envoyée au commerçant).`}
+        action={editable && (
+          <button
+            onClick={() => openForm(null)}
+            disabled={atProductLimit}
+            title={atProductLimit ? `Limite de ${formatCount(limits.maxProducts)} produits de l'offre ${planLabel(limits.plan)} atteinte : supprimez un produit ou changez son offre.` : 'Ajouter un produit au catalogue du commerçant'}
+            style={{ ...btnPrimary, ...(atProductLimit && { opacity: 0.5, cursor: 'not-allowed' }) }}
+          ><Plus size={14} /> Ajouter un produit</button>
+        )}
+      >
         <div style={grid5}>
-          <Stat small label="Produits" value={formatCount(catalogue.total)} />
+          <Stat small label="Produits" value={formatCount(catalogue.total)} sub={!limits ? null : limits.maxProducts != null ? `max ${formatCount(limits.maxProducts)} (offre ${planLabel(limits.plan)})` : `illimité (offre ${planLabel(limits.plan)})`} color={atProductLimit ? '#f59e0b' : undefined} />
+          {limits && <Stat small label="Catalogues" value={formatCount(categories.length)} sub={!limits.cataloguesAllowed ? 'non inclus dans son offre' : limits.maxCatalogues != null ? `max ${formatCount(limits.maxCatalogues)}` : null} />}
           <Stat small label="Stock suivi" value={formatCount(stock.tracked)} />
           <Stat small label="En rupture" value={formatCount(stock.outOfStock)} color={stock.outOfStock > 0 ? 'var(--danger)' : undefined} />
           <Stat small label="Stock bas" value={formatCount(stock.low)} color={stock.low > 0 ? '#f59e0b' : undefined} />
         </div>
-        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', margin: '12px 0' }}>
+        {notice && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 12, fontSize: 12, fontWeight: 600, color: 'var(--success)' }}>
+            <CheckCircle2 size={14} /> {notice}
+          </div>
+        )}
+        {categories.length > 0 && (
+          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center', marginTop: 12 }}>
+            <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-muted)', marginRight: 2 }}>Catalogue</span>
+            <FilterChip active={activeCat === null} onClick={() => setCatFilter(null)}>Tous · {formatCount(catalogue.total)}</FilterChip>
+            {categories.map(c => (
+              <FilterChip key={c.name} active={activeCat === c.name} onClick={() => setCatFilter(c.name)}>{c.name} · {formatCount(c.products)}</FilterChip>
+            ))}
+            {uncategorized > 0 && (
+              <FilterChip active={activeCat === NO_CATALOGUE} onClick={() => setCatFilter(NO_CATALOGUE)}>Sans catalogue · {formatCount(uncategorized)}</FilterChip>
+            )}
+          </div>
+        )}
+        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center', margin: '10px 0 12px' }}>
+          {categories.length > 0 && <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-muted)', marginRight: 2 }}>Stock</span>}
           {STOCK_FILTERS.map(([key, label]) => (
-            <button key={key} onClick={() => setStockFilter(key)} style={{
-              padding: '4px 12px', borderRadius: 20, fontSize: 12, fontWeight: 600, cursor: 'pointer',
-              border: stockFilter === key ? 'none' : '1px solid var(--border)',
-              background: stockFilter === key ? 'var(--primary)' : 'transparent',
-              color: stockFilter === key ? '#fff' : 'var(--text-muted)',
-            }}>{label}</button>
+            <FilterChip key={key} active={stockFilter === key} onClick={() => setStockFilter(key)}>{label}</FilterChip>
           ))}
         </div>
         {products.length === 0 ? (
-          <div style={{ color: 'var(--text-muted)', fontSize: 13 }}>Aucun produit{stockFilter !== 'all' ? ' sur ce filtre' : ''}.</div>
+          <div style={{ color: 'var(--text-muted)', fontSize: 13 }}>Aucun produit{stockFilter !== 'all' || activeCat ? ' sur ce filtre' : ''}.</div>
         ) : (
           <div style={{ overflowX: 'auto' }}>
             <table style={{ width: '100%', minWidth: 640, borderCollapse: 'collapse' }}>
               <thead>
-                <tr>{['Produit', 'Catégorie', 'Prix', 'Stock', 'Utilisations', 'Point de vente'].map(h => <th key={h} style={th}>{h}</th>)}</tr>
+                <tr>{['Produit', 'Catalogue', 'Prix', 'Stock', 'Utilisations', 'Point de vente', ...(editable ? [''] : [])].map(h => <th key={h} style={th}>{h}</th>)}</tr>
               </thead>
               <tbody>
                 {products.map(p => {
@@ -653,11 +717,17 @@ function ShopTab({ accountId }) {
                           {p.name}
                         </div>
                       </td>
-                      <td style={{ ...td, fontSize: 12 }}>{p.category ?? '—'}</td>
+                      <td style={{ ...td, fontSize: 12 }}>{catalogueOf(p) ?? '—'}</td>
                       <td style={td}>{p.defaultPrice != null ? formatF(p.defaultPrice) : '—'}</td>
                       <td style={{ ...td, fontWeight: 700, color: stockColor }}>{tracked ? formatCount(p.quantity) : 'non suivi'}</td>
                       <td style={td}>{formatCount(p.usageCount)}</td>
                       <td style={{ ...td, fontSize: 12 }}>{p.proAddressId ? (siteLabel.get(p.proAddressId) ?? '—') : 'Tous'}</td>
+                      {editable && (
+                        <td style={{ ...td, whiteSpace: 'nowrap', textAlign: 'right' }}>
+                          <button onClick={() => openForm(p)} style={iconBtn} title="Modifier (nom, catalogue, prix, stock, point de vente)"><Pencil size={14} /></button>
+                          <button onClick={() => askDelete(p)} style={{ ...iconBtn, color: 'var(--danger)' }} title="Supprimer du catalogue"><Trash2 size={14} /></button>
+                        </td>
+                      )}
                     </tr>
                   )
                 })}
@@ -667,6 +737,28 @@ function ShopTab({ accountId }) {
           </div>
         )}
       </Section>
+
+      {editing && (
+        <ProductFormModal
+          accountId={accountId}
+          product={editing.product}
+          defaultCategory={activeCat && activeCat !== NO_CATALOGUE ? activeCat : ''}
+          categories={categories}
+          sites={sites}
+          limits={limits}
+          onClose={() => setEditing(null)}
+          onSaved={afterChange}
+        />
+      )}
+      {deleting && (
+        <DeleteProductModal
+          accountId={accountId}
+          product={deleting}
+          isLastOfCatalogue={catalogueOf(deleting) !== null && catalogueSize.get(catalogueOf(deleting)) === 1}
+          onClose={() => setDeleting(null)}
+          onDeleted={afterChange}
+        />
+      )}
 
       {/* Points de vente */}
       <Section title="Points de vente" hint="Activité = livraisons terminées parties de ce site.">
@@ -837,15 +929,27 @@ function BatchesTab({ accountId }) {
 }
 
 // ── Petits composants ─────────────────────────────────────────────────────────
-function Section({ title, hint, children }) {
+function Section({ title, hint, action, children }) {
   return (
     <div>
       <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, marginBottom: 10 }}>
         <h3 style={{ fontSize: 13, fontWeight: 700, margin: 0, textTransform: 'uppercase', letterSpacing: '.5px', color: 'var(--text-muted)' }}>{title}</h3>
         {hint && <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>{hint}</span>}
+        {action && <div style={{ marginLeft: 'auto', alignSelf: 'center' }}>{action}</div>}
       </div>
       {children}
     </div>
+  )
+}
+
+function FilterChip({ active, onClick, children }) {
+  return (
+    <button onClick={onClick} style={{
+      padding: '4px 12px', borderRadius: 20, fontSize: 12, fontWeight: 600, cursor: 'pointer',
+      border: active ? 'none' : '1px solid var(--border)',
+      background: active ? 'var(--primary)' : 'transparent',
+      color: active ? '#fff' : 'var(--text-muted)',
+    }}>{children}</button>
   )
 }
 
@@ -878,3 +982,5 @@ const grid5    = { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minma
 const th       = { textAlign: 'left', padding: '6px 8px', color: 'var(--text-muted)', fontSize: 11, fontWeight: 600, borderBottom: '1px solid var(--border)' }
 const td       = { padding: '9px 8px', verticalAlign: 'middle', fontSize: 13 }
 const pageBtn  = { padding: '6px 12px', borderRadius: 8, border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-muted)', fontSize: 12, cursor: 'pointer' }
+const btnPrimary = { display: 'flex', alignItems: 'center', gap: 6, padding: '6px 12px', borderRadius: 'var(--radius-sm)', border: 'none', background: 'var(--primary)', color: '#fff', fontSize: 12, fontWeight: 600, cursor: 'pointer' }
+const iconBtn  = { background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', padding: 5, borderRadius: 6, display: 'inline-flex' }
