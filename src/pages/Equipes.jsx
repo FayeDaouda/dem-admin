@@ -103,10 +103,10 @@ export default function Equipes() {
 
   async function handleResetDefaultPassword(admin) {
     const who = admin.name ?? admin.email ?? admin.phone
-    if (!confirm(`Reinitialiser le mot de passe de ${who} au mot de passe par defaut ?\nIl devra le changer a sa premiere connexion.`)) return
+    if (!confirm(`Reinitialiser le mot de passe de ${who} ?\nUn mot de passe provisoire sera genere ; il devra le changer a sa premiere connexion.`)) return
     try {
       const res = await api.patch(`/admin/admins/${admin.id}/reset-default-password`)
-      alert(`Mot de passe reinitialise pour ${who}.\n\nMot de passe par defaut : ${res.data?.defaultPassword}\n\nCommuniquez-le a l'utilisateur. Il devra le changer a sa premiere connexion.`)
+      alert(`Mot de passe reinitialise pour ${who}.\n\nMot de passe provisoire : ${res.data?.temporaryPassword ?? res.data?.defaultPassword}\n\nIl ne sera plus affiche : notez-le et communiquez-le a l'utilisateur. Il devra le changer a sa premiere connexion.`)
       fetch()
     } catch (e) { alert(e.response?.data?.message ?? 'Erreur.') }
   }
@@ -121,11 +121,11 @@ export default function Equipes() {
 
   async function handleApproveReset(req) {
     const who = req.targetUser?.name ?? req.targetUser?.email ?? 'ce compte'
-    if (!confirm(`Reinitialiser le mot de passe de ${who} au mot de passe par defaut ?\nIl devra le changer a sa premiere connexion.`)) return
+    if (!confirm(`Reinitialiser le mot de passe de ${who} ?\nUn mot de passe provisoire sera genere ; il devra le changer a sa premiere connexion.`)) return
     setResetBusy(req.id)
     try {
       const res = await api.patch(`/admin/password-resets/${req.id}/approve`)
-      alert(`${res.data?.message ?? 'Mot de passe reinitialise.'}\n\nMot de passe par defaut : ${res.data?.defaultPassword}`)
+      alert(`${res.data?.message ?? 'Mot de passe reinitialise.'}\n\nMot de passe provisoire : ${res.data?.temporaryPassword ?? res.data?.defaultPassword}\n\nIl ne sera plus affiche : notez-le avant de fermer.`)
       fetch()
     } catch (e) { alert(e.response?.data?.message ?? 'Erreur.') }
     finally { setResetBusy(null) }
@@ -218,7 +218,7 @@ export default function Equipes() {
                 </div>
                 <div style={{ display: 'flex', gap: 6 }}>
                   <button disabled={resetBusy === req.id} onClick={() => handleApproveReset(req)} style={actionBtn('#22c55e')}>
-                    <Check size={12} /> {resetBusy === req.id ? 'Traitement...' : 'Reinitialiser (mdp par defaut)'}
+                    <Check size={12} /> {resetBusy === req.id ? 'Traitement...' : 'Reinitialiser (mdp provisoire)'}
                   </button>
                   <button disabled={resetBusy === req.id} onClick={() => handleRejectReset(req)} style={actionBtn('#ef4444')}>
                     <XCircle size={12} /> Refuser
@@ -228,7 +228,7 @@ export default function Equipes() {
             ))}
           </div>
           <p style={{ fontSize: 11, color: 'var(--text-muted)', margin: '10px 0 0' }}>
-            La reinitialisation applique le mot de passe par defaut (DEM1234). L'utilisateur devra choisir un nouveau mot de passe a sa premiere connexion.
+            La reinitialisation genere un mot de passe provisoire aleatoire, affiche une seule fois. L'utilisateur devra choisir un nouveau mot de passe a sa premiere connexion.
           </p>
         </div>
       )}
@@ -257,7 +257,7 @@ export default function Equipes() {
               <input type="email" value={createForm.email} onChange={e => setCreateForm(f => ({ ...f, email: e.target.value }))} placeholder="nom@dem.sn" style={inputStyle} />
             </div>
             <div>
-              <label style={labelStyle}>Mot de passe par defaut *</label>
+              <label style={labelStyle}>Mot de passe provisoire *</label>
               <input type="text" value={createForm.password} onChange={e => setCreateForm(f => ({ ...f, password: e.target.value }))} placeholder="Dem@2026!" required pattern={PASSWORD_PATTERN.source} title={PASSWORD_HINT} style={inputStyle} />
               <div style={{ fontSize: 10, color: 'var(--text-muted)', marginTop: 4 }}>
                 {PASSWORD_HINT} L'utilisateur devra le changer à sa première connexion.
@@ -361,8 +361,8 @@ export default function Equipes() {
                             <button onClick={() => openEdit(a)} title="Modifier" style={actionBtn('#0077b6')}>
                               <Pencil size={12} /> Modifier
                             </button>
-                            <button onClick={() => handleResetDefaultPassword(a)} title="Reinitialiser au mot de passe par defaut (compte oublie)" style={actionBtn('#f59e0b')}>
-                              <KeyRound size={12} /> Mdp par defaut
+                            <button onClick={() => handleResetDefaultPassword(a)} title="Reinitialiser avec un mot de passe provisoire (compte oublie)" style={actionBtn('#f59e0b')}>
+                              <KeyRound size={12} /> Mdp provisoire
                             </button>
                             <button onClick={() => handleToggle(a)} title={a.isActive ? 'Desactiver' : 'Activer'} style={actionBtn(a.isActive ? '#f59e0b' : '#22c55e')}>
                               <Power size={12} /> {a.isActive ? 'Desactiver' : 'Activer'}

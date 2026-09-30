@@ -73,7 +73,7 @@ export default function Login() {
             <form onSubmit={handleRequestReset} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
               <p style={{ color: '#5a7a96', fontSize: 12, margin: 0, textAlign: 'center' }}>
                 Une demande de reinitialisation sera envoyee au Super Admin.
-                Il reinitialisera votre mot de passe et vous communiquera le mot de passe par defaut.
+                Il reinitialisera votre mot de passe et vous communiquera un mot de passe provisoire.
               </p>
               <div>
                 <label style={labelStyle}>Email ou telephone</label>
@@ -95,7 +95,7 @@ export default function Login() {
               <p style={{ color: '#22c55e', fontWeight: 600, marginBottom: 8 }}>Demande envoyee.</p>
               <p style={{ color: '#5a7a96', fontSize: 12, marginBottom: 20 }}>{resetMessage}</p>
               <p style={{ color: '#5a7a96', fontSize: 12, marginBottom: 20 }}>
-                Apres reinitialisation, connectez-vous avec le mot de passe par defaut :
+                Apres reinitialisation, connectez-vous avec le mot de passe provisoire recu :
                 vous devrez alors choisir un nouveau mot de passe.
               </p>
               <button onClick={() => { setResetMode(false); setResetStep('identifier'); setResetError(''); setResetIdentifier('') }} style={btnStyle(false)}>

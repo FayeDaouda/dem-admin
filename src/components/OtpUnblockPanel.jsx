@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { MessageSquareLock, Search, Unlock, AlertTriangle, CheckCircle2 } from 'lucide-react'
 import api from '../lib/api'
 import { glass, glassInput } from '../lib/glassStyles'
+import AccountSecurityPanel from './AccountSecurityPanel'
 
 // ── Codes SMS bloqués (SUPER + Service Client) ────────────────────────────────
 // Un numéro ne peut recevoir que 5 codes par 24 h (et doit patienter entre deux
@@ -9,7 +10,7 @@ import { glass, glassInput } from '../lib/glassStyles'
 // l'empêcher de se connecter jusqu'au lendemain : le support constate le
 // blocage ici et le lève. Chaque déblocage est tracé dans l'audit.
 
-const PURPOSE_LABELS = { LOGIN: 'Connexion', CASHOUT: 'Retrait' }
+const PURPOSE_LABELS = { LOGIN: 'Connexion', CASHOUT: 'Retrait', PIN_SETUP: 'Code secret (création / oubli)', PHONE_CHANGE: 'Changement de numéro' }
 const ROLE_LABELS = { CLIENT: 'Client', DRIVER: 'Livreur', DEM_PRO: 'DEM Pro', CHEF_DE_FLOTTE: 'Chef de flotte', ADMIN: 'Admin' }
 
 function formatWait(sec) {
@@ -57,7 +58,7 @@ export default function OtpUnblockPanel() {
   return (
     <div style={{ ...glass, padding: '18px 20px', maxWidth: 760 }}>
       <h2 style={{ fontSize: 15, fontWeight: 700, marginBottom: 4, display: 'flex', alignItems: 'center', gap: 8 }}>
-        <MessageSquareLock size={16} /> Codes SMS bloqués
+        <MessageSquareLock size={16} /> Codes SMS et sécurité du compte
       </h2>
       <p style={{ fontSize: 12, color: 'var(--text-muted)', margin: '0 0 12px' }}>
         Un utilisateur ne reçoit plus de code (« Trop de codes demandés pour ce numéro ») ? Cherchez son numéro pour voir
@@ -124,6 +125,8 @@ export default function OtpUnblockPanel() {
               Rien à débloquer : si l'utilisateur ne reçoit toujours rien, le problème vient de l'envoi (opérateur, numéro), pas d'un blocage.
             </div>
           )}
+
+          {status.account && <AccountSecurityPanel key={status.account.id} userId={status.account.id} />}
         </div>
       )}
     </div>
