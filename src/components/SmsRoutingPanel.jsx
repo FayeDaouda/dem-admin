@@ -1,14 +1,16 @@
 import { useState, useEffect, useCallback } from 'react'
-import { MessageSquare, AlertTriangle, CheckCircle2, Save, ChevronDown, ChevronRight } from 'lucide-react'
+import { MessageSquare, AlertTriangle, CheckCircle2, Save, ChevronDown, ChevronRight, ArrowRightLeft } from 'lucide-react'
 import api from '../lib/api'
 import { glass, glassInput } from '../lib/glassStyles'
 import { formatCount } from '../lib/format'
 
 // ── Envoi des SMS des codes OTP (SUPER) ───────────────────────────────────────
-// LAfricaMobile est le fournisseur principal ; Africa's Talking ne sert que
-// de secours automatique, jusqu'à sa suppression. Ici : l'état des
-// fournisseurs (variables Render, affiché seulement), le seuil d'alerte
-// crédit, et la livraison mesurée par fournisseur et opérateur.
+// Le SUPER choisit ici le fournisseur principal : Africa's Talking par
+// défaut, bascule vers LAfricaMobile quand il est prêt (retour arrière
+// possible à tout moment) ; l'autre sert de secours automatique. Une fois
+// LAfricaMobile éprouvé, Africa's Talking sera supprimé. Aussi : état des
+// fournisseurs (variables Render, affiché seulement), seuil d'alerte crédit,
+// livraison mesurée par fournisseur et opérateur.
 // Voir dem-backend/docs/sms-lafricamobile.md.
 
 const PROVIDER_LABELS = { lafricamobile: 'LAfricaMobile', africastalking: "Africa's Talking" }
@@ -44,19 +46,33 @@ export default function SmsRoutingPanel() {
 
   const changed = routing && threshold !== String(routing.creditAlertThreshold)
 
-  async function save() {
-    const value = Number(threshold)
-    if (!Number.isInteger(value) || value < 0) { setError('Le seuil d\'alerte doit être un nombre entier positif.'); return }
-    if (!window.confirm(`Alerte quand le crédit LAfricaMobile passe sous ${formatCount(value)} SMS.\n\nConfirmer ?`)) return
-
+  async function put(body, doneMessage) {
     setSaving(true); setError(''); setDone('')
     try {
-      const { data } = await api.put('/admin/sms-routing', { creditAlertThreshold: value })
+      const { data } = await api.put('/admin/sms-routing', body)
       apply(data)
-      setDone('Seuil enregistré. Il s\'applique au prochain relevé du crédit.')
+      setDone(doneMessage)
     } catch (err) {
       setError(err.response?.data?.message ?? 'Enregistrement impossible.')
     } finally { setSaving(false) }
+  }
+
+  function switchTo(provider) {
+    const name = PROVIDER_LABELS[provider]
+    const other = PROVIDER_LABELS[provider === 'lafricamobile' ? 'africastalking' : 'lafricamobile']
+    const lines = provider === 'lafricamobile'
+      ? [`Basculer vers LAfricaMobile ?`, '', `Tous les codes de connexion et de retrait partiront par LAfricaMobile (expéditeur « ${routing.lamSender} »).`, `${other} restera en secours automatique.`]
+      : [`Revenir à Africa's Talking ?`, '', 'Tous les codes partiront de nouveau par Africa\'s Talking.', `${other} restera en secours automatique.`]
+    lines.push('', 'Effectif en moins d\'une minute, tracé dans l\'audit. Retour possible à tout moment ici.')
+    if (!window.confirm(lines.join('\n'))) return
+    put({ primaryProvider: provider }, `${name} est maintenant le fournisseur principal (effectif en moins d'une minute).`)
+  }
+
+  function saveThreshold() {
+    const value = Number(threshold)
+    if (!Number.isInteger(value) || value < 0) { setError('Le seuil d\'alerte doit être un nombre entier positif.'); return }
+    if (!window.confirm(`Alerte quand le crédit LAfricaMobile passe sous ${formatCount(value)} SMS.\n\nConfirmer ?`)) return
+    put({ creditAlertThreshold: value }, 'Seuil enregistré. Il s\'applique au prochain relevé du crédit.')
   }
 
   return (
@@ -65,23 +81,25 @@ export default function SmsRoutingPanel() {
         <MessageSquare size={16} /> Envoi des SMS (codes de connexion et de retrait)
       </h2>
       <p style={{ fontSize: 12, color: 'var(--text-muted)', margin: '0 0 14px' }}>
-        Les codes partent par LAfricaMobile. S'il échoue ou ne répond pas en 8 secondes, le même code part aussitôt par
-        Africa's Talking, gardé en secours jusqu'à sa suppression. Tant que LAfricaMobile n'est pas configuré sur le
-        serveur, Africa's Talking reste seul.
+        Le fournisseur principal envoie tous les codes. S'il échoue ou ne répond pas en 8 secondes, le même code part
+        aussitôt par l'autre (secours automatique). Basculez vers LAfricaMobile quand il est prêt ; une fois qu'il a fait
+        ses preuves, Africa's Talking sera supprimé.
       </p>
 
       {!routing && !error && <div style={{ fontSize: 13, color: 'var(--text-muted)' }}>Chargement…</div>}
 
       {routing && (
         <>
-          <ServerState routing={routing} />
+          <PrimarySwitch routing={routing} saving={saving} onSwitch={switchTo} />
+
+          <div style={{ marginTop: 16 }}><ServerState routing={routing} /></div>
 
           <div style={{ marginTop: 16 }}>
             <Label>Alerte crédit LAfricaMobile sous</Label>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
               <input value={threshold} onChange={e => { setThreshold(e.target.value); setDone('') }} inputMode="numeric" style={{ ...glassInput, width: 100, textAlign: 'center' }} />
               <span style={{ fontSize: 13 }}>SMS</span>
-              <button onClick={save} disabled={!changed || saving} style={{ ...btnPrimary, opacity: !changed || saving ? 0.5 : 1 }}>
+              <button onClick={saveThreshold} disabled={!changed || saving} style={{ ...btnPrimary, opacity: !changed || saving ? 0.5 : 1 }}>
                 <Save size={14} /> {saving ? 'Enregistrement…' : 'Enregistrer'}
               </button>
             </div>
@@ -98,6 +116,48 @@ export default function SmsRoutingPanel() {
   )
 }
 
+// ── Fournisseur principal : la bascule ───────────────────────────────────────
+function PrimarySwitch({ routing, saving, onSwitch }) {
+  return (
+    <div>
+      <Label>Fournisseur principal</Label>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: 10 }}>
+        {['lafricamobile', 'africastalking'].map(p => {
+          const current = routing.primary === p
+          const configured = routing.configured[p]
+          return (
+            <div key={p} style={{
+              borderRadius: 12, padding: '12px 14px',
+              border: current ? '2px solid var(--primary)' : '1px solid var(--border)',
+              background: current ? 'rgba(0,180,216,.08)' : 'transparent',
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
+                <div style={{ fontSize: 14, fontWeight: 800 }}>{PROVIDER_LABELS[p]}</div>
+                {current
+                  ? <span style={{ fontSize: 11, fontWeight: 700, color: '#fff', background: 'var(--primary)', borderRadius: 20, padding: '2px 10px' }}>Principal</span>
+                  : <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-muted)' }}>{configured ? 'Secours automatique' : 'Non configuré'}</span>}
+              </div>
+              {!current && (
+                <button
+                  onClick={() => onSwitch(p)}
+                  disabled={!configured || saving}
+                  title={configured ? undefined : 'Identifiants absents sur le serveur (variables Render)'}
+                  style={{ ...btnPrimary, marginTop: 10, opacity: !configured || saving ? 0.5 : 1, cursor: configured ? 'pointer' : 'not-allowed' }}
+                >
+                  <ArrowRightLeft size={14} /> {p === 'lafricamobile' ? 'Basculer vers LAfricaMobile' : 'Revenir à Africa\'s Talking'}
+                </button>
+              )}
+              {current && !configured && (
+                <div style={{ fontSize: 12, color: '#b45309', marginTop: 8 }}>Non configuré sur le serveur : les codes partent par l'autre fournisseur.</div>
+              )}
+            </div>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
 // ── État côté serveur (variables Render, crédit) — lecture seule ─────────────
 function ServerState({ routing }) {
   const c = routing.lamCredits
@@ -108,21 +168,19 @@ function ServerState({ routing }) {
   const creditLow = c?.low === true
   // Ordre réellement appliqué : un fournisseur non configuré est sauté
   const effective = [routing.primary, routing.fallback].filter(p => p && routing.configured[p])
-  const rollback = routing.primary !== 'lafricamobile'
-  const orderSub = rollback ? 'retour arrière d\'urgence actif (variables Render)'
-    : !routing.configured.lafricamobile ? 'LAfricaMobile pas encore configuré : Africa\'s Talking seul'
-    : effective.length > 1 ? 'Africa\'s Talking en secours automatique'
-    : 'sans secours'
+  const orderSub = effective.length > 1 ? `${PROVIDER_LABELS[effective[1]]} en secours automatique`
+    : effective.length === 1 ? 'sans secours (un seul fournisseur configuré)'
+    : 'aucun SMS ne peut partir'
 
   return (
     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(210px, 1fr))', gap: 10 }}>
       <Fact label="LAfricaMobile" ok={routing.configured.lafricamobile}
         value={routing.configured.lafricamobile ? `configuré — expéditeur « ${routing.lamSender} »` : 'non configuré (variables Render)'}
         sub={routing.configured.lafricamobile ? (routing.lamReportsEnabled ? 'accusés de livraison actifs' : 'accusés non configurés') : null} />
-      <Fact label="Africa's Talking (secours)" ok={routing.configured.africastalking}
+      <Fact label="Africa's Talking" ok={routing.configured.africastalking}
         value={routing.configured.africastalking ? 'configuré' : 'non configuré'}
         sub={routing.configured.africastalking ? (routing.atReportsEnabled ? 'accusés de livraison actifs' : 'accusés non configurés') : null} />
-      <Fact label="Ordre d'envoi" ok={!rollback && routing.configured.lafricamobile}
+      <Fact label="Ordre d'envoi" ok={effective.length > 0}
         value={effective.map(p => PROVIDER_LABELS[p] ?? p).join(' → ') || 'aucun fournisseur configuré'}
         sub={orderSub} />
       <Fact label="Crédit LAfricaMobile" ok={!creditLow && !c?.error}
