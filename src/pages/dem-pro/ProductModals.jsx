@@ -1,5 +1,5 @@
-import { useState } from 'react'
-import { X, AlertTriangle } from 'lucide-react'
+import { useState, useEffect } from 'react'
+import { X, AlertTriangle, ImagePlus, Package } from 'lucide-react'
 import api from '../../lib/api'
 import { glassSolid, glassInput } from '../../lib/glassStyles'
 import { formatCount } from '../../lib/format'
@@ -10,8 +10,11 @@ import { formatCount } from '../../lib/format'
 // limite de produits de son offre, catalogues seulement si son offre les
 // inclut. Un catalogue = un nom partagé par des produits : taper un nouveau
 // nom le crée, retirer son dernier produit le fait disparaître.
+// Photo : POST/DELETE .../products/:productId/image, envoyée APRÈS
+// l'enregistrement du produit (il faut son id), même stockage que l'app.
 
 const CATALOGUES_DATALIST = 'dem-pro-catalogues'
+const MAX_PHOTO_BYTES = 5 * 1024 * 1024 // même limite que le serveur
 
 // `product` absent = ajout (catalogue pré-rempli avec `defaultCategory`).
 export function ProductFormModal({ accountId, product, defaultCategory, categories, sites, limits, onClose, onSaved }) {
@@ -23,10 +26,30 @@ export function ProductFormModal({ accountId, product, defaultCategory, categori
     quantity:     product?.quantity != null ? String(product.quantity) : '',
     proAddressId: product?.proAddressId ?? '',
   })
-  const [saving, setSaving] = useState(false)
+  const [saving, setSaving] = useState('') // '' | 'product' | 'photo'
   const [error, setError]   = useState('')
+  // Produit déjà enregistré dans cette fenêtre : si la photo échoue après la
+  // création, un nouvel essai met à jour ce produit au lieu d'en créer un second
+  const [savedProduct, setSavedProduct] = useState(product ?? null)
+  const [savedHere, setSavedHere] = useState(false)
+  // Photo : nouveau fichier choisi (avec aperçu local) ou photo actuelle à retirer
+  const [photo, setPhoto] = useState({ file: null, preview: null, remove: false })
+
+  useEffect(() => () => { if (photo.preview) URL.revokeObjectURL(photo.preview) }, [photo.preview])
 
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }))
+  const currentImage = savedProduct?.image ?? null
+  const shownImage = photo.preview ?? (photo.remove ? null : currentImage)
+
+  function choosePhoto(e) {
+    const file = e.target.files?.[0]
+    e.target.value = '' // permet de re-choisir le même fichier
+    if (!file) return
+    if (!file.type.startsWith('image/')) { setError('Choisissez une image (JPG, PNG…).'); return }
+    if (file.size > MAX_PHOTO_BYTES) { setError('La photo dépasse 5 Mo.'); return }
+    setError('')
+    setPhoto({ file, preview: URL.createObjectURL(file), remove: false })
+  }
 
   const typed = form.category.trim()
   const existing = categories.find(c => c.name.toLowerCase() === typed.toLowerCase())
@@ -44,24 +67,75 @@ export function ProductFormModal({ accountId, product, defaultCategory, categori
     // Offre sans catalogues : le champ n'est pas modifiable, on ne l'envoie pas
     if (limits.cataloguesAllowed) body.category = typed || null
 
-    setSaving(true); setError('')
+    setSaving('product'); setError('')
+    let target = savedProduct
     try {
-      if (isEdit) await api.patch(`/admin/dem-pro/${accountId}/products/${product.id}`, body)
-      else        await api.post(`/admin/dem-pro/${accountId}/products`, body)
-      onSaved(isEdit ? 'Produit mis à jour.' : 'Produit ajouté au catalogue.')
+      const { data } = target
+        ? await api.patch(`/admin/dem-pro/${accountId}/products/${target.id}`, body)
+        : await api.post(`/admin/dem-pro/${accountId}/products`, body)
+      target = data.product
+      setSavedProduct(target)
+      setSavedHere(true)
     } catch (e) {
       setError(e.response?.data?.message ?? 'Erreur.')
-      setSaving(false)
+      setSaving('')
+      return
     }
+
+    try {
+      const photoUrl = `/admin/dem-pro/${accountId}/products/${target.id}/image`
+      if (photo.file) {
+        setSaving('photo')
+        const fd = new FormData()
+        fd.append('file', photo.file)
+        await api.post(photoUrl, fd, { headers: { 'Content-Type': 'multipart/form-data' }, timeout: 60000 })
+      } else if (photo.remove && target.image) {
+        setSaving('photo')
+        await api.delete(photoUrl)
+      }
+    } catch (e) {
+      setError(`Produit enregistré, mais la photo n'a pas pu être envoyée : ${e.response?.data?.message ?? e.message}. Réessayez, ou fermez pour garder le produit sans cette photo.`)
+      setSaving('')
+      return
+    }
+    onSaved(isEdit ? 'Produit mis à jour.' : 'Produit ajouté au catalogue.')
   }
 
+  // Fermer après un enregistrement partiel (photo en échec) : la liste doit
+  // quand même se mettre à jour
+  const close = () => (savedHere ? onSaved('Produit enregistré, sans la nouvelle photo.') : onClose())
+
   return (
-    <div style={overlay} onClick={onClose}>
+    <div style={overlay} onClick={close}>
       <div style={box} onClick={e => e.stopPropagation()}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 18 }}>
           <h2 style={{ fontSize: 17, fontWeight: 700, margin: 0 }}>{isEdit ? 'Modifier le produit' : 'Ajouter un produit'}</h2>
-          <button onClick={onClose} style={btnIcon} title="Fermer"><X size={16} /></button>
+          <button onClick={close} style={btnIcon} title="Fermer"><X size={16} /></button>
         </div>
+
+        <Field label="Photo" hint="JPG ou PNG, 5 Mo maximum. Visible dans l'app du commerçant et sur sa boutique en ligne.">
+          <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+            <div style={{
+              width: 72, height: 72, borderRadius: 12, overflow: 'hidden', flexShrink: 0,
+              background: 'var(--surface2)', border: '1px solid var(--border)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)',
+            }}>
+              {shownImage ? <img src={shownImage} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <Package size={26} />}
+            </div>
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+              <label style={{ ...btnOutline, cursor: 'pointer' }}>
+                <ImagePlus size={14} /> {shownImage ? 'Changer la photo' : 'Ajouter une photo'}
+                <input type="file" accept="image/*" onChange={choosePhoto} style={{ display: 'none' }} />
+              </label>
+              {shownImage && (
+                <button
+                  onClick={() => setPhoto({ file: null, preview: null, remove: !!currentImage })}
+                  style={{ ...btnOutline, color: 'var(--danger)' }}
+                >Retirer</button>
+              )}
+            </div>
+          </div>
+        </Field>
 
         <Field label="Nom du produit *">
           <input value={form.name} onChange={e => set('name', e.target.value)} maxLength={80} placeholder="Ex : Ceebu jën, T-shirt col rond M" style={glassInput} autoFocus />
@@ -109,9 +183,9 @@ export function ProductFormModal({ accountId, product, defaultCategory, categori
         {error && <div style={errorStyle}>{error}</div>}
 
         <div style={{ display: 'flex', gap: 10, marginTop: 18 }}>
-          <button onClick={onClose} style={{ ...btnOutline, flex: 1 }}>Annuler</button>
-          <button onClick={save} disabled={saving} style={{ ...btnPrimary, flex: 1, opacity: saving ? 0.7 : 1 }}>
-            {saving ? 'Enregistrement…' : isEdit ? 'Enregistrer' : 'Ajouter'}
+          <button onClick={close} style={{ ...btnOutline, flex: 1 }}>{savedHere ? 'Fermer' : 'Annuler'}</button>
+          <button onClick={save} disabled={!!saving} style={{ ...btnPrimary, flex: 1, opacity: saving ? 0.7 : 1 }}>
+            {saving === 'photo' ? 'Envoi de la photo…' : saving ? 'Enregistrement…' : isEdit || savedHere ? 'Enregistrer' : 'Ajouter'}
           </button>
         </div>
       </div>

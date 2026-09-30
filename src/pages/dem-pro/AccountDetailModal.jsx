@@ -724,7 +724,7 @@ function ShopTab({ accountId, canEdit, onCatalogueChange }) {
                       <td style={{ ...td, fontSize: 12 }}>{p.proAddressId ? (siteLabel.get(p.proAddressId) ?? '—') : 'Tous'}</td>
                       {editable && (
                         <td style={{ ...td, whiteSpace: 'nowrap', textAlign: 'right' }}>
-                          <button onClick={() => openForm(p)} style={iconBtn} title="Modifier (nom, catalogue, prix, stock, point de vente)"><Pencil size={14} /></button>
+                          <button onClick={() => openForm(p)} style={iconBtn} title="Modifier (photo, nom, catalogue, prix, stock, point de vente)"><Pencil size={14} /></button>
                           <button onClick={() => askDelete(p)} style={{ ...iconBtn, color: 'var(--danger)' }} title="Supprimer du catalogue"><Trash2 size={14} /></button>
                         </td>
                       )}
