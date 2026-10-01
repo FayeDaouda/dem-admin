@@ -27,7 +27,7 @@ const PLAN_LABELS = { STARTER: 'Starter', BUSINESS: 'Business', PREMIUM: 'Premiu
 // pour que le SUPER admin retrouve les mêmes lignes. Les deux dernières
 // lignes n'apparaissent pas dans la grille.
 const FIELDS = [
-  { key: 'priceMonthly',              label: 'Prix',                             type: 'number',          unit: 'F / mois' },
+  { key: 'priceMonthly',              label: 'Prix',                             type: 'number',          unit: 'F / semaine' },
   { key: 'maxBatchSimultaneous',      label: 'Course Groupée (simultanées)',     type: 'nullableNumber' },
   { key: 'maxScheduledSimultaneous',  label: 'Course Programmée (simultanées)',  type: 'nullableNumber' },
   { key: 'maxCatalogues',             label: 'Catalogue produits',               type: 'nullableNumber', unit: 'cat' },
