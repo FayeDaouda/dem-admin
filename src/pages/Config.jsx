@@ -4,6 +4,7 @@ import { Save, RotateCcw, Plus, Trash2, Clock } from 'lucide-react'
 import { Link, useNavigate } from 'react-router-dom'
 import { glass, glassInput } from '../lib/glassStyles'
 import ZoneMatrixSection from './ZoneMatrixSection'
+import FlatPromoSection from './FlatPromoSection'
 import PassLivreursSection from './PassLivreursSection'
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -127,6 +128,9 @@ function TarifsTab() {
           chargement/soumission (endpoints /admin/zone-fares/*, distincts de
           /admin/config). Ne pas la dupliquer ailleurs (voir commentaire
           au-dessus de TarifsTab). */}
+      {/* Promotion prix unique — au-dessus de la matrice : quand elle est
+          active, elle remplace tous les prix (voir FlatPromoSection.jsx). */}
+      <FlatPromoSection />
       <ZoneMatrixSection />
 
       {/* Le bouton Sauvegarder ci-dessous ne concerne QUE les champs
