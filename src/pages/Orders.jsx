@@ -7,6 +7,10 @@ import { RefreshCw, Search } from 'lucide-react'
 import { glass, glassInput, pageWrap, pageScroll, stickyTh, stickyCol, stickyThCol } from '../lib/glassStyles'
 import DocThumb from '../components/DocThumb'
 
+// Montant payé par le client = part livreur (price) + frais DEM − réduction
+// (même calcul que l'app : core/utils/price_format.dart:clientChargeFor).
+const clientCharge = o => Math.max(0, (o.price ?? 0) + (o.demFee ?? 0) - (o.discountAmount ?? 0))
+
 const firstNonEmpty = (...values) => values.find(v => typeof v === 'string' && v.trim() !== '') ?? '—'
 
 // DEM Pro : on affiche le nom de l'entreprise plutôt que le nom du responsable.
@@ -221,7 +225,7 @@ export default function Orders() {
           <table style={tableStyle}>
             <thead>
               <tr>
-                {['#', 'ID', 'Type', 'Statut', 'Client', 'Livreur', 'Prix', 'Paiement', 'Date'].map((h, i) => (
+                {['#', 'ID', 'Type', 'Statut', 'Client', 'Livreur', 'Prix client', 'Paiement', 'Date'].map((h, i) => (
                   <th key={h} style={{ ...thStyle, ...(i === 0 ? stickyThCol : stickyTh) }}>{h}</th>
                 ))}
               </tr>
@@ -239,7 +243,7 @@ export default function Orders() {
                   <td style={tdStyle}><Badge status={o.status} /></td>
                   <td style={tdStyle}>{clientDisplayName(o.client, o.clientName, o.clientPhone)}</td>
                   <td style={tdStyle}>{firstNonEmpty(o.driver?.name, o.driver?.phone)}</td>
-                  <td style={{ ...tdStyle, fontWeight: 600 }}>{o.price?.toLocaleString()} F</td>
+                  <td style={{ ...tdStyle, fontWeight: 600 }}>{clientCharge(o).toLocaleString()} F</td>
                   <td style={tdStyle}>{o.status === 'CANCELLED' ? '—' : <Badge status={o.paymentStatus ?? 'PENDING'} />}</td>
                   <td style={{ ...tdStyle, color: 'var(--text-muted)', fontSize: 12 }}>
                     {o.createdAt ? new Date(o.createdAt).toLocaleString('fr-FR', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '—'}
@@ -273,7 +277,10 @@ export default function Orders() {
               <Row label="Tél. client"   value={firstNonEmpty(detail.client?.phone, detail.clientPhone)} />
               <Row label="Livreur"       value={firstNonEmpty(detail.driver?.name, detail.driver?.phone)} />
               <Row label="Tél. livreur"  value={firstNonEmpty(detail.driver?.phone)} />
-              <Row label="Prix"          value={`${detail.price?.toLocaleString()} F`} />
+              <Row label="Prix client"   value={`${clientCharge(detail).toLocaleString()} F`} />
+              <Row label="Part livreur"  value={`${detail.price?.toLocaleString()} F`} />
+              <Row label="Frais DEM"     value={`${(detail.demFee ?? 0).toLocaleString()} F`} />
+              {detail.discountAmount > 0 && <Row label="Réduction" value={`−${detail.discountAmount.toLocaleString()} F`} />}
               <Row label="Départ"        value={detail.pickupAddress} />
               <Row label="Tél. pickup"   value={firstNonEmpty(detail.senderPhone, detail.client?.phone, detail.clientPhone)} />
               <Row label="Arrivée"       value={detail.deliveryAddress} />
