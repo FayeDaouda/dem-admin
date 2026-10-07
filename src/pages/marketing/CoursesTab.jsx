@@ -3,14 +3,10 @@ import { LineChart, Line, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContai
 import api from '../../lib/api'
 import { glass } from '../../lib/glassStyles'
 import { useAutoRefresh } from '../../lib/useAutoRefresh'
+import { cancelReasonLabel } from '../../lib/cancelReasons'
 
 const TOOLTIP_STYLE = { background: '#fff', border: '1px solid var(--border)', borderRadius: 6, color: 'var(--text)', fontSize: 12, boxShadow: '0 2px 8px rgba(0,0,0,0.10)' }
 
-const REASON_LABELS = {
-  NO_DRIVER_FOUND: 'Aucun livreur trouvé', CHANGED_MIND: "Changement d'avis", TOO_LONG: 'Trop long',
-  WRONG_ADDRESS: 'Adresse erronée', PRICE: 'Prix', DRIVER_ISSUE: 'Problème livreur',
-  OTHER: 'Autre', NON_RENSEIGNE: 'Non renseigné',
-}
 
 function PeriodBox({ label, completed, cancelled }) {
   return (
@@ -43,7 +39,7 @@ export default function CoursesTab() {
   if (loading || !data) return <div style={{ color: 'var(--text-muted)', padding: 20 }}>Chargement…</div>
 
   const trend = data.cancellationRateTrend.map(t => ({ ...t, dateLabel: new Date(t.date + 'T00:00:00Z').toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', timeZone: 'UTC' }) }))
-  const reasons = data.reasons.map(r => ({ ...r, label: REASON_LABELS[r.reason] ?? r.reason }))
+  const reasons = data.reasons.map(r => ({ ...r, label: cancelReasonLabel(r.reason) }))
 
   return (
     <div>
