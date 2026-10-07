@@ -4,6 +4,7 @@ import { useAuth } from '../contexts/AuthContext'
 import { RefreshCw, Eye, X, Plus, Pencil, Trash2, Search, Phone, CheckCircle, XCircle, Briefcase, Flag } from 'lucide-react'
 import { glass, glassInput, pageWrap, pageScroll, stickyTh, stickyCol, stickyThCol } from '../lib/glassStyles'
 import { useAutoRefresh } from '../lib/useAutoRefresh'
+import { useUrlQuery } from '../lib/useUrlQuery'
 
 // Ordre d'affichage : Sans badge en premier, puis progression des tiers.
 const CLIENT_BADGE_OPTIONS = [
@@ -186,6 +187,7 @@ export default function Clients() {
   const [selected, setSelected] = useState(null)
   const [formTarget, setFormTarget] = useState(null) // null=fermé, {}=créer, {id,...}=modifier
   const [search, setSearch]         = useState('')
+  useUrlQuery(setSearch) // recherche globale de l'en-tête (?q=…)
   const [status, setStatus]         = useState('')
   const [period, setPeriod]         = useState('')
   const [hasOrders, setHasOrders]   = useState('')

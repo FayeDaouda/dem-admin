@@ -6,6 +6,7 @@ import Badge from '../components/Badge'
 import { RefreshCw, Search } from 'lucide-react'
 import { glass, glassInput, pageWrap, pageScroll, stickyTh, stickyCol, stickyThCol } from '../lib/glassStyles'
 import DocThumb from '../components/DocThumb'
+import { useUrlQuery } from '../lib/useUrlQuery'
 
 // Montant payé par le client = part livreur (price) + frais DEM − réduction
 // (même calcul que l'app : core/utils/price_format.dart:clientChargeFor).
@@ -28,6 +29,7 @@ export default function Orders() {
   const [page, setPage]         = useState(1)
   const [loading, setLoading]   = useState(true)
   const [search, setSearch]     = useState('')
+  useUrlQuery(setSearch) // recherche globale de l'en-tête (?q=…)
   const [debouncedSearch, setDebouncedSearch] = useState('')
   const [detail, setDetail]     = useState(null)
   const [statusFilter, setStatusFilter] = useState('all')

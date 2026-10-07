@@ -6,6 +6,7 @@ import {
 } from 'lucide-react'
 import logoSrc from '../assets/logo-dem.svg'
 import { useResponsive } from '../lib/useResponsive'
+import GlobalSearch from './GlobalSearch'
 
 // roles: undefined = tous les rôles. Sinon tableau des rôles autorisés (SUPER bypass toujours).
 // ASSISTANCE_EXECUTIVE (Assistant Exécutif) : périmètre opérationnel restreint — Dashboard (sans
@@ -249,10 +250,16 @@ export default function Layout({ children }) {
               </button>
             )}
             <img src={logoSrc} alt="DEM" style={{ height: 32, width: 'auto' }} />
+            <div style={{ flex: 1, minWidth: 0 }}><GlobalSearch compact /></div>
           </div>
         )}
 
         <div style={{ padding: isMobile ? '16px 14px' : isTablet ? '20px 20px' : '28px 32px', flex: 1, minHeight: 0, overflowY: 'auto' }}>
+          {!(isMobile || isTablet) && (
+            <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 14 }}>
+              <GlobalSearch />
+            </div>
+          )}
           {children}
         </div>
       </main>

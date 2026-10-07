@@ -12,6 +12,7 @@ import {
   hasPaidTier, SECTOR_LABELS, SECTOR_COLORS, VOLUME_LABELS, PLAN_COLORS, proStatusInfo, planLabel,
 } from './dem-pro/labels'
 import { useAutoRefresh } from '../lib/useAutoRefresh'
+import { useUrlQuery } from '../lib/useUrlQuery'
 
 const STATUS_FILTERS = [
   ['all',       'Tous'],
@@ -277,6 +278,7 @@ export default function DemPro() {
   const [filter, setFilter]     = useState('all')
   const [planFilter, setPlanFilter] = useState('all')
   const [search, setSearch]     = useState('')
+  useUrlQuery(setSearch) // recherche globale de l'en-tête (?q=…)
   const [modal, setModal]       = useState(null)
   const [editTarget, setEditTarget] = useState(null)
   const [saving, setSaving]     = useState(false)
