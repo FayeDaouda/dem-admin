@@ -14,6 +14,7 @@ import Config      from './pages/Config'
 import Acquisition from './pages/Acquisition'
 import AcquisitionOverview from './pages/AcquisitionOverview'
 import Promotions from './pages/Promotions'
+import Rewards from './pages/Rewards'
 import NewProfiles from './pages/NewProfiles'
 import OutreachTable from './pages/OutreachTable'
 import Validation    from './pages/Validation'
@@ -111,6 +112,7 @@ function AppRoutes() {
       <Route path="/acquisition" element={<ProtectedRoute><Acquisition /></ProtectedRoute>} />
       <Route path="/acquisition-overview" element={<ProtectedRoute><AcquisitionOverview /></ProtectedRoute>} />
       <Route path="/promotions" element={<ProtectedRoute><Promotions /></ProtectedRoute>} />
+      <Route path="/recompenses" element={<ProtectedRoute><Rewards /></ProtectedRoute>} />
       <Route path="/nouveaux-profils" element={<ProtectedRoute><NewProfiles /></ProtectedRoute>} />
       <Route path="/tableau" element={<ProtectedRoute><OutreachTable /></ProtectedRoute>} />
       <Route path="/badges/clients" element={<ProtectedRoute><ClientBadgesPage /></ProtectedRoute>} />
