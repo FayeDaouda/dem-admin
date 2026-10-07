@@ -39,7 +39,7 @@ const FIELDS = [
   { key: 'crmEnabled',                label: 'Mes clients (CRM)',                type: 'boolean' },
   { key: 'invoiceEnabled',            label: 'Factures avec logo',               type: 'boolean' },
   { key: 'apiAccessEnabled',          label: 'API DEM (brancher son site)',      type: 'boolean' },
-  { key: 'maxUsers',                  label: 'Utilisateurs par compte',          type: 'number' },
+  { key: 'maxUsers',                  label: 'Téléphones connectés en même temps', type: 'number' },
   { key: 'supportTier',               label: 'Support',                          type: 'select', options: [['standard', 'Standard'], ['priority', 'Prioritaire'], ['premium', 'Premium']] },
   { key: 'maxAddresses',              label: 'Adresses / points de vente',       type: 'nullableNumber' },
   { key: 'invoiceBatchEnabled',       label: 'Facturation groupée',              type: 'boolean' },

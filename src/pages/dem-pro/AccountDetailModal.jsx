@@ -33,6 +33,7 @@ const TABS = [
   { key: 'wallet',       label: 'Wallet' },
   { key: 'shop',         label: 'Boutique' },
   { key: 'batches',      label: 'Tournées' },
+  { key: 'team',         label: 'Équipe' },
 ]
 
 const REASON_LABELS = {
@@ -117,6 +118,8 @@ export default function AccountDetailModal({ accountId, onClose, canEdit = false
             <WalletTab accountId={accountId} />
           ) : tab === 'shop' ? (
             <ShopTab accountId={accountId} canEdit={canEdit} onCatalogueChange={() => setVersion(v => v + 1)} />
+          ) : tab === 'team' ? (
+            <TeamTab accountId={accountId} />
           ) : (
             <BatchesTab accountId={accountId} />
           )}
@@ -318,6 +321,11 @@ function OrdersTab({ accountId }) {
                     <td style={td}><Badge status={o.status} /></td>
                     <td style={{ ...td, fontSize: 12, maxWidth: 220, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={o.deliveryAddress}>
                       {o.receiverName ? <strong>{o.receiverName} · </strong> : null}{o.deliveryAddress ?? '—'}
+                      {(o.cancelledByName || o.createdByName) && (
+                        <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>
+                          {o.cancelledByName ? `Annulée par ${o.cancelledByName}` : `Créée par ${o.createdByName}`}
+                        </div>
+                      )}
                     </td>
                     <td style={td}>{o.driver?.name ?? '—'}</td>
                     <td style={{ ...td, fontWeight: 700 }} title={`Part livreur ${formatF(o.price)} · commission ${formatF(o.demFee)} · promo ${formatF(o.discountAmount)}`}>
@@ -929,6 +937,90 @@ function BatchesTab({ accountId }) {
 }
 
 // ── Petits composants ─────────────────────────────────────────────────────────
+// ── Équipe ────────────────────────────────────────────────────────────────────
+// GET /admin/dem-pro/:id/team — membres ajoutés par le responsable (rôle,
+// activité du mois) et téléphones connectés au compte. Lecture seule : le
+// responsable gère son équipe depuis l'app.
+const TEAM_ROLE_LABELS = { STAFF: 'Employé', MANAGER: 'Gérant' }
+
+function TeamTab({ accountId }) {
+  const [result, setResult] = useState(null)
+
+  useEffect(() => {
+    let cancelled = false
+    api.get(`/admin/dem-pro/${accountId}/team`)
+      .then(r => { if (!cancelled) setResult({ key: accountId, data: r.data }) })
+      .catch(e => { if (!cancelled) setResult({ key: accountId, error: e.response?.data?.message ?? 'Erreur de chargement.' }) })
+    return () => { cancelled = true }
+  }, [accountId])
+
+  if (result?.key !== accountId) return <div style={{ color: 'var(--text-muted)', textAlign: 'center', padding: 30 }}>Chargement…</div>
+  if (result.error) return <div style={{ color: 'var(--danger)', textAlign: 'center', padding: 30 }}>{result.error}</div>
+
+  const { max, members, devices } = result.data
+  const sessions = devices?.sessions ?? []
+  const created = members.reduce((n, m) => n + (m.ordersThisMonth ?? 0), 0)
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
+      <div style={grid3}>
+        <Stat label="Membres" value={`${members.length} / ${max}`} sub={max === 0 ? 'Équipe non incluse dans l\'offre' : 'Place selon l\'offre'} />
+        <Stat label="Téléphones connectés" value={devices?.max == null ? sessions.length : `${sessions.length} / ${devices.max}`} sub="Responsable + équipe" />
+        <Stat label="Courses créées par l'équipe" value={created} sub="Ce mois-ci" />
+      </div>
+
+      <Section title="Membres">
+        {members.length === 0 ? (
+          <div style={{ color: 'var(--text-muted)', fontSize: 13 }}>Aucun membre.</div>
+        ) : (
+          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+            <thead>
+              <tr>{['Membre', 'Rôle', 'Connexion', 'Ce mois-ci', 'Ajouté le'].map(h => <th key={h} style={th}>{h}</th>)}</tr>
+            </thead>
+            <tbody>
+              {members.map(m => (
+                <tr key={m.id} style={{ borderBottom: '1px solid var(--border)' }}>
+                  <td style={td}><strong>{m.name}</strong><div style={{ fontSize: 11, color: 'var(--text-muted)' }}>{m.phone}</div></td>
+                  <td style={td}><Chip color={m.role === 'MANAGER' ? '#6366f1' : '#0077b6'}>{TEAM_ROLE_LABELS[m.role] ?? m.role}</Chip></td>
+                  <td style={td}>
+                    {m.connected
+                      ? <span style={{ color: 'var(--success)', fontWeight: 600 }}>● Connecté</span>
+                      : <span style={{ color: 'var(--text-muted)' }}>{m.lastSeenAt ? `Vu le ${fmtDate(m.lastSeenAt, true)}` : 'Jamais connecté'}</span>}
+                  </td>
+                  <td style={td}>{m.ordersThisMonth} course{m.ordersThisMonth > 1 ? 's' : ''} · {m.deliveredThisMonth} livrée{m.deliveredThisMonth > 1 ? 's' : ''}</td>
+                  <td style={td}>{fmtDate(m.createdAt)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </Section>
+
+      <Section title="Téléphones connectés" hint="Une nouvelle connexion au-delà de la limite déconnecte le téléphone utilisé le moins récemment">
+        {sessions.length === 0 ? (
+          <div style={{ color: 'var(--text-muted)', fontSize: 13 }}>Aucun téléphone connecté depuis la mise à jour.</div>
+        ) : (
+          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+            <thead>
+              <tr>{['Téléphone', 'Utilisé par', 'Dernière activité', 'Connecté le'].map(h => <th key={h} style={th}>{h}</th>)}</tr>
+            </thead>
+            <tbody>
+              {sessions.map(x => (
+                <tr key={x.id} style={{ borderBottom: '1px solid var(--border)' }}>
+                  <td style={td}>{x.deviceLabel ?? 'Téléphone'}</td>
+                  <td style={td}>{x.memberName ?? <span style={{ color: 'var(--text-muted)' }}>Responsable</span>}</td>
+                  <td style={td}>{fmtDate(x.lastSeenAt, true)}</td>
+                  <td style={td}>{fmtDate(x.createdAt, true)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </Section>
+    </div>
+  )
+}
+
 function Section({ title, hint, action, children }) {
   return (
     <div>
