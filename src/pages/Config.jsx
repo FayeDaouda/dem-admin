@@ -6,6 +6,7 @@ import { glass, glassInput } from '../lib/glassStyles'
 import ZoneMatrixSection from './ZoneMatrixSection'
 import FlatPromoSection from './FlatPromoSection'
 import PassLivreursSection from './PassLivreursSection'
+import AppVersionTab from './AppVersionTab'
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 const CONFIG_META = {
@@ -65,10 +66,12 @@ export default function Config() {
         <button style={TAB(tab === 'tarifs')}      onClick={() => setTab('tarifs')}>Tarifs</button>
         <button style={TAB(tab === 'commissions')} onClick={() => setTab('commissions')}>Commissions</button>
         <button style={TAB(tab === 'surge')}        onClick={() => setTab('surge')}>Heures de pointe</button>
+        <button style={TAB(tab === 'version')}      onClick={() => setTab('version')}>Version de l'app</button>
       </div>
       {tab === 'tarifs'      && <TarifsTab />}
       {tab === 'commissions' && <CommissionsTab />}
       {tab === 'surge'       && <SurgeTab />}
+      {tab === 'version'     && <AppVersionTab />}
     </div>
   )
 }
