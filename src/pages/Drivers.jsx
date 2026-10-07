@@ -8,6 +8,7 @@ import { glass, glassInput, pageWrap, pageScroll, stickyTh, stickyCol, stickyThC
 import SubmitRequestModal from './service-client/components/SubmitRequestModal'
 import DocThumb from '../components/DocThumb'
 import { useAutoRefresh } from '../lib/useAutoRefresh'
+import { useUrlQuery } from '../lib/useUrlQuery'
 
 const DOC_LIST = [
   { key: 'avatar',         label: 'Photo de profil' },
@@ -389,6 +390,7 @@ export default function Drivers() {
   const [fleetFilter, setFleetFilter]   = useState('all')
   const [chefFilter, setChefFilter]     = useState('all')
   const [search, setSearch]             = useState('')
+  useUrlQuery(setSearch) // recherche globale de l'en-tête (?q=…)
   const [onlineFilter, setOnlineFilter] = useState('all')
   const [verifFilter, setVerifFilter]   = useState('all')
   const [badgeFilter, setBadgeFilter]   = useState('all')

@@ -127,7 +127,14 @@ export function FeesModal({ icon, color, onClose }) {
         <>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 12, marginBottom: 12 }}>
             <StatBox label="FACTURÉE" value={formatF(data.commission.billed)} color={color} sub={`${formatCount(data.deliveredCount)} course(s) livrée(s)`} />
-            <StatBox label="ENCAISSÉE (EN LIGNE)" value={formatF(data.commission.collectedOnline)} color="#22c55e" sub={`${formatCount(data.ordersByChannel.online)} course(s)`} />
+            <StatBox
+              label="ENCAISSÉE"
+              value={formatF(data.commission.collectedOnline + (data.commission.recoveredFromCash ?? 0))}
+              color="#22c55e"
+              sub={data.commission.recoveredFromCash
+                ? `en ligne ${formatF(data.commission.collectedOnline)} + reprise espèces ${formatF(data.commission.recoveredFromCash)}`
+                : `en ligne · ${formatCount(data.ordersByChannel.online)} course(s)`}
+            />
             <StatBox label="À RECOUVRER" value={formatF(data.commission.toRecover)} color="#f97316" />
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 12 }}>
@@ -137,7 +144,7 @@ export function FeesModal({ icon, color, onClose }) {
           </div>
           <Note>
             Frais DEM réellement facturés sur les courses livrées (EXPRESS, tournées DEM Pro, tarif par zone…) — plus aucune
-            estimation par la grille de commission. Facturée = encaissée + à recouvrer.
+            estimation par la grille de commission. Facturée = encaissée (en ligne + reprise sur le wallet du livreur pour les courses en espèces) + à recouvrer.
           </Note>
         </>
       )}

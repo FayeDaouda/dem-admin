@@ -3,7 +3,10 @@ import api from '../../../lib/api'
 import Badge from '../../../components/Badge'
 import { glass, glassInput } from '../../../lib/glassStyles'
 
+// '' = non précisé : la course est marquée payée sans forcer de méthode
+// (celle déjà enregistrée est conservée côté serveur).
 const PM_OPTIONS = [
+  ['', 'Non précisé'],
   ['CASH', 'Espèces'],
   ['WAVE', 'Wave'],
   ['ORANGE_MONEY', 'Orange Money'],
@@ -14,7 +17,7 @@ const PM_OPTIONS = [
 export default function PaymentStatusEditor({ order, onUpdated }) {
   const [open, setOpen] = useState(false)
   const [nextStatus, setNextStatus] = useState('PAID')
-  const [paymentMethod, setPaymentMethod] = useState(order.paymentMethod ?? 'CASH')
+  const [paymentMethod, setPaymentMethod] = useState(order.paymentMethod ?? '')
   const [disputeNotes, setDisputeNotes] = useState(order.disputeNotes ?? '')
   const [saving, setSaving] = useState(false)
 
@@ -22,7 +25,7 @@ export default function PaymentStatusEditor({ order, onUpdated }) {
     setSaving(true)
     try {
       const body = nextStatus === 'PAID'
-        ? { paymentStatus: 'PAID', paymentMethod }
+        ? { paymentStatus: 'PAID', paymentMethod: paymentMethod || null }
         : { paymentStatus: 'DISPUTED', disputeNotes }
       await api.patch(`/admin/orders/${order.id}/payment`, body)
       setOpen(false)

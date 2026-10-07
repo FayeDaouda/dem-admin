@@ -1,10 +1,11 @@
 import { useState, useEffect, useCallback } from 'react'
 import api from '../lib/api'
 import { Save, RotateCcw, Plus, Trash2, Clock } from 'lucide-react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link } from 'react-router-dom'
 import { glass, glassInput } from '../lib/glassStyles'
 import ZoneMatrixSection from './ZoneMatrixSection'
 import FlatPromoSection from './FlatPromoSection'
+import CashFeeSection from './CashFeeSection'
 import PassLivreursSection from './PassLivreursSection'
 import AppVersionTab from './AppVersionTab'
 import DeliveryZoneTab from './DeliveryZoneTab'
@@ -19,22 +20,8 @@ const CONFIG_META = {
   driver_location_interval_sec: { label: 'Position du livreur en course – envoi toutes les (s)', description: 'Rythme auquel l\'app livreur envoie sa position pendant une course (3 à 30 s, 4 s si vide). Plus court = moto plus à jour côté client ; repasser à 10 en cas de charge serveur. Pris en compte au début de la course suivante.', placeholder: '4' },
 }
 
-function computeDemFeeFromGrid(price, grid) {
-  if (!grid || grid.length === 0) return 0
-  for (const { min, max, fee } of grid) {
-    if (price >= min && price <= max) return fee
-  }
-  return price < grid[0].min ? 0 : grid[grid.length - 1].fee
-}
 
 
-const DEFAULT_FEE_GRID = [
-  { min: 900,  max: 1250, fee: 65  }, { min: 1251, max: 1600, fee: 90  },
-  { min: 1601, max: 2000, fee: 120 }, { min: 2001, max: 2450, fee: 155 },
-  { min: 2451, max: 2750, fee: 185 }, { min: 2751, max: 3100, fee: 215 },
-  { min: 3101, max: 3490, fee: 255 }, { min: 3491, max: 3900, fee: 295 },
-  { min: 3901, max: 4450, fee: 350 }, { min: 4451, max: 5000, fee: 425 },
-]
 
 const TAB = (active) => ({
   padding: '7px 18px', borderRadius: 'var(--radius-sm)', border: 'none', cursor: 'pointer',
@@ -65,13 +52,11 @@ export default function Config() {
       <h1 style={{ fontSize: 22, fontWeight: 700, marginBottom: 20 }}>Configuration</h1>
       <div style={{ display: 'flex', gap: 4, marginBottom: 24, background: 'rgba(255,255,255,.45)', borderRadius: 'var(--radius)', padding: 4, width: 'fit-content' }}>
         <button style={TAB(tab === 'tarifs')}      onClick={() => setTab('tarifs')}>Tarifs</button>
-        <button style={TAB(tab === 'commissions')} onClick={() => setTab('commissions')}>Commissions</button>
         <button style={TAB(tab === 'surge')}        onClick={() => setTab('surge')}>Heures de pointe</button>
         <button style={TAB(tab === 'version')}      onClick={() => setTab('version')}>Version de l'app</button>
         <button style={TAB(tab === 'zone')}         onClick={() => setTab('zone')}>Zone de livraison</button>
       </div>
       {tab === 'tarifs'      && <TarifsTab />}
-      {tab === 'commissions' && <CommissionsTab />}
       {tab === 'surge'       && <SurgeTab />}
       {tab === 'version'     && <AppVersionTab />}
       {tab === 'zone'        && <DeliveryZoneTab />}
@@ -87,10 +72,9 @@ export default function Config() {
 // (toggle basé sur un état devenu périmé) — cause probable d'un pass resté
 // actif en prod après une tentative de désactivation.
 function TarifsTab() {
-  const navigate = useNavigate()
   const [config,  setConfig]  = useState({})
   const [draft,   setDraft]   = useState({})
-  const [feeGrid, setFeeGrid] = useState(DEFAULT_FEE_GRID)
+  const [connectionFee, setConnectionFee] = useState(100)
   const [loading, setLoading] = useState(true)
   const [saving,  setSaving]  = useState(false)
   const [saved,   setSaved]   = useState(false)
@@ -100,13 +84,13 @@ function TarifsTab() {
     try {
       const [cfgRes, feeRes] = await Promise.all([
         api.get('/admin/config'),
-        api.get('/admin/fees/config'),
+        api.get('/admin/connection-fee').catch(() => null),
       ])
       const map = {}
       for (const row of (cfgRes.data ?? [])) map[row.key] = row.value
       setConfig(map)
       setDraft(map)
-      setFeeGrid(feeRes.data.grid ?? DEFAULT_FEE_GRID)
+      if (feeRes?.data?.amount != null) setConnectionFee(feeRes.data.amount)
     } catch (e) { console.error(e) }
     finally { setLoading(false) }
   }, [])
@@ -138,6 +122,7 @@ function TarifsTab() {
       {/* Promotion prix unique — au-dessus de la matrice : quand elle est
           active, elle remplace tous les prix (voir FlatPromoSection.jsx). */}
       <FlatPromoSection />
+      <CashFeeSection />
       <ZoneMatrixSection />
 
       {/* Le bouton Sauvegarder ci-dessous ne concerne QUE les champs
@@ -170,37 +155,34 @@ function TarifsTab() {
             </div>
           ))}
 
-          {/* Simulation — utilise la grille configurée */}
+          {/* Simulation — tarif au km (utilisé seulement hors des zones de la
+              grille) avec les frais de mise en relation réglés dans Tarifs */}
           <div style={{ ...glass, padding: '20px 24px' }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
               <h3 style={{ fontSize: 14, fontWeight: 600 }}>Simulation — Course de 5 km</h3>
-              <button onClick={() => navigate('/config', { state: { tab: 'commissions' } })}
-                style={{ background: 'none', border: 'none', color: 'var(--primary)', fontSize: 11, fontWeight: 600, cursor: 'pointer' }}>
-                → Éditer grille commissions
-              </button>
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10, fontSize: 13 }}>
               {['DELIVERY'].map(type => {
                 const base     = parseFloat(draft[`base_fare_${type.toLowerCase()}`] ?? 500)
                 const perKm    = parseFloat(draft['price_per_km'] ?? 200)
                 const coursePx = Math.round(base + 5 * perKm)
-                const demFee   = computeDemFeeFromGrid(coursePx, feeGrid)
+                const demFee   = Math.min(connectionFee, coursePx)
                 return (
                   <div key={type} style={{ background: 'var(--surface2)', borderRadius: 'var(--radius-sm)', overflow: 'hidden' }}>
                     <div style={{ padding: '6px 12px', background: 'rgba(0,119,182,.07)', fontWeight: 700, fontSize: 11, color: 'var(--primary)', letterSpacing: '.5px' }}>{type}</div>
                     <div style={{ padding: '10px 12px', display: 'flex', flexDirection: 'column', gap: 5 }}>
                       <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                        <span style={{ color: 'var(--text-muted)' }}>Prix course (livreur)</span>
+                        <span style={{ color: 'var(--text-muted)' }}>Prix payé par le client</span>
                         <span style={{ fontWeight: 600 }}>{coursePx.toLocaleString()} F</span>
                       </div>
                       <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                        <span style={{ color: 'var(--text-muted)' }}>+ Commission DEM</span>
-                        <span style={{ fontWeight: 600, color: 'var(--primary)' }}>+{demFee} F</span>
+                        <span style={{ color: 'var(--text-muted)' }}>− Frais de mise en relation DEM</span>
+                        <span style={{ fontWeight: 600, color: 'var(--primary)' }}>−{demFee} F</span>
                       </div>
                       <div style={{ height: 1, background: 'rgba(0,0,0,.08)', margin: '3px 0' }} />
                       <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                        <span style={{ fontWeight: 700 }}>Total client</span>
-                        <span style={{ fontWeight: 800, fontSize: 15 }}>{(coursePx + demFee).toLocaleString()} F</span>
+                        <span style={{ fontWeight: 700 }}>Part du livreur</span>
+                        <span style={{ fontWeight: 800, fontSize: 15 }}>{(coursePx - demFee).toLocaleString()} F</span>
                       </div>
                     </div>
                   </div>
@@ -208,7 +190,7 @@ function TarifsTab() {
               })}
             </div>
             <p style={{ color: 'var(--text-muted)', fontSize: 11, marginTop: 12 }}>
-              Phase 1 : commission = 0 FCFA. La grille s'appliquera en Phase 2.
+              Tarif au km utilisé seulement hors des zones de la grille. Les frais de mise en relation (réglés plus haut) s'appliquent à toutes les courses.
             </p>
           </div>
         </div>
@@ -228,136 +210,6 @@ function TarifsTab() {
           </div>
         </Link>
       </div>
-    </div>
-  )
-}
-
-// ── Tab Commissions ───────────────────────────────────────────────────────────
-function CommissionsTab() {
-  const [grid,    setGrid]    = useState(null)
-  const [draft,   setDraft]   = useState(null)
-  const [loading, setLoading] = useState(true)
-  const [saving,  setSaving]  = useState(false)
-  const [saved,   setSaved]   = useState(false)
-
-  const load = useCallback(async () => {
-    setLoading(true)
-    try {
-      const res = await api.get('/admin/fees/config')
-      const g = res.data.grid ?? DEFAULT_FEE_GRID
-      setGrid(g)
-      setDraft(g.map(t => ({ ...t })))
-    } catch (e) {
-      console.error(e)
-      // Fallback sur les valeurs par défaut si l'API échoue (endpoint pas encore déployé)
-      setGrid(DEFAULT_FEE_GRID)
-      setDraft(DEFAULT_FEE_GRID.map(t => ({ ...t })))
-    } finally { setLoading(false) }
-  }, [])
-
-  useEffect(() => { load() }, [load])
-
-  function update(i, field, val) {
-    setDraft(prev => prev.map((t, idx) =>
-      idx === i ? { ...t, [field]: parseInt(val, 10) || 0 } : t
-    ))
-  }
-
-  async function handleSave() {
-    setSaving(true)
-    try {
-      await api.put('/admin/fees/config', { grid: draft })
-      setGrid(draft.map(t => ({ ...t })))
-      setSaved(true)
-      setTimeout(() => setSaved(false), 2500)
-    } catch (e) {
-      alert(e.response?.data?.message ?? 'Erreur.')
-    } finally { setSaving(false) }
-  }
-
-  async function handleReset() {
-    if (!confirm('Remettre la grille par défaut du lancement ?')) return
-    setSaving(true)
-    try {
-      const res = await api.post('/admin/fees/config/reset')
-      setGrid(res.data.grid)
-      setDraft(res.data.grid.map(t => ({ ...t })))
-    } catch (e) { alert('Erreur reset.') }
-    finally { setSaving(false) }
-  }
-
-  const hasChanges = draft && grid && JSON.stringify(draft) !== JSON.stringify(grid)
-
-  if (loading || !draft) return <div style={{ color: 'var(--text-muted)' }}>Chargement…</div>
-
-  return (
-    <div style={{ maxWidth: 680 }}>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
-        <p style={{ color: 'var(--text-muted)', fontSize: 13, maxWidth: 420 }}>
-          Grille de commissions DEM prélevées sur le prix de la course. Active en Phase 2.
-        </p>
-        <div style={{ display: 'flex', gap: 8 }}>
-          <button onClick={handleReset} style={btnOutline} disabled={saving}>
-            <RotateCcw size={13} /> Défaut
-          </button>
-          <button onClick={handleSave} disabled={!hasChanges || saving} style={btnSave(hasChanges)}>
-            <Save size={14} />
-            {saved ? 'Sauvegardé ✓' : saving ? 'Enregistrement…' : 'Sauvegarder'}
-          </button>
-        </div>
-      </div>
-
-      <div style={{ ...glass, padding: 0, overflowX: 'auto' }}>
-        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-          <thead>
-            <tr style={{ background: 'rgba(0,119,182,.05)' }}>
-              {['Tranche min (F)', 'Tranche max (F)', 'Commission (F)', 'Aperçu'].map(h => (
-                <th key={h} style={{ textAlign: 'left', padding: '12px 16px', fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', letterSpacing: '.5px', borderBottom: '1px solid rgba(0,0,0,.07)' }}>{h}</th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {draft.map((t, i) => {
-              const origMin = grid[i]?.min
-              const origMax = grid[i]?.max
-              const origFee = grid[i]?.fee
-              return (
-                <tr key={i} style={{ borderBottom: i < draft.length - 1 ? '1px solid rgba(0,0,0,.05)' : 'none' }}>
-                  <td style={{ padding: '10px 16px' }}>
-                    <input type="number" min={0} value={t.min}
-                      onChange={e => update(i, 'min', e.target.value)}
-                      style={{ ...glassInput, width: 100, textAlign: 'center', fontWeight: 600,
-                        border: `1px solid ${t.min !== origMin ? 'var(--primary)' : 'rgba(0,119,182,.25)'}` }}
-                    />
-                  </td>
-                  <td style={{ padding: '10px 16px' }}>
-                    <input type="number" min={0} value={t.max}
-                      onChange={e => update(i, 'max', e.target.value)}
-                      style={{ ...glassInput, width: 100, textAlign: 'center', fontWeight: 600,
-                        border: `1px solid ${t.max !== origMax ? 'var(--primary)' : 'rgba(0,119,182,.25)'}` }}
-                    />
-                  </td>
-                  <td style={{ padding: '10px 16px' }}>
-                    <input type="number" min={0} value={t.fee}
-                      onChange={e => update(i, 'fee', e.target.value)}
-                      style={{ ...glassInput, width: 100, textAlign: 'center', fontWeight: 700,
-                        color: 'var(--primary)',
-                        border: `1px solid ${t.fee !== origFee ? 'var(--primary)' : 'rgba(0,119,182,.25)'}` }}
-                    />
-                  </td>
-                  <td style={{ padding: '10px 16px', fontSize: 12, color: 'var(--text-muted)' }}>
-                    {t.min.toLocaleString()} – {t.max.toLocaleString()} F → <strong style={{ color: 'var(--primary)' }}>{t.fee} F</strong>
-                  </td>
-                </tr>
-              )
-            })}
-          </tbody>
-        </table>
-      </div>
-
-      <p style={{ color: 'var(--text-muted)', fontSize: 11, marginTop: 12 }}>
-        Champs en bleu = modifications non sauvegardées. Phase 1 active : commission = 0 FCFA quelle que soit la grille.
-      </p>
     </div>
   )
 }
