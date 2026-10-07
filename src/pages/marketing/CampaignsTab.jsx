@@ -4,8 +4,8 @@ import { Send, MessageSquareWarning, Trophy, ArrowRight } from 'lucide-react'
 import api from '../../lib/api'
 import { glass, glassInput } from '../../lib/glassStyles'
 import { useAutoRefresh } from '../../lib/useAutoRefresh'
+import { targetLabel } from '../../lib/broadcastTargets'
 
-const TARGET_LABELS = { all: 'Tous', clients: 'Clients', drivers: 'Livreurs', dem_pro: 'DEM Pro' }
 const AUDIENCE_OPTIONS = [['all', 'Tous'], ['clients', 'Clients'], ['drivers', 'Livreurs']]
 
 function Section({ icon: Icon, title, children, action }) {
@@ -114,7 +114,7 @@ function BroadcastHistory() {
             <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>{b.body}</div>
           </div>
           <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--primary)', background: 'rgba(0,119,182,.08)', padding: '2px 8px', borderRadius: 8 }}>
-            {TARGET_LABELS[b.data?.target] ?? b.data?.target ?? '—'}
+            {b.data?.target ? targetLabel(b.data.target) : '—'}
           </span>
           <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>
             {b.data?.sent ?? 0} envoyée(s){b.data?.totalUsers != null ? ` sur ${b.data.totalUsers}` : ''}

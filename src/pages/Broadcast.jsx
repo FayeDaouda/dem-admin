@@ -1,16 +1,27 @@
 import { useState, useEffect, useCallback } from 'react'
 import api from '../lib/api'
-import { Send, Users, Bike, Briefcase, Bell, FlaskConical, Clock, Pencil, X } from 'lucide-react'
+import { Send, Users, Bike, Briefcase, Truck, Bell, FlaskConical, Clock, Pencil, X, Check } from 'lucide-react'
 import { glass, pageWrap } from '../lib/glassStyles'
+import { targetLabel } from '../lib/broadcastTargets'
 
-const TARGETS = [
-  { value: 'all',      label: 'Tous les utilisateurs', icon: Users,     desc: 'Clients + Livreurs + DEM Pro' },
-  { value: 'clients',  label: 'Clients uniquement',    icon: Users,     desc: 'Utilisateurs avec le rôle Client' },
-  { value: 'drivers',  label: 'Livreurs uniquement',   icon: Bike,      desc: 'Utilisateurs avec le rôle Livreur' },
-  { value: 'dem_pro',  label: 'DEM Pro uniquement',    icon: Briefcase, desc: 'Comptes entreprise DEM Pro' },
+// Profils combinables : on en coche un, deux, trois… Tout coché = « Tous ».
+// Envoyé au serveur sous la forme 'all' ou 'clients,drivers' (même format
+// que celui qu'il renvoie pour les notifications programmées).
+const PROFILES = [
+  { value: 'clients', label: 'Clients',          icon: Users,     desc: 'Utilisateurs avec le rôle Client' },
+  { value: 'drivers', label: 'Livreurs',         icon: Bike,      desc: 'Utilisateurs avec le rôle Livreur' },
+  { value: 'dem_pro', label: 'DEM Pro',          icon: Briefcase, desc: 'Comptes entreprise DEM Pro' },
+  { value: 'chefs',   label: 'Chefs de flotte',  icon: Truck,     desc: 'Gestionnaires de flotte' },
 ]
+const ALL_PROFILES = PROFILES.map(p => p.value)
 
-const TARGET_LABELS = { all: 'Tous', clients: 'Clients', drivers: 'Livreurs', dem_pro: 'DEM Pro' }
+function toTarget(selected) {
+  return selected.length === ALL_PROFILES.length ? 'all' : ALL_PROFILES.filter(v => selected.includes(v)).join(',')
+}
+
+function fromTarget(target) {
+  return !target || target === 'all' ? [...ALL_PROFILES] : String(target).split(',').filter(v => ALL_PROFILES.includes(v))
+}
 
 const TEMPLATES = [
   {
@@ -38,7 +49,8 @@ function toDatetimeLocal(date) {
 }
 
 export default function Broadcast() {
-  const [target, setTarget]   = useState('all')
+  const [selected, setSelected] = useState([...ALL_PROFILES])
+  const target = toTarget(selected)
   const [title, setTitle]     = useState('')
   const [body, setBody]       = useState('')
   const [sending, setSending] = useState(false)
@@ -76,7 +88,11 @@ export default function Broadcast() {
       setError('Le titre et le message sont obligatoires.')
       return
     }
-    if (!confirm(`Envoyer la notification à ${TARGETS.find(t => t.value === target)?.label} ?`)) return
+    if (selected.length === 0) {
+      setError('Choisissez au moins un profil.')
+      return
+    }
+    if (!confirm(`Envoyer la notification à : ${targetLabel(target)} ?`)) return
 
     setSending(true)
     setError('')
@@ -96,6 +112,10 @@ export default function Broadcast() {
   async function scheduleOrUpdate() {
     if (!title.trim() || !body.trim()) {
       setScheduleError('Le titre et le message sont obligatoires.')
+      return
+    }
+    if (selected.length === 0) {
+      setScheduleError('Choisissez au moins un profil.')
       return
     }
     if (!scheduledAt) {
@@ -125,7 +145,7 @@ export default function Broadcast() {
     setEditingId(item.id)
     setTitle(item.title)
     setBody(item.body)
-    setTarget(item.target)
+    setSelected(fromTarget(item.target))
     setScheduledAt(toDatetimeLocal(item.scheduledAt))
     setScheduleError('')
     setResult(null)
@@ -207,19 +227,41 @@ export default function Broadcast() {
             </div>
           )}
 
-          {/* Cible */}
-          <label style={labelStyle}>Cible</label>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 18 }}>
-            {TARGETS.map(t => {
-              const sel = target === t.value
+          {/* Cible — un ou plusieurs profils */}
+          <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between' }}>
+            <label style={labelStyle}>Destinataires</label>
+            <button
+              onClick={() => setSelected(selected.length === ALL_PROFILES.length ? [] : [...ALL_PROFILES])}
+              style={{ background: 'none', border: 'none', color: 'var(--primary)', fontSize: 12, fontWeight: 600, cursor: 'pointer', padding: 0 }}
+            >
+              {selected.length === ALL_PROFILES.length ? 'Tout décocher' : 'Tout cocher'}
+            </button>
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 8 }}>
+            {PROFILES.map(t => {
+              const sel = selected.includes(t.value)
               const Icon = t.icon
               return (
-                <button key={t.value} onClick={() => setTarget(t.value)} style={{
-                  padding: '10px 12px', borderRadius: 10, cursor: 'pointer',
-                  border: `1.5px solid ${sel ? 'var(--primary)' : 'rgba(0,119,182,.15)'}`,
-                  background: sel ? 'rgba(0,180,230,.08)' : 'rgba(255,255,255,.5)',
-                  display: 'flex', alignItems: 'center', gap: 8, textAlign: 'left',
-                }}>
+                <button
+                  key={t.value}
+                  role="checkbox"
+                  aria-checked={sel}
+                  onClick={() => setSelected(sel ? selected.filter(v => v !== t.value) : [...selected, t.value])}
+                  style={{
+                    padding: '10px 12px', borderRadius: 10, cursor: 'pointer',
+                    border: `1.5px solid ${sel ? 'var(--primary)' : 'rgba(0,119,182,.15)'}`,
+                    background: sel ? 'rgba(0,180,230,.08)' : 'rgba(255,255,255,.5)',
+                    display: 'flex', alignItems: 'center', gap: 8, textAlign: 'left',
+                  }}
+                >
+                  <span style={{
+                    width: 16, height: 16, borderRadius: 4, flexShrink: 0,
+                    border: `1.5px solid ${sel ? 'var(--primary)' : 'rgba(0,119,182,.35)'}`,
+                    background: sel ? 'var(--primary)' : 'transparent',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  }}>
+                    {sel && <Check size={11} color="#fff" strokeWidth={3} />}
+                  </span>
                   <Icon size={16} color={sel ? 'var(--primary)' : 'var(--text-muted)'} />
                   <div>
                     <div style={{ fontSize: 12, fontWeight: 600, color: sel ? 'var(--primary)' : 'var(--text)' }}>{t.label}</div>
@@ -228,6 +270,9 @@ export default function Broadcast() {
                 </button>
               )
             })}
+          </div>
+          <div style={{ fontSize: 12, color: selected.length ? 'var(--text-muted)' : 'var(--danger)', marginBottom: 18 }}>
+            {selected.length ? `Envoi à : ${targetLabel(target)}` : 'Aucun profil sélectionné'}
           </div>
 
           {/* Titre */}
@@ -251,7 +296,7 @@ export default function Broadcast() {
 
           {/* Bouton envoyer maintenant */}
           {!editingId && (
-            <button onClick={send} disabled={sending} style={{
+            <button onClick={send} disabled={sending || selected.length === 0} style={{
               width: '100%', padding: '12px 0', borderRadius: 10,
               border: 'none', background: 'var(--primary)', color: '#fff',
               fontSize: 14, fontWeight: 700, cursor: 'pointer',
@@ -274,7 +319,8 @@ export default function Broadcast() {
             <div style={{ marginBottom: 14, padding: '12px 14px', borderRadius: 10, background: 'rgba(16,185,129,.08)', border: '1px solid rgba(16,185,129,.2)' }}>
               <div style={{ fontWeight: 700, color: 'var(--success)', marginBottom: 4 }}>Notification envoyée !</div>
               <div style={{ fontSize: 13, color: 'var(--text-muted)' }}>
-                {result.sent} envoyée{result.sent > 1 ? 's' : ''} sur {result.totalUsers} utilisateur{result.totalUsers > 1 ? 's' : ''}
+                {result.sent} envoyée{result.sent > 1 ? 's' : ''} sur {result.totalUsers} téléphone{result.totalUsers > 1 ? 's' : ''}
+                {result.totalAccounts > result.totalUsers && ` (${result.totalAccounts} comptes — un seul envoi par téléphone)`}
                 {result.failed > 0 && ` · ${result.failed} échoué${result.failed > 1 ? 's' : ''}`}
               </div>
             </div>
@@ -398,7 +444,7 @@ export default function Broadcast() {
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ fontWeight: 700, fontSize: 13 }}>{item.title}</div>
                     <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>
-                      {new Date(item.scheduledAt).toLocaleString('fr-FR')} · {TARGET_LABELS[item.target] ?? item.target}
+                      {new Date(item.scheduledAt).toLocaleString('fr-FR')} · {targetLabel(item.target)}
                     </div>
                   </div>
                   <button onClick={() => startEdit(item)} style={iconBtn} title="Modifier">
