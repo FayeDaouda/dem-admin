@@ -7,6 +7,7 @@ import ZoneMatrixSection from './ZoneMatrixSection'
 import FlatPromoSection from './FlatPromoSection'
 import PassLivreursSection from './PassLivreursSection'
 import AppVersionTab from './AppVersionTab'
+import DeliveryZoneTab from './DeliveryZoneTab'
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 const CONFIG_META = {
@@ -67,11 +68,13 @@ export default function Config() {
         <button style={TAB(tab === 'commissions')} onClick={() => setTab('commissions')}>Commissions</button>
         <button style={TAB(tab === 'surge')}        onClick={() => setTab('surge')}>Heures de pointe</button>
         <button style={TAB(tab === 'version')}      onClick={() => setTab('version')}>Version de l'app</button>
+        <button style={TAB(tab === 'zone')}         onClick={() => setTab('zone')}>Zone de livraison</button>
       </div>
       {tab === 'tarifs'      && <TarifsTab />}
       {tab === 'commissions' && <CommissionsTab />}
       {tab === 'surge'       && <SurgeTab />}
       {tab === 'version'     && <AppVersionTab />}
+      {tab === 'zone'        && <DeliveryZoneTab />}
     </div>
   )
 }
