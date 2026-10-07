@@ -6,6 +6,7 @@ import { Gift,
 } from 'lucide-react'
 import logoSrc from '../assets/logo-dem.svg'
 import { useResponsive } from '../lib/useResponsive'
+import SosAlertBanner from './SosAlertBanner'
 
 // roles: undefined = tous les rôles. Sinon tableau des rôles autorisés (SUPER bypass toujours).
 // ASSISTANCE_EXECUTIVE (Assistant Exécutif) : périmètre opérationnel restreint — Dashboard (sans
@@ -252,6 +253,8 @@ export default function Layout({ children }) {
             <img src={logoSrc} alt="DEM" style={{ height: 32, width: 'auto' }} />
           </div>
         )}
+
+        <SosAlertBanner />
 
         <div style={{ padding: isMobile ? '16px 14px' : isTablet ? '20px 20px' : '28px 32px', flex: 1, minHeight: 0, overflowY: 'auto' }}>
           {children}
