@@ -49,6 +49,15 @@ export default function Orders() {
     }
   }
 
+  // Fiche : affichage immédiat avec la ligne de la liste, puis complétée par
+  // GET /admin/orders/:id (origine de la réduction, etc.)
+  const openDetail = (o) => {
+    setDetail(o)
+    api.get(`/admin/orders/${o.id}`)
+      .then(res => setDetail(prev => (prev?.id === o.id ? { ...prev, ...res.data } : prev)))
+      .catch(() => {})
+  }
+
   const assignDriver = async (driverId) => {
     setAssigning(true)
     try {
@@ -235,7 +244,7 @@ export default function Orders() {
                 <tr
                   key={o.id}
                   style={{ borderBottom: '1px solid var(--border)', cursor: 'pointer' }}
-                  onClick={() => setDetail(o)}
+                  onClick={() => openDetail(o)}
                 >
                   <td style={{ ...tdStyle, color: 'var(--text-muted)', fontSize: 12, width: 40, textAlign: 'center' }}>{(page - 1) * LIMIT + idx + 1}</td>
                   <td style={{ ...tdStyle, ...stickyCol }}><code style={{ fontSize: 11, color: 'var(--text-muted)' }}>{o.id.slice(0,8)}</code></td>
@@ -280,7 +289,18 @@ export default function Orders() {
               <Row label="Prix client"   value={`${clientCharge(detail).toLocaleString()} F`} />
               <Row label="Part livreur"  value={`${detail.price?.toLocaleString()} F`} />
               <Row label="Frais DEM"     value={`${(detail.demFee ?? 0).toLocaleString()} F`} />
-              {detail.discountAmount > 0 && <Row label="Réduction" value={`−${detail.discountAmount.toLocaleString()} F`} />}
+              {detail.discountAmount > 0 && <Row label="Réduction" value={
+                <span>
+                  −{detail.discountAmount.toLocaleString()} F
+                  {/* Origine de la réduction (Centre des récompenses) */}
+                  {detail.discountOrigin && (
+                    <span style={{ display: 'block', fontSize: 12, color: 'var(--text-muted)', marginTop: 2 }}>
+                      <strong style={{ color: 'var(--text)' }}>{detail.discountOrigin.label}</strong>
+                      {detail.discountOrigin.detail ? ` · ${detail.discountOrigin.detail}` : ''}
+                    </span>
+                  )}
+                </span>
+              } />}
               <Row label="Départ"        value={detail.pickupAddress} />
               <Row label="Tél. pickup"   value={firstNonEmpty(detail.senderPhone, detail.client?.phone, detail.clientPhone)} />
               <Row label="Arrivée"       value={detail.deliveryAddress} />
