@@ -14,6 +14,7 @@ const CONFIG_META = {
   dem_pro_commission_rate: { label: 'Commission DEM Pro – Wallet (%)', description: 'Prélevée sur la part "produit" des commandes payées via le paiement intégré DEM Pro (wallet)' },
   dem_pro_price_pro:       { label: 'Abonnement DEM Pro – Pro (F/mois)',      description: 'Prix mensuel facturé pour passer du palier Gratuit à Pro' },
   dem_pro_price_business:  { label: 'Abonnement DEM Pro – Business (F/mois)', description: 'Prix mensuel facturé pour passer au palier Business' },
+  driver_location_interval_sec: { label: 'Position du livreur en course – envoi toutes les (s)', description: 'Rythme auquel l\'app livreur envoie sa position pendant une course (3 à 30 s, 4 s si vide). Plus court = moto plus à jour côté client ; repasser à 10 en cas de charge serveur. Pris en compte au début de la course suivante.', placeholder: '4' },
 }
 
 function computeDemFeeFromGrid(price, grid) {
@@ -134,7 +135,8 @@ function TarifsTab() {
       <ZoneMatrixSection />
 
       {/* Le bouton Sauvegarder ci-dessous ne concerne QUE les champs
-          /admin/config en dessous (tarif de base, DEM Pro), pas la matrice. */}
+          /admin/config en dessous (tarif de base, DEM Pro, position livreur),
+          pas la matrice. */}
       <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 28, marginBottom: 16 }}>
         <button onClick={handleSave} disabled={!hasChanges || saving} style={btnSave(hasChanges)}>
           <Save size={14} />
@@ -150,7 +152,7 @@ function TarifsTab() {
               <p style={{ color: 'var(--text-muted)', fontSize: 12, marginBottom: 12 }}>{meta.description}</p>
               <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                 <input
-                  type="number" value={draft[key] ?? ''}
+                  type="number" value={draft[key] ?? ''} placeholder={meta.placeholder}
                   onChange={e => setDraft(d => ({ ...d, [key]: e.target.value }))}
                   style={{ ...glassInput, width: 140, fontSize: 15, fontWeight: 600,
                     border: `1px solid ${draft[key] !== config[key] ? 'var(--primary)' : 'rgba(0,119,182,0.3)'}` }}
