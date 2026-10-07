@@ -84,6 +84,46 @@ function ClientFormModal({ initial, onClose, onSaved }) {
   )
 }
 
+// ── Wallet client (06/10) ────────────────────────────────────────────────────
+// GET /admin/clients/:id/wallet — solde, part retirable (remboursements),
+// derniers mouvements. Lecture seule.
+const WALLET_TX_LABELS = {
+  CREDIT_TOPUP: 'Recharge', DEBIT_ORDER: 'Course payée', CREDIT_REFUND: 'Remboursement', DEBIT_CASHOUT: 'Retrait',
+}
+
+function ClientWalletBox({ clientId }) {
+  const [wallet, setWallet] = useState(null)
+  useEffect(() => {
+    let cancelled = false
+    api.get(`/admin/clients/${clientId}/wallet`)
+      .then(r => { if (!cancelled) setWallet(r.data) })
+      .catch(() => {})
+    return () => { cancelled = true }
+  }, [clientId])
+  if (!wallet) return null
+  const fmt = n => `${Math.round(n).toLocaleString('fr-FR')} F`
+  return (
+    <div style={{ ...infoBox, marginTop: 14 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 10 }}>
+        <div style={sectionLabel}>Wallet</div>
+        <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>dont {fmt(wallet.withdrawable)} retirable (remboursements)</span>
+      </div>
+      <div style={{ fontSize: 22, fontWeight: 800, marginBottom: 8 }}>{fmt(wallet.balance)}</div>
+      {wallet.transactions.length === 0 ? (
+        <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>Aucun mouvement.</div>
+      ) : wallet.transactions.slice(0, 8).map(t => (
+        <div key={t.id} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, padding: '5px 0', borderTop: '1px solid var(--border)' }}>
+          <span>
+            <strong>{WALLET_TX_LABELS[t.type] ?? t.type}</strong>
+            <span style={{ color: 'var(--text-muted)' }}> · {new Date(t.createdAt).toLocaleDateString('fr-FR')}{t.needsManualReview ? ' · à vérifier' : ''}</span>
+          </span>
+          <span style={{ fontWeight: 700, color: t.amount >= 0 ? 'var(--success)' : 'var(--text)' }}>{t.amount >= 0 ? '+' : ''}{fmt(t.amount)}</span>
+        </div>
+      ))}
+    </div>
+  )
+}
+
 // ── Modal Détail ──────────────────────────────────────────────────────────────
 function ClientDetailModal({ client, onClose }) {
   const [detail, setDetail] = useState(null)
@@ -141,6 +181,7 @@ function ClientDetailModal({ client, onClose }) {
                 ))}
               </div>
             </div>
+            <ClientWalletBox clientId={client.id} />
             {detail?.ordersAsClient?.length > 0 && (
               <div style={{ ...infoBox, marginTop: 14 }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
