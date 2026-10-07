@@ -1,11 +1,13 @@
 import { useState, useEffect } from 'react'
 import { NavLink, useNavigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
-import {
+import { Gift,
   LayoutDashboard, CreditCard, Package, Users, LogOut, Bike, Map, Menu, X, TrendingUp, ShieldCheck, AlertTriangle, ScrollText, UserCog, Briefcase, UsersRound, SlidersHorizontal, Award, GitBranch, Bell, Wallet, UserPlus, Table2, Percent, KeyRound, Wrench,
 } from 'lucide-react'
 import logoSrc from '../assets/logo-dem.svg'
 import { useResponsive } from '../lib/useResponsive'
+import SosAlertBanner from './SosAlertBanner'
+import GlobalSearch from './GlobalSearch'
 
 // roles: undefined = tous les rôles. Sinon tableau des rôles autorisés (SUPER bypass toujours).
 // ASSISTANCE_EXECUTIVE (Assistant Exécutif) : périmètre opérationnel restreint — Dashboard (sans
@@ -35,6 +37,7 @@ const NAV = [
   { to: '/badges/drivers',  icon: Award,            label: 'Badge livreur',  roles: ['SUPER','MARKETING','ASSISTANCE_EXECUTIVE'] },
   { to: '/parrainage',      icon: GitBranch,        label: 'Parrainage',     roles: ['SUPER','MARKETING'] },
   { to: '/acquisition',     icon: TrendingUp,       label: 'Acquisition',    roles: ['SUPER'] },
+  { to: '/recompenses',     icon: Gift,             label: 'Récompenses',    roles: ['SUPER','MARKETING'] },
   { to: '/promotions',      icon: Percent,          label: 'Promotions',     roles: ['SUPER','MARKETING'] },
   { to: '/acquisition-overview', icon: TrendingUp,  label: 'Acquisition',    roles: ['ASSISTANCE_EXECUTIVE'], hideForSuper: true },
   { to: '/broadcast',       icon: Bell,             label: 'Notification',   roles: ['SUPER','MARKETING'] },
@@ -249,10 +252,18 @@ export default function Layout({ children }) {
               </button>
             )}
             <img src={logoSrc} alt="DEM" style={{ height: 32, width: 'auto' }} />
+            <div style={{ flex: 1, minWidth: 0 }}><GlobalSearch compact /></div>
           </div>
         )}
 
+        <SosAlertBanner />
+
         <div style={{ padding: isMobile ? '16px 14px' : isTablet ? '20px 20px' : '28px 32px', flex: 1, minHeight: 0, overflowY: 'auto' }}>
+          {!(isMobile || isTablet) && (
+            <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 14 }}>
+              <GlobalSearch />
+            </div>
+          )}
           {children}
         </div>
       </main>

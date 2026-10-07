@@ -652,61 +652,29 @@ function FeesTab() {
 
   if (loading) return <div style={{ color: 'var(--text-muted)' }}>Chargement…</div>
 
-  const grid  = data?.grid ?? []
+  const fee       = data?.connectionFee ?? 100
   const billed    = data?.commissionBilled ?? 0
   const collected = data?.commissionCollected ?? 0
   const deliveredCount = data?.deliveredCount ?? 0
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16, maxWidth: 600 }}>
-      {/* Mêmes définitions que Finance : facturée = demFee réel des courses livrées ; encaissée = payées en ligne */}
+      {/* Mêmes définitions que Finance : facturés = demFee réel des courses livrées ;
+          encaissés = payés en ligne / wallet, ou repris sur le wallet du livreur (espèces) */}
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12 }}>
-        <StatBox label="Commission facturée depuis le lancement" value={`${billed.toLocaleString()} FCFA`} color="var(--primary)" />
-        <StatBox label="Dont encaissée par DEM (en ligne)" value={`${collected.toLocaleString()} FCFA`} color="var(--success)" />
+        <StatBox label="Frais facturés depuis le lancement" value={`${billed.toLocaleString()} FCFA`} color="var(--primary)" />
+        <StatBox label="Dont encaissés par DEM" value={`${collected.toLocaleString()} FCFA`} color="var(--success)" />
       </div>
 
       <Card>
-        <Label>Grille tarifaire DEM</Label>
-        <p style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 16 }}>
-          Grille en vigueur (modifiable dans Configuration), appliquée aux commandes hors tarif par zone. Frais non prélevés sur la part du livreur.
+        <Label>Frais de mise en relation</Label>
+        <p style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 12 }}>
+          Un seul montant, prélevé sur chaque course et chaque arrêt de tournée, quel que soit le paiement
+          (wallet, mobile money, espèces). Réglable dans Configuration › Tarifs.
         </p>
-
-        {/* En-tête */}
-        <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 2fr', gap: 8, padding: '6px 0', borderBottom: '1px solid rgba(0,0,0,.07)', marginBottom: 4 }}>
-          {['Tranche (FCFA)', 'Frais DEM', 'Volume réel'].map(h => (
-            <div key={h} style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-muted)', letterSpacing: '.5px' }}>{h}</div>
-          ))}
-        </div>
-
-        {grid.map((tier, i) => (
-          <div key={i} style={{
-            display: 'grid', gridTemplateColumns: '2fr 1fr 2fr', gap: 8,
-            padding: '9px 0',
-            borderBottom: i < grid.length - 1 ? '1px solid rgba(0,0,0,.05)' : 'none',
-            alignItems: 'center',
-          }}>
-            <div style={{ fontSize: 13, color: 'var(--text)' }}>{tier.min.toLocaleString()} — {tier.max.toLocaleString()}</div>
-            <div style={{ fontSize: 14, fontWeight: 800, color: 'var(--primary)' }}>{tier.fee} F</div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <div style={{
-                height: 6, borderRadius: 6,
-                background: 'var(--primary)',
-                width: `${Math.max(tier.pct, 2)}%`,
-                maxWidth: '60%',
-                opacity: .7,
-              }} />
-              <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>{tier.count} ({tier.pct}%)</span>
-            </div>
-          </div>
-        ))}
-
-        {data?.outOfGrid?.count > 0 && (
-          <div style={{ fontSize: 12, color: 'var(--text-muted)', padding: '9px 0' }}>
-            Hors grille (prix hors tranches, tarif par zone…) : {data.outOfGrid.count} ({data.outOfGrid.pct}%)
-          </div>
-        )}
+        <div style={{ fontSize: 26, fontWeight: 800, color: 'var(--primary)' }}>{fee.toLocaleString()} F <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-muted)' }}>par course</span></div>
         <div style={{ marginTop: 14, padding: '10px 12px', background: 'rgba(0,180,216,.06)', borderRadius: 8, fontSize: 12, color: 'var(--text-muted)' }}>
-          Commission moyenne réelle : {deliveredCount > 0 ? Math.round(billed / deliveredCount).toLocaleString() : 0} FCFA par course livrée ({deliveredCount.toLocaleString()} courses)
+          Frais moyens réels : {deliveredCount > 0 ? Math.round(billed / deliveredCount).toLocaleString() : 0} FCFA par course livrée ({deliveredCount.toLocaleString()} courses)
         </div>
       </Card>
     </div>

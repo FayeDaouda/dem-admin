@@ -8,10 +8,12 @@ import { glass, glassModal, glassInput, pageWrap, pageScroll, stickyTh, stickyTh
 import SubmitRequestModal from './service-client/components/SubmitRequestModal'
 import AccountDetailModal from './dem-pro/AccountDetailModal'
 import OffersTab from './dem-pro/OffersTab'
+import ReferralsTab from './dem-pro/ReferralsTab'
 import {
   hasPaidTier, SECTOR_LABELS, SECTOR_COLORS, VOLUME_LABELS, PLAN_COLORS, proStatusInfo, planLabel,
 } from './dem-pro/labels'
 import { useAutoRefresh } from '../lib/useAutoRefresh'
+import { useUrlQuery } from '../lib/useUrlQuery'
 
 const STATUS_FILTERS = [
   ['all',       'Tous'],
@@ -277,14 +279,16 @@ export default function DemPro() {
   const [filter, setFilter]     = useState('all')
   const [planFilter, setPlanFilter] = useState('all')
   const [search, setSearch]     = useState('')
+  useUrlQuery(setSearch) // recherche globale de l'en-tête (?q=…)
   const [modal, setModal]       = useState(null)
   const [editTarget, setEditTarget] = useState(null)
   const [saving, setSaving]     = useState(false)
   const [requestTarget, setRequestTarget] = useState(null)
   const [detailId, setDetailId] = useState(null) // fiche commerçant ouverte
   const [searchParams, setSearchParams] = useSearchParams()
-  const view = searchParams.get('onglet') === 'offres' ? 'offres' : 'comptes'
-  const setView = (v) => setSearchParams(v === 'offres' ? { onglet: 'offres' } : {})
+  const onglet = searchParams.get('onglet')
+  const view = onglet === 'offres' || onglet === 'parrainage' ? onglet : 'comptes'
+  const setView = (v) => setSearchParams(v === 'comptes' ? {} : { onglet: v })
   // Plans attribuables selon le système en vigueur (ancien / nouveaux paliers)
   const [planSystem, setPlanSystem] = useState(null)
   const loadPlanSystem = useCallback(() => {
@@ -454,7 +458,7 @@ export default function DemPro() {
 
       {/* Onglets : comptes commerçants / offres Starter-Business-Premium */}
       <div style={{ display: 'flex', gap: 4, marginBottom: 18, background: 'rgba(255,255,255,.45)', borderRadius: 'var(--radius)', padding: 4, width: 'fit-content', flexShrink: 0 }}>
-        {[['comptes', 'Comptes'], ['offres', 'Offres DEM Pro']].map(([key, label]) => (
+        {[['comptes', 'Comptes'], ['offres', 'Offres DEM Pro'], ['parrainage', 'Parrainage']].map(([key, label]) => (
           <button key={key} onClick={() => setView(key)} style={{
             padding: '7px 16px', borderRadius: 'var(--radius-sm)', border: 'none', cursor: 'pointer', fontSize: 13,
             background: view === key ? 'var(--primary)' : 'transparent',
@@ -771,6 +775,8 @@ export default function DemPro() {
           </div>
         </div>
         </>
+      ) : view === 'parrainage' ? (
+        <ReferralsTab isSuper={isSuper} />
       ) : (
         <OffersTab isSuper={isSuper} onSystemChange={loadPlanSystem} />
       )}

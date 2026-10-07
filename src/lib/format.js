@@ -9,6 +9,9 @@ export const formatAxisF = (v) => (Math.abs(v) >= 1000 ? `${Math.round(v / 1000)
 
 export const formatCount = (v) => Math.round(v ?? 0).toLocaleString('fr-FR')
 
+// Heures pleines écoulées depuis une date (« en vérification depuis 15 h »).
+export const hoursSince = (date, now = Date.now()) => Math.floor((now - new Date(date).getTime()) / 3_600_000)
+
 // Canal d'encaissement d'une course livrée — voir
 // dem-backend/src/modules/admin/admin.kpi-definitions.js:paymentChannelOf
 export const CHANNEL_LABELS = {

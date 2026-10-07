@@ -28,7 +28,7 @@ const FEATURE_ROWS = [
   ['crmEnabled',               'Mes clients (CRM)', 'bool'],
   ['invoiceEnabled',           'Factures avec logo', 'bool'],
   ['apiAccessEnabled',         'API DEM (brancher son site)', 'bool'],
-  ['maxUsers',                 'Utilisateurs par compte', 'num'],
+  ['maxUsers',                 'Téléphones connectés', 'num'],
   ['supportTier',              'Support', 'support'],
   ['maxAddresses',             'Adresses / points de vente', 'num'],
   ['invoiceBatchEnabled',      'Facturation groupée', 'bool'],

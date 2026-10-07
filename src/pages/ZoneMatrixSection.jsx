@@ -178,8 +178,8 @@ export default function ZoneMatrixSection() {
           partez de « Régénérer un aperçu (OSRM) » puis ajustez les paires qui comptent plutôt que de tout saisir à la main.
         </p>
         <p style={{ fontSize: 11.5, color: 'var(--text-muted)', marginBottom: 4 }}>
-          Chaque montant est le <strong>prix total payé par le client</strong> — les 100F de commission de mise en relation DEM sont déjà inclus dedans
-          (le livreur touche le montant saisi moins ces 100F). Ne s'applique pas aux courses EXPRESS, qui gardent leur propre commission en %.
+          Chaque montant est le <strong>prix total payé par le client</strong> — les frais de mise en relation DEM (réglés plus haut, 100F par défaut)
+          sont déjà inclus dedans : le livreur touche le montant saisi moins ces frais.
         </p>
         {data.isDefault && !previewedFromOsrm && (
           <div style={{ fontSize: 11.5, color: 'var(--primary)', background: 'rgba(0,119,182,.08)', borderRadius: 6, padding: '8px 12px', marginBottom: 10 }}>

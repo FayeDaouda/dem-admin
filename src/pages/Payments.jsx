@@ -5,10 +5,10 @@ import { RefreshCw } from 'lucide-react'
 import { glass, glassModal, glassInput, pageWrap, pageScroll, stickyTh } from '../lib/glassStyles'
 import { useAutoRefresh } from '../lib/useAutoRefresh'
 
-const PAYMENT_METHODS = ['CASH', 'WAVE', 'ORANGE_MONEY']
+const PAYMENT_METHODS = ['', 'CASH', 'WAVE', 'ORANGE_MONEY']
 // Toujours un paiement reçu PAR LE LIVREUR (Wave / OM sur son numéro) — un
 // paiement en ligne DEM (SamirPay) se confirme tout seul et n'arrive jamais ici.
-const PM_LABELS = { CASH: 'Espèces', WAVE: 'Wave (au livreur)', ORANGE_MONEY: 'Orange Money (au livreur)' }
+const PM_LABELS = { '': 'Non précisé', CASH: 'Espèces', WAVE: 'Wave (au livreur)', ORANGE_MONEY: 'Orange Money (au livreur)' }
 const LIMIT = 50
 
 export default function Payments() {
@@ -20,7 +20,7 @@ export default function Payments() {
   const [filter, setFilter]   = useState('PENDING') // PENDING | DISPUTED | all
   const [period, setPeriod]   = useState('all')      // all | today | week | month
   const [modal, setModal]     = useState(null) // { order }
-  const [form, setForm]       = useState({ paymentStatus: 'PAID', paymentMethod: 'CASH', disputeNotes: '' })
+  const [form, setForm]       = useState({ paymentStatus: 'PAID', paymentMethod: '', disputeNotes: '' })
   const [saving, setSaving]   = useState(false)
 
   const fetch = useCallback(async (silent = false) => {
@@ -46,16 +46,20 @@ export default function Payments() {
 
   function openModal(order) {
     setModal({ order })
-    setForm({ paymentStatus: 'PAID', paymentMethod: 'CASH', disputeNotes: '' })
+    setForm({ paymentStatus: 'PAID', paymentMethod: '', disputeNotes: '' })
   }
 
   async function handleSave() {
     setSaving(true)
     try {
-      const res = await api.patch(`/admin/orders/${modal.order.id}/payment`, form)
-      if (res.data?.promoSubsidyCredited) {
-        alert(`Paiement confirmé. Remboursement promo de ${res.data.promoSubsidyCredited.toLocaleString()} F crédité au livreur.`)
-      }
+      const body = form.paymentStatus === 'PAID'
+        ? { paymentStatus: 'PAID', paymentMethod: form.paymentMethod || null }
+        : { paymentStatus: 'DISPUTED', disputeNotes: form.disputeNotes }
+      const res = await api.patch(`/admin/orders/${modal.order.id}/payment`, body)
+      const notes = []
+      if (res.data?.promoSubsidyCredited) notes.push(`remboursement promo de ${res.data.promoSubsidyCredited.toLocaleString()} F crédité au livreur`)
+      if (res.data?.cashFeeCharged) notes.push(`mise en relation de ${res.data.cashFeeCharged.toLocaleString()} F prélevée sur son wallet`)
+      if (notes.length) alert(`Paiement confirmé — ${notes.join(' ; ')}.`)
       setModal(null)
       fetch()
     } catch (e) {

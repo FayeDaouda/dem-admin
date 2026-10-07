@@ -4,8 +4,13 @@ import { glass, glassInput } from '../../lib/glassStyles'
 import DateRangeFilter from '../../components/DateRangeFilter'
 import { exportCsv } from '../../lib/exportCsv'
 import { useAutoRefresh } from '../../lib/useAutoRefresh'
-import { formatF } from '../../lib/format'
+import { formatF, hoursSince } from '../../lib/format'
 import { useAuth } from '../../contexts/AuthContext'
+import CashoutReviewModal from './components/CashoutReviewModal'
+
+// Au-delà, le retrait est signalé en rouge (même seuil que l'alerte
+// financière CASHOUT_REVIEW_OVERDUE côté serveur).
+const REVIEW_ALERT_HOURS = 12
 
 function isoDaysAgo(days) {
   const d = new Date()
@@ -45,6 +50,8 @@ export default function SamirpayTab() {
   const [range, setRange] = useState({ from: isoDaysAgo(0), to: isoDaysAgo(0) })
   const [exporting, setExporting] = useState(false)
   const [confirmingId, setConfirmingId] = useState(null)
+  const [reviewAction, setReviewAction] = useState(null) // { tx, mode: 'confirm' | 'refund' }
+  const [reviewNotice, setReviewNotice] = useState(null)
 
   const load = useCallback(async (silent = false) => {
     if (!silent) setLoading(true)
@@ -362,8 +369,15 @@ export default function SamirpayTab() {
           Retraits en vérification manuelle {manualReview?.length > 0 && <span style={{ color: '#e53e3e' }}>({manualReview.length})</span>}
         </h2>
         <p style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 14 }}>
-          Panne réseau pendant le virement — le solde du livreur a déjà été débité, à vérifier manuellement auprès de SamirPay avant toute action.
+          Panne réseau pendant le virement : le montant est réservé sur le solde du livreur ou du marchand tant que le retrait n'est pas clos.
+          Vérifiez l'issue dans le tableau de bord SamirPay (ou Wave / Orange Money), puis confirmez-le ou remboursez-le.
+          Au-delà de {REVIEW_ALERT_HOURS} h, une alerte financière part.
         </p>
+        {reviewNotice && (
+          <div role="status" style={{ marginBottom: 12, padding: '8px 12px', borderRadius: 8, background: 'rgba(21,128,61,.08)', color: '#15803d', fontSize: 12, fontWeight: 600 }}>
+            {reviewNotice}
+          </div>
+        )}
         {!manualReview || manualReview.length === 0 ? (
           <div style={{ color: 'var(--text-muted)', fontSize: 12 }}>Aucun retrait en attente. ✓</div>
         ) : (
@@ -376,6 +390,7 @@ export default function SamirpayTab() {
                   <th style={thStyle}>Montant</th>
                   <th style={thStyle}>Description</th>
                   <th style={thStyle}>Depuis</th>
+                  <th style={thStyle}>Clore</th>
                 </tr>
               </thead>
               <tbody>
@@ -385,7 +400,23 @@ export default function SamirpayTab() {
                     <td style={tdStyle}>{tx.user?.phone ?? '—'}</td>
                     <td style={tdStyle}>{Math.abs(tx.amount).toLocaleString()} F</td>
                     <td style={tdStyle}>{tx.description}</td>
-                    <td style={tdStyle}>{new Date(tx.createdAt).toLocaleString('fr-FR')}</td>
+                    <td style={tdStyle} title={new Date(tx.createdAt).toLocaleString('fr-FR')}>
+                      <span style={{ color: hoursSince(tx.createdAt) >= REVIEW_ALERT_HOURS ? '#dc2626' : undefined, fontWeight: hoursSince(tx.createdAt) >= REVIEW_ALERT_HOURS ? 700 : undefined }}>
+                        {hoursSince(tx.createdAt)} h
+                      </span>
+                    </td>
+                    <td style={{ ...tdStyle, whiteSpace: 'nowrap' }}>
+                      <button
+                        type="button"
+                        onClick={() => { setReviewNotice(null); setReviewAction({ tx, mode: 'confirm' }) }}
+                        style={{ ...reviewBtn, color: '#15803d', borderColor: 'rgba(21,128,61,.4)' }}
+                      >Confirmé</button>
+                      <button
+                        type="button"
+                        onClick={() => { setReviewNotice(null); setReviewAction({ tx, mode: 'refund' }) }}
+                        style={{ ...reviewBtn, color: '#dc2626', borderColor: 'rgba(220,38,38,.4)', marginLeft: 6 }}
+                      >Rembourser</button>
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -482,6 +513,19 @@ export default function SamirpayTab() {
           confirmation SamirPay, montant payé par le client, opérateur, statut de la commande et remboursement éventuel).
         </p>
       </div>
+
+      {reviewAction && (
+        <CashoutReviewModal
+          tx={reviewAction.tx}
+          mode={reviewAction.mode}
+          onClose={() => setReviewAction(null)}
+          onDone={async (message) => {
+            setReviewAction(null)
+            setReviewNotice(message)
+            await load(true)
+          }}
+        />
+      )}
     </div>
   )
 }
@@ -489,4 +533,5 @@ export default function SamirpayTab() {
 const thStyle  = { textAlign: 'left', padding: '8px 10px', color: 'var(--text-muted)', fontSize: 11, fontWeight: 600, borderBottom: '1px solid rgba(0,119,182,0.12)' }
 const tdStyle  = { padding: '8px 10px', fontSize: 12.5, borderBottom: '1px solid rgba(0,0,0,0.04)' }
 const btnPrimary = { padding: '8px 16px', borderRadius: 'var(--radius-sm)', border: 'none', background: 'var(--primary)', color: '#fff', fontSize: 13, fontWeight: 600, cursor: 'pointer' }
+const reviewBtn   = { padding: '5px 10px', borderRadius: 'var(--radius-sm)', border: '1px solid', background: 'transparent', fontSize: 11.5, fontWeight: 700, cursor: 'pointer' }
 const btnConfirm  = { padding: '5px 10px', borderRadius: 'var(--radius-sm)', border: '1px solid rgba(56,161,105,0.4)', background: 'rgba(56,161,105,0.08)', color: '#38a169', fontSize: 11.5, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap' }

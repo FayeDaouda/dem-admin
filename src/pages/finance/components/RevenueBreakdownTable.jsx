@@ -4,8 +4,9 @@ import { formatF, formatCount } from '../../../lib/format'
 // admin.revenue.service.js) — une colonne par période. Même tableau dans le
 // modal "Revenus" et l'onglet Revenus : un seul rendu, une seule lecture.
 const ROWS = [
-  { label: 'Commission sur les courses (facturée)', value: r => r.commission.billed, strong: true },
+  { label: 'Frais de mise en relation sur les courses (facturés)', value: r => r.commission.billed, strong: true },
   { label: 'dont encaissée en ligne', value: r => r.commission.collectedOnline, indent: 1 },
+  { label: 'dont reprise sur le wallet des livreurs (espèces)', value: r => r.commission.recoveredFromCash ?? 0, indent: 1 },
   { label: 'dont à recouvrer', value: r => r.commission.toRecover, indent: 1 },
   { label: 'cash, restée chez les livreurs', value: r => r.commission.toRecoverByChannel.cash, indent: 2 },
   { label: 'course pas encore payée', value: r => r.commission.toRecoverByChannel.unpaid, indent: 2 },
