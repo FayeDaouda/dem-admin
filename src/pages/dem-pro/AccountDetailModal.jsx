@@ -10,6 +10,7 @@ import {
   REQUEST_STATUS, STOREFRONT_PAYMENT_LABELS, SITE_ICON_LABELS, BATCH_STATUS,
 } from './labels'
 import { ProductFormModal, DeleteProductModal } from './ProductModals'
+import { cancelReasonLabel } from '../../lib/cancelReasons'
 
 // ── Fiche commerçant DEM Pro (admin) ──────────────────────────────────────────
 // Données : GET /admin/dem-pro/:id (admin.dem-pro-accounts.service.js) — mêmes
@@ -35,11 +36,6 @@ const TABS = [
   { key: 'batches',      label: 'Tournées' },
 ]
 
-const REASON_LABELS = {
-  NO_DRIVER_FOUND: 'Aucun livreur trouvé', CHANGED_MIND: "Changement d'avis", TOO_LONG: 'Trop long',
-  WRONG_ADDRESS: 'Adresse erronée', PRICE: 'Prix', DRIVER_ISSUE: 'Problème livreur',
-  OTHER: 'Autre', NON_RENSEIGNE: 'Non renseigné',
-}
 
 const fmtDate = (d, withTime = false) => d
   ? new Date(d).toLocaleString('fr-FR', withTime
@@ -211,7 +207,7 @@ function OverviewTab({ data, period, onPeriod, loading }) {
           <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 10 }}>
             {act.cancelReasons.map(r => (
               <span key={r.reason} style={{ fontSize: 11, padding: '3px 9px', borderRadius: 8, background: 'var(--surface2)', color: 'var(--text-muted)' }}>
-                {REASON_LABELS[r.reason] ?? r.reason} · {r.count}
+                {cancelReasonLabel(r.reason)} · {r.count}
               </span>
             ))}
           </div>
@@ -899,7 +895,7 @@ function BatchesTab({ accountId }) {
                               <td style={{ ...td, fontSize: 12, maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={o.deliveryAddress}>{o.deliveryAddress}</td>
                               <td style={td}>
                                 <Badge status={o.status} />
-                                {o.cancelReason && <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>{REASON_LABELS[o.cancelReason] ?? o.cancelReason}</div>}
+                                {o.cancelReason && <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>{cancelReasonLabel(o.cancelReason)}{o.cancelNote ? ` — « ${o.cancelNote} »` : ''}</div>}
                               </td>
                               <td style={{ ...td, fontWeight: 700 }}>{formatF((o.price ?? 0) + (o.demFee ?? 0) - (o.discountAmount ?? 0))}</td>
                               <td style={td}>{o.status === 'DELIVERED' ? <Badge status={CHANNEL_BADGE_STATUS[channel]} label={CHANNEL_LABELS[channel]} /> : <span style={{ color: 'var(--text-muted)' }}>—</span>}</td>

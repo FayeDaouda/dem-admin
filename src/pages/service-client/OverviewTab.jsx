@@ -8,6 +8,7 @@ import { glass, glassInput, stickyTh } from '../../lib/glassStyles'
 import Row from './components/Row'
 import StatusDot from './components/StatusDot'
 import { useAutoRefresh } from '../../lib/useAutoRefresh'
+import { cancelReasonLabel } from '../../lib/cancelReasons'
 
 export default function OverviewTab() {
   // Recherche client
@@ -476,7 +477,8 @@ export default function OverviewTab() {
                   <a href={`tel:${orderDetail.receiverPhone}`} style={{ color: '#0077b6', fontWeight: 600 }}>{orderDetail.receiverPhone}</a>
                 } />
               )}
-              {orderDetail.cancelReason && <Row label="Motif annulation" value={orderDetail.cancelReason} />}
+              {orderDetail.cancelReason && <Row label="Motif annulation" value={cancelReasonLabel(orderDetail.cancelReason)} />}
+              {orderDetail.cancelNote && <Row label="Précision du client" value={`« ${orderDetail.cancelNote} »`} />}
               <Row label="Créé le" value={orderDetail.createdAt ? new Date(orderDetail.createdAt).toLocaleString('fr-FR') : '—'} />
               {orderDetail.deliveredAt && <Row label="Livré le" value={new Date(orderDetail.deliveredAt).toLocaleString('fr-FR')} />}
               {orderDetail.cancelledAt && <Row label="Annulé le" value={new Date(orderDetail.cancelledAt).toLocaleString('fr-FR')} />}
