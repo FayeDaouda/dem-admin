@@ -5,6 +5,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import { glass, glassInput } from '../lib/glassStyles'
 import ZoneMatrixSection from './ZoneMatrixSection'
 import PassLivreursSection from './PassLivreursSection'
+import DeliveryZoneTab from './DeliveryZoneTab'
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 const CONFIG_META = {
@@ -63,10 +64,12 @@ export default function Config() {
         <button style={TAB(tab === 'tarifs')}      onClick={() => setTab('tarifs')}>Tarifs</button>
         <button style={TAB(tab === 'commissions')} onClick={() => setTab('commissions')}>Commissions</button>
         <button style={TAB(tab === 'surge')}        onClick={() => setTab('surge')}>Heures de pointe</button>
+        <button style={TAB(tab === 'zone')}         onClick={() => setTab('zone')}>Zone de livraison</button>
       </div>
       {tab === 'tarifs'      && <TarifsTab />}
       {tab === 'commissions' && <CommissionsTab />}
       {tab === 'surge'       && <SurgeTab />}
+      {tab === 'zone'        && <DeliveryZoneTab />}
     </div>
   )
 }
