@@ -3,7 +3,7 @@ import api from '../lib/api'
 import { useAuth } from '../contexts/AuthContext'
 import Badge from '../components/Badge'
 import SuspendModal from '../components/SuspendModal'
-import { RefreshCw, BarChart2, Phone, CheckCircle, XCircle, Eye, Plus, Pencil, Trash2, Search, Flag } from 'lucide-react'
+import { RefreshCw, BarChart2, Phone, CheckCircle, XCircle, Eye, Plus, Pencil, Trash2, Search, Flag, RotateCcw } from 'lucide-react'
 import { glass, glassInput, pageWrap, pageScroll, stickyTh, stickyCol, stickyThCol } from '../lib/glassStyles'
 import SubmitRequestModal from './service-client/components/SubmitRequestModal'
 import DocThumb from '../components/DocThumb'
@@ -315,9 +315,71 @@ function DriverBadgeChip({ driver }) {
   )
 }
 
+// ── Modal désarchivage ────────────────────────────────────────────────────────
+// Remet le compte en service avec tout son historique. Numéro : celui d'avant
+// l'archivage (retrouvé par le serveur dans le journal d'audit), modifiable —
+// obligatoire s'il est introuvable ou repris entre-temps par un autre compte.
+function RestoreDriverModal({ driver, onClose, onRestored }) {
+  const [phone, setPhone] = useState(driver.archivedPhone ? driver.archivedPhone.replace(/^\+221/, '') : '')
+  const [busy, setBusy]   = useState(false)
+  const [error, setError] = useState('')
+  const label = driver.name?.trim() || 'ce livreur'
+
+  async function submit() {
+    setBusy(true); setError('')
+    try {
+      const digits = phone.replace(/\D/g, '')
+      await api.patch(`/admin/drivers/${driver.id}/restore`, digits ? { phone: digits } : {})
+      onRestored()
+    } catch (e) {
+      setError(e.response?.data?.message ?? 'Erreur.')
+    } finally { setBusy(false) }
+  }
+
+  return (
+    <div style={overlay} onClick={onClose}>
+      <div style={modalBox} onClick={e => e.stopPropagation()}>
+        <h2 style={{ marginBottom: 8, fontSize: 16 }}>Désarchiver {label}</h2>
+        <p style={{ color: 'var(--text-muted)', fontSize: 13, marginBottom: 14 }}>
+          Le compte redevient actif avec tout son historique (courses, wallet, notes, documents).
+          Il revient hors ligne : le livreur se reconnecte avec ce numéro.
+          {' '}Une suspension ou un bannissement d'avant l'archivage n'est pas repris : refaites-le si besoin.
+        </p>
+        {driver.deletedBySelf && (
+          <p style={{ color: 'var(--warning, #b45309)', fontSize: 12, fontWeight: 600, marginBottom: 14 }}>
+            Ce compte a été supprimé par le livreur lui-même depuis l'application. Ne le désarchivez qu'à sa demande.
+          </p>
+        )}
+        <label style={{ display: 'block', fontSize: 12, color: 'var(--text-muted)', marginBottom: 6 }}>
+          Numéro de connexion {driver.archivedPhone ? '(numéro d\'avant l\'archivage)' : '(numéro d\'origine introuvable — à saisir)'}
+        </label>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+          <span style={{ fontSize: 13, color: 'var(--text-muted)' }}>+221</span>
+          <input
+            value={phone}
+            onChange={e => setPhone(e.target.value)}
+            placeholder="77 123 45 67"
+            inputMode="tel"
+            style={{ flex: 1, padding: '8px 10px', borderRadius: 8, border: '1px solid rgba(0,119,182,.25)', background: 'rgba(255,255,255,.6)', fontSize: 13, outline: 'none', boxSizing: 'border-box' }}
+          />
+        </div>
+        {error && <div style={{ color: 'var(--danger)', fontSize: 12, marginBottom: 6 }}>{error}</div>}
+        <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', marginTop: 16 }}>
+          <button onClick={onClose} style={btnOutline}>Annuler</button>
+          <button onClick={submit} disabled={busy || (!driver.archivedPhone && !phone.trim())} style={btnPrimary}>
+            {busy ? 'Désarchivage…' : 'Désarchiver'}
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 export default function Drivers() {
   const { user } = useAuth()
   const isServiceClient = user?.adminRole === 'SERVICE_CLIENT'
+  const isSuper = user?.adminRole === 'SUPER'
+  const [restoreTarget, setRestoreTarget] = useState(null)
   const LIMIT = 50
   const [drivers, setDrivers]           = useState([])
   const [total, setTotal]               = useState(0)
@@ -386,20 +448,22 @@ export default function Drivers() {
   // Comptes archivés (voir deleteDriver côté backend — jamais un vrai DELETE)
   // — chargés à la demande seulement, pas au chargement de la page (rare,
   // pas besoin d'un appel API systématique).
+  async function loadDeleted() {
+    setDeletedLoading(true)
+    try {
+      const res = await api.get('/admin/drivers', { params: { status: 'deleted', limit: 100 } })
+      setDeletedDrivers(Array.isArray(res.data?.drivers) ? res.data.drivers : [])
+    } catch (e) {
+      console.error(e)
+    } finally {
+      setDeletedLoading(false)
+    }
+  }
+
   async function toggleDeleted() {
     const next = !showDeleted
     setShowDeleted(next)
-    if (next && deletedDrivers.length === 0) {
-      setDeletedLoading(true)
-      try {
-        const res = await api.get('/admin/drivers', { params: { status: 'deleted', limit: 100 } })
-        setDeletedDrivers(Array.isArray(res.data?.drivers) ? res.data.drivers : [])
-      } catch (e) {
-        console.error(e)
-      } finally {
-        setDeletedLoading(false)
-      }
-    }
+    if (next && deletedDrivers.length === 0) loadDeleted()
   }
 
   const fetchPhoneRequests = useCallback(async (silent = false) => {
@@ -663,7 +727,10 @@ export default function Drivers() {
                     <tr key={d.id} style={{ borderBottom: '1px solid var(--border)' }}>
                       <td style={tdStyle}>
                         <div style={{ fontWeight: 600 }}>{d.name ?? '—'}</div>
-                        <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>Numéro libéré</div>
+                        <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>
+                          {d.archivedPhone ? `Ancien n° ${d.archivedPhone}` : 'Numéro libéré'}
+                          {d.deletedBySelf && ' · supprimé par le livreur'}
+                        </div>
                       </td>
                       <td style={tdStyle}>
                         <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>
@@ -681,9 +748,16 @@ export default function Drivers() {
                         </span>
                       </td>
                       <td style={tdStyle}>
-                        <button onClick={() => setDetail(d)} style={btnSmall} title="Voir infos & documents">
-                          <Eye size={13} /> Voir
-                        </button>
+                        <div style={{ display: 'flex', gap: 6 }}>
+                          <button onClick={() => setDetail(d)} style={btnSmall} title="Voir infos & documents">
+                            <Eye size={13} /> Voir
+                          </button>
+                          {isSuper && (
+                            <button onClick={() => setRestoreTarget(d)} style={{ ...btnSmall, color: 'var(--success)', borderColor: 'var(--success)' }} title="Remettre le compte en service">
+                              <RotateCcw size={13} /> Désarchiver
+                            </button>
+                          )}
+                        </div>
                       </td>
                     </tr>
                   ))}
@@ -1052,6 +1126,14 @@ export default function Drivers() {
       )}
 
       {/* Modal choix suppression : archiver (réversible) vs définitif */}
+      {restoreTarget && (
+        <RestoreDriverModal
+          driver={restoreTarget}
+          onClose={() => setRestoreTarget(null)}
+          onRestored={() => { setRestoreTarget(null); loadDeleted(); fetch() }}
+        />
+      )}
+
       {deleteTarget && (
         <DeleteDriverModal
           driver={deleteTarget}
