@@ -17,6 +17,7 @@ export const CANCEL_REASON_LABELS = {
   ORDER_MISTAKE:      'Commande créée par erreur',
   // Système
   NO_DRIVER_FOUND:   'Aucun livreur trouvé (auto)',
+  WALLET_INSUFFICIENT: 'Solde du wallet insuffisant (auto)',
   // Équipe DEM (admin)
   NO_DRIVER_AVAILABLE: 'Aucun livreur disponible (équipe)',
   ADDRESS_UNREACHABLE: 'Adresse introuvable (équipe)',
