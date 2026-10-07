@@ -1,8 +1,11 @@
 import { useState, useEffect, useCallback } from 'react'
+import { useLocation } from 'react-router-dom'
 import { AlertTriangle, RefreshCw, Filter } from 'lucide-react'
 import api from '../lib/api'
 import { connectSocket, disconnectSocket } from '../lib/socket'
 import { glass, glassInput, pageWrap, pageScroll, stickyTh } from '../lib/glassStyles'
+import { useAuth } from '../contexts/AuthContext'
+import SosPhonesCard from './SosPhonesCard'
 
 // ── Constantes ────────────────────────────────────────────────────────────────
 const SEVERITY_CFG = {
@@ -19,6 +22,7 @@ const STATUS_CFG = {
 }
 
 const TYPE_LABELS = {
+  SOS:                '🆘 Alerte SOS livreur',
   DRIVER_ABANDONED:   '🏃 Driver disparu (ACCEPTED)',
   DRIVER_UNREACHABLE: '📵 Driver introuvable (colis en transit)',
   PAYMENT_DISPUTE:    '💸 Litige paiement',
@@ -77,7 +81,11 @@ export default function Incidents() {
     s.on('admin:incident:driver_unreachable',  refresh)
     s.on('admin:incident:user_report',         refresh)
     s.on('admin:payment:disputed',             refresh)
+    s.on('admin:incident:sos',                 refresh)
+    s.on('admin:incident:sos_safe',            refresh)
     return () => {
+      s.off('admin:incident:sos',                 refresh)
+      s.off('admin:incident:sos_safe',            refresh)
       s.off('admin:incident:driver_redispatched', refresh)
       s.off('admin:incident:driver_unreachable',  refresh)
       s.off('admin:incident:user_report',         refresh)
@@ -91,6 +99,17 @@ export default function Incidents() {
     setEditStatus(inc.status)
     setEditNotes(inc.notes ?? '')
   }
+
+  // Arrivée depuis le bandeau SOS (« Prendre en charge ») : ouvre l'alerte.
+  const location = useLocation()
+  const focusId = location.state?.focusIncidentId
+  useEffect(() => {
+    if (!focusId || detail?.id === focusId) return
+    const inc = incidents.find(i => i.id === focusId)
+    if (inc) { openDetail(inc); setEditStatus('INVESTIGATING') }
+  }, [focusId, incidents]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  const { user } = useAuth()
 
   // ── Sauvegarder ───────────────────────────────────────────────────────────
   async function save() {
@@ -151,6 +170,8 @@ export default function Incidents() {
           </div>
         ))}
       </div>
+
+      <SosPhonesCard canEdit={!user?.adminRole || user.adminRole === 'SUPER'} />
 
       {/* ── Filtres ── */}
       <div style={{ display: 'flex', gap: 10, marginBottom: 16, flexWrap: 'wrap', alignItems: 'center', flexShrink: 0 }}>
@@ -235,7 +256,27 @@ export default function Incidents() {
               <Row label="Commande"   value={<code>{detail.orderId ?? '—'}</code>} />
               <Row label="Livreur"    value={detail.driverName  ?? '—'} />
               <Row label="Téléphone"  value={detail.driverPhone ? <a href={`tel:${detail.driverPhone}`} style={{ color: '#0077b6' }}>{detail.driverPhone}</a> : '—'} />
-              <Row label="Hors-ligne" value={detail.offlineMin != null ? `${detail.offlineMin} min` : '—'} />
+              {detail.type === 'SOS' ? (
+                <>
+                  <Row label="Position" value={detail.meta?.mapsUrl
+                    ? <a href={detail.meta.mapsUrl} target="_blank" rel="noreferrer" style={{ color: '#0077b6' }}>Voir sur la carte</a>
+                    : 'inconnue'} />
+                  <Row label="Contact d'urgence" value={detail.meta?.emergencyContact
+                    ? <a href={`tel:${detail.meta.emergencyContact.phone}`} style={{ color: '#0077b6' }}>
+                        {`${detail.meta.emergencyContact.name ?? ''} ${detail.meta.emergencyContact.phone}`.trim()}
+                      </a>
+                    : 'aucun'} />
+                  <Row label="SMS" value={detail.meta?.notified
+                    ? `équipe ${detail.meta.notified.teamNotified ? '✓' : '✗'} · contact ${
+                        detail.meta.notified.hasEmergencyContact ? (detail.meta.notified.contactNotified ? '✓' : '✗') : '—'}`
+                    : 'envoi en cours…'} />
+                  <Row label="En sécurité" value={detail.meta?.safeAt
+                    ? `oui, signalé le ${new Date(detail.meta.safeAt).toLocaleString('fr-FR')}`
+                    : 'non signalé'} />
+                </>
+              ) : (
+                <Row label="Hors-ligne" value={detail.offlineMin != null ? `${detail.offlineMin} min` : '—'} />
+              )}
               <Row label="Ouvert le"  value={new Date(detail.openedAt).toLocaleString('fr-FR')} />
               {detail.resolvedAt && <Row label="Résolu le" value={new Date(detail.resolvedAt).toLocaleString('fr-FR')} />}
             </div>
