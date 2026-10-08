@@ -242,6 +242,7 @@ function AmbassadorsTab({ isServiceClient, highlightId }) {
                   <div style={{ display:'flex', gap:16, flexWrap:'wrap', alignItems:'flex-start' }}>
                     <DocThumb url={am.cniRecto} label="CNI recto" />
                     <DocThumb url={am.cniVerso} label="CNI verso" />
+                    {am.rccmDocument && <DocThumb url={am.rccmDocument} label="RCCM (facultatif)" />}
                   </div>
                 </div>
 

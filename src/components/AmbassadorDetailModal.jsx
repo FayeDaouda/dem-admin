@@ -109,6 +109,7 @@ export default function AmbassadorDetailModal({ ambassadorId, onClose }) {
               <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
                 <DocThumb url={am.cniRecto} label="CNI recto" />
                 <DocThumb url={am.cniVerso} label="CNI verso" />
+                {am.rccmDocument && <DocThumb url={am.rccmDocument} label="RCCM" />}
               </div>
             </div>
 

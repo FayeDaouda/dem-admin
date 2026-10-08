@@ -34,6 +34,23 @@ function StatusPill({ ok, label }) {
   )
 }
 
+// Lien de commande prépayé — état de la commande, motifs et états des
+// remboursements automatiques
+const LINK_ORDER_STATUS = {
+  PENDING: 'À confirmer par la boutique', CONFIRMED: 'Confirmée', REJECTED: 'Refusée', EXPIRED: 'Expirée',
+  SCHEDULED: 'Programmée', ACCEPTED: 'Coursier en route', PICKED_UP: 'En livraison', IN_TRANSIT: 'En livraison',
+  DELIVERED: 'Livrée', CANCELLED: 'Annulée',
+}
+const LINK_REFUND_REASONS = {
+  ADMIN: 'Litige (admin)',
+  REJECTED: 'Refusée par la boutique', NO_RESPONSE: 'Boutique sans réponse',
+  CANCELLED: 'Course annulée', EXPIRED: 'Payée après expiration', DUPLICATE: 'Paiement en double',
+}
+const LINK_REFUND_STATUS = {
+  PROCESSING: 'Envoi en cours', SENT: 'Remboursé', DONE_MANUALLY: 'Remboursé (vérifié)',
+  FAILED: 'Échec — à renvoyer', REVIEW: 'À vérifier (réseau)',
+}
+
 export default function SamirpayTab() {
   const { user } = useAuth()
   // Confirmations manuelles (orphelins, remboursements) : SUPER uniquement côté API
@@ -46,6 +63,8 @@ export default function SamirpayTab() {
   const [collections, setCollections]   = useState(null)
   const [refunds, setRefunds]           = useState(null)
   const [duplicates, setDuplicates]     = useState(null)
+  const [linkRefunds, setLinkRefunds]   = useState(null)
+  const [linkOrders, setLinkOrders]     = useState(null)
   const [loading, setLoading]           = useState(true)
   const [range, setRange] = useState({ from: isoDaysAgo(0), to: isoDaysAgo(0) })
   const [exporting, setExporting] = useState(false)
@@ -69,6 +88,10 @@ export default function SamirpayTab() {
       setCollections(collectionsRes.data?.byOperator ?? null)
       setRefunds(refundsRes.data?.refunds ?? [])
       setDuplicates(refundsRes.data?.duplicates ?? [])
+      setLinkRefunds(refundsRes.data?.linkRefunds ?? [])
+      api.get('/admin/samirpay/link-orders')
+        .then(r => setLinkOrders(r.data?.orders ?? []))
+        .catch(() => setLinkOrders([]))
       // Le solde SamirPay n'est interrogeable que si le paiement en ligne
       // est actif (sinon 503, voir samirpay.service.js:_assertActive) — pas
       // une erreur à afficher, juste une donnée indisponible pour l'instant.
@@ -163,6 +186,52 @@ export default function SamirpayTab() {
       await load()
     } catch (e) {
       alert(e.response?.data?.message ?? 'Erreur lors de l\'enregistrement du remboursement.')
+    } finally { setConfirmingId(null) }
+  }
+
+  // Lien de commande prépayé : remboursement automatique à vérifier (réseau
+  // coupé pendant l'envoi) ou en échec (SamirPay a répondu une erreur).
+  async function linkRefundDone(id) {
+    const note = window.prompt(
+      'Confirme UNIQUEMENT après avoir vérifié sur le relevé SamirPay que le client a bien été remboursé (ou après l\'avoir remboursé toi-même).\n\nNote (référence, moyen, qui l\'a fait) :'
+    )
+    if (note === null) return
+    setConfirmingId(id)
+    try {
+      await api.post(`/admin/samirpay/link-refunds/${id}/done`, { note })
+      await load()
+    } catch (e) {
+      alert(e.response?.data?.message ?? 'Erreur lors de l\'enregistrement.')
+    } finally { setConfirmingId(null) }
+  }
+
+  async function linkRefundRetry(id) {
+    if (!window.confirm('Renvoyer le remboursement au client ? (seulement après un échec certain : SamirPay a répondu une erreur)')) return
+    setConfirmingId(id)
+    try {
+      const res = await api.post(`/admin/samirpay/link-refunds/${id}/retry`)
+      alert(res.data?.message ?? 'Fait.')
+      await load()
+    } catch (e) {
+      alert(e.response?.data?.message ?? 'Erreur lors du renvoi.')
+    } finally { setConfirmingId(null) }
+  }
+
+  // Litige sur une commande payée par lien : remboursement du client, la
+  // vente est reprise au wallet de la boutique.
+  async function refundLinkOrder(o) {
+    const note = window.prompt(
+      `Rembourser ${formatF(o.amountDue)} à ${o.customerName ?? 'ce client'} (${o.customerPhone}) ?\n` +
+      `Les articles (${formatF(o.productAmount)}) seront repris du wallet de ${o.merchant?.proBusinessName ?? 'la boutique'}.\n\nMotif du litige :`
+    )
+    if (note === null) return
+    setConfirmingId(o.id)
+    try {
+      const res = await api.post(`/admin/samirpay/link-orders/${o.id}/refund`, { note })
+      alert(res.data?.message ?? 'Fait.')
+      await load()
+    } catch (e) {
+      alert(e.response?.data?.message ?? 'Erreur lors du remboursement.')
     } finally { setConfirmingId(null) }
   }
 
@@ -357,6 +426,111 @@ export default function SamirpayTab() {
                     </td>
                   </tr>
                 ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+
+      {/* Lien de commande DEM Pro — commandes payées (argent bloqué jusqu'à la livraison) */}
+      <div style={{ ...glass, padding: '18px 20px' }}>
+        <h2 style={{ fontSize: 14, fontWeight: 600, marginBottom: 4 }}>Lien de commande DEM Pro — commandes payées (30 jours)</h2>
+        <p style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 14 }}>
+          Les articles sont versés au wallet de la boutique dès le paiement mais restent bloqués jusqu'à la livraison.
+          En cas de litige, « Rembourser » renvoie l'argent au client et reprend la vente sur le wallet de la boutique.
+        </p>
+        {!linkOrders || linkOrders.length === 0 ? (
+          <div style={{ color: 'var(--text-muted)', fontSize: 12 }}>Aucune commande payée sur un lien.</div>
+        ) : (
+          <div style={{ overflowX: 'auto' }}>
+            <table style={{ width: '100%', minWidth: 760, borderCollapse: 'collapse' }}>
+              <thead><tr>
+                <th style={thStyle}>Payée le</th><th style={thStyle}>Client</th><th style={thStyle}>Boutique</th>
+                <th style={thStyle}>Payé</th><th style={thStyle}>Commande</th><th style={thStyle}>Argent boutique</th><th style={thStyle}></th>
+              </tr></thead>
+              <tbody>
+                {linkOrders.map(o => {
+                  const refunded = o.sellerDebitedAt || o.paymentAttempts?.some(a => a.refundStatus)
+                  return (
+                    <tr key={o.id}>
+                      <td style={tdStyle}>{new Date(o.paidAt).toLocaleString('fr-FR')}</td>
+                      <td style={tdStyle}>{o.customerName ?? '—'} ({o.customerPhone ?? '—'})</td>
+                      <td style={tdStyle}>{o.merchant?.proBusinessName ?? '—'}</td>
+                      <td style={{ ...tdStyle, fontWeight: 700 }}>
+                        {formatF(o.amountDue)}
+                        <div style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 400 }}>
+                          {o.deliveryPayment === 'WITH_ORDER' ? 'articles + livraison' : 'articles (livraison au coursier)'}
+                        </div>
+                      </td>
+                      <td style={tdStyle}>{LINK_ORDER_STATUS[o.orderStatus ?? o.status] ?? o.orderStatus ?? o.status}</td>
+                      <td style={tdStyle}>{refunded ? 'Remboursée au client' : o.sellerReleasedAt ? 'Retirable (livrée)' : 'Bloquée'}</td>
+                      <td style={tdStyle}>
+                        {isSuper && !refunded && (
+                          <button onClick={() => refundLinkOrder(o)} disabled={confirmingId === o.id} style={btnConfirm}>
+                            {confirmingId === o.id ? '…' : 'Rembourser'}
+                          </button>
+                        )}
+                      </td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+
+      {/* Lien de commande DEM Pro prépayé — remboursements automatiques */}
+      <div style={{ ...glass, padding: '18px 20px' }}>
+        <h2 style={{ fontSize: 14, fontWeight: 600, marginBottom: 4 }}>
+          Lien de commande DEM Pro — remboursements automatiques {linkRefunds?.some(r => ['REVIEW', 'FAILED'].includes(r.refundStatus)) && (
+            <span style={{ color: '#e53e3e' }}>({linkRefunds.filter(r => ['REVIEW', 'FAILED'].includes(r.refundStatus)).length} à traiter)</span>
+          )}
+        </h2>
+        <p style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 14 }}>
+          Commande payée sur le lien puis refusée par la boutique, restée sans réponse, annulée avant récupération, ou payée deux fois :
+          le client est remboursé automatiquement sur son numéro. « À vérifier » = le réseau a coupé pendant l'envoi : contrôler le relevé SamirPay avant tout.
+        </p>
+        {!linkRefunds || linkRefunds.length === 0 ? (
+          <div style={{ color: 'var(--text-muted)', fontSize: 12 }}>Aucun remboursement. ✓</div>
+        ) : (
+          <div style={{ overflowX: 'auto' }}>
+            <table style={{ width: '100%', minWidth: 720, borderCollapse: 'collapse' }}>
+              <thead><tr>
+                <th style={thStyle}>Client</th><th style={thStyle}>Boutique</th><th style={thStyle}>Montant</th><th style={thStyle}>Opérateur</th>
+                <th style={thStyle}>Motif</th><th style={thStyle}>État</th><th style={thStyle}></th>
+              </tr></thead>
+              <tbody>
+                {linkRefunds.map(r => {
+                  const todo = ['REVIEW', 'FAILED'].includes(r.refundStatus)
+                  return (
+                    <tr key={r.id}>
+                      <td style={tdStyle}>{r.request?.customerName ?? '—'} ({r.request?.customerPhone ?? '—'})</td>
+                      <td style={tdStyle}>{r.request?.merchant?.proBusinessName ?? '—'}</td>
+                      <td style={{ ...tdStyle, fontWeight: 700 }}>{formatF(r.refundAmount ?? r.amount)}</td>
+                      <td style={tdStyle}>{PM_LABELS[r.operatorName] ?? r.operatorName ?? '—'}</td>
+                      <td style={tdStyle}>{LINK_REFUND_REASONS[r.refundReason] ?? r.refundReason ?? '—'}</td>
+                      <td style={{ ...tdStyle, color: todo ? '#e53e3e' : undefined, fontWeight: todo ? 700 : 400 }}>
+                        {LINK_REFUND_STATUS[r.refundStatus] ?? r.refundStatus}
+                        {r.refundError && <div style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 400 }}>{r.refundError}</div>}
+                      </td>
+                      <td style={{ ...tdStyle, whiteSpace: 'nowrap' }}>
+                        {isSuper && todo && (
+                          <>
+                            {r.refundStatus === 'FAILED' && (
+                              <button onClick={() => linkRefundRetry(r.id)} disabled={confirmingId === r.id} style={{ ...btnConfirm, marginRight: 6 }}>
+                                {confirmingId === r.id ? '…' : 'Renvoyer'}
+                              </button>
+                            )}
+                            <button onClick={() => linkRefundDone(r.id)} disabled={confirmingId === r.id} style={btnConfirm}>
+                              {confirmingId === r.id ? '…' : 'Marquer remboursé'}
+                            </button>
+                          </>
+                        )}
+                      </td>
+                    </tr>
+                  )
+                })}
               </tbody>
             </table>
           </div>

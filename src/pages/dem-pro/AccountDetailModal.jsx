@@ -234,6 +234,9 @@ function OverviewTab({ data, period, onPeriod, loading }) {
           <Info label="Secteur" value={a.proSector ? <span style={{ color: sectorColor, fontWeight: 700 }}>{SECTOR_LABELS[a.proSector] ?? a.proSector}</span> : '—'} />
           <Info label="Volume déclaré" value={VOLUME_LABELS[a.proWeeklyVolume] ?? '—'} />
           <Info label="NINEA" value={a.proNinea ?? '—'} />
+          <Info label="RCCM" value={a.rccmDocument
+            ? <a href={a.rccmDocument} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--primary)', fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: 4 }}>Voir le document <ExternalLink size={13} /></a>
+            : 'Non déposé (facultatif)'} />
           <Info label="Inscrit le" value={fmtDate(a.createdAt)} />
           <Info label="Première commande" value={fmtDate(allTime.firstOrderAt)} />
           <Info label="Dernière commande" value={fmtDate(allTime.lastOrderAt, true)} />
