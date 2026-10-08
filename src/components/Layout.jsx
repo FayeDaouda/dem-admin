@@ -1,8 +1,8 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { NavLink, useNavigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import { Gift,
-  LayoutDashboard, CreditCard, Package, Users, LogOut, Bike, Map, Menu, X, TrendingUp, ShieldCheck, AlertTriangle, ScrollText, UserCog, Briefcase, UsersRound, SlidersHorizontal, Award, GitBranch, Bell, Wallet, UserPlus, Table2, Percent, KeyRound, Wrench,
+  LayoutDashboard, CreditCard, Package, Users, LogOut, Bike, Map, Menu, X, TrendingUp, ShieldCheck, AlertTriangle, ScrollText, UserCog, Briefcase, UsersRound, SlidersHorizontal, Award, GitBranch, Bell, Wallet, UserPlus, Table2, Percent, KeyRound, Wrench, Search,
 } from 'lucide-react'
 import logoSrc from '../assets/logo-dem.svg'
 import { useResponsive } from '../lib/useResponsive'
@@ -11,38 +11,39 @@ import GlobalSearch from './GlobalSearch'
 
 // roles: undefined = tous les rôles. Sinon tableau des rôles autorisés (SUPER bypass toujours).
 // ASSISTANCE_EXECUTIVE (Assistant Exécutif) : périmètre opérationnel restreint — Dashboard (sans
-// finance), Carte live, Livreurs, Courses, Validation, Incidents, Nouveaux profils, Chefs de flotte
+// finance), Carte live, Coursiers, Courses, Validation, Incidents, Nouveaux profils, Chefs de flotte
 // (lecture), Acquisition (lecture), Tableau, Badge livreur (lecture). Pas de Finance, Paiements,
 // Service client, Audit, Marketing, Badge client, Parrainage, Notification, Équipes, Clients (fiche
 // complète), DEM Pro (facturation) ni Tarifs.
+// keywords : autres mots qui retrouvent la page dans la recherche du menu.
 const NAV = [
   { to: '/',                 icon: LayoutDashboard, label: 'Dashboard',       roles: ['SUPER','DEV','ASSISTANCE_EXECUTIVE'] },
   { to: '/marketing',       icon: LayoutDashboard,  label: 'Dashboard', roles: ['SUPER','MARKETING'], hideForSuper: true },
   { to: '/service-client',  icon: LayoutDashboard,  label: 'Dashboard', roles: ['SUPER','SERVICE_CLIENT'], hideForSuper: true },
-  { to: '/map',              icon: Map,             label: 'Carte live',      roles: ['SUPER','DEV','ASSISTANCE_EXECUTIVE','SERVICE_CLIENT'] },
+  { to: '/map',              icon: Map,             label: 'Carte live',      keywords: 'map positions suivi', roles: ['SUPER','DEV','ASSISTANCE_EXECUTIVE','SERVICE_CLIENT'] },
   { to: '/clients',          icon: Users,           label: 'Clients',         roles: ['SUPER','DEV','SERVICE_CLIENT'] },
-  { to: '/drivers',          icon: Bike,            label: 'Livreurs',        roles: ['SUPER','DEV','ASSISTANCE_EXECUTIVE','SERVICE_CLIENT'] },
-  { to: '/dem-pro',          icon: Briefcase,       label: 'DEM Pro',         roles: ['SUPER','SERVICE_CLIENT'] },
-  { to: '/chefs-de-flotte',  icon: UserCog,         label: 'Chefs de flotte', roles: ['SUPER','ASSISTANCE_EXECUTIVE','SERVICE_CLIENT'] },
-  { to: '/validation',       icon: ShieldCheck,     label: 'Validation',      roles: ['SUPER','ASSISTANCE_EXECUTIVE','SERVICE_CLIENT'] },
+  { to: '/drivers',          icon: Bike,            label: 'Coursiers',       keywords: 'livreurs motos drivers', roles: ['SUPER','DEV','ASSISTANCE_EXECUTIVE','SERVICE_CLIENT'] },
+  { to: '/dem-pro',          icon: Briefcase,       label: 'DEM Pro',         keywords: 'boutiques commerçants offres paliers', roles: ['SUPER','SERVICE_CLIENT'] },
+  { to: '/chefs-de-flotte',  icon: UserCog,         label: 'Chefs de flotte', keywords: 'flottes', roles: ['SUPER','ASSISTANCE_EXECUTIVE','SERVICE_CLIENT'] },
+  { to: '/validation',       icon: ShieldCheck,     label: 'Validation',      keywords: 'documents vérification inscriptions', roles: ['SUPER','ASSISTANCE_EXECUTIVE','SERVICE_CLIENT'] },
   { to: '/nouveaux-profils', icon: UserPlus,        label: 'Nouveaux profils', roles: ['SUPER','SERVICE_CLIENT','ASSISTANCE_EXECUTIVE'] },
   { to: '/tableau',          icon: Table2,          label: 'Tableau',          roles: ['SUPER','SERVICE_CLIENT','ASSISTANCE_EXECUTIVE'] },
   { to: '/finance',          icon: Wallet,          label: 'Finance',         roles: ['SUPER','FINANCE'], labelForRole: { FINANCE: 'Dashboard' } },
-  { to: '/payments',         icon: CreditCard,      label: 'Paiements',       roles: ['SUPER','FINANCE'] },
-  { to: '/orders',           icon: Package,         label: 'Courses',         roles: ['SUPER','DEV','FINANCE','SERVICE_CLIENT','ASSISTANCE_EXECUTIVE'] },
-  { to: '/config',           icon: SlidersHorizontal, label: 'Tarifs',        roles: ['SUPER','DEV'] },
-  { to: '/audit',            icon: ScrollText,       label: 'Audit',          roles: ['SUPER','DEV'] },
-  { to: '/incidents',        icon: AlertTriangle,    label: 'Incidents',      roles: ['SUPER','DEV','SERVICE_CLIENT','ASSISTANCE_EXECUTIVE'] },
+  { to: '/payments',         icon: CreditCard,      label: 'Paiements',       keywords: 'wave orange money retraits transactions', roles: ['SUPER','FINANCE'] },
+  { to: '/orders',           icon: Package,         label: 'Courses',         keywords: 'commandes livraisons orders tournées', roles: ['SUPER','DEV','FINANCE','SERVICE_CLIENT','ASSISTANCE_EXECUTIVE'] },
+  { to: '/config',           icon: SlidersHorizontal, label: 'Tarifs',        keywords: 'prix zones config promo prix unique', roles: ['SUPER','DEV'] },
+  { to: '/audit',            icon: ScrollText,       label: 'Audit',          keywords: 'journal historique', roles: ['SUPER','DEV'] },
+  { to: '/incidents',        icon: AlertTriangle,    label: 'Incidents',      keywords: 'sos alertes litiges', roles: ['SUPER','DEV','SERVICE_CLIENT','ASSISTANCE_EXECUTIVE'] },
   { to: '/badges/clients',  icon: Award,            label: 'Badge client',   roles: ['SUPER','MARKETING'] },
-  { to: '/badges/drivers',  icon: Award,            label: 'Badge livreur',  roles: ['SUPER','MARKETING','ASSISTANCE_EXECUTIVE'] },
+  { to: '/badges/drivers',  icon: Award,            label: 'Badge livreur',  keywords: 'coursiers', roles: ['SUPER','MARKETING','ASSISTANCE_EXECUTIVE'] },
   { to: '/parrainage',      icon: GitBranch,        label: 'Parrainage',     roles: ['SUPER','MARKETING'] },
   { to: '/acquisition',     icon: TrendingUp,       label: 'Acquisition',    roles: ['SUPER'] },
-  { to: '/recompenses',     icon: Gift,             label: 'Récompenses',    roles: ['SUPER','MARKETING'] },
-  { to: '/promotions',      icon: Percent,          label: 'Promotions',     roles: ['SUPER','MARKETING'] },
+  { to: '/recompenses',     icon: Gift,             label: 'Récompenses',    keywords: 'cadeaux bonus', roles: ['SUPER','MARKETING'] },
+  { to: '/promotions',      icon: Percent,          label: 'Promotions',     keywords: 'codes promo réductions', roles: ['SUPER','MARKETING'] },
   { to: '/acquisition-overview', icon: TrendingUp,  label: 'Acquisition',    roles: ['ASSISTANCE_EXECUTIVE'], hideForSuper: true },
-  { to: '/broadcast',       icon: Bell,             label: 'Notification',   roles: ['SUPER','MARKETING'] },
-  { to: '/equipes',          icon: UsersRound,       label: 'Equipes',        roles: ['SUPER'] },
-  { to: '/maintenance',      icon: Wrench,           label: 'Maintenance',    roles: ['SUPER'] },
+  { to: '/broadcast',       icon: Bell,             label: 'Notification',   keywords: 'push broadcast envoi messages', roles: ['SUPER','MARKETING'] },
+  { to: '/equipes',          icon: UsersRound,       label: 'Equipes',        keywords: 'admins comptes rôles', roles: ['SUPER'] },
+  { to: '/maintenance',      icon: Wrench,           label: 'Maintenance',    keywords: 'code secret sms otp interrupteurs version', roles: ['SUPER'] },
 ]
 
 const ROLE_LABELS = {
@@ -53,6 +54,9 @@ const ROLE_LABELS = {
   SERVICE_CLIENT:       { label: 'Service Client',        color: '#06b6d4' },
   ASSISTANCE_EXECUTIVE: { label: 'Assistance Executive',  color: '#a855f7' },
 }
+
+// Sans accents ni majuscules : « recompense » retrouve « Récompenses ».
+const normalize = (text) => text.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase()
 
 function canSeeNav(item, adminRole) {
   // Dashboards Community/Service Client : leurs KPI sont intégrés au Dashboard
@@ -69,9 +73,60 @@ export default function Layout({ children }) {
   const location = useLocation()
   const { isMobile, isTablet } = useResponsive()
   const [mobileOpen, setMobileOpen] = useState(false)
+  const [pageQuery, setPageQuery] = useState('')
+  const [activeIndex, setActiveIndex] = useState(0)
+  const pageSearchRef = useRef(null)
 
   // Ferme le menu mobile à chaque changement de route
   useEffect(() => { setMobileOpen(false) }, [location.pathname])
+
+  // « / » place le curseur dans la recherche du menu (hors saisie en cours).
+  useEffect(() => {
+    function onKey(e) {
+      if (e.key !== '/' || e.metaKey || e.ctrlKey || e.altKey) return
+      const t = e.target
+      if (t.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT'].includes(t.tagName)) return
+      e.preventDefault()
+      if (isMobile) setMobileOpen(true)
+      pageSearchRef.current?.focus()
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [isMobile])
+
+  const visibleNav = NAV.filter(item => canSeeNav(item, user?.adminRole))
+    .map(item => ({ ...item, label: item.labelForRole?.[user?.adminRole] ?? item.label }))
+  const terms = normalize(pageQuery).split(/\s+/).filter(Boolean)
+  const shownNav = terms.length === 0
+    ? visibleNav
+    : visibleNav.filter(item => {
+      const haystack = normalize(`${item.label} ${item.keywords ?? ''} ${item.to}`)
+      return terms.every(term => haystack.includes(term))
+    })
+
+  function openPage(to) {
+    setPageQuery('')
+    setActiveIndex(0)
+    pageSearchRef.current?.blur()
+    navigate(to)
+  }
+
+  function onPageSearchKey(e) {
+    if (e.key === 'ArrowDown') {
+      e.preventDefault()
+      setActiveIndex(i => Math.min(i + 1, shownNav.length - 1))
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault()
+      setActiveIndex(i => Math.max(i - 1, 0))
+    } else if (e.key === 'Enter' && shownNav[activeIndex]) {
+      e.preventDefault()
+      openPage(shownNav[activeIndex].to)
+    } else if (e.key === 'Escape') {
+      setPageQuery('')
+      setActiveIndex(0)
+      e.currentTarget.blur()
+    }
+  }
 
   function handleLogout() {
     logout()
@@ -112,16 +167,68 @@ export default function Layout({ children }) {
         )}
       </div>
 
-      {/* Nav — filtré selon adminRole */}
-      <nav style={{ flex: 1, padding: '10px 6px', display: 'flex', flexDirection: 'column', gap: 2 }}>
-        {NAV.filter(item => canSeeNav(item, user?.adminRole)).map(({ to, icon: Icon, label, labelForRole }) => {
-          const resolvedLabel = labelForRole?.[user?.adminRole] ?? label
+      {/* Recherche d'une page du menu (masquée en icônes seules, sur tablette) */}
+      {!collapsed && (
+        <div style={{ padding: '10px 10px 2px' }}>
+          <div style={{
+            display: 'flex', alignItems: 'center', gap: 8,
+            padding: '0 10px', height: 34,
+            borderRadius: 'var(--radius-sm)',
+            background: 'rgba(255,255,255,0.16)',
+            border: '1px solid rgba(255,255,255,0.22)',
+          }}>
+            <Search size={15} color="rgba(255,255,255,0.85)" style={{ flexShrink: 0 }} />
+            <input
+              ref={pageSearchRef}
+              value={pageQuery}
+              onChange={e => { setPageQuery(e.target.value); setActiveIndex(0) }}
+              onKeyDown={onPageSearchKey}
+              placeholder="Rechercher une page…"
+              aria-label="Rechercher une page du menu"
+              className="nav-page-search"
+              style={{
+                flex: 1, minWidth: 0, border: 'none', outline: 'none',
+                background: 'transparent', color: '#ffffff', fontSize: 13,
+              }}
+            />
+            {pageQuery ? (
+              <button
+                onClick={() => { setPageQuery(''); setActiveIndex(0); pageSearchRef.current?.focus() }}
+                aria-label="Effacer la recherche"
+                style={{ display: 'flex', background: 'none', border: 'none', padding: 0, cursor: 'pointer' }}
+              >
+                <X size={14} color="rgba(255,255,255,0.85)" />
+              </button>
+            ) : (
+              !isMobile && (
+                <kbd style={{
+                  fontSize: 10, lineHeight: '16px', padding: '0 5px', borderRadius: 4,
+                  color: 'rgba(255,255,255,0.85)', border: '1px solid rgba(255,255,255,0.35)',
+                  fontFamily: 'inherit',
+                }}>/</kbd>
+              )
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Nav — filtré selon adminRole, puis par la recherche */}
+      <nav style={{ flex: 1, padding: '10px 6px', display: 'flex', flexDirection: 'column', gap: 2, overflowY: 'auto' }}>
+        {shownNav.length === 0 && (
+          <div style={{ padding: '10px 12px', fontSize: 12.5, color: 'rgba(255,255,255,0.8)' }}>
+            Aucune page pour « {pageQuery.trim()} »
+          </div>
+        )}
+        {shownNav.map(({ to, icon: Icon, label: resolvedLabel }, index) => {
+          // Avec une recherche en cours : la ligne choisie au clavier (Entrée l'ouvre)
+          const highlighted = terms.length > 0 && index === activeIndex
           return (
           <NavLink
             key={to}
             to={to}
             end={to === '/'}
             title={collapsed ? resolvedLabel : undefined}
+            onClick={() => { setPageQuery(''); setActiveIndex(0) }}
             style={({ isActive }) => ({
               display: 'flex',
               alignItems: 'center',
@@ -131,6 +238,7 @@ export default function Layout({ children }) {
               borderRadius: 'var(--radius-sm)',
               color: '#ffffff',
               background: isActive ? 'rgba(255,255,255,0.22)' : 'transparent',
+              boxShadow: highlighted ? 'inset 0 0 0 1.5px rgba(255,255,255,0.75)' : 'none',
               fontWeight: isActive ? 600 : 400,
               fontSize: 13,
               transition: 'all .15s',

@@ -42,3 +42,6 @@ button { cursor: pointer; font-family: inherit; }
 /* Garde les calques Leaflet (z-index jusqu'à 1000 par défaut) sous le menu mobile (z-index 200) */
 .leaflet-pane, .leaflet-top, .leaflet-bottom { z-index: 10 !important; }
 .leaflet-control { z-index: 15 !important; }
+
+/* Recherche d'une page dans le menu de gauche (fond dégradé bleu) */
+.nav-page-search::placeholder { color: rgba(255, 255, 255, 0.72); }
