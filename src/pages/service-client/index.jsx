@@ -1,21 +1,20 @@
 import { useState } from 'react'
-import { RefreshCw, LayoutGrid, AlertTriangle, Gift, ClipboardList } from 'lucide-react'
+import { RefreshCw, LayoutGrid, Gift, ClipboardList } from 'lucide-react'
 import { pageWrap, pageScroll } from '../../lib/glassStyles'
 import PageHeader from '../../components/PageHeader'
 import TabBar from '../../components/TabBar'
 import { useUrlTab } from '../../lib/useUrlTab'
 import KpiRow from './components/KpiRow'
 import OverviewTab from './OverviewTab'
-import IncidentsTab from './IncidentsTab'
 import GestesTab from './GestesTab'
 import RequestsTab from './RequestsTab'
 
 // Poste Service Client — espace de travail du Service Client (plan de
 // refonte). Onglet ouvert dans l'adresse (?tab=). Le déblocage des codes SMS
-// et la sécurité d'un compte sont dans Comptes › Codes et accès.
+// et la sécurité d'un compte sont dans Comptes › Codes et accès, les
+// incidents (et « Signaler un utilisateur ») dans Opérations › Incidents.
 const TABS = [
   { key: 'overview',  label: "Vue d'ensemble",     icon: LayoutGrid,    Component: OverviewTab },
-  { key: 'incidents', label: 'Incidents',          icon: AlertTriangle, Component: IncidentsTab },
   { key: 'gestes',    label: 'Gestes commerciaux', icon: Gift,          Component: GestesTab },
   { key: 'requests',  label: 'Mes demandes',       icon: ClipboardList, Component: RequestsTab },
 ]

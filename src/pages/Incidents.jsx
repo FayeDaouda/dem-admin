@@ -1,11 +1,13 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useLocation } from 'react-router-dom'
-import { AlertTriangle, RefreshCw, Filter } from 'lucide-react'
+import { AlertTriangle, RefreshCw, Filter, Flag } from 'lucide-react'
 import api from '../lib/api'
 import { connectSocket, disconnectSocket } from '../lib/socket'
 import { glass, glassInput, pageWrap, pageScroll, stickyTh } from '../lib/glassStyles'
 import { useAuth } from '../contexts/AuthContext'
 import SosPhonesCard from './SosPhonesCard'
+import ReportUserModal from '../components/ReportUserModal'
+import { canSee, ACTION_ROLES } from '../lib/droits'
 
 // ── Constantes ────────────────────────────────────────────────────────────────
 const SEVERITY_CFG = {
@@ -50,6 +52,7 @@ export default function Incidents() {
   const [detail, setDetail]       = useState(null)
   const [filterStatus, setFilterStatus] = useState('')
   const [filterType, setFilterType]     = useState('')
+  const [showReport, setShowReport]     = useState(false)
   const [saving, setSaving]       = useState(false)
   const [editNotes, setEditNotes] = useState('')
   const [editStatus, setEditStatus] = useState('')
@@ -151,10 +154,18 @@ export default function Incidents() {
             </span>
           )}
         </div>
-        <button onClick={fetch} style={btnOutline}>
-          <RefreshCw size={14} /> Actualiser
-        </button>
+        <div style={{ display: 'flex', gap: 8 }}>
+          {canSee(user?.adminRole, ACTION_ROLES.reportUser) && (
+            <button onClick={() => setShowReport(true)} style={btnOutline}>
+              <Flag size={14} /> Signaler un utilisateur
+            </button>
+          )}
+          <button onClick={fetch} style={btnOutline}>
+            <RefreshCw size={14} /> Actualiser
+          </button>
+        </div>
       </div>
+      {showReport && <ReportUserModal onClose={() => { setShowReport(false); fetch() }} />}
 
       {/* ── Stat cards ── */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 12, marginBottom: 24, flexShrink: 0 }}>

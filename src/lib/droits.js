@@ -50,4 +50,8 @@ export const ACTION_ROLES = {
   // des zones, pass — lecture serveur Super + Finance ; la page est visible de
   // Super + Dev, donc masqués au rôle Dev (ils lui affichaient une erreur).
   tariffBlocks: ['FINANCE'],
+  // Signaler un utilisateur : POST /admin/report-user (Super, Dev, SC, Ass.
+  // exéc.) mais la recherche du client passe par /admin/clients, refusée à
+  // l'Assistance exécutive → Super, Dev et Service Client.
+  reportUser: ['DEV', 'SERVICE_CLIENT'],
 }
