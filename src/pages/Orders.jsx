@@ -6,10 +6,11 @@ import { useAutoRefresh } from '../lib/useAutoRefresh'
 import { canSee, ACTION_ROLES } from '../lib/droits'
 import Badge from '../components/Badge'
 import PageHeader from '../components/PageHeader'
-import { RefreshCw, Search, X } from 'lucide-react'
+import { RefreshCw, Search, X, MapPin, Phone, MessageCircle, Copy, Check } from 'lucide-react'
 import { glass, glassInput, pageWrap, pageScroll, stickyTh, stickyCol, stickyThCol } from '../lib/glassStyles'
 import DocThumb from '../components/DocThumb'
 import { useUrlQuery } from '../lib/useUrlQuery'
+import { cancelReasonLabel } from '../lib/cancelReasons'
 
 // Montant payé par le client = part coursier (price) + frais DEM − réduction
 // (même calcul que l'app : core/utils/price_format.dart:clientChargeFor).
@@ -339,20 +340,30 @@ export default function Orders() {
         </div>
       </div>
 
-      {/* ── Fiche d'une course ── */}
+      {/* ── Fiche d'une course : en-tête, actions, puis deux colonnes ── */}
       {detail && (
         <div style={overlay} onClick={closeDetail}>
           <div style={modalBox} onClick={e => e.stopPropagation()}>
-            <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 10, marginBottom: 12 }}>
+            <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, marginBottom: 12, flexWrap: 'wrap' }}>
               <div>
-                <h2 style={{ fontSize: 17, fontWeight: 700, margin: 0 }}>Course <code style={{ fontSize: 13, color: 'var(--text-muted)' }}>{detail.id.slice(0, 8)}</code></h2>
+                <h2 style={{ fontSize: 18, fontWeight: 700, margin: 0, display: 'flex', alignItems: 'center', gap: 8 }}>
+                  Course <code style={{ fontSize: 13, color: 'var(--text-muted)' }}>{detail.id.slice(0, 8)}</code>
+                  <CopyButton text={detail.id} />
+                </h2>
                 <div style={{ display: 'flex', gap: 6, marginTop: 6, flexWrap: 'wrap' }}>
                   <Badge status={detail.orderType} />
                   <Badge status={detail.status} />
                   {detail.status === 'DELIVERED' && <Badge status={detail.paymentStatus ?? 'PENDING'} />}
+                  {detail.batchOrderId && <span style={pill}>Tournée DEM Pro</span>}
                 </div>
               </div>
-              <button onClick={closeDetail} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)' }}><X size={18} /></button>
+              <div style={{ display: 'flex', alignItems: 'flex-start', gap: 14 }}>
+                <div style={{ textAlign: 'right' }}>
+                  <div style={{ fontSize: 22, fontWeight: 800 }}>{clientCharge(detail).toLocaleString('fr-FR')} F</div>
+                  <div style={{ fontSize: 11.5, color: 'var(--text-muted)' }}>prix client · créée le {fmtDate(detail.createdAt)}</div>
+                </div>
+                <button onClick={closeDetail} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)' }}><X size={18} /></button>
+              </div>
             </div>
 
             {/* Actions, en haut */}
@@ -382,56 +393,103 @@ export default function Orders() {
             )}
             {actionError && <div style={{ fontSize: 12.5, color: '#dc2626', marginBottom: 12 }}>{actionError}</div>}
 
-            <FicheSection title="Chronologie">
-              <Timeline order={detail} />
-            </FicheSection>
+            <div className="fiche-cols">
+              {/* Colonne gauche : déroulé de la course */}
+              <div>
+                <FicheSection title="Chronologie">
+                  <Timeline order={detail} />
+                </FicheSection>
 
-            <FicheSection title="Personnes">
-              <Row label="Client"       value={clientDisplayName(detail.client, detail.clientName, detail.clientPhone)} />
-              <Row label="Tél. client"  value={firstNonEmpty(detail.client?.phone, detail.clientPhone)} />
-              <Row label="Coursier"     value={firstNonEmpty(detail.driver?.name, detail.driver?.phone)} />
-              <Row label="Tél. coursier" value={firstNonEmpty(detail.driver?.phone)} />
-              <Row label="Destinataire" value={firstNonEmpty(detail.receiverName, detail.receiverPhone)} />
-              <Row label="Tél. destinataire" value={firstNonEmpty(detail.receiverPhone)} />
-            </FicheSection>
-
-            <FicheSection title="Trajet">
-              <Row label="Départ"      value={detail.pickupAddress} />
-              <Row label="Tél. départ" value={firstNonEmpty(detail.senderPhone, detail.client?.phone, detail.clientPhone)} />
-              <Row label="Arrivée"     value={detail.deliveryAddress} />
-            </FicheSection>
-
-            <FicheSection title="Montants">
-              <Row label="Part coursier" value={`${(detail.price ?? 0).toLocaleString('fr-FR')} F`} />
-              <Row label="Frais DEM"     value={`+ ${(detail.demFee ?? 0).toLocaleString('fr-FR')} F`} />
-              {detail.discountAmount > 0 && <Row label="Réduction" value={
-                <span>
-                  − {detail.discountAmount.toLocaleString('fr-FR')} F
-                  {/* Origine de la réduction (Centre des récompenses) */}
-                  {detail.discountOrigin && (
-                    <span style={{ display: 'block', fontSize: 12, color: 'var(--text-muted)', marginTop: 2 }}>
-                      <strong style={{ color: 'var(--text)' }}>{detail.discountOrigin.label}</strong>
-                      {detail.discountOrigin.detail ? ` · ${detail.discountOrigin.detail}` : ''}
-                    </span>
+                <FicheSection title="Trajet">
+                  <Place label="Départ" address={detail.pickupAddress} lat={detail.pickupLatitude} lng={detail.pickupLongitude} />
+                  <Place label="Arrivée" address={detail.deliveryAddress} lat={detail.deliveryLatitude} lng={detail.deliveryLongitude} />
+                  {(detail.description || detail.weight) && (
+                    <Row label="Colis" value={[detail.description, detail.weight ? `${detail.weight} kg` : null].filter(Boolean).join(' · ')} />
                   )}
-                </span>
-              } />}
-              <Row label="Prix client" value={<strong>{clientCharge(detail).toLocaleString('fr-FR')} F</strong>} />
-            </FicheSection>
+                </FicheSection>
 
-            {detail.status !== 'CANCELLED' && (
-              <FicheSection title="Paiement">
-                <Row label="Statut" value={detail.status === 'DELIVERED' ? <Badge status={detail.paymentStatus ?? 'PENDING'} /> : 'Après la livraison'} />
-                {detail.disputeNotes && <Row label="Note litige" value={<span style={{ color: 'var(--danger)' }}>{detail.disputeNotes}</span>} />}
-              </FicheSection>
-            )}
+                {Array.isArray(detail.items) && detail.items.length > 0 && (
+                  <FicheSection title={`Articles (${detail.items.length})`}>
+                    {detail.items.map((it, i) => (
+                      <div key={i} style={{ display: 'flex', justifyContent: 'space-between', gap: 10, fontSize: 13 }}>
+                        <span>{it.name ?? 'Article'} <span style={{ color: 'var(--text-muted)' }}>× {it.quantity ?? 1}</span></span>
+                        <span style={{ whiteSpace: 'nowrap' }}>{((Number(it.price) || 0) * (Number(it.quantity) || 1)).toLocaleString('fr-FR')} F</span>
+                      </div>
+                    ))}
+                    <div style={{ fontSize: 11.5, color: 'var(--text-muted)' }}>
+                      {detail.proPaymentMode === 'SPLIT_IN_APP' ? 'Articles payés dans l’app (inclus dans le paiement en ligne)' : 'Articles réglés hors de l’app'}
+                    </div>
+                  </FicheSection>
+                )}
 
-            {/* Preuve de livraison — la pièce qui compte le plus en cas de litige */}
-            {detail.status === 'DELIVERED' && (
-              <FicheSection title="Preuve de livraison">
-                <DocThumb url={detail.proofPhotoUrl} label="Photo" width={140} height={110} />
-              </FicheSection>
-            )}
+                {detail.status === 'DELIVERED' && (
+                  <FicheSection title="Preuve de livraison">
+                    {detail.proofPhotoUrl
+                      ? <DocThumb url={detail.proofPhotoUrl} label="Photo" width={160} height={120} />
+                      : <div style={{ fontSize: 13, color: 'var(--text-muted)' }}>Aucune photo envoyée par le coursier.</div>}
+                  </FicheSection>
+                )}
+              </div>
+
+              {/* Colonne droite : personnes et argent */}
+              <div>
+                <FicheSection title="Personnes">
+                  <PersonCard role={detail.client?.role === 'DEM_PRO' ? 'Client · DEM Pro' : 'Client'}
+                    name={clientDisplayName(detail.client, detail.clientName, detail.clientPhone)}
+                    phone={firstNonEmpty(detail.client?.phone, detail.clientPhone)}
+                    extra={detail.createdByName ? `Créée par ${detail.createdByName}` : null} />
+                  <PersonCard role="Coursier"
+                    name={firstNonEmpty(detail.driver?.name, detail.driver?.phone)}
+                    phone={detail.driver?.phone}
+                    extra={detail.driver ? [detail.driver.vehicleType, detail.driver.vehiclePlate].filter(Boolean).join(' · ') : (['DELIVERED', 'CANCELLED'].includes(detail.status) ? 'Aucun coursier' : 'Pas encore de coursier')} />
+                  {(detail.receiverName || detail.receiverPhone || detail.senderName || detail.senderPhone) && (
+                    <PersonCard role="Destinataire"
+                      name={firstNonEmpty(detail.receiverName, detail.receiverPhone)}
+                      phone={detail.receiverPhone}
+                      extra={detail.senderName || detail.senderPhone ? `Expéditeur : ${firstNonEmpty(detail.senderName, detail.senderPhone)}` : null} />
+                  )}
+                </FicheSection>
+
+                <FicheSection title={detail.status === 'CANCELLED' ? 'Montants prévus' : 'Montants'}>
+                  <Row label="Part coursier" value={`${(detail.price ?? 0).toLocaleString('fr-FR')} F`} />
+                  <Row label="Frais DEM"     value={`+ ${(detail.demFee ?? 0).toLocaleString('fr-FR')} F`} />
+                  {detail.discountAmount > 0 && <Row label="Réduction" value={
+                    <span>
+                      − {detail.discountAmount.toLocaleString('fr-FR')} F
+                      {/* Origine de la réduction (Centre des récompenses) */}
+                      {detail.discountOrigin && (
+                        <span style={{ display: 'block', fontSize: 12, color: 'var(--text-muted)', marginTop: 2 }}>
+                          <strong style={{ color: 'var(--text)' }}>{detail.discountOrigin.label}</strong>
+                          {detail.discountOrigin.detail ? ` · ${detail.discountOrigin.detail}` : ''}
+                        </span>
+                      )}
+                    </span>
+                  } />}
+                  <div style={{ borderTop: '1px dashed var(--border)', paddingTop: 6 }}>
+                    <Row label="Prix client" value={<strong>{clientCharge(detail).toLocaleString('fr-FR')} F</strong>} />
+                  </div>
+                </FicheSection>
+
+                {detail.status !== 'CANCELLED' && (
+                  <FicheSection title="Paiement">
+                    <Row label="Statut" value={detail.status === 'DELIVERED' ? <Badge status={detail.paymentStatus ?? 'PENDING'} /> : 'Après la livraison'} />
+                    {detail.paymentMethod && <Row label="Mode" value={PAYMENT_METHOD_LABELS[detail.paymentMethod] ?? detail.paymentMethod} />}
+                    {detail.paidOnlineAt && <Row label="Payée en ligne le" value={fmtDate(detail.paidOnlineAt)} />}
+                    {detail.disputeNotes && <Row label="Note litige" value={<span style={{ color: 'var(--danger)' }}>{detail.disputeNotes}</span>} />}
+                  </FicheSection>
+                )}
+
+                {detail.rating && (
+                  <FicheSection title="Note du client">
+                    <div style={{ fontSize: 16, color: '#f59e0b', letterSpacing: 2 }}>
+                      {'★'.repeat(detail.rating.score)}<span style={{ color: 'var(--border)' }}>{'★'.repeat(Math.max(0, 5 - detail.rating.score))}</span>
+                      <span style={{ fontSize: 13, color: 'var(--text)', letterSpacing: 0, marginLeft: 8 }}>{detail.rating.score}/5</span>
+                    </div>
+                    {detail.rating.comment && <div style={{ fontSize: 13, fontStyle: 'italic' }}>« {detail.rating.comment} »</div>}
+                  </FicheSection>
+                )}
+              </div>
+            </div>
           </div>
         </div>
       )}
@@ -512,33 +570,110 @@ export default function Orders() {
   )
 }
 
-// Étapes de la course, avec leur heure (données déjà renvoyées par le serveur)
+const PAYMENT_METHOD_LABELS = { CASH: 'Espèces', WAVE: 'Wave', ORANGE_MONEY: 'Orange Money', WALLET: 'Wallet DEM' }
+const CANCELLED_BY_LABELS = { CLIENT: 'le client', DRIVER: 'le coursier', ADMIN: 'l’équipe DEM', SYSTEM: 'automatiquement' }
+
+// Étapes de la course avec leur heure et la durée de chaque étape (données
+// déjà renvoyées par le serveur) ; pour une annulation : motif, auteur, note.
 function Timeline({ order }) {
+  const end = order.status === 'CANCELLED'
+    ? { label: 'Annulée', at: order.cancelledAt, color: '#dc2626' }
+    : { label: 'Livrée', at: order.deliveredAt, color: '#16a34a' }
   const steps = [
-    order.scheduledAt && { label: 'Programmée pour', at: order.scheduledAt },
+    order.scheduledAt && { label: 'Programmée pour', at: order.scheduledAt, noDuration: true },
     { label: 'Créée', at: order.createdAt },
     { label: 'Acceptée par un coursier', at: order.acceptedAt },
     { label: 'Colis récupéré', at: order.pickedUpAt },
-    order.status === 'CANCELLED'
-      ? { label: order.cancelledByName ? `Annulée (par ${order.cancelledByName})` : 'Annulée', at: order.cancelledAt, color: '#dc2626' }
-      : { label: 'Livrée', at: order.deliveredAt, color: '#16a34a' },
+    end,
   ].filter(Boolean)
+  let prev = null
+  const rows = steps.map(s => {
+    const gap = s.at && prev && !s.noDuration ? Math.max(0, Math.round((new Date(s.at) - new Date(prev)) / 60000)) : null
+    if (s.at && !s.noDuration) prev = s.at
+    return { ...s, gap }
+  })
+  const total = end.at && order.createdAt ? Math.max(0, Math.round((new Date(end.at) - new Date(order.createdAt)) / 60000)) : null
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-      {steps.map(s => (
-        <div key={s.label} style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 13 }}>
-          <span style={{ width: 9, height: 9, borderRadius: 5, flexShrink: 0, background: s.at ? (s.color ?? 'var(--primary)') : 'transparent', border: `2px solid ${s.at ? (s.color ?? 'var(--primary)') : 'var(--border)'}` }} />
-          <span style={{ flex: 1, color: s.at ? 'var(--text)' : 'var(--text-muted)' }}>{s.label}</span>
-          <span style={{ color: 'var(--text-muted)', fontSize: 12 }}>{fmtTime(s.at) ?? '—'}</span>
+    <>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+        {rows.map(s => (
+          <div key={s.label} style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 13 }}>
+            <span style={{ width: 9, height: 9, borderRadius: 5, flexShrink: 0, background: s.at ? (s.color ?? 'var(--primary)') : 'transparent', border: `2px solid ${s.at ? (s.color ?? 'var(--primary)') : 'var(--border)'}` }} />
+            <span style={{ flex: 1, color: s.at ? 'var(--text)' : 'var(--text-muted)' }}>{s.label}</span>
+            {s.gap != null && <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>+{formatDuration(s.gap)}</span>}
+            <span style={{ color: 'var(--text-muted)', fontSize: 12, minWidth: 92, textAlign: 'right' }}>{fmtTime(s.at) ?? '—'}</span>
+          </div>
+        ))}
+      </div>
+      {total != null && (
+        <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 4 }}>
+          {order.status === 'CANCELLED' ? 'Annulée après' : 'Durée totale :'} <strong style={{ color: 'var(--text)' }}>{formatDuration(total)}</strong>
         </div>
-      ))}
+      )}
+      {order.status === 'CANCELLED' && (
+        <div style={{ marginTop: 4, padding: '8px 10px', borderRadius: 8, background: 'rgba(220,38,38,0.06)', fontSize: 12.5 }}>
+          <div><strong>{cancelReasonLabel(order.cancelReason)}</strong>{order.cancelledBy ? ` · annulée par ${CANCELLED_BY_LABELS[order.cancelledBy] ?? order.cancelledBy}` : ''}{order.cancelledByName ? ` (${order.cancelledByName})` : ''}</div>
+          {order.cancelNote && <div style={{ color: 'var(--text-muted)', marginTop: 2 }}>« {order.cancelNote} »</div>}
+        </div>
+      )}
+    </>
+  )
+}
+
+// Adresse + lien vers la carte (les coordonnées GPS sont toujours connues)
+function Place({ label, address, lat, lng }) {
+  const hasGps = lat != null && lng != null
+  return (
+    <Row label={label} value={
+      <span>
+        {address || '—'}
+        {hasGps && (
+          <a href={`https://www.google.com/maps?q=${lat},${lng}`} target="_blank" rel="noreferrer"
+            style={{ display: 'inline-flex', alignItems: 'center', gap: 3, marginLeft: 8, fontSize: 12, color: 'var(--primary)', fontWeight: 600, textDecoration: 'none' }}>
+            <MapPin size={12} /> Carte
+          </a>
+        )}
+      </span>
+    } />
+  )
+}
+
+// Une personne de la course : nom, téléphone, appel et WhatsApp en un clic
+function PersonCard({ role, name, phone, extra }) {
+  const digits = (phone ?? '').replace(/[^\d]/g, '')
+  const hasPhone = digits.length >= 7
+  return (
+    <div style={{ border: '1px solid var(--border)', borderRadius: 10, padding: '8px 12px' }}>
+      <div style={{ fontSize: 10.5, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: 0.4 }}>{role}</div>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 2 }}>
+        <span style={{ fontSize: 13.5, fontWeight: 600, flex: 1, minWidth: 0, overflowWrap: 'anywhere' }}>{name}</span>
+        {hasPhone && (
+          <>
+            <a href={`tel:${phone}`} title={`Appeler ${phone}`} style={iconLink}><Phone size={13} /></a>
+            <a href={`https://wa.me/${digits}`} target="_blank" rel="noreferrer" title="WhatsApp" style={iconLink}><MessageCircle size={13} /></a>
+          </>
+        )}
+      </div>
+      {hasPhone && <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>{phone}</div>}
+      {extra && <div style={{ fontSize: 11.5, color: 'var(--text-muted)', marginTop: 1 }}>{extra}</div>}
     </div>
+  )
+}
+
+function CopyButton({ text }) {
+  const [copied, setCopied] = useState(false)
+  return (
+    <button title="Copier l’identifiant complet" onClick={() => {
+      navigator.clipboard?.writeText(text).then(() => { setCopied(true); setTimeout(() => setCopied(false), 1500) }).catch(() => {})
+    }} style={{ background: 'none', border: 'none', cursor: 'pointer', color: copied ? '#16a34a' : 'var(--text-muted)', display: 'inline-flex', alignItems: 'center', gap: 3, fontSize: 11 }}>
+      {copied ? <><Check size={13} /> copié</> : <Copy size={13} />}
+    </button>
   )
 }
 
 function FicheSection({ title, children }) {
   return (
-    <div style={{ borderTop: '1px solid var(--border)', padding: '12px 0 4px' }}>
+    <div style={{ borderTop: '1px solid var(--border)', padding: '12px 0 8px' }}>
       <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', letterSpacing: 0.5, textTransform: 'uppercase', marginBottom: 8 }}>{title}</div>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>{children}</div>
     </div>
@@ -548,7 +683,7 @@ function FicheSection({ title, children }) {
 function Row({ label, value }) {
   return (
     <div style={{ display: 'flex', gap: 8, alignItems: 'flex-start', fontSize: 13 }}>
-      <span style={{ color: 'var(--text-muted)', minWidth: 120 }}>{label}</span>
+      <span style={{ color: 'var(--text-muted)', minWidth: 110 }}>{label}</span>
       <span style={{ minWidth: 0, overflowWrap: 'anywhere' }}>{value}</span>
     </div>
   )
@@ -561,4 +696,6 @@ const tdStyle    = { padding: '9px 10px', verticalAlign: 'middle', fontSize: 13 
 const ellipsis   = { overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }
 const btnOutline = { display: 'flex', alignItems: 'center', gap: 6, padding: '7px 14px', borderRadius: 'var(--radius-sm)', border: '1px solid rgba(0,119,182,0.25)', background: 'rgba(255,255,255,0.5)', color: 'var(--text-muted)', fontSize: 13, cursor: 'pointer' }
 const overlay    = { position: 'fixed', inset: 0, background: 'rgba(0,40,80,0.45)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100 }
-const modalBox   = { ...glass, background: 'rgba(255,255,255,0.96)', padding: '22px 26px', width: 560, maxWidth: '92vw', maxHeight: '90vh', overflowY: 'auto' }
+const modalBox   = { ...glass, background: 'rgba(255,255,255,0.97)', padding: '22px 26px', width: 920, maxWidth: '94vw', maxHeight: '92vh', overflowY: 'auto' }
+const pill       = { fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 20, background: 'rgba(2,132,199,0.12)', color: '#0369a1' }
+const iconLink   = { display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 26, height: 26, borderRadius: 13, border: '1px solid var(--border)', color: 'var(--primary)', background: 'rgba(255,255,255,0.7)' }
