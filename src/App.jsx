@@ -6,7 +6,6 @@ import Layout      from './components/Layout'
 import Login       from './pages/Login'
 import ChangePasswordRequired from './pages/ChangePasswordRequired'
 import Dashboard   from './pages/Dashboard'
-import Payments    from './pages/Payments'
 import Orders      from './pages/Orders'
 import Drivers     from './pages/Drivers'
 import Clients     from './pages/Clients'
@@ -102,7 +101,7 @@ function AppRoutes() {
       <Route path="/marketing" element={<ProtectedRoute><Marketing /></ProtectedRoute>} />
       <Route path="/finance" element={<ProtectedRoute><Finance /></ProtectedRoute>} />
       <Route path="/map" element={<ProtectedRoute><LiveMap /></ProtectedRoute>} />
-      <Route path="/payments" element={<ProtectedRoute><Payments /></ProtectedRoute>} />
+      <Route path="/payments" element={<Navigate to="/finance?tab=paiements&vue=impayes" replace />} />
       <Route path="/orders"   element={<ProtectedRoute><Orders /></ProtectedRoute>} />
       <Route path="/drivers"  element={<ProtectedRoute><Drivers /></ProtectedRoute>} />
       <Route path="/clients"  element={<ProtectedRoute><Clients /></ProtectedRoute>} />

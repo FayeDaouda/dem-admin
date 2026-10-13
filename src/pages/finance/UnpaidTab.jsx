@@ -1,9 +1,9 @@
 import { useState, useEffect, useCallback } from 'react'
-import api from '../lib/api'
-import Badge from '../components/Badge'
+import api from '../../lib/api'
+import Badge from '../../components/Badge'
 import { RefreshCw } from 'lucide-react'
-import { glass, glassModal, glassInput, pageWrap, pageScroll, stickyTh } from '../lib/glassStyles'
-import { useAutoRefresh } from '../lib/useAutoRefresh'
+import { glass, glassModal, glassInput, stickyTh } from '../../lib/glassStyles'
+import { useAutoRefresh } from '../../lib/useAutoRefresh'
 
 const PAYMENT_METHODS = ['', 'CASH', 'WAVE', 'ORANGE_MONEY']
 // Toujours un paiement reçu PAR LE COURSIER (Wave / OM sur son numéro) — un
@@ -11,7 +11,9 @@ const PAYMENT_METHODS = ['', 'CASH', 'WAVE', 'ORANGE_MONEY']
 const PM_LABELS = { '': 'Non précisé', CASH: 'Espèces', WAVE: 'Wave (au coursier)', ORANGE_MONEY: 'Orange Money (au coursier)' }
 const LIMIT = 50
 
-export default function Payments() {
+// Impayés et litiges des courses livrées — ancienne page /payments, devenue
+// une vue de Finance › Paiements (plan de refonte, étape 3.1).
+export default function UnpaidTab() {
   const [orders, setOrders]   = useState([])
   const [total, setTotal]     = useState(0)
   const [counts, setCounts]   = useState(null)
@@ -74,9 +76,8 @@ export default function Payments() {
   const totalPages = Math.max(1, Math.ceil(total / LIMIT))
 
   return (
-    <div style={pageWrap}>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24, flexShrink: 0 }}>
-        <h1 style={{ fontSize: 22, fontWeight: 700 }}>Paiements</h1>
+    <div>
+      <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 12 }}>
         <button onClick={fetch} style={btnOutline}>
           <RefreshCw size={14} /> Actualiser
         </button>
@@ -148,7 +149,7 @@ export default function Payments() {
       </div>
 
       {/* Table */}
-      <div style={pageScroll}>
+      <div>
       <div style={card}>
         {loading ? (
           <div style={{ color: 'var(--text-muted)', padding: 20 }}>Chargement…</div>
