@@ -45,4 +45,5 @@ export const ACTION_ROLES = {
   feesSinceLaunch: [], // Finance › Revenus, frais depuis le lancement : /admin/acquisition/fees, Super seul
   passDue:      [], // Finance › Pass coursiers, dû et prélèvement : Super seul (décision du plan de refonte)
   passSettings: [], // Tarifs et zones, activation et montants des pass : PUT /admin/forfait/config, Super seul
+  freeCourseOffer: [], // Marketing › Acquisition, offre 100 clients : /admin/acquisition/free-course, Super seul
 }

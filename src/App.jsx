@@ -10,7 +10,6 @@ import Orders      from './pages/Orders'
 import Drivers     from './pages/Drivers'
 import Clients     from './pages/Clients'
 import Config      from './pages/Config'
-import Acquisition from './pages/Acquisition'
 import Rewards from './pages/Rewards'
 import NewProfiles from './pages/NewProfiles'
 import OutreachTable from './pages/OutreachTable'
@@ -106,7 +105,7 @@ function AppRoutes() {
       <Route path="/drivers"  element={<ProtectedRoute><Drivers /></ProtectedRoute>} />
       <Route path="/clients"  element={<ProtectedRoute><Clients /></ProtectedRoute>} />
       <Route path="/config"      element={<ProtectedRoute><Config /></ProtectedRoute>} />
-      <Route path="/acquisition" element={<ProtectedRoute><Acquisition /></ProtectedRoute>} />
+      <Route path="/acquisition" element={<Navigate to="/marketing?tab=acquisition" replace />} />
       {/* Anciennes adresses — redirigées sans échéance (plan de refonte, étape 1) */}
       <Route path="/acquisition-overview" element={<Navigate to="/marketing?tab=acquisition" replace />} />
       <Route path="/promotions" element={<Navigate to="/marketing?tab=promotions" replace />} />

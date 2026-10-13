@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import { NavLink, useNavigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import { Gift,
-  LayoutDashboard, Package, Users, LogOut, Bike, Map, Menu, X, TrendingUp, ShieldCheck, AlertTriangle, ScrollText, UserCog, Briefcase, UsersRound, SlidersHorizontal, Award, GitBranch, Bell, Wallet, UserPlus, Table2, KeyRound, Wrench, Search, Headset, Target, ChevronDown, ChevronRight,
+  LayoutDashboard, Package, Users, LogOut, Bike, Map, Menu, X, TrendingUp, ShieldCheck, AlertTriangle, ScrollText, UserCog, Briefcase, UsersRound, SlidersHorizontal, Award, GitBranch, Bell, Wallet, UserPlus, Table2, KeyRound, Wrench, Search, Headset, ChevronDown, ChevronRight,
 } from 'lucide-react'
 import logoSrc from '../assets/logo-dem.svg'
 import { useResponsive } from '../lib/useResponsive'
@@ -36,8 +36,7 @@ const NAV = [
   { group: 'comptes',    to: '/chefs-de-flotte', icon: UserCog,         label: 'Chefs de flotte',      keywords: 'flottes', roles: ['SUPER','ASSISTANCE_EXECUTIVE','SERVICE_CLIENT'] },
   { group: 'argent',     to: '/finance',         icon: Wallet,          label: 'Finance',              keywords: 'dashboard revenus commission pass paiements impayés litiges wave orange money retraits', roles: ['SUPER','FINANCE'] },
   { group: 'argent',     to: '/config',          icon: SlidersHorizontal, label: 'Tarifs et zones',    keywords: 'prix zones config promo prix unique heures de pointe', roles: ['SUPER','DEV'] },
-  { group: 'croissance', to: '/marketing',       icon: TrendingUp,      label: 'Marketing',            keywords: 'dashboard acquisition rétention promotions codes promo campagnes', roles: ['SUPER','MARKETING','ASSISTANCE_EXECUTIVE'] },
-  { group: 'croissance', to: '/acquisition',     icon: Target,          label: "Plan d'acquisition",   keywords: 'pass 100 clients frais', roles: ['SUPER'] },
+  { group: 'croissance', to: '/marketing',       icon: TrendingUp,      label: 'Marketing',            keywords: 'dashboard acquisition rétention promotions codes promo campagnes 100 clients', roles: ['SUPER','MARKETING','ASSISTANCE_EXECUTIVE'] },
   { group: 'croissance', to: '/recompenses',     icon: Gift,            label: 'Récompenses',          keywords: 'cadeaux bonus', roles: ['SUPER','MARKETING'] },
   { group: 'croissance', to: '/parrainage',      icon: GitBranch,       label: 'Parrainage',           roles: ['SUPER','MARKETING'] },
   { group: 'croissance', to: '/badges',          icon: Award,           label: 'Badges',               keywords: 'badge client coursier paliers', roles: ['SUPER','MARKETING','ASSISTANCE_EXECUTIVE'] },

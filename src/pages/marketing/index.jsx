@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { RefreshCw, TrendingUp, Repeat, Package, Megaphone, Percent } from 'lucide-react'
 import { pageWrap, pageScroll } from '../../lib/glassStyles'
 import { useAuth } from '../../contexts/AuthContext'
-import { canSee, TAB_ROLES } from '../../lib/droits'
+import { canSee, TAB_ROLES, ACTION_ROLES } from '../../lib/droits'
 import PageHeader from '../../components/PageHeader'
 import TabBar from '../../components/TabBar'
 import { useUrlTab } from '../../lib/useUrlTab'
@@ -12,9 +12,26 @@ import RetentionTab from './RetentionTab'
 import CoursesTab from './CoursesTab'
 import CampaignsTab from './CampaignsTab'
 import PromotionsTab from './PromotionsTab'
+import FreeCourseSection from './FreeCourseSection'
+
+// Acquisition + offre de lancement « 100 clients » (Super Admin seul)
+function AcquisitionWithOffer() {
+  const { user } = useAuth()
+  return (
+    <>
+      <AcquisitionTab />
+      {canSee(user?.adminRole, ACTION_ROLES.freeCourseOffer) && (
+        <section style={{ marginTop: 28 }}>
+          <h2 style={{ fontSize: 15, fontWeight: 700, margin: '0 0 12px' }}>Offre de lancement : 100 premiers clients</h2>
+          <FreeCourseSection />
+        </section>
+      )}
+    </>
+  )
+}
 
 const ALL_TABS = [
-  { key: 'acquisition', label: 'Acquisition',          icon: TrendingUp, Component: AcquisitionTab },
+  { key: 'acquisition', label: 'Acquisition',          icon: TrendingUp, Component: AcquisitionWithOffer },
   { key: 'retention',   label: 'Rétention',            icon: Repeat,     Component: RetentionTab },
   { key: 'courses',     label: 'Comportement courses', icon: Package,    Component: CoursesTab },
   { key: 'promotions',  label: 'Promotions',           icon: Percent,    Component: PromotionsTab },
