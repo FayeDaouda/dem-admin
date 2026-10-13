@@ -5,7 +5,13 @@
 export const formatF = (v) => `${Math.round(v ?? 0).toLocaleString('fr-FR')} F`
 
 // Graduations d'axe de graphique (compactes, le détail exact est dans le tooltip)
-export const formatAxisF = (v) => (Math.abs(v) >= 1000 ? `${Math.round(v / 1000).toLocaleString('fr-FR')}k` : `${v}`)
+// Sous 10 000, une décimale : 1 500 → « 1,5k » (et non « 2k », qui doublait
+// la graduation 2 000).
+export const formatAxisF = (v) => {
+  if (Math.abs(v) < 1000) return `${v}`
+  const k = v / 1000
+  return `${k.toLocaleString('fr-FR', { maximumFractionDigits: Math.abs(k) < 10 ? 1 : 0 })}k`
+}
 
 export const formatCount = (v) => Math.round(v ?? 0).toLocaleString('fr-FR')
 
