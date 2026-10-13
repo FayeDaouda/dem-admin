@@ -1,4 +1,5 @@
 import { useSearchParams } from 'react-router-dom'
+import TabBar from '../../components/TabBar'
 import TransactionsTab from './TransactionsTab'
 import UnpaidTab from './UnpaidTab'
 import SamirpayTab from './SamirpayTab'
@@ -31,16 +32,7 @@ export default function PaymentsTab() {
   const Active = view.Component
   return (
     <div>
-      <div style={{ display: 'flex', gap: 6, marginBottom: 16, flexWrap: 'wrap' }}>
-        {VIEWS.map(v => (
-          <button key={v.key} onClick={() => setView(v.key)} style={{
-            padding: '6px 14px', borderRadius: 20, fontSize: 12.5, fontWeight: 600, cursor: 'pointer',
-            border: view.key === v.key ? 'none' : '1px solid var(--border)',
-            background: view.key === v.key ? 'var(--primary)' : 'transparent',
-            color: view.key === v.key ? '#fff' : 'var(--text-muted)',
-          }}>{v.label}</button>
-        ))}
-      </div>
+      <TabBar tabs={VIEWS} active={view.key} onChange={setView} />
       <Active />
     </div>
   )

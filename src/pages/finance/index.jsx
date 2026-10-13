@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useCallback } from 'react'
 import { RefreshCw, Wallet, Receipt, Ticket } from 'lucide-react'
 import { pageWrap, pageScroll } from '../../lib/glassStyles'
 import PageHeader from '../../components/PageHeader'
@@ -20,6 +20,11 @@ const TABS = [
 export default function Finance() {
   const [tab, setTab] = useUrlTab(TABS)
   const [reloadKey, setReloadKey] = useState(0)
+  // Indicateurs du haut : le dernier export s'affiche à côté des boutons
+  // d'export de l'onglet Revenus, et se relit après un export.
+  const [kpis, setKpis] = useState(null)
+  const [kpiKey, setKpiKey] = useState(0)
+  const onExported = useCallback(() => setKpiKey(k => k + 1), [])
 
   const Active = TABS.find(t => t.key === tab).Component
 
@@ -32,9 +37,9 @@ export default function Finance() {
       />
 
       <div style={pageScroll}>
-        <FinanceKpiRow reloadKey={reloadKey} />
+        <FinanceKpiRow reloadKey={`${reloadKey}-${kpiKey}`} onKpis={setKpis} />
         <TabBar tabs={TABS} active={tab} onChange={setTab} />
-        <Active key={`${tab}-${reloadKey}`} />
+        <Active key={`${tab}-${reloadKey}`} lastExport={kpis?.lastExport} onExported={onExported} />
       </div>
     </div>
   )
