@@ -20,7 +20,6 @@ const TAB_STYLE = (active) => ({
 })
 
 const TABS = [
-  { id: 'forfait',        label: 'Pass',             icon: Zap },
   { id: 'clients',        label: '100 Clients',      icon: Users },
 ]
 
@@ -53,7 +52,7 @@ const Snack = ({ msg, ok }) => (
 
 // ─────────────────────────────────────────────────────────────────────────────
 export default function Acquisition() {
-  const [tab, setTab] = useState('forfait')
+  const [tab, setTab] = useState('clients')
   const [snack, setSnack] = useState(null)
 
   function notify(msg, ok = true) {
@@ -82,214 +81,10 @@ export default function Acquisition() {
       </div>
 
       <div style={pageScroll}>
-        {tab === 'forfait'        && <PassTab notify={notify} />}
         {tab === 'clients'        && <ClientsTab notify={notify} />}
       </div>
 
       {snack && <Snack msg={snack.msg} ok={snack.ok} />}
-    </div>
-  )
-}
-
-// ── Tab Pass ───────────────────────────────────────────────────────────────
-function PassTab({ notify }) {
-  const [data,    setData]    = useState(null)
-  const [loading, setLoading] = useState(true)
-  const [amount,  setAmount]  = useState('')
-  const [amountM3, setAmountM3] = useState('')
-  const [saving,  setSaving]  = useState(false)
-  const [savingM3, setSavingM3] = useState(false)
-  const [processing, setProcessing] = useState(false)
-
-  const load = useCallback(async () => {
-    setLoading(true)
-    try {
-      const [summary, cfg] = await Promise.all([
-        api.get('/admin/forfait/summary'),
-        api.get('/admin/config'),
-      ])
-      const map = Object.fromEntries((cfg.data ?? []).map(r => [r.key, r.value]))
-      setData({
-        ...summary.data,
-        active:   map['forfait_active'] === 'true',
-        amount:   Number(map['forfait_amount'] ?? 480),
-        amountM3: Number(map['forfait_amount_m3'] ?? 650),
-      })
-      setAmount(map['forfait_amount'] ?? '480')
-      setAmountM3(map['forfait_amount_m3'] ?? '650')
-    } catch { /* silencieux */ }
-    setLoading(false)
-  }, [])
-
-  useEffect(() => { load() }, [load])
-
-  async function toggleActive() {
-    try {
-      await api.put('/admin/forfait/config', { active: !data.active })
-      notify(data.active ? 'Pass désactivé' : 'Pass activé ✓', !data.active)
-      load()
-    } catch (e) { notify(e.response?.data?.message ?? 'Erreur', false) }
-  }
-
-  async function saveAmount(val) {
-    const n = Number(val ?? amount)
-    if (isNaN(n) || n < 0) return
-    setSaving(true)
-    try {
-      await api.put('/admin/forfait/config', { amount: n })
-      notify(`Montant mis à jour : ${n} FCFA/jour ✓`)
-      load()
-    } catch (e) { notify(e.response?.data?.message ?? 'Erreur', false) }
-    setSaving(false)
-  }
-
-  async function saveAmountM3(val) {
-    const n = Number(val ?? amountM3)
-    if (isNaN(n) || n < 0) return
-    setSavingM3(true)
-    try {
-      await api.put('/admin/forfait/config', { amountM3: n })
-      notify(`Montant Voiture mis à jour : ${n} FCFA/jour ✓`)
-      load()
-    } catch (e) { notify(e.response?.data?.message ?? 'Erreur', false) }
-    setSavingM3(false)
-  }
-
-  async function processPass() {
-    if (!window.confirm('Déclencher le prélèvement du jour pour tous les coursiers actifs ?')) return
-    setProcessing(true)
-    try {
-      const res = await api.post('/admin/forfait/process')
-      notify(`${res.data.charged} coursier(s) prélevé(s) ✓`)
-      load()
-    } catch (e) { notify(e.response?.data?.message ?? 'Erreur', false) }
-    setProcessing(false)
-  }
-
-  if (loading) return <div style={{ color: 'var(--text-muted)' }}>Chargement…</div>
-
-  const active     = data?.active ?? false
-  const totalOwed  = data?.totalOwed ?? 0
-  const records    = data?.recordCount ?? 0
-  const drivers    = data?.driverCount ?? 0
-
-  return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 16, maxWidth: 600 }}>
-
-      {/* Toggle ON/OFF */}
-      <Card>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <div>
-            <Label>Activation du forfait</Label>
-            <div style={{ fontSize: 13, color: active ? 'var(--primary)' : 'var(--text-muted)' }}>
-              {active ? `Actif — ${data.amount} FCFA/jour` : 'Inactif — aucun prélèvement'}
-            </div>
-          </div>
-          <button onClick={toggleActive} style={{ background: 'none', border: 'none', cursor: 'pointer', color: active ? 'var(--primary)' : 'var(--text-muted)' }}>
-            {active ? <ToggleRight size={40} /> : <ToggleLeft size={40} />}
-          </button>
-        </div>
-        <div style={{ marginTop: 10, fontSize: 11, color: '#f59e0b', background: 'rgba(245,158,11,.08)', padding: '6px 10px', borderRadius: 6 }}>
-          ⚠ Toute modification s'applique au prochain prélèvement (jour suivant)
-        </div>
-      </Card>
-
-      {/* Modifier le montant — Moto (S4) */}
-      <Card>
-        <Label>Montant journalier — Moto (FCFA)</Label>
-        <div style={{ display: 'flex', gap: 10, alignItems: 'center', marginBottom: 12 }}>
-          <input
-            type="number"
-            value={amount}
-            onChange={e => setAmount(e.target.value)}
-            style={{ ...glassInput, width: 130, fontWeight: 700, fontSize: 16 }}
-          />
-          <span style={{ fontSize: 13, color: 'var(--text-muted)' }}>FCFA / jour</span>
-          <button
-            onClick={() => saveAmount()}
-            disabled={saving}
-            style={{
-              padding: '8px 16px', borderRadius: 'var(--radius-sm)', border: 'none',
-              background: 'var(--primary)', color: '#fff', fontWeight: 700, fontSize: 13, cursor: 'pointer',
-            }}
-          >
-            {saving ? '…' : 'Sauver'}
-          </button>
-        </div>
-        {/* Boutons rapides */}
-        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-          {[['480 FCFA (S4)', 480], ['650 FCFA (M3)', 650], ['Promo 0 FCFA', 0], ['Promo 200 FCFA', 200]].map(([label, val]) => (
-            <button key={val} onClick={() => { setAmount(String(val)); saveAmount(val) }}
-              style={{
-                padding: '5px 12px', borderRadius: 6,
-                border: '1px solid rgba(0,180,216,.35)',
-                background: 'rgba(0,180,216,.07)', color: 'var(--primary)',
-                fontSize: 12, fontWeight: 600, cursor: 'pointer',
-              }}>
-              {label}
-            </button>
-          ))}
-        </div>
-      </Card>
-
-      {/* Modifier le montant — Voiture (M3+) */}
-      <Card>
-        <Label>Montant journalier — Voiture (FCFA)</Label>
-        <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
-          <input
-            type="number"
-            value={amountM3}
-            onChange={e => setAmountM3(e.target.value)}
-            style={{ ...glassInput, width: 130, fontWeight: 700, fontSize: 16 }}
-          />
-          <span style={{ fontSize: 13, color: 'var(--text-muted)' }}>FCFA / jour</span>
-          <button
-            onClick={() => saveAmountM3()}
-            disabled={savingM3}
-            style={{
-              padding: '8px 16px', borderRadius: 'var(--radius-sm)', border: 'none',
-              background: 'var(--primary)', color: '#fff', fontWeight: 700, fontSize: 13, cursor: 'pointer',
-            }}
-          >
-            {savingM3 ? '…' : 'Sauver'}
-          </button>
-        </div>
-      </Card>
-
-      {/* Résumé */}
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12 }}>
-        {/* Dette = passe impayée d'un jour où le coursier a livré (même règle que le prélèvement) */}
-        <StatBox label="Dû par les coursiers" value={`${totalOwed.toLocaleString()} F`} color={totalOwed > 0 ? '#ef4444' : '#22c55e'} />
-        <StatBox label="Passes impayées (jours travaillés)" value={records} />
-        <StatBox label="Coursiers concernés" value={drivers} />
-      </div>
-      {data?.abandonedPurchases?.count > 0 && (
-        <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>
-          + {data.abandonedPurchases.count} achat{data.abandonedPurchases.count > 1 ? 's' : ''} en ligne abandonné{data.abandonedPurchases.count > 1 ? 's' : ''} ({data.abandonedPurchases.amount.toLocaleString()} F) — pas une dette : le coursier n'a pas livré ce jour-là.
-        </div>
-      )}
-
-      {/* Déclenchement manuel */}
-      <Card>
-        <Label>Déclenchement manuel</Label>
-        <p style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 12 }}>
-          Le prélèvement automatique se fait à minuit (Dakar). Utilisez ce bouton en cas d'urgence ou de test.
-        </p>
-        <button
-          onClick={processPass}
-          disabled={processing || !active}
-          style={{
-            display: 'flex', alignItems: 'center', gap: 8,
-            padding: '10px 20px', borderRadius: 'var(--radius-sm)', border: 'none',
-            background: active ? 'var(--primary)' : 'var(--surface2)',
-            color: active ? '#fff' : 'var(--text-muted)',
-            fontWeight: 700, fontSize: 13, cursor: active ? 'pointer' : 'default',
-          }}
-        >
-          {processing ? <RefreshCw size={15} style={{ animation: 'spin 1s linear infinite' }} /> : <Play size={15} />}
-          {processing ? 'Traitement…' : 'Déclencher le prélèvement du jour'}
-        </button>
-      </Card>
     </div>
   )
 }

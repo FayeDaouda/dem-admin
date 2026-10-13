@@ -7,6 +7,9 @@ import ZoneMatrixSection from './ZoneMatrixSection'
 import FlatPromoSection from './FlatPromoSection'
 import CashFeeSection from './CashFeeSection'
 import PassLivreursSection from './PassLivreursSection'
+import PassForfaitSettings from './PassForfaitSettings'
+import { useAuth } from '../contexts/AuthContext'
+import { canSee, ACTION_ROLES } from '../lib/droits'
 import AppVersionTab from './AppVersionTab'
 import DeliveryZoneTab from './DeliveryZoneTab'
 
@@ -72,6 +75,7 @@ export default function Config() {
 // (toggle basé sur un état devenu périmé) — cause probable d'un pass resté
 // actif en prod après une tentative de désactivation.
 function TarifsTab() {
+  const { user } = useAuth()
   const [config,  setConfig]  = useState({})
   const [draft,   setDraft]   = useState({})
   const [connectionFee, setConnectionFee] = useState(100)
@@ -201,6 +205,9 @@ function TarifsTab() {
           commentaire au-dessus de TarifsTab). */}
       <div style={{ marginTop: 16 }}>
         <PassLivreursSection />
+        {canSee(user?.adminRole, ACTION_ROLES.passSettings) && (
+          <div style={{ marginTop: 16 }}><PassForfaitSettings /></div>
+        )}
         {/* Paliers Starter/Business/Premium : réglés dans DEM Pro > Offres DEM Pro
             (prix, limites, interrupteur et suivi au même endroit). */}
         <Link to="/dem-pro?onglet=offres" style={{ ...glass, display: 'block', padding: '14px 18px', textDecoration: 'none', color: 'inherit' }}>

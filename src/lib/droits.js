@@ -43,4 +43,6 @@ export const TAB_ROLES = {
 export const ACTION_ROLES = {
   giftForfait: [], // pass offerts : serveur Super + Finance, écran Promotions visible de Super + Marketing → Super seul
   feesSinceLaunch: [], // Finance › Revenus, frais depuis le lancement : /admin/acquisition/fees, Super seul
+  passDue:      [], // Finance › Pass coursiers, dû et prélèvement : Super seul (décision du plan de refonte)
+  passSettings: [], // Tarifs et zones, activation et montants des pass : PUT /admin/forfait/config, Super seul
 }

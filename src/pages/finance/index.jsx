@@ -7,14 +7,14 @@ import { useUrlTab } from '../../lib/useUrlTab'
 import FinanceKpiRow from './components/FinanceKpiRow'
 import RevenusTab from './RevenusTab'
 import PaymentsTab from './PaymentsTab'
-import PassTab from './PassTab'
+import PassCoursiersTab from './PassCoursiersTab'
 
 // Onglet ouvert dans l'adresse (?tab=…). Les prix (pass coursiers, zones,
 // frais) se règlent dans Tarifs et zones, jamais ici.
 const TABS = [
   { key: 'revenue',    label: 'Revenus',            icon: Wallet,     Component: RevenusTab },
   { key: 'paiements',  label: 'Paiements',          icon: Receipt,    Component: PaymentsTab },
-  { key: 'pass',       label: 'Pass coursiers',     icon: Ticket,     Component: PassTab },
+  { key: 'pass',       label: 'Pass coursiers',     icon: Ticket,     Component: PassCoursiersTab },
 ]
 
 export default function Finance() {
