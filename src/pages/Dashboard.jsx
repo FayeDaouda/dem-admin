@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
-  BarChart, Bar, LineChart, Line, PieChart, Pie, Cell, AreaChart, Area,
+  BarChart, Bar, LineChart, Line, AreaChart, Area,
   XAxis, YAxis, Tooltip, ResponsiveContainer, Legend,
 } from 'recharts'
 import {
@@ -74,39 +74,6 @@ function MiniSparkline({ data, dataKey, color }) {
   )
 }
 
-function Kpi({ icon: Icon, label, value, sub, color, trend, sparkData, sparkKey, onClick, emphasis }) {
-  return (
-    <div
-      onClick={onClick}
-      style={{
-        ...glass, padding: '12px 14px 10px', display: 'flex', flexDirection: 'column', gap: 6,
-        cursor: onClick ? 'pointer' : 'default', transition: 'transform .15s, box-shadow .15s',
-        position: 'relative', overflow: 'hidden', minHeight: 100, minWidth: 0,
-        ...(emphasis ? { borderColor: color, boxShadow: `0 0 0 1px ${color}55, 0 8px 32px rgba(0,119,182,0.10)` } : {}),
-      }}
-      onMouseEnter={onClick ? (e => { e.currentTarget.style.transform = 'translateY(-2px)' }) : undefined}
-      onMouseLeave={onClick ? (e => { e.currentTarget.style.transform = 'none' }) : undefined}
-    >
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-        <div style={{ width: 30, height: 30, borderRadius: 8, background: color + '18', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          <Icon size={15} color={color} />
-        </div>
-        {trend}
-      </div>
-      <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ fontSize: 20, fontWeight: 800, lineHeight: 1.1, color: 'var(--text)' }}>{value}</div>
-        <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2, fontWeight: 600, lineHeight: 1.25 }}>{label}</div>
-        {sub && <div style={{ fontSize: 10, color: 'var(--text-muted)', marginTop: 2, lineHeight: 1.3 }}>{sub}</div>}
-      </div>
-      {sparkData && sparkKey && (
-        <div style={{ marginLeft: -14, marginRight: -14, marginBottom: -10 }}>
-          <MiniSparkline data={sparkData} dataKey={sparkKey} color={color} />
-        </div>
-      )}
-    </div>
-  )
-}
-
 function Section({ title, hint, children, right }) {
   return (
     <section style={{ marginBottom: 22 }}>
@@ -118,10 +85,6 @@ function Section({ title, hint, children, right }) {
       {children}
     </section>
   )
-}
-
-function KpiGrid({ children }) {
-  return <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(165px, 1fr))', gap: 10 }}>{children}</div>
 }
 
 const TOOLTIP_STYLE = {
@@ -397,8 +360,8 @@ function formatDuration(min) {
 }
 
 // ── À traiter : liste fixe, chaque ligne mène à l'endroit où l'on agit ──────
-function TodoRow({ icon: Icon, label, count, detail, color, onClick, unknown }) {
-  const done = !unknown && count === 0
+function TodoRow({ icon: Icon, label, count, badge, detail, color, onClick, unknown }) {
+  const done = !unknown && !badge && count === 0
   return (
     <button onClick={onClick} disabled={!onClick} style={{
       display: 'flex', alignItems: 'center', gap: 10, width: '100%', textAlign: 'left',
@@ -412,10 +375,101 @@ function TodoRow({ icon: Icon, label, count, detail, color, onClick, unknown }) 
         <div style={{ fontSize: 13, fontWeight: 600, color: done ? 'var(--text-muted)' : 'var(--text)' }}>{label}</div>
         {detail && !done && <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 1 }}>{detail}</div>}
       </div>
-      <div style={{ fontSize: 16, fontWeight: 800, color: done ? '#22c55e' : color }}>{unknown ? '—' : count}</div>
+      <div style={{ fontSize: 16, fontWeight: 800, color: done ? '#22c55e' : color }}>{unknown ? '—' : (badge ?? count)}</div>
       {onClick && <ChevronRight size={14} color="var(--text-muted)" />}
     </button>
   )
+}
+
+// ── Carte groupée : un chiffre principal (clic → sa fenêtre de détail) et des
+// lignes secondaires, chacune ouvrant SA fenêtre. Mise en page seulement :
+// chaque chiffre et chaque fenêtre restent ceux des anciennes cartes séparées.
+function GroupKpi({ icon: Icon, color, label, value, sub, trend, sparkData, sparkKey, onClick, rows = [], footer }) {
+  return (
+    <div style={{ ...glass, padding: '12px 14px 10px', display: 'flex', flexDirection: 'column', gap: 8, minWidth: 0, position: 'relative', overflow: 'hidden' }}>
+      <div onClick={onClick} style={{ cursor: onClick ? 'pointer' : 'default' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <div style={{ width: 30, height: 30, borderRadius: 8, background: color + '18', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <Icon size={15} color={color} />
+          </div>
+          {trend}
+        </div>
+        <div style={{ fontSize: 22, fontWeight: 800, lineHeight: 1.1, color: 'var(--text)', marginTop: 6 }}>{value}</div>
+        <div style={{ fontSize: 11.5, color: 'var(--text-muted)', marginTop: 2, fontWeight: 600 }}>{label}</div>
+        {sub && <div style={{ fontSize: 10.5, color: 'var(--text-muted)', marginTop: 2, lineHeight: 1.3 }}>{sub}</div>}
+      </div>
+      {footer}
+      {rows.length > 0 && (
+        <div style={{ borderTop: '1px solid var(--border)', paddingTop: 6, display: 'flex', flexDirection: 'column', gap: 2 }}>
+          {rows.map(r => (
+            <button key={r.label} onClick={r.onClick} disabled={!r.onClick} style={{
+              display: 'flex', alignItems: 'center', gap: 6, width: '100%', background: 'none', border: 'none',
+              padding: '4px 2px', cursor: r.onClick ? 'pointer' : 'default', fontSize: 12, color: 'var(--text)', textAlign: 'left',
+            }}>
+              <span style={{ flex: 1, color: 'var(--text-muted)' }}>{r.label}</span>
+              <span style={{ fontWeight: 700 }}>{r.value}</span>
+              {r.onClick && <ChevronRight size={12} color="var(--text-muted)" />}
+            </button>
+          ))}
+        </div>
+      )}
+      {sparkData && sparkKey && (
+        <div style={{ marginLeft: -14, marginRight: -14, marginBottom: -10 }}>
+          <MiniSparkline data={sparkData} dataKey={sparkKey} color={color} />
+        </div>
+      )}
+    </div>
+  )
+}
+
+// Répartition des courses créées aujourd'hui selon leur statut actuel
+// (stats.todayBreakdown) — remplace l'ancien camembert.
+function StatusBar({ breakdown }) {
+  const parts = STATUS_PIE.map(s => ({ ...s, value: breakdown[s.key] ?? 0 })).filter(p => p.value > 0)
+  if (!breakdown.total) return null
+  return (
+    <div>
+      <div style={{ display: 'flex', height: 8, borderRadius: 4, overflow: 'hidden', background: 'var(--surface2)' }}>
+        {parts.map(p => <div key={p.key} title={`${p.label} : ${p.value}`} style={{ width: `${(p.value / breakdown.total) * 100}%`, background: p.color }} />)}
+      </div>
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '2px 10px', marginTop: 5 }}>
+        {parts.map(p => (
+          <span key={p.key} style={{ fontSize: 10.5, color: 'var(--text-muted)', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+            <span style={{ width: 7, height: 7, borderRadius: 2, background: p.color }} />{p.label} {p.value}
+          </span>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+// Compteur compact du bloc « En direct »
+function CounterTile({ icon: Icon, color, label, value, sub, onClick, emphasis }) {
+  return (
+    <button onClick={onClick} style={{
+      ...glass, display: 'flex', alignItems: 'center', gap: 12, padding: '10px 14px', textAlign: 'left', cursor: 'pointer', minWidth: 0,
+      ...(emphasis ? { borderColor: color, boxShadow: `0 0 0 1px ${color}55` } : {}),
+    }}>
+      <div style={{ width: 34, height: 34, borderRadius: 9, background: color + '18', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+        <Icon size={16} color={color} />
+      </div>
+      <div style={{ fontSize: 22, fontWeight: 800, color: 'var(--text)', minWidth: 28 }}>{value}</div>
+      <div style={{ minWidth: 0 }}>
+        <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text)' }}>{label}</div>
+        {sub && <div style={{ fontSize: 10.5, color: 'var(--text-muted)' }}>{sub}</div>}
+      </div>
+    </button>
+  )
+}
+
+// Où agir pour chaque alerte financière (Finance, plan de refonte 3.1/3.2)
+const ALERT_TARGETS = {
+  UNPAID_DELIVERY:        '/finance?tab=paiements&vue=impayes',
+  PAYMENT_DISPUTED:       '/finance?tab=paiements&vue=impayes',
+  SAMIRPAY_ORPHAN:        '/finance?tab=paiements&vue=en-ligne',
+  CASHOUT_REVIEW_OVERDUE: '/finance?tab=paiements&vue=en-ligne',
+  DUPLICATE_PAYMENT_DUE:  '/finance?tab=paiements&vue=en-ligne',
+  ONLINE_REFUND_DUE:      '/finance?tab=paiements&vue=en-ligne',
 }
 
 const SEVERITY_COLOR = { high: '#ef4444', medium: '#f59e0b' }
@@ -456,6 +510,9 @@ export default function Dashboard() {
   const [events, setEvents] = useState([])
   const [openModal, setOpenModal] = useState(null)
   const [liveTab, setLiveTab] = useState('orders')
+  const [showLive, setShowLive] = useState(null) // null = déplié s'il y a des courses en cours
+  const [trendDays, setTrendDays] = useState(7)
+  const [series30, setSeries30] = useState(null)
   const [showTech, setShowTech] = useState(() => {
     try { return localStorage.getItem('dashboard.showTech') === 'true' } catch { return false }
   })
@@ -550,6 +607,13 @@ export default function Dashboard() {
     }
   }, [loadAll, loadLive])
 
+  // Tendances sur 30 jours : chargées à la demande (la série de 7 jours sert
+  // aussi aux courbes des cartes)
+  useEffect(() => {
+    if (trendDays !== 30) return
+    api.get('/admin/stats/timeseries?days=30').then(r => setSeries30(r.data)).catch(() => {})
+  }, [trendDays, updatedAt])
+
   function toggleTech() {
     setShowTech(v => {
       try { localStorage.setItem('dashboard.showTech', String(!v)) } catch { /* stockage indisponible */ }
@@ -576,11 +640,19 @@ export default function Dashboard() {
   const cancellationRate = mk?.cancellationRateToday ?? sc?.cancellationRateToday
   const open = (id) => () => setOpenModal(id)
 
-  const pieData = stats?.todayBreakdown
-    ? STATUS_PIE.map(s => ({ name: s.label, value: stats.todayBreakdown[s.key] ?? 0, color: s.color })).filter(d => d.value > 0)
-    : []
+  const today = stats?.todayBreakdown
 
-  // ── 1. À traiter ──
+  // ── 1. À traiter : seulement ce qui demande une action ──
+  // Chaque alerte financière a sa propre ligne et mène là où l'on agit.
+  const financeRows = can.financeAlerts ? financeAlerts.map(a => ({
+    id: `fin-${a.type}`, icon: Wallet, color: SEVERITY_COLOR[a.severity] ?? '#ef4444', label: a.message,
+    count: a.count ?? null, badge: a.count == null ? '!' : null,
+    onClick: () => navigate(ALERT_TARGETS[a.type] ?? '/finance?tab=revenue'),
+  })) : []
+  if (can.financeKpis && financeAlertCount > financeAlerts.length) {
+    const more = financeAlertCount - financeAlerts.length
+    financeRows.push({ id: 'fin-more', icon: Wallet, color: '#ef4444', label: `${more} autre${more > 1 ? 's' : ''} alerte${more > 1 ? 's' : ''} financière${more > 1 ? 's' : ''}`, count: more, onClick: () => navigate('/finance') })
+  }
   const todos = [
     { id: 'stuck', icon: Clock, color: '#f59e0b', label: `Courses sans coursier depuis plus de ${STUCK_PENDING_MIN} min`,
       count: stuck?.total, onClick: open('pending'),
@@ -596,13 +668,18 @@ export default function Dashboard() {
         validations.counts.fleetExtensions && `${validations.counts.fleetExtensions} extension(s) de flotte`,
         validations.counts.adminRequests && `${validations.counts.adminRequests} demande(s) d'équipe`,
       ].filter(Boolean).join(' · ') : null },
-    can.financeAlerts && { id: 'finance', icon: Wallet, color: '#ef4444', label: 'Alertes financières',
-      count: financeAlertCount, onClick: () => navigate('/finance'),
-      detail: financeAlerts[0]?.message },
+    ...financeRows,
   ].filter(Boolean)
-  const todoOpen = todos.filter(t => t.count > 0).length
+  const pendingTodos = todos.filter(t => t.badge || t.count > 0)
+  const clearChecks = [
+    'aucune course sans coursier',
+    can.serviceClient && 'aucun incident ouvert',
+    can.validations && 'aucune validation en attente',
+    can.financeAlerts && 'aucune alerte financière',
+  ].filter(Boolean)
 
-  // ── 2. En direct ──
+  // ── 2. En direct : compteurs + liste dépliable (ancien « Suivi en direct ») ──
+  const liveOpen = showLive ?? activeOrders.length > 0
   const liveCards = [
     !isFinance && { id: 'pending', icon: AlertTriangle, color: '#f59e0b', label: "En attente d'un coursier", value: v(stats?.orders.pending),
       sub: stats ? `+ ${stats.orders.scheduled} programmée(s) à venir` : null, emphasis: (stuck?.total ?? 0) > 0 },
@@ -612,56 +689,85 @@ export default function Dashboard() {
       sub: stats ? `${stats.drivers.free} libre(s) · ${busyDrivers} en course · ${stats.drivers.total} inscrits` : null },
   ].filter(Boolean)
 
-  // ── 3. Aujourd'hui ──
+  // ── Définitions des chiffres et de leurs fenêtres de détail ──
+  // (inchangées ; les cartes ci-dessous ne font que les regrouper)
   const todayCards = [
-    { id: 'created', icon: Package, color: '#0077b6', label: 'Courses créées', value: v(stats?.orders.createdToday),
-      sub: stats ? `Historique : ${stats.orders.total.toLocaleString('fr-FR')}` : null,
-      trendNow: stats?.trend?.ordersCreated?.today, trendPrev: stats?.trend?.ordersCreated?.yesterdaySameTime, sparkKey: 'orders',
+    { id: 'created', icon: Package, color: '#0077b6', title: 'Courses créées',
       modal: { title: 'Courses créées', note: 'Commandes comptées à leur date de création.', dataKey: 'orders', unit: '', defaultPeriod: 'today', list: 'created', expectedCount: stats?.orders.createdToday } },
-    { id: 'delivered', icon: CheckCircle, color: '#22c55e', label: 'Courses livrées', value: v(stats?.orders.deliveredToday),
-      sub: 'Comptées à l’heure de livraison', sparkKey: 'delivered',
+    { id: 'delivered', icon: CheckCircle, color: '#22c55e', title: 'Courses livrées',
       modal: { title: 'Courses livrées', note: 'Courses comptées à leur date de livraison.', dataKey: 'delivered', unit: '', defaultPeriod: 'today', list: 'delivered', expectedCount: stats?.orders.deliveredToday } },
-    !isFinance && { id: 'cancellation', icon: XCircle, color: '#ef4444', label: "Taux d'annulation",
-      value: cancellationRate == null ? v(null) : `${cancellationRate}%`,
-      sub: mk?.cancellationToday ? `${mk.cancellationToday.cancelled} annulée(s) sur ${mk.cancellationToday.created} créée(s) aujourd'hui` : 'Parmi les courses créées aujourd’hui',
-      clickable: can.cancellationDetail },
-    can.revenue && { id: 'demFee', icon: CreditCard, color: '#f59e0b', label: 'Commission DEM facturée', value: stats ? formatF(stats.revenue.dem.today) : v(null),
-      sub: stats ? `Courses livrées · total ${formatF(stats.revenue.dem.total)}` : null,
-      trendNow: stats?.revenue?.dem?.today, trendPrev: stats?.revenue?.dem?.yesterdaySameTime, sparkKey: 'demRevenue',
+    { id: 'cancellation', icon: XCircle, color: '#ef4444' },
+    { id: 'demFee', icon: CreditCard, color: '#f59e0b',
       modal: { title: 'Commission DEM facturée', note: 'Frais DEM réellement facturés sur les courses livrées, à la date de livraison. Encaissé / à recouvrer : page Finance.', dataKey: 'demRevenue', unit: 'F', defaultPeriod: 'today', list: 'delivered', expectedCount: stats?.orders.deliveredToday } },
-    can.revenue && { id: 'driverRevenue', icon: Wallet, color: '#10b981', label: 'Gains coursiers', value: stats ? formatF(stats.revenue.driver.today) : v(null),
-      sub: stats ? `Part coursier des courses livrées · total ${formatF(stats.revenue.driver.total)}` : null,
-      trendNow: stats?.revenue?.driver?.today, trendPrev: stats?.revenue?.driver?.yesterdaySameTime, sparkKey: 'driverRevenue',
+    { id: 'driverRevenue', icon: Wallet, color: '#10b981',
       modal: { title: 'Gains coursiers', note: 'Part coursier (prix de la course hors frais DEM) des courses livrées, à la date de livraison.', dataKey: 'driverRevenue', unit: 'F', defaultPeriod: 'today', list: 'delivered', expectedCount: stats?.orders.deliveredToday } },
-    can.marketing && { id: 'newClients', icon: UserPlus, color: '#06b6d4', label: 'Nouveaux clients', value: v(mk?.newClientsToday),
-      sub: 'Inscriptions du jour' },
-    can.financeKpis && { id: 'pass', icon: Ticket, color: '#8b5cf6', label: 'Pass achetés', value: v(financeKpis?.passActivatedToday),
-      sub: financeKpis ? `+ ${financeKpis.passGiftedToday} offert(s)` : null, clickable: false },
+    { id: 'newClients', icon: UserPlus, color: '#06b6d4' },
+  ]
+  const accountCards = [
+    { id: 'clients', icon: Users, color: '#a78bfa' },
+    { id: 'retention', icon: Repeat, color: '#8b5cf6' },
+    { id: 'clientAttempts', icon: ShoppingBag, color: '#0ea5e9' },
+    { id: 'demPro', icon: Briefcase, color: '#0284c7' },
+    { id: 'demProActivity', icon: Briefcase, color: '#0369a1' },
+    { id: 'lowDrivers', icon: Star, color: '#f59e0b' },
+    { id: 'lowClients', icon: Star, color: '#f97316' },
+  ]
+
+  // ── 3. Aujourd'hui : 4 cartes ──
+  const smallSample = (today?.total ?? 0) < 5
+  const dayGroups = [
+    { key: 'day-orders', icon: Package, color: '#0077b6', label: 'Courses créées aujourd’hui', value: v(stats?.orders.createdToday),
+      sub: stats ? `Historique : ${stats.orders.total.toLocaleString('fr-FR')}` : null,
+      trend: <TrendBadge current={stats?.trend?.ordersCreated?.today} previous={stats?.trend?.ordersCreated?.yesterdaySameTime} />,
+      sparkKey: 'orders', onClick: open('created'),
+      rows: [
+        { label: 'Livrées (à l’heure de livraison)', value: v(stats?.orders.deliveredToday), onClick: open('delivered') },
+        !isFinance && { label: 'Annulées', value: v(today?.cancelled), onClick: can.cancellationDetail ? open('cancellation') : null },
+      ].filter(Boolean),
+      footer: today ? <StatusBar breakdown={today} /> : null },
+    can.revenue && { key: 'day-revenue', icon: CreditCard, color: '#f59e0b', label: 'Commission DEM facturée',
+      value: stats ? formatF(stats.revenue.dem.today) : v(null),
+      sub: stats ? `Courses livrées · total ${formatF(stats.revenue.dem.total)}` : null,
+      trend: <TrendBadge current={stats?.revenue?.dem?.today} previous={stats?.revenue?.dem?.yesterdaySameTime} />,
+      sparkKey: 'demRevenue', onClick: open('demFee'),
+      rows: [{ label: 'Gains coursiers', value: stats ? formatF(stats.revenue.driver.today) : '…', onClick: open('driverRevenue') }] },
+    !isFinance && { key: 'day-cancel', icon: XCircle, color: smallSample ? '#94a3b8' : '#ef4444', label: "Taux d'annulation",
+      value: !today ? v(null) : smallSample ? `${today.cancelled} sur ${today.total}` : (cancellationRate == null ? v(null) : `${cancellationRate}%`),
+      sub: !today ? null : smallSample
+        ? 'Annulées sur créées aujourd’hui · pourcentage affiché à partir de 5 courses'
+        : `${today.cancelled} annulée(s) sur ${today.total} créée(s) aujourd'hui`,
+      onClick: can.cancellationDetail ? open('cancellation') : undefined },
+    can.marketing && { key: 'day-new', icon: UserPlus, color: '#06b6d4', label: 'Nouveaux clients', value: v(mk?.newClientsToday),
+      sub: 'Inscriptions du jour', onClick: open('newClients') },
+    can.financeKpis && { key: 'day-pass', icon: Ticket, color: '#8b5cf6', label: 'Pass achetés', value: v(financeKpis?.passActivatedToday),
+      sub: financeKpis ? `+ ${financeKpis.passGiftedToday} offert(s)` : null },
   ].filter(Boolean)
 
-  // ── 4. Comptes & satisfaction ──
-  const accountCards = can.accounts ? [
-    { id: 'clients', icon: Users, color: '#a78bfa', label: 'Clients inscrits', value: v(stats?.clients.total),
+  // ── 4. Comptes : 4 cartes ──
+  const accountGroups = can.accounts ? [
+    { key: 'acc-clients', icon: Users, color: '#a78bfa', label: 'Clients inscrits', value: v(stats?.clients.total),
       sub: mk ? `${mk.activeClients} actifs · ${mk.inactiveClients} inactifs · ${mk.neverServedClients} jamais servis (30 j)` : null,
-      clickable: can.retentionList },
-    can.marketing && { id: 'retention', icon: Repeat, color: '#8b5cf6', label: 'Rétention 30 jours', value: mk ? `${mk.retentionRate30d}%` : v(null),
-      sub: 'Clients servis revenus d’une période à l’autre' },
-    { id: 'clientAttempts', icon: ShoppingBag, color: '#0ea5e9', label: 'Clients ayant commandé (24 h)', value: v(clientAttempts?.totalClients),
-      sub: clientAttempts ? `${clientAttempts.totalAttempts} commande(s) · succès ${clientAttempts.successRate != null ? clientAttempts.successRate + '%' : '—'}` : null },
-    { id: 'demPro', icon: Briefcase, color: '#0284c7', label: 'DEM Pro actifs / comptes', value: stats ? `${stats.demPro.active} / ${stats.demPro.total}` : v(null),
-      sub: stats ? `${stats.demPro.pending} en attente de validation` : null, clickable: can.demProList },
-    { id: 'demProActivity', icon: Briefcase, color: '#0369a1', label: 'DEM Pro ayant commandé (24 h)', value: v(demProActivity?.totalAccounts),
-      sub: demProActivity ? `${demProActivity.totalAttempts} commande(s) · succès ${demProActivity.successRate != null ? demProActivity.successRate + '%' : '—'}` : null },
-    can.serviceClient && { id: 'lowDrivers', icon: Star, color: '#f59e0b', label: 'Coursiers notés < 3/5', value: v(sc?.lowRatingDrivers) },
-    can.serviceClient && { id: 'lowClients', icon: Star, color: '#f97316', label: 'Clients insatisfaits', value: v(sc?.lowRatingClients),
-      sub: 'Note moyenne donnée < 3/5' },
+      onClick: can.retentionList ? open('clients') : undefined,
+      rows: can.marketing ? [{ label: 'Rétention 30 jours', value: mk ? `${mk.retentionRate30d}%` : '…', onClick: open('retention') }] : [] },
+    { key: 'acc-dempro', icon: Briefcase, color: '#0284c7', label: 'DEM Pro actifs / comptes', value: stats ? `${stats.demPro.active} / ${stats.demPro.total}` : v(null),
+      sub: stats ? `${stats.demPro.pending} en attente de validation` : null, onClick: can.demProList ? open('demPro') : undefined },
+    { key: 'acc-24h', icon: ShoppingBag, color: '#0ea5e9', label: 'Comptes ayant commandé (24 h)',
+      value: clientAttempts && demProActivity ? clientAttempts.totalClients + demProActivity.totalAccounts : v(null),
+      rows: [
+        { label: 'Clients', value: clientAttempts ? `${clientAttempts.totalClients} · ${clientAttempts.totalAttempts} commande(s)` : '…', onClick: open('clientAttempts') },
+        { label: 'DEM Pro', value: demProActivity ? `${demProActivity.totalAccounts} · ${demProActivity.totalAttempts} commande(s)` : '…', onClick: open('demProActivity') },
+      ] },
+    can.serviceClient && { key: 'acc-quality', icon: Star, color: '#f59e0b', label: 'Notes inférieures à 3/5',
+      value: sc ? sc.lowRatingDrivers + sc.lowRatingClients : v(null),
+      rows: [
+        { label: 'Coursiers notés < 3/5', value: v(sc?.lowRatingDrivers), onClick: open('lowDrivers') },
+        { label: 'Clients insatisfaits (note donnée)', value: v(sc?.lowRatingClients), onClick: open('lowClients') },
+      ] },
   ].filter(Boolean) : []
 
-  const renderKpi = (k) => (
-    <Kpi key={k.id} icon={k.icon} color={k.color} label={k.label} value={k.value} sub={k.sub} emphasis={k.emphasis}
-      sparkData={k.sparkKey ? timeseries : null} sparkKey={k.sparkKey}
-      trend={k.trendNow != null ? <TrendBadge current={k.trendNow} previous={k.trendPrev} /> : null}
-      onClick={k.clickable === false ? undefined : open(k.id)} />
+  const renderGroup = (g) => (
+    <GroupKpi key={g.key} icon={g.icon} color={g.color} label={g.label} value={g.value} sub={g.sub} trend={g.trend}
+      sparkData={g.sparkKey ? timeseries : null} sparkKey={g.sparkKey} onClick={g.onClick} rows={g.rows} footer={g.footer} />
   )
 
   const allCards = [...liveCards, ...todayCards, ...accountCards]
@@ -669,7 +775,13 @@ export default function Dashboard() {
   const close = () => setOpenModal(null)
   const modalProps = modalCard ? { icon: modalCard.icon, color: modalCard.color, onClose: close } : null
 
-  const chartCols = isMobile ? '1fr' : isTablet ? '1fr 1fr' : can.revenue ? '1fr 1fr 300px' : '1fr 300px'
+  // ── 5. Tendances : 7 ou 30 jours ──
+  const chartSource = trendDays === 30 ? (series30 ?? []) : (data.timeseries ?? [])
+  const chartData = chartSource.map(d => ({
+    ...d, dateLabel: new Date(d.date + 'T00:00:00').toLocaleDateString('fr-FR', trendDays === 30 ? { day: '2-digit', month: '2-digit' } : { weekday: 'short', day: 'numeric' }),
+  }))
+  const xInterval = chartData.length > MAX_XTICKS ? Math.ceil(chartData.length / MAX_XTICKS) - 1 : 0
+  const chartCols = isMobile ? '1fr' : !can.revenue ? '1fr' : isTablet ? '1fr 1fr' : '1.3fr 1fr 1fr'
 
   return (
     <div>
@@ -700,36 +812,136 @@ export default function Dashboard() {
       )}
 
       {/* ── 1. À traiter ── */}
-      <Section title="À traiter" hint={loaded ? (todoOpen === 0 ? 'Rien en attente' : `${todoOpen} point${todoOpen > 1 ? 's' : ''} à regarder`) : null}>
-        <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(auto-fit, minmax(280px, 1fr))', gap: 8 }}>
-          {todos.map(t => (
-            <TodoRow key={t.id} icon={t.icon} color={t.color} label={t.label} count={t.count ?? 0}
-              unknown={t.count == null} detail={t.detail} onClick={t.onClick} />
-          ))}
-        </div>
-        {financeAlerts.length > 1 && !isMobile && (
-          <div style={{ marginTop: 8, display: 'flex', flexDirection: 'column', gap: 4 }}>
-            {financeAlerts.slice(1).map(a => (
-              <div key={a.type} style={{ fontSize: 11, color: 'var(--text-muted)', paddingLeft: 12, borderLeft: `3px solid ${SEVERITY_COLOR[a.severity] ?? '#94a3b8'}` }}>{a.message}</div>
+      <Section title="À traiter" hint={loaded ? (pendingTodos.length === 0 ? null : `${pendingTodos.length} point${pendingTodos.length > 1 ? 's' : ''} à regarder`) : null}>
+        {!loaded ? (
+          <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>Chargement…</div>
+        ) : pendingTodos.length === 0 ? (
+          <div style={{ ...glass, display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px' }}>
+            <CheckCircle size={18} color="#22c55e" />
+            <span style={{ fontSize: 13, fontWeight: 600 }}>Tout est à jour</span>
+            <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>{clearChecks.join(' · ')}</span>
+          </div>
+        ) : (
+          <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(auto-fit, minmax(320px, 1fr))', gap: 8 }}>
+            {pendingTodos.map(t => (
+              <TodoRow key={t.id} icon={t.icon} color={t.color} label={t.label} count={t.count ?? 0} badge={t.badge}
+                detail={t.detail} onClick={t.onClick} />
             ))}
           </div>
         )}
       </Section>
 
-      {/* ── 2. En direct ── */}
-      <Section title="En direct" hint="État des opérations à cet instant">
-        <KpiGrid>{liveCards.map(renderKpi)}</KpiGrid>
+      {/* ── 2. En direct (compteurs + courses et coursiers) ── */}
+      <Section title="En direct" hint="État des opérations à cet instant" right={!isFinance && (
+        <button onClick={() => navigate('/map')} style={linkButton}><MapIcon size={13} /> Carte live</button>
+      )}>
+        <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(auto-fit, minmax(240px, 1fr))', gap: 10 }}>
+          {liveCards.map(k => (
+            <CounterTile key={k.id} icon={k.icon} color={k.color} label={k.label} value={k.value} sub={k.sub}
+              emphasis={k.emphasis} onClick={open(k.id)} />
+          ))}
+        </div>
+        {!isFinance && (
+          <>
+            <button onClick={() => setShowLive(!liveOpen)} style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 10, background: 'none', border: 'none', padding: '4px 2px', cursor: 'pointer', color: 'var(--primary)', fontSize: 12.5, fontWeight: 600 }}>
+              {liveOpen ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+              {liveOpen ? 'Masquer' : 'Afficher'} les courses ({activeOrders.length}) et les coursiers en ligne ({onlineDrivers.length})
+            </button>
+            {liveOpen && (
+              <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 300px', gap: isMobile ? 10 : 14, marginTop: 8 }}>
+                <div style={card}>
+                  <div style={{ display: 'flex', gap: 6, marginBottom: 12, flexWrap: 'wrap' }}>
+                    {[
+                      ['orders', `Courses en attente et en cours (${activeOrders.length})`],
+                      ['drivers', `Coursiers en ligne (${onlineDrivers.length})`],
+                    ].map(([key, label]) => (
+                      <button key={key} onClick={() => setLiveTab(key)} style={tabButton(liveTab === key)}>{label}</button>
+                    ))}
+                  </div>
+                  <div style={{ overflowX: 'auto' }}>
+                    {liveTab === 'orders' ? (
+                      activeOrders.length === 0 ? <div style={emptyStyle}>Aucune course en attente ni en cours.</div> : (
+                        <table style={tableStyle}>
+                          <thead><tr>{['Statut', 'Type', 'Client', 'Coursier', 'Trajet', 'Prix', 'Depuis'].map(h => <th key={h} style={thStyle}>{h}</th>)}</tr></thead>
+                          <tbody>
+                            {activeOrders.map(o => {
+                              const since = minutesSince(o.status === 'PENDING' ? o.createdAt : (o.acceptedAt ?? o.createdAt))
+                              const late = o.status === 'PENDING' && since >= STUCK_PENDING_MIN
+                              return (
+                                <tr key={o.id} style={{ borderBottom: '1px solid var(--border)' }}>
+                                  <td style={tdStyle}><Badge status={o.status} /></td>
+                                  <td style={tdStyle}><Badge status={o.orderType} /></td>
+                                  <td style={tdStyle}>{o.client?.name ?? '—'}</td>
+                                  <td style={tdStyle}>{o.driver?.name ?? <span style={{ color: 'var(--text-muted)' }}>—</span>}</td>
+                                  <td style={{ ...tdStyle, fontSize: 12, maxWidth: 260 }} title={`${o.pickupAddress} → ${o.deliveryAddress}`}>
+                                    <div style={ellipsis}>{o.pickupAddress}</div>
+                                    <div style={{ ...ellipsis, color: 'var(--text-muted)' }}>→ {o.deliveryAddress}</div>
+                                  </td>
+                                  <td style={tdStyle}>{formatF(o.price)}</td>
+                                  <td style={{ ...tdStyle, fontWeight: late ? 700 : 400, color: late ? '#f59e0b' : 'var(--text-muted)', whiteSpace: 'nowrap' }}>{formatDuration(since)}</td>
+                                </tr>
+                              )
+                            })}
+                          </tbody>
+                        </table>
+                      )
+                    ) : (
+                      onlineDrivers.length === 0 ? <div style={emptyStyle}>Aucun coursier en ligne.</div> : (
+                        <table style={tableStyle}>
+                          <thead><tr>{['Coursier', 'Téléphone', 'Véhicule', 'Statut', 'Dernier signal'].map(h => <th key={h} style={thStyle}>{h}</th>)}</tr></thead>
+                          <tbody>
+                            {onlineDrivers.map(d => (
+                              <tr key={d.id} style={{ borderBottom: '1px solid var(--border)' }}>
+                                <td style={tdStyle}>{d.name}</td>
+                                <td style={tdStyle}>{d.phone}</td>
+                                <td style={tdStyle}>{d.vehicleType ?? '—'}</td>
+                                <td style={tdStyle}><Badge status={d.busy ? 'ACCEPTED' : 'ONLINE'} label={d.busy ? 'En course' : 'Libre'} /></td>
+                                <td style={{ ...tdStyle, color: 'var(--text-muted)', fontSize: 12 }}>
+                                  {d.lastSeenAt ? `il y a ${formatDuration(minutesSince(d.lastSeenAt))}` : '—'}
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      )
+                    )}
+                  </div>
+                </div>
+
+                <div style={card}>
+                  <h3 style={cardTitle}>Fil d'activité</h3>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 6, maxHeight: 320, overflowY: 'auto' }}>
+                    {events.length === 0 ? (
+                      <div style={{ color: 'var(--text-muted)', fontSize: 12 }}>Les événements apparaissent ici en direct tant que la page est ouverte.</div>
+                    ) : events.map((ev, i) => (
+                      <div key={i} style={{ padding: '7px 10px', background: 'var(--surface2)', borderRadius: 'var(--radius-sm)', borderLeft: '3px solid var(--primary)' }}>
+                        <div style={{ fontWeight: 600, fontSize: 12 }}>{ev.label}</div>
+                        <div style={{ color: 'var(--text-muted)', fontSize: 11, marginTop: 1 }}>
+                          {ev.time}{ev.data?.orderId ? ` — ${ev.data.orderId.slice(0, 8)}` : ''}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
+          </>
+        )}
       </Section>
 
       {/* ── 3. Aujourd'hui ── */}
       <Section title="Aujourd'hui" hint="Depuis minuit · tendance comparée à hier à la même heure">
-        <KpiGrid>{todayCards.map(renderKpi)}</KpiGrid>
+        <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(auto-fit, minmax(220px, 1fr))', gap: 10 }}>
+          {dayGroups.map(renderGroup)}
+        </div>
       </Section>
 
-      {/* ── 4. Comptes & satisfaction ── */}
-      {accountCards.length > 0 && (
-        <Section title="Comptes & satisfaction" hint="Clients, DEM Pro et notes">
-          <KpiGrid>{accountCards.map(renderKpi)}</KpiGrid>
+      {/* ── 4. Comptes ── */}
+      {accountGroups.length > 0 && (
+        <Section title="Comptes" hint="Clients, DEM Pro, activité des 24 dernières heures et notes">
+          <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(auto-fit, minmax(220px, 1fr))', gap: 10 }}>
+            {accountGroups.map(renderGroup)}
+          </div>
         </Section>
       )}
 
@@ -748,14 +960,20 @@ export default function Dashboard() {
         </div>
       )}
 
-      {/* ── Tendances 7 jours ── */}
-      <Section title="7 derniers jours">
+      {/* ── 5. Tendances ── */}
+      <Section title="Tendances" hint={`${trendDays} derniers jours`} right={
+        <div style={{ display: 'flex', gap: 4 }}>
+          {[7, 30].map(d => (
+            <button key={d} onClick={() => setTrendDays(d)} style={tabButton(trendDays === d)}>{d} jours</button>
+          ))}
+        </div>
+      }>
         <div style={{ display: 'grid', gridTemplateColumns: chartCols, gap: isMobile ? 10 : 14 }}>
-          <div style={card}>
+          <div style={{ ...card, gridColumn: isTablet && can.revenue ? 'span 2' : 'auto' }}>
             <h3 style={cardTitle}>Courses créées et livrées</h3>
             <ResponsiveContainer width="100%" height={200}>
-              <BarChart data={timeseries} margin={{ top: 0, right: 0, left: -20, bottom: 0 }}>
-                <XAxis dataKey="dateLabel" tick={{ fontSize: 11, fill: 'var(--text-muted)' }} axisLine={false} tickLine={false} />
+              <BarChart data={chartData} margin={{ top: 0, right: 0, left: -20, bottom: 0 }}>
+                <XAxis dataKey="dateLabel" tick={{ fontSize: 11, fill: 'var(--text-muted)' }} axisLine={false} tickLine={false} interval={xInterval} />
                 <YAxis tick={{ fontSize: 11, fill: 'var(--text-muted)' }} axisLine={false} tickLine={false} allowDecimals={false} />
                 <Tooltip contentStyle={TOOLTIP_STYLE} cursor={{ fill: '#0077b608' }} />
                 <Legend iconSize={10} wrapperStyle={{ fontSize: 11 }} />
@@ -765,124 +983,24 @@ export default function Dashboard() {
             </ResponsiveContainer>
           </div>
 
-          {can.revenue && (
-            <div style={card}>
-              <h3 style={cardTitle}>Revenus (date de livraison)</h3>
+          {can.revenue && [
+            ['demRevenue', 'Commission DEM facturée', '#f59e0b'],
+            ['driverRevenue', 'Gains coursiers', '#10b981'],
+          ].map(([key, title, color]) => (
+            <div key={key} style={card}>
+              <h3 style={cardTitle}>{title} <span style={{ fontWeight: 400, color: 'var(--text-muted)', fontSize: 11 }}>· date de livraison</span></h3>
               <ResponsiveContainer width="100%" height={200}>
-                <LineChart data={timeseries} margin={{ top: 0, right: 8, left: -20, bottom: 0 }}>
-                  <XAxis dataKey="dateLabel" tick={{ fontSize: 11, fill: 'var(--text-muted)' }} axisLine={false} tickLine={false} />
+                <BarChart data={chartData} margin={{ top: 0, right: 0, left: -10, bottom: 0 }}>
+                  <XAxis dataKey="dateLabel" tick={{ fontSize: 11, fill: 'var(--text-muted)' }} axisLine={false} tickLine={false} interval={xInterval} />
                   <YAxis tick={{ fontSize: 11, fill: 'var(--text-muted)' }} axisLine={false} tickLine={false} tickFormatter={formatAxisF} />
-                  <Tooltip contentStyle={TOOLTIP_STYLE} formatter={(val, name) => [formatF(val), name]} />
-                  <Legend iconSize={10} wrapperStyle={{ fontSize: 11 }} />
-                  <Line type="monotone" dataKey="driverRevenue" name="Gains coursiers"         stroke="#10b981" strokeWidth={2} dot={{ fill: '#10b981', r: 3 }} />
-                  <Line type="monotone" dataKey="demRevenue"    name="Commission DEM facturée" stroke="#f59e0b" strokeWidth={2} dot={{ fill: '#f59e0b', r: 3 }} />
-                </LineChart>
+                  <Tooltip contentStyle={TOOLTIP_STYLE} cursor={{ fill: '#0077b608' }} formatter={(val) => [formatF(val), title]} />
+                  <Bar dataKey={key} name={title} fill={color} radius={[4, 4, 0, 0]} />
+                </BarChart>
               </ResponsiveContainer>
             </div>
-          )}
-
-          <div style={{ ...card, gridColumn: isTablet && can.revenue ? 'span 2' : 'auto' }}>
-            <h3 style={cardTitle}>Courses du jour par statut ({stats?.todayBreakdown?.total ?? 0})</h3>
-            {pieData.length === 0 ? (
-              <div style={{ ...emptyStyle, paddingTop: 60 }}>Aucune commande aujourd'hui</div>
-            ) : (
-              <ResponsiveContainer width="100%" height={200}>
-                <PieChart>
-                  <Pie data={pieData} cx="50%" cy="50%" innerRadius={50} outerRadius={80} paddingAngle={3} dataKey="value">
-                    {pieData.map((entry, i) => <Cell key={i} fill={entry.color} />)}
-                  </Pie>
-                  <Tooltip contentStyle={TOOLTIP_STYLE} />
-                  <Legend iconSize={10} wrapperStyle={{ fontSize: 11 }} />
-                </PieChart>
-              </ResponsiveContainer>
-            )}
-          </div>
+          ))}
         </div>
       </Section>
-
-      {/* ── Opérations en direct : courses / coursiers + fil d'activité ── */}
-      {!isFinance && (
-        <Section title="Suivi en direct" right={
-          <button onClick={() => navigate('/map')} style={linkButton}><MapIcon size={13} /> Carte live</button>
-        }>
-          <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 300px', gap: isMobile ? 10 : 14 }}>
-            <div style={card}>
-              <div style={{ display: 'flex', gap: 6, marginBottom: 12, flexWrap: 'wrap' }}>
-                {[
-                  ['orders', `Courses en attente et en cours (${activeOrders.length})`],
-                  ['drivers', `Coursiers en ligne (${onlineDrivers.length})`],
-                ].map(([key, label]) => (
-                  <button key={key} onClick={() => setLiveTab(key)} style={tabButton(liveTab === key)}>{label}</button>
-                ))}
-              </div>
-              <div style={{ overflowX: 'auto' }}>
-                {liveTab === 'orders' ? (
-                  activeOrders.length === 0 ? <div style={emptyStyle}>Aucune course en attente ni en cours.</div> : (
-                    <table style={tableStyle}>
-                      <thead><tr>{['Statut', 'Type', 'Client', 'Coursier', 'Trajet', 'Prix', 'Depuis'].map(h => <th key={h} style={thStyle}>{h}</th>)}</tr></thead>
-                      <tbody>
-                        {activeOrders.map(o => {
-                          const since = minutesSince(o.status === 'PENDING' ? o.createdAt : (o.acceptedAt ?? o.createdAt))
-                          const late = o.status === 'PENDING' && since >= STUCK_PENDING_MIN
-                          return (
-                            <tr key={o.id} style={{ borderBottom: '1px solid var(--border)' }}>
-                              <td style={tdStyle}><Badge status={o.status} /></td>
-                              <td style={tdStyle}><Badge status={o.orderType} /></td>
-                              <td style={tdStyle}>{o.client?.name ?? '—'}</td>
-                              <td style={tdStyle}>{o.driver?.name ?? <span style={{ color: 'var(--text-muted)' }}>—</span>}</td>
-                              <td style={{ ...tdStyle, fontSize: 12, maxWidth: 260 }} title={`${o.pickupAddress} → ${o.deliveryAddress}`}>
-                                <div style={ellipsis}>{o.pickupAddress}</div>
-                                <div style={{ ...ellipsis, color: 'var(--text-muted)' }}>→ {o.deliveryAddress}</div>
-                              </td>
-                              <td style={tdStyle}>{formatF(o.price)}</td>
-                              <td style={{ ...tdStyle, fontWeight: late ? 700 : 400, color: late ? '#f59e0b' : 'var(--text-muted)', whiteSpace: 'nowrap' }}>{formatDuration(since)}</td>
-                            </tr>
-                          )
-                        })}
-                      </tbody>
-                    </table>
-                  )
-                ) : (
-                  onlineDrivers.length === 0 ? <div style={emptyStyle}>Aucun coursier en ligne.</div> : (
-                    <table style={tableStyle}>
-                      <thead><tr>{['Coursier', 'Téléphone', 'Véhicule', 'Statut', 'Dernier signal'].map(h => <th key={h} style={thStyle}>{h}</th>)}</tr></thead>
-                      <tbody>
-                        {onlineDrivers.map(d => (
-                          <tr key={d.id} style={{ borderBottom: '1px solid var(--border)' }}>
-                            <td style={tdStyle}>{d.name}</td>
-                            <td style={tdStyle}>{d.phone}</td>
-                            <td style={tdStyle}>{d.vehicleType ?? '—'}</td>
-                            <td style={tdStyle}><Badge status={d.busy ? 'ACCEPTED' : 'ONLINE'} label={d.busy ? 'En course' : 'Libre'} /></td>
-                            <td style={{ ...tdStyle, color: 'var(--text-muted)', fontSize: 12 }}>
-                              {d.lastSeenAt ? `il y a ${formatDuration(minutesSince(d.lastSeenAt))}` : '—'}
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  )
-                )}
-              </div>
-            </div>
-
-            <div style={card}>
-              <h3 style={cardTitle}>Fil d'activité</h3>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 6, maxHeight: 320, overflowY: 'auto' }}>
-                {events.length === 0 ? (
-                  <div style={{ color: 'var(--text-muted)', fontSize: 12 }}>Les événements apparaissent ici en direct tant que la page est ouverte.</div>
-                ) : events.map((ev, i) => (
-                  <div key={i} style={{ padding: '7px 10px', background: 'var(--surface2)', borderRadius: 'var(--radius-sm)', borderLeft: '3px solid var(--primary)' }}>
-                    <div style={{ fontWeight: 600, fontSize: 12 }}>{ev.label}</div>
-                    <div style={{ color: 'var(--text-muted)', fontSize: 11, marginTop: 1 }}>
-                      {ev.time}{ev.data?.orderId ? ` — ${ev.data.orderId.slice(0, 8)}` : ''}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-        </Section>
-      )}
 
       {/* ── Santé technique (repliée par défaut) ── */}
       {can.tech && health && (
