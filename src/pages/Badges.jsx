@@ -380,7 +380,8 @@ function ClientBadgesTab() {
             <tr key={c.id} style={{ borderBottom: '1px solid var(--border)' }}>
               <td style={{ padding: '8px 10px', fontWeight: 600, fontSize: 13 }}>
                 {c.name ?? '—'}
-                {c.clientBadge && !c.clientBadgeValidated && ['mbokk','djambar','buur','vip'].includes(c.clientBadge) && (
+                {/* Seuls les paliers soumis à validation (DEM Mbokk) : Djambar, Buur et VIP n'en demandent pas */}
+                {c.clientBadge && !c.clientBadgeValidated && tiers.find(t => t.id === c.clientBadge)?.requiresValidation && (
                   <span style={{ marginLeft: 6, fontSize: 10, fontWeight: 700, color: '#b45309' }}>⏳ non validé</span>
                 )}
               </td>
