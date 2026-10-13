@@ -9,6 +9,7 @@ import Row from './components/Row'
 import StatusDot from './components/StatusDot'
 import { useAutoRefresh } from '../../lib/useAutoRefresh'
 import { cancelReasonLabel } from '../../lib/cancelReasons'
+import InfoTip from '../../components/InfoTip'
 
 export default function OverviewTab() {
   // Recherche client
@@ -124,7 +125,7 @@ export default function OverviewTab() {
       <div style={{ ...glass, padding: '18px 20px', marginBottom: 16 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14 }}>
           <Search size={16} color="var(--primary)" />
-          <h2 style={{ fontSize: 15, fontWeight: 700, margin: 0 }}>Rechercher un client</h2>
+          <h2 style={{ fontSize: 15, fontWeight: 700, margin: 0 }}>Rechercher un client<InfoTip k="Rechercher un client" size={13} /></h2>
         </div>
         <div style={{ position: 'relative' }}>
           <Search size={14} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
@@ -194,7 +195,7 @@ export default function OverviewTab() {
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
               <Package size={16} color="var(--primary)" />
-              <h2 style={{ fontSize: 15, fontWeight: 700, margin: 0 }}>Commandes récentes</h2>
+              <h2 style={{ fontSize: 15, fontWeight: 700, margin: 0 }}>Commandes récentes<InfoTip k="Commandes récentes" size={13} /></h2>
             </div>
           </div>
 
@@ -265,7 +266,7 @@ export default function OverviewTab() {
           <div style={{ ...glass, padding: '16px 18px' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
               <AlertTriangle size={15} color="#ef4444" />
-              <h3 style={{ fontSize: 14, fontWeight: 700, margin: 0 }}>Incidents ouverts</h3>
+              <h3 style={{ fontSize: 14, fontWeight: 700, margin: 0 }}>Incidents ouverts<InfoTip k="Incidents ouverts" size={13} /></h3>
               <span style={{
                 marginLeft: 'auto', fontSize: 10, fontWeight: 700,
                 padding: '2px 8px', borderRadius: 10,
@@ -306,7 +307,7 @@ export default function OverviewTab() {
           <div style={{ ...glass, padding: '16px 18px' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
               <CreditCard size={15} color="#8b5cf6" />
-              <h3 style={{ fontSize: 14, fontWeight: 700, margin: 0 }}>Paiements en attente</h3>
+              <h3 style={{ fontSize: 14, fontWeight: 700, margin: 0 }}>Paiements en attente<InfoTip k="Paiements en attente" size={13} /></h3>
               <span style={{
                 marginLeft: 'auto', fontSize: 10, fontWeight: 700,
                 padding: '2px 8px', borderRadius: 10,

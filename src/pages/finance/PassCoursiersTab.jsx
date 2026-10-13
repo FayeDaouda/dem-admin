@@ -2,6 +2,7 @@ import { useAuth } from '../../contexts/AuthContext'
 import { canSee, ACTION_ROLES } from '../../lib/droits'
 import PassTab from './PassTab'
 import PassDueSection from './PassDueSection'
+import InfoTip from '../../components/InfoTip'
 
 // Finance › Pass coursiers (plan de refonte, étape 3.3) : pass achetés et
 // offerts, coursiers avec un pass valide, et — Super Admin seul — le dû par
@@ -14,7 +15,7 @@ export default function PassCoursiersTab() {
       <PassTab />
       {canSee(user?.adminRole, ACTION_ROLES.passDue) && (
         <section style={{ marginTop: 28 }}>
-          <h2 style={{ fontSize: 15, fontWeight: 700, margin: '0 0 12px' }}>Dû par les coursiers</h2>
+          <h2 style={{ fontSize: 15, fontWeight: 700, margin: '0 0 12px' }}>Dû par les coursiers<InfoTip k="Dû par les coursiers" size={13} /></h2>
           <PassDueSection />
         </section>
       )}

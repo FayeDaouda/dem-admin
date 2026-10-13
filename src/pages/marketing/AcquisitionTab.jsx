@@ -4,6 +4,7 @@ import api from '../../lib/api'
 import { glass } from '../../lib/glassStyles'
 import ExportPdfButton from '../../components/ExportPdfButton'
 import { useAutoRefresh } from '../../lib/useAutoRefresh'
+import InfoTip from '../../components/InfoTip'
 
 const TOOLTIP_STYLE = { background: '#fff', border: '1px solid var(--border)', borderRadius: 6, color: 'var(--text)', fontSize: 12, boxShadow: '0 2px 8px rgba(0,0,0,0.10)' }
 const SOURCE_COLORS = ['#06b6d4', '#8b5cf6']
@@ -59,7 +60,7 @@ export default function AcquisitionTab() {
         précédents ; « 30 jours » = exactement la somme de la courbe ci-dessous. Mêmes périodes que la page Nouveaux profils.
       </p>
 
-      <h2 style={{ fontSize: 14, fontWeight: 700, marginBottom: 10 }}>Nouveaux clients</h2>
+      <h2 style={{ fontSize: 14, fontWeight: 700, marginBottom: 10 }}>Nouveaux clients<InfoTip k="Nouveaux clients" size={13} /></h2>
       <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginBottom: 20 }}>
         <PeriodBox label="AUJOURD'HUI" value={data.newClients.today} />
         <PeriodBox label="7 JOURS" value={data.newClients.week} />
@@ -67,7 +68,7 @@ export default function AcquisitionTab() {
         <PeriodBox label="6 MOIS" value={data.newClients.sixMonths} />
       </div>
 
-      <h2 style={{ fontSize: 14, fontWeight: 700, marginBottom: 10 }}>Nouveaux coursiers</h2>
+      <h2 style={{ fontSize: 14, fontWeight: 700, marginBottom: 10 }}>Nouveaux coursiers<InfoTip k="Nouveaux coursiers" size={13} /></h2>
       <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginBottom: 20 }}>
         <PeriodBox label="AUJOURD'HUI" value={data.newDrivers.today} />
         <PeriodBox label="7 JOURS" value={data.newDrivers.week} />
@@ -75,7 +76,7 @@ export default function AcquisitionTab() {
         <PeriodBox label="6 MOIS" value={data.newDrivers.sixMonths} />
       </div>
 
-      <h2 style={{ fontSize: 14, fontWeight: 700, marginBottom: 10 }}>Nouveaux DEM Pro</h2>
+      <h2 style={{ fontSize: 14, fontWeight: 700, marginBottom: 10 }}>Nouveaux DEM Pro<InfoTip k="Nouveaux DEM Pro" size={13} /></h2>
       <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginBottom: 20 }}>
         <PeriodBox label="AUJOURD'HUI" value={data.newDemPro?.today ?? 0} />
         <PeriodBox label="7 JOURS" value={data.newDemPro?.week ?? 0} />
@@ -83,7 +84,7 @@ export default function AcquisitionTab() {
         <PeriodBox label="6 MOIS" value={data.newDemPro?.sixMonths ?? 0} />
       </div>
 
-      <h2 style={{ fontSize: 14, fontWeight: 700, marginBottom: 10 }}>Nouveaux chefs de flotte</h2>
+      <h2 style={{ fontSize: 14, fontWeight: 700, marginBottom: 10 }}>Nouveaux chefs de flotte<InfoTip k="Nouveaux chefs de flotte" size={13} /></h2>
       <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginBottom: 20 }}>
         <PeriodBox label="AUJOURD'HUI" value={data.newChefsDeFlotte?.today ?? 0} />
         <PeriodBox label="7 JOURS" value={data.newChefsDeFlotte?.week ?? 0} />
@@ -93,7 +94,7 @@ export default function AcquisitionTab() {
 
       <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 16 }}>
         <div style={{ ...glass, padding: '18px 20px' }}>
-          <h2 style={{ fontSize: 14, fontWeight: 600, marginBottom: 14 }}>Courbe de croissance — 30 derniers jours</h2>
+          <h2 style={{ fontSize: 14, fontWeight: 600, marginBottom: 14 }}>Courbe de croissance — 30 derniers jours<InfoTip k="Courbe de croissance — 30 derniers jours" size={13} /></h2>
           <ResponsiveContainer width="100%" height={240}>
             <LineChart data={growth} margin={{ top: 0, right: 8, left: -20, bottom: 0 }}>
               <XAxis dataKey="dateLabel" tick={{ fontSize: 11, fill: 'var(--text-muted)' }} axisLine={false} tickLine={false} />
@@ -107,7 +108,7 @@ export default function AcquisitionTab() {
         </div>
 
         <div style={{ ...glass, padding: '18px 20px' }}>
-          <h2 style={{ fontSize: 14, fontWeight: 600, marginBottom: 14 }}>Source d'inscription (clients, depuis le lancement)</h2>
+          <h2 style={{ fontSize: 14, fontWeight: 600, marginBottom: 14 }}>Source d'inscription (clients, depuis le lancement)<InfoTip k="Source d'inscription (clients, depuis le lancement)" size={13} /></h2>
           {data.source.total === 0 ? (
             <div style={{ color: 'var(--text-muted)', fontSize: 13, textAlign: 'center', paddingTop: 60 }}>Pas de données</div>
           ) : (

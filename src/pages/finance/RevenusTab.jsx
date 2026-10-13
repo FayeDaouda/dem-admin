@@ -11,6 +11,7 @@ import { useAutoRefresh } from '../../lib/useAutoRefresh'
 import { formatF, formatCount, formatAxisF } from '../../lib/format'
 import RevenueBreakdownTable from './components/RevenueBreakdownTable'
 import FeesSection from './FeesSection'
+import InfoTip from '../../components/InfoTip'
 
 // Finance › Revenus — un seul écran, dans l'ordre : revenus par période,
 // graphique des 30 jours (revenus ou commission), tableau détaillé par
@@ -157,6 +158,7 @@ export default function RevenusTab({ lastExport, onExported }) {
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap', marginBottom: 12 }}>
           <h2 style={{ fontSize: 14, fontWeight: 600, margin: 0 }}>
             {chart === 'revenus' ? 'Revenus DEM' : 'Commission sur les courses'} — 30 derniers jours
+            <InfoTip k={chart === 'revenus' ? 'Revenus DEM — 30 derniers jours' : 'Commission sur les courses — 30 derniers jours'} size={13} />
           </h2>
           <div style={{ display: 'flex', gap: 4, background: 'rgba(255,255,255,.45)', borderRadius: 'var(--radius)', padding: 3 }}>
             {[['revenus', 'Revenus'], ['commission', 'Commission']].map(([k, l]) => (
@@ -188,7 +190,7 @@ export default function RevenusTab({ lastExport, onExported }) {
 
       {/* Tableau détaillé par période */}
       <div style={{ ...glass, padding: '16px 20px', marginBottom: 24 }}>
-        <h2 style={{ fontSize: 14, fontWeight: 600, marginBottom: 12 }}>Détail par période</h2>
+        <h2 style={{ fontSize: 14, fontWeight: 600, marginBottom: 12 }}>Détail par période<InfoTip k="Détail par période" size={13} /></h2>
         <RevenueBreakdownTable
           columns={PERIODS.map(([key, label]) => ({ label, rev: data[key] }))}
           extra={coursesBlock ? [coursesBlock] : []}
@@ -197,7 +199,7 @@ export default function RevenusTab({ lastExport, onExported }) {
 
       {canSee(user?.adminRole, ACTION_ROLES.feesSinceLaunch) && (
         <section style={{ marginBottom: 12 }}>
-          <h2 style={{ fontSize: 14, fontWeight: 600, margin: '0 0 10px' }}>Frais de mise en relation depuis le lancement</h2>
+          <h2 style={{ fontSize: 14, fontWeight: 600, margin: '0 0 10px' }}>Frais de mise en relation depuis le lancement<InfoTip k="Frais de mise en relation depuis le lancement" size={13} /></h2>
           <FeesSection />
         </section>
       )}

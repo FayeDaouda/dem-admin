@@ -6,6 +6,7 @@ import { Save, Trash2 } from 'lucide-react'
 import api from '../lib/api'
 import { glass, glassInput } from '../lib/glassStyles'
 import MapBaseLayer from '../components/MapBaseLayer'
+import InfoTip from '../components/InfoTip'
 
 // Zone de livraison couverte par DEM (dem-backend : utils/delivery-zone.js).
 // Boutique publique DEM Pro : une adresse hors du cercle est refusée, et le
@@ -84,7 +85,7 @@ export default function DeliveryZoneTab({ canEdit = true }) {
 
   return (
     <div style={{ ...glass, padding: 20 }}>
-      <h2 style={{ fontSize: 16, fontWeight: 700, margin: '0 0 6px' }}>Zone de livraison</h2>
+      <h2 style={{ fontSize: 16, fontWeight: 700, margin: '0 0 6px' }}>Zone de livraison<InfoTip k="Zone de livraison" size={13} /></h2>
       <p style={{ fontSize: 12.5, color: 'var(--text-muted)', margin: '0 0 14px', lineHeight: 1.6 }}>
         Boutique publique DEM Pro : une adresse hors de ce cercle est refusée, et le client en est averti dès qu'il place son point.
         Cliquez sur la carte ou faites glisser le point bleu pour déplacer le centre.{' '}

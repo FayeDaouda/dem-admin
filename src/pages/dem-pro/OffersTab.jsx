@@ -6,6 +6,7 @@ import { formatF, formatCount, OPERATOR_LABELS } from '../../lib/format'
 import TiersActiveToggle from './TiersActiveToggle'
 import DemProTiersSection from '../DemProTiersSection'
 import { planLabel, PLAN_COLORS, PURCHASE_STATUS } from './labels'
+import InfoTip from '../../components/InfoTip'
 
 // ── Onglet "Offres DEM Pro" de la page DEM Pro ────────────────────────────────
 // Paliers Starter / Business / Premium : activation, préparation de la bascule
@@ -204,7 +205,7 @@ function Card({ title, hint, children }) {
   return (
     <div style={{ ...glass, padding: '16px 18px' }}>
       <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, flexWrap: 'wrap', marginBottom: 12 }}>
-        <h3 style={{ fontSize: 14, fontWeight: 700, margin: 0 }}>{title}</h3>
+        <h3 style={{ fontSize: 14, fontWeight: 700, margin: 0 }}>{title}<InfoTip k={title} size={12} /></h3>
         {hint && <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>{hint}</span>}
       </div>
       {children}

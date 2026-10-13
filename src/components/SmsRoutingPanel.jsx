@@ -4,6 +4,7 @@ import { MessageSquare, AlertTriangle, CheckCircle2, Save, ChevronDown, ChevronR
 import api from '../lib/api'
 import { glass, glassInput } from '../lib/glassStyles'
 import { formatCount } from '../lib/format'
+import InfoTip from './InfoTip'
 
 // ── Envoi des SMS des codes OTP (SUPER) ───────────────────────────────────────
 // Le SUPER choisit ici le fournisseur principal : Africa's Talking par
@@ -80,7 +81,7 @@ export default function SmsRoutingPanel() {
   return (
     <div style={{ ...glass, padding: '18px 20px', maxWidth: 980 }}>
       <h2 style={{ fontSize: 15, fontWeight: 700, marginBottom: 4, display: 'flex', alignItems: 'center', gap: 8 }}>
-        <MessageSquare size={16} /> Envoi des SMS (codes de connexion et de retrait)
+        <MessageSquare size={16} /> Envoi des SMS (codes de connexion et de retrait)<InfoTip k="Envoi des SMS (codes de connexion et de retrait)" size={13} />
       </h2>
       <p style={{ fontSize: 12, color: 'var(--text-muted)', margin: '0 0 14px' }}>
         Le fournisseur principal envoie tous les codes. S'il échoue ou ne répond pas en 8 secondes, le même code part

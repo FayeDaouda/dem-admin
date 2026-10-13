@@ -232,7 +232,7 @@ export default function Validation() {
   useAutoRefresh(refreshCounts)
 
   const tab = fromUrl ? urlTab : firstTab
-  const barTabs = tabs.map(t => ({ ...t, label: <>{t.label}<CountPill n={counts?.[t.key]} active={tab === t.key} /></> }))
+  const barTabs = tabs.map(t => ({ ...t, infoTitle: t.label, label: <>{t.label}<CountPill n={counts?.[t.key]} active={tab === t.key} /></> }))
 
   const canSuspendChef = canSee(role, ACTION_ROLES.chefSuspend)
   const canReviewKyc   = canSee(role, ACTION_ROLES.kycReview)

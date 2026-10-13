@@ -13,6 +13,7 @@ import CoursesTab from './CoursesTab'
 import { Milestones } from './CampaignBlocks'
 import PromotionsTab from './PromotionsTab'
 import FreeCourseSection from './FreeCourseSection'
+import InfoTip from '../../components/InfoTip'
 
 // Acquisition + offre de lancement « 100 clients » (Super Admin seul)
 function AcquisitionWithOffer() {
@@ -22,7 +23,7 @@ function AcquisitionWithOffer() {
       <AcquisitionTab />
       {canSee(user?.adminRole, ACTION_ROLES.freeCourseOffer) && (
         <section style={{ marginTop: 28 }}>
-          <h2 style={{ fontSize: 15, fontWeight: 700, margin: '0 0 12px' }}>Offre de lancement : 100 premiers clients</h2>
+          <h2 style={{ fontSize: 15, fontWeight: 700, margin: '0 0 12px' }}>Offre de lancement : 100 premiers clients<InfoTip k="Offre de lancement : 100 premiers clients" size={13} /></h2>
           <FreeCourseSection />
         </section>
       )}

@@ -1,4 +1,5 @@
 import { glass } from '../lib/glassStyles'
+import InfoTip from './InfoTip'
 
 export default function StatCard({ icon: Icon, label, value, color = 'var(--primary)', sub, onClick }) {
   return (
@@ -20,7 +21,7 @@ export default function StatCard({ icon: Icon, label, value, color = 'var(--prim
         <Icon size={17} color={color} />
       </div>
       <div style={{ minWidth: 0 }}>
-        <div style={{ color: 'var(--text-muted)', fontSize: 11 }}>{label}</div>
+        <div style={{ color: 'var(--text-muted)', fontSize: 11 }}>{label}{!window.location.pathname.startsWith('/fleet') && <InfoTip k={label} size={12} />}</div>
         <div style={{ fontSize: 20, fontWeight: 700, marginTop: 1 }}>{value}</div>
         {sub && <div style={{ fontSize: 10, color: 'var(--text-muted)', marginTop: 1 }}>{sub}</div>}
       </div>

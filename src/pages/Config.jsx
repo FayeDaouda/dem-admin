@@ -14,6 +14,7 @@ import PageHeader from '../components/PageHeader'
 import TabBar from '../components/TabBar'
 import { useUrlTab } from '../lib/useUrlTab'
 import DeliveryZoneTab from './DeliveryZoneTab'
+import InfoTip from '../components/InfoTip'
 
 // ── Réglages /admin/config, rangés par sujet ──────────────────────────────────
 const CONFIG_META = {
@@ -124,7 +125,7 @@ function ConfigBlock({ title, keys, config, onSaved, canEdit, children }) {
   return (
     <div style={{ ...glass, padding: '18px 22px', marginBottom: 16 }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap', marginBottom: 12 }}>
-        <h2 style={{ fontSize: 15, fontWeight: 700, margin: 0 }}>{title}</h2>
+        <h2 style={{ fontSize: 15, fontWeight: 700, margin: 0 }}>{title}<InfoTip k={title} size={12} /></h2>
         {canEdit && (hasChanges || saved) && (
           <button onClick={handleSave} disabled={!hasChanges || saving} style={btnSave(hasChanges)}>
             {saved && !hasChanges ? <><CheckCircle size={14} /> Enregistré</> : <><Save size={14} /> {saving ? 'Enregistrement…' : 'Enregistrer'}</>}
@@ -359,7 +360,7 @@ function SurgeTab({ canEdit }) {
         {/* En-tête du bloc : titre, interrupteur, Enregistrer */}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
           <div>
-            <h2 style={{ fontSize: 15, fontWeight: 700, margin: '0 0 4px' }}>Majoration aux heures de pointe</h2>
+            <h2 style={{ fontSize: 15, fontWeight: 700, margin: '0 0 4px' }}>Majoration aux heures de pointe<InfoTip k="Majoration aux heures de pointe" size={13} /></h2>
             <div style={{ color: 'var(--text-muted)', fontSize: 12.5, maxWidth: 460 }}>
               Multipliez le tarif selon les heures de forte demande. Le multiplicateur s'applique au prix total de la course.
             </div>

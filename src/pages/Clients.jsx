@@ -8,6 +8,7 @@ import { useAutoRefresh } from '../lib/useAutoRefresh'
 import { useUrlQuery } from '../lib/useUrlQuery'
 import PageHeader from '../components/PageHeader'
 import { canSee, ACTION_ROLES } from '../lib/droits'
+import InfoTip from '../components/InfoTip'
 
 // Ordre d'affichage : Sans badge en premier, puis progression des tiers.
 const CLIENT_BADGE_OPTIONS = [
@@ -658,7 +659,7 @@ function FicheSection({ title, aside, children }) {
   return (
     <div style={{ borderTop: '1px solid var(--border)', padding: '12px 0 8px' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 10, marginBottom: 8 }}>
-        <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', letterSpacing: 0.5, textTransform: 'uppercase' }}>{title}</div>
+        <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', letterSpacing: 0.5, textTransform: 'uppercase' }}>{title}<InfoTip k={title} size={12} /></div>
         {aside && <span style={{ fontSize: 11, color: 'var(--text-muted)', textAlign: 'right' }}>{aside}</span>}
       </div>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>{children}</div>

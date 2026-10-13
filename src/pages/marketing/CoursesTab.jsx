@@ -4,6 +4,7 @@ import api from '../../lib/api'
 import { glass } from '../../lib/glassStyles'
 import { useAutoRefresh } from '../../lib/useAutoRefresh'
 import { cancelReasonLabel } from '../../lib/cancelReasons'
+import InfoTip from '../../components/InfoTip'
 
 const TOOLTIP_STYLE = { background: '#fff', border: '1px solid var(--border)', borderRadius: 6, color: 'var(--text)', fontSize: 12, boxShadow: '0 2px 8px rgba(0,0,0,0.10)' }
 
@@ -73,7 +74,7 @@ export default function CoursesTab() {
 
       <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 16 }}>
         <div style={{ ...glass, padding: '18px 20px' }}>
-          <h2 style={{ fontSize: 14, fontWeight: 600, marginBottom: 14 }}>Taux d'annulation — évolution (30 derniers jours)</h2>
+          <h2 style={{ fontSize: 14, fontWeight: 600, marginBottom: 14 }}>Taux d'annulation — évolution (30 derniers jours)<InfoTip k="Taux d'annulation — évolution (30 derniers jours)" size={13} /></h2>
           <ResponsiveContainer width="100%" height={220}>
             <LineChart data={trend} margin={{ top: 0, right: 8, left: -20, bottom: 0 }}>
               <XAxis dataKey="dateLabel" tick={{ fontSize: 11, fill: 'var(--text-muted)' }} axisLine={false} tickLine={false} />
@@ -85,7 +86,7 @@ export default function CoursesTab() {
         </div>
 
         <div style={{ ...glass, padding: '18px 20px' }}>
-          <h2 style={{ fontSize: 14, fontWeight: 600, marginBottom: 14 }}>Motifs d'annulation (30 j)</h2>
+          <h2 style={{ fontSize: 14, fontWeight: 600, marginBottom: 14 }}>Motifs d'annulation (30 j)<InfoTip k="Motifs d'annulation (30 j)" size={13} /></h2>
           {reasons.length === 0 ? (
             <div style={{ color: 'var(--text-muted)', fontSize: 13, textAlign: 'center', paddingTop: 40 }}>Pas de données</div>
           ) : (

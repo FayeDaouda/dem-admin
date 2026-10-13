@@ -10,6 +10,7 @@ import ReportUserModal from '../components/ReportUserModal'
 import PageHeader from '../components/PageHeader'
 import { canSee, ACTION_ROLES } from '../lib/droits'
 import { cancelReasonLabel } from '../lib/cancelReasons'
+import InfoTip from '../components/InfoTip'
 
 // ── Constantes ────────────────────────────────────────────────────────────────
 const SEVERITY_CFG = {
@@ -421,7 +422,7 @@ function Person({ name, phone }) {
 function Section({ title, children }) {
   return (
     <div style={{ borderTop: '1px solid var(--border)', padding: '12px 0 8px' }}>
-      <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', letterSpacing: 0.5, textTransform: 'uppercase', marginBottom: 8 }}>{title}</div>
+      <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', letterSpacing: 0.5, textTransform: 'uppercase', marginBottom: 8 }}>{title}<InfoTip k={title} size={12} /></div>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>{children}</div>
     </div>
   )

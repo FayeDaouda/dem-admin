@@ -3,6 +3,7 @@ import { Banknote, Save } from 'lucide-react'
 import api from '../lib/api'
 import { useAuth } from '../contexts/AuthContext'
 import { glass, glassInput } from '../lib/glassStyles'
+import InfoTip from '../components/InfoTip'
 
 // Frais de mise en relation DEM (page Tarifs) — un montant prélevé sur
 // CHAQUE course, quel que soit le paiement (wallet, mobile money, espèces),
@@ -54,7 +55,7 @@ export default function CashFeeSection() {
     <div style={{ ...glass, padding: '18px 20px', marginBottom: 16 }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap', marginBottom: 6 }}>
         <h2 style={{ fontSize: 15, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 8 }}>
-          <Banknote size={16} /> Frais de mise en relation
+          <Banknote size={16} /> Frais de mise en relation<InfoTip k="Frais de mise en relation" size={13} />
         </h2>
         <span style={{
           fontSize: 11, fontWeight: 700, padding: '4px 10px', borderRadius: 999,

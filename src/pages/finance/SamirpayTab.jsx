@@ -7,6 +7,7 @@ import { useAutoRefresh } from '../../lib/useAutoRefresh'
 import { formatF, hoursSince } from '../../lib/format'
 import { useAuth } from '../../contexts/AuthContext'
 import CashoutReviewModal from './components/CashoutReviewModal'
+import InfoTip from '../../components/InfoTip'
 
 // Au-delà, le retrait est signalé en rouge (même seuil que l'alerte
 // financière CASHOUT_REVIEW_OVERDUE côté serveur).
@@ -284,7 +285,7 @@ export default function SamirpayTab() {
       {config?.active && (
         <div style={{ ...glass, padding: '18px 20px' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
-            <h2 style={{ fontSize: 14, fontWeight: 600 }}>Santé du solde partenaire</h2>
+            <h2 style={{ fontSize: 14, fontWeight: 600 }}>Santé du solde partenaire<InfoTip k="Santé du solde partenaire" size={13} /></h2>
             {health && <StatusPill ok={health.healthy} label={health.healthy ? 'Sain' : 'Écart détecté'} />}
           </div>
           {!health ? (
@@ -326,7 +327,7 @@ export default function SamirpayTab() {
 
       {/* Collecté par opérateur */}
       <div style={{ ...glass, padding: '18px 20px' }}>
-        <h2 style={{ fontSize: 14, fontWeight: 600, marginBottom: 4 }}>Collecté par opérateur</h2>
+        <h2 style={{ fontSize: 14, fontWeight: 600, marginBottom: 4 }}>Collecté par opérateur<InfoTip k="Collecté par opérateur" size={13} /></h2>
         <p style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 14 }}>
           Argent réellement reçu via SamirPay depuis le début : recharges wallet (y compris achats directs de pass et d'abonnements DEM Pro)
           + commandes payées en ligne (livrées, en cours ou annulées), au montant payé par le client, hors commandes déjà remboursées.
@@ -362,7 +363,7 @@ export default function SamirpayTab() {
               ({(refunds?.length ?? 0) + (duplicates?.length ?? 0)} · {formatF((refunds ?? []).reduce((s, r) => s + r.amountDue, 0) + (duplicates ?? []).reduce((s, d) => s + d.amount, 0))})
             </span>
           )}
-        </h2>
+        <InfoTip k="Paiements à rembourser" size={13} /></h2>
         <p style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 14 }}>
           Commandes payées en ligne puis annulées, et doubles paiements : l'argent est chez SamirPay mais appartient au client. Aucun remboursement n'est automatique —
           rembourser le client hors application, puis le déclarer ici (tracé dans l'audit).
@@ -434,7 +435,7 @@ export default function SamirpayTab() {
 
       {/* Lien de commande DEM Pro — commandes payées (argent bloqué jusqu'à la livraison) */}
       <div style={{ ...glass, padding: '18px 20px' }}>
-        <h2 style={{ fontSize: 14, fontWeight: 600, marginBottom: 4 }}>Lien de commande DEM Pro — commandes payées (30 jours)</h2>
+        <h2 style={{ fontSize: 14, fontWeight: 600, marginBottom: 4 }}>Lien de commande DEM Pro — commandes payées (30 jours)<InfoTip k="Lien de commande DEM Pro — commandes payées (30 jours)" size={13} /></h2>
         <p style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 14 }}>
           Les articles sont versés au wallet de la boutique dès le paiement mais restent bloqués jusqu'à la livraison.
           En cas de litige, « Rembourser » renvoie l'argent au client et reprend la vente sur le wallet de la boutique.
@@ -486,7 +487,7 @@ export default function SamirpayTab() {
           Lien de commande DEM Pro — remboursements automatiques {linkRefunds?.some(r => ['REVIEW', 'FAILED'].includes(r.refundStatus)) && (
             <span style={{ color: '#e53e3e' }}>({linkRefunds.filter(r => ['REVIEW', 'FAILED'].includes(r.refundStatus)).length} à traiter)</span>
           )}
-        </h2>
+        <InfoTip k="Lien de commande DEM Pro — remboursements automatiques" size={13} /></h2>
         <p style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 14 }}>
           Commande payée sur le lien puis refusée par la boutique, restée sans réponse, annulée avant récupération, ou payée deux fois :
           le client est remboursé automatiquement sur son numéro. « À vérifier » = le réseau a coupé pendant l'envoi : contrôler le relevé SamirPay avant tout.
@@ -541,7 +542,7 @@ export default function SamirpayTab() {
       <div style={{ ...glass, padding: '18px 20px' }}>
         <h2 style={{ fontSize: 14, fontWeight: 600, marginBottom: 4 }}>
           Retraits en vérification manuelle {manualReview?.length > 0 && <span style={{ color: '#e53e3e' }}>({manualReview.length})</span>}
-        </h2>
+        <InfoTip k="Retraits en vérification manuelle" size={13} /></h2>
         <p style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 14 }}>
           Panne réseau pendant le virement : le montant est réservé sur le solde du coursier ou du marchand tant que le retrait n'est pas clos.
           Vérifiez l'issue dans le tableau de bord SamirPay (ou Wave / Orange Money), puis confirmez-le ou remboursez-le.
@@ -604,7 +605,7 @@ export default function SamirpayTab() {
         <h2 style={{ fontSize: 14, fontWeight: 600, marginBottom: 4 }}>
           Transactions orphelines {(orphans?.topups.length ?? 0) + (orphans?.orders.length ?? 0) > 0 &&
             <span style={{ color: '#e53e3e' }}>({(orphans?.topups.length ?? 0) + (orphans?.orders.length ?? 0)})</span>}
-        </h2>
+        <InfoTip k="Transactions orphelines" size={13} /></h2>
         <p style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 14 }}>
           SamirPay n'a jamais renvoyé d'identifiant de transaction — en attente depuis plus de 30 min, aucun suivi automatique possible.
         </p>
@@ -675,7 +676,7 @@ export default function SamirpayTab() {
 
       {/* Export rapprochement comptable */}
       <div style={{ ...glass, padding: '18px 20px' }}>
-        <h2 style={{ fontSize: 14, fontWeight: 600, marginBottom: 14 }}>Export rapprochement comptable</h2>
+        <h2 style={{ fontSize: 14, fontWeight: 600, marginBottom: 14 }}>Export rapprochement comptable<InfoTip k="Export rapprochement comptable" size={13} /></h2>
         <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
           <DateRangeFilter value={range} onChange={setRange} />
           <button onClick={handleExportDailyReport} disabled={exporting} style={btnPrimary}>

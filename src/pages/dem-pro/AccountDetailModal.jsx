@@ -11,6 +11,7 @@ import {
 } from './labels'
 import { ProductFormModal, DeleteProductModal } from './ProductModals'
 import { cancelReasonLabel } from '../../lib/cancelReasons'
+import InfoTip from '../../components/InfoTip'
 
 // ── Fiche commerçant DEM Pro (admin) ──────────────────────────────────────────
 // Données : GET /admin/dem-pro/:id (admin.dem-pro-accounts.service.js) — mêmes
@@ -1027,7 +1028,7 @@ function Section({ title, hint, action, children }) {
   return (
     <div>
       <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, marginBottom: 10 }}>
-        <h3 style={{ fontSize: 13, fontWeight: 700, margin: 0, textTransform: 'uppercase', letterSpacing: '.5px', color: 'var(--text-muted)' }}>{title}</h3>
+        <h3 style={{ fontSize: 13, fontWeight: 700, margin: 0, textTransform: 'uppercase', letterSpacing: '.5px', color: 'var(--text-muted)' }}>{title}<InfoTip k={title} size={12} /></h3>
         {hint && <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>{hint}</span>}
         {action && <div style={{ marginLeft: 'auto', alignSelf: 'center' }}>{action}</div>}
       </div>

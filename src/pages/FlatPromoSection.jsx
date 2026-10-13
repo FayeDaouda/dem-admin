@@ -3,6 +3,7 @@ import { Tag, Save } from 'lucide-react'
 import api from '../lib/api'
 import { useAuth } from '../contexts/AuthContext'
 import { glass, glassInput } from '../lib/glassStyles'
+import InfoTip from '../components/InfoTip'
 
 // Promotion « prix unique » de la page Tarifs — tant qu'elle est active,
 // chaque course (Normale ou Express, sans majoration heure de pointe) et
@@ -73,7 +74,7 @@ export default function FlatPromoSection() {
     }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap', marginBottom: 6 }}>
         <h2 style={{ fontSize: 15, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 8 }}>
-          <Tag size={16} /> Promotion prix unique
+          <Tag size={16} /> Promotion prix unique<InfoTip k="Promotion prix unique" size={13} />
         </h2>
         <span style={{
           fontSize: 11, fontWeight: 700, padding: '4px 10px', borderRadius: 999,

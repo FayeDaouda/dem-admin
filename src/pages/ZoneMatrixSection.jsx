@@ -3,6 +3,7 @@ import { Send, RefreshCw } from 'lucide-react'
 import api from '../lib/api'
 import { useAuth } from '../contexts/AuthContext'
 import { glass, glassInput, stickyTh, stickyCol, stickyThCol } from '../lib/glassStyles'
+import InfoTip from '../components/InfoTip'
 
 // RIDE (Thiak Thiak) retiré — plus d'actualité. Seul DELIVERY reste tarifé
 // par zone ; si RIDE revient un jour, réintroduire un sélecteur ici (voir
@@ -12,7 +13,7 @@ const ORDER_TYPE = 'DELIVERY'
 function Section({ title, children }) {
   return (
     <div style={{ ...glass, padding: '18px 20px', marginBottom: 16 }}>
-      <h2 style={{ fontSize: 15, fontWeight: 700, marginBottom: 14 }}>{title}</h2>
+      <h2 style={{ fontSize: 15, fontWeight: 700, marginBottom: 14 }}>{title}<InfoTip k={title} size={12} /></h2>
       {children}
     </div>
   )

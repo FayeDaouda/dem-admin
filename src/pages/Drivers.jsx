@@ -11,6 +11,7 @@ import PageHeader from '../components/PageHeader'
 import { canSee, ACTION_ROLES } from '../lib/droits'
 import { useAutoRefresh } from '../lib/useAutoRefresh'
 import { useUrlQuery } from '../lib/useUrlQuery'
+import InfoTip from '../components/InfoTip'
 
 
 const DOC_LIST = [
@@ -1081,7 +1082,7 @@ function pick(obj, keys) {
 function FicheSection({ title, children }) {
   return (
     <div style={{ borderTop: '1px solid var(--border)', padding: '12px 0 8px' }}>
-      <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', letterSpacing: 0.5, textTransform: 'uppercase', marginBottom: 8 }}>{title}</div>
+      <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', letterSpacing: 0.5, textTransform: 'uppercase', marginBottom: 8 }}>{title}<InfoTip k={title} size={12} /></div>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>{children}</div>
     </div>
   )
