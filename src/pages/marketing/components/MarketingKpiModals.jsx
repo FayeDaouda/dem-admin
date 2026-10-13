@@ -147,7 +147,7 @@ function useRetention(days) {
   return { data, loading }
 }
 
-export function RetentionModal({ icon, color, onClose, focus = 'retention' }) {
+export function RetentionModal({ icon, color, onClose, focus = 'retention', title }) {
   const [days, setDays] = useState(30)
   const { data, loading } = useRetention(days)
   const windowLabel = ACTIVITY_PERIODS.find(p => p.key === days)?.label ?? `${days} jours`
@@ -187,7 +187,7 @@ export function RetentionModal({ icon, color, onClose, focus = 'retention' }) {
 
   const a = data?.activity
   return (
-    <Shell icon={icon} color={color} title={focus === 'active' ? 'Clients actifs' : 'Clients inactifs'} onClose={onClose}>
+    <Shell icon={icon} color={color} title={title ?? (focus === 'active' ? 'Clients actifs' : 'Clients inactifs')} onClose={onClose}>
       <PeriodTabs periods={ACTIVITY_PERIODS} active={days} onChange={setDays} color={color} />
       {loading ? <Loading /> : !a ? <LoadError /> : (
         <>

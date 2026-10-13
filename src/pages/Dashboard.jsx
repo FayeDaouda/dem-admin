@@ -199,8 +199,87 @@ function PeriodPills({ periods, active, onChange, color, format = p => p.label }
 
 // Série journalière d'une mesure de /admin/stats/timeseries (même source que
 // la carte et sa courbe).
+// Début du jour calendaire en UTC = jour de Dakar, comme le serveur
+// (admin.kpi-definitions.js:startOfUtcDay), quel que soit le fuseau du poste.
+function startOfUtcDay(d = new Date()) {
+  return Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate())
+}
+
+// Courses comptées par une carte « Aujourd'hui » : créées depuis minuit
+// (createdAt) ou livrées depuis minuit (deliveredAt). /admin/orders trie par
+// date de création décroissante et n'a pas de filtre de date : on charge les
+// plus récentes et on garde celles du jour. Les totaux du pied de tableau
+// sont ceux des cartes (part coursier = gains coursiers, frais DEM =
+// commission facturée).
+function TodayOrdersList({ kind, expectedCount, color }) {
+  const [orders, setOrders] = useState(null)
+  const [error, setError]   = useState(false)
+  const scanLimit = kind === 'created' ? Math.max(expectedCount ?? 0, 0) + 20 : 200
+
+  useEffect(() => {
+    const params = kind === 'created' ? { limit: scanLimit } : { group: 'delivered', limit: scanLimit }
+    api.get('/admin/orders', { params })
+      .then(r => {
+        const since = startOfUtcDay()
+        const field = kind === 'created' ? 'createdAt' : 'deliveredAt'
+        setOrders((r.data.orders ?? []).filter(o => o[field] && new Date(o[field]).getTime() >= since))
+      })
+      .catch(() => { setOrders([]); setError(true) })
+  }, [kind, scanLimit])
+
+  if (orders === null) return <div style={emptyStyle}>Chargement…</div>
+  if (error) return <div style={{ ...emptyStyle, color: '#dc2626' }}>Impossible de charger la liste des courses.</div>
+  if (orders.length === 0) return <div style={emptyStyle}>Aucune course {kind === 'created' ? 'créée' : 'livrée'} aujourd'hui.</div>
+
+  const timeField = kind === 'created' ? 'createdAt' : 'deliveredAt'
+  // Montants seulement pour les courses livrées : une course créée puis
+  // annulée n'a rapporté ni part coursier ni frais DEM.
+  const withAmounts = kind === 'delivered'
+  const totalPrice = orders.reduce((s, o) => s + (o.price ?? 0), 0)
+  const totalFee   = orders.reduce((s, o) => s + (o.demFee ?? 0), 0)
+
+  return (
+    <>
+      {expectedCount != null && orders.length !== expectedCount && (
+        <div style={{ fontSize: 11, color: '#b45309', marginBottom: 8 }}>
+          {orders.length} course(s) listée(s) pour {expectedCount} comptée(s) par la carte
+          {kind === 'delivered' ? ` (la liste couvre les ${scanLimit} dernières courses livrées)` : ' (une course a pu arriver entre-temps : actualisez)'}.
+        </div>
+      )}
+      <div style={{ overflowX: 'auto' }}>
+        <table style={tableStyle}>
+          <thead><tr>{[kind === 'created' ? 'Créée à' : 'Livrée à', 'Statut', 'Client', 'Coursier', 'Trajet', ...(withAmounts ? ['Part coursier', 'Frais DEM'] : [])].map(h => <th key={h} style={thStyle}>{h}</th>)}</tr></thead>
+          <tbody>
+            {orders.map(o => (
+              <tr key={o.id} style={{ borderBottom: '1px solid var(--border)' }}>
+                <td style={{ ...tdStyle, whiteSpace: 'nowrap' }}>{new Date(o[timeField]).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit', timeZone: 'UTC' })}</td>
+                <td style={tdStyle}><Badge status={o.status} /></td>
+                <td style={tdStyle}>{o.client?.proBusinessName ?? o.client?.name ?? o.clientName ?? '—'}</td>
+                <td style={tdStyle}>{o.driver?.name ?? '—'}</td>
+                <td style={{ ...tdStyle, fontSize: 12, maxWidth: 220 }} title={`${o.pickupAddress} → ${o.deliveryAddress}`}>
+                  <div style={ellipsis}>{o.pickupAddress}</div>
+                  <div style={{ ...ellipsis, color: 'var(--text-muted)' }}>→ {o.deliveryAddress}</div>
+                </td>
+                {withAmounts && <td style={{ ...tdStyle, whiteSpace: 'nowrap' }}>{formatF(o.price)}</td>}
+                {withAmounts && <td style={{ ...tdStyle, whiteSpace: 'nowrap' }}>{formatF(o.demFee)}</td>}
+              </tr>
+            ))}
+          </tbody>
+          <tfoot>
+            <tr>
+              <td colSpan={5} style={{ ...tdStyle, fontWeight: 700, color }}>{orders.length} course{orders.length > 1 ? 's' : ''}</td>
+              {withAmounts && <td style={{ ...tdStyle, fontWeight: 700, whiteSpace: 'nowrap' }}>{formatF(totalPrice)}</td>}
+              {withAmounts && <td style={{ ...tdStyle, fontWeight: 700, whiteSpace: 'nowrap' }}>{formatF(totalFee)}</td>}
+            </tr>
+          </tfoot>
+        </table>
+      </div>
+    </>
+  )
+}
+
 function KpiModal({ kpi, onClose }) {
-  const [period, setPeriod] = useState('30d')
+  const [period, setPeriod] = useState(kpi.defaultPeriod ?? '30d')
   const [data, setData]     = useState([])
   const [loading, setLoading] = useState(true)
   const days = PERIODS.find(p => p.key === period)?.days ?? 30
@@ -226,6 +305,12 @@ function KpiModal({ kpi, onClose }) {
     <Shell icon={kpi.icon} color={kpi.color} title={kpi.title} onClose={onClose}>
       <PeriodPills periods={PERIODS} active={period} onChange={setPeriod} color={kpi.color} />
       {kpi.note && <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: -8, marginBottom: 14 }}>{kpi.note}</div>}
+      {period === 'today' && kpi.list ? (
+        <>
+          <SummaryBoxes color={kpi.color} items={[["Aujourd'hui", loading ? '…' : fmt(total)]]} />
+          <TodayOrdersList kind={kpi.list} expectedCount={kpi.expectedCount} color={kpi.color} />
+        </>
+      ) : (<>
       <SummaryBoxes color={kpi.color} items={[['Total', fmt(total)], ['Moyenne / jour', fmt(avg)], ['Max journalier', fmt(max)]]} />
       {loading ? <div style={emptyStyle}>Chargement…</div> : (
         <ResponsiveContainer width="100%" height={260}>
@@ -238,6 +323,7 @@ function KpiModal({ kpi, onClose }) {
           </BarChart>
         </ResponsiveContainer>
       )}
+      </>)}
     </Shell>
   )
 }
@@ -531,10 +617,10 @@ export default function Dashboard() {
     { id: 'created', icon: Package, color: '#0077b6', label: 'Courses créées', value: v(stats?.orders.createdToday),
       sub: stats ? `Historique : ${stats.orders.total.toLocaleString('fr-FR')}` : null,
       trendNow: stats?.trend?.ordersCreated?.today, trendPrev: stats?.trend?.ordersCreated?.yesterdaySameTime, sparkKey: 'orders',
-      modal: { title: 'Courses créées', note: 'Commandes comptées à leur date de création.', dataKey: 'orders', unit: '' } },
+      modal: { title: 'Courses créées', note: 'Commandes comptées à leur date de création.', dataKey: 'orders', unit: '', defaultPeriod: 'today', list: 'created', expectedCount: stats?.orders.createdToday } },
     { id: 'delivered', icon: CheckCircle, color: '#22c55e', label: 'Courses livrées', value: v(stats?.orders.deliveredToday),
       sub: 'Comptées à l’heure de livraison', sparkKey: 'delivered',
-      modal: { title: 'Courses livrées', note: 'Courses comptées à leur date de livraison.', dataKey: 'delivered', unit: '' } },
+      modal: { title: 'Courses livrées', note: 'Courses comptées à leur date de livraison.', dataKey: 'delivered', unit: '', defaultPeriod: 'today', list: 'delivered', expectedCount: stats?.orders.deliveredToday } },
     !isFinance && { id: 'cancellation', icon: XCircle, color: '#ef4444', label: "Taux d'annulation",
       value: cancellationRate == null ? v(null) : `${cancellationRate}%`,
       sub: mk?.cancellationToday ? `${mk.cancellationToday.cancelled} annulée(s) sur ${mk.cancellationToday.created} créée(s) aujourd'hui` : 'Parmi les courses créées aujourd’hui',
@@ -542,11 +628,11 @@ export default function Dashboard() {
     can.revenue && { id: 'demFee', icon: CreditCard, color: '#f59e0b', label: 'Commission DEM facturée', value: stats ? formatF(stats.revenue.dem.today) : v(null),
       sub: stats ? `Courses livrées · total ${formatF(stats.revenue.dem.total)}` : null,
       trendNow: stats?.revenue?.dem?.today, trendPrev: stats?.revenue?.dem?.yesterdaySameTime, sparkKey: 'demRevenue',
-      modal: { title: 'Commission DEM facturée', note: 'Frais DEM réellement facturés sur les courses livrées, à la date de livraison. Encaissé / à recouvrer : page Finance.', dataKey: 'demRevenue', unit: 'F' } },
+      modal: { title: 'Commission DEM facturée', note: 'Frais DEM réellement facturés sur les courses livrées, à la date de livraison. Encaissé / à recouvrer : page Finance.', dataKey: 'demRevenue', unit: 'F', defaultPeriod: 'today', list: 'delivered', expectedCount: stats?.orders.deliveredToday } },
     can.revenue && { id: 'driverRevenue', icon: Wallet, color: '#10b981', label: 'Gains coursiers', value: stats ? formatF(stats.revenue.driver.today) : v(null),
       sub: stats ? `Part coursier des courses livrées · total ${formatF(stats.revenue.driver.total)}` : null,
       trendNow: stats?.revenue?.driver?.today, trendPrev: stats?.revenue?.driver?.yesterdaySameTime, sparkKey: 'driverRevenue',
-      modal: { title: 'Gains coursiers', note: 'Part coursier (prix de la course hors frais DEM) des courses livrées, à la date de livraison.', dataKey: 'driverRevenue', unit: 'F' } },
+      modal: { title: 'Gains coursiers', note: 'Part coursier (prix de la course hors frais DEM) des courses livrées, à la date de livraison.', dataKey: 'driverRevenue', unit: 'F', defaultPeriod: 'today', list: 'delivered', expectedCount: stats?.orders.deliveredToday } },
     can.marketing && { id: 'newClients', icon: UserPlus, color: '#06b6d4', label: 'Nouveaux clients', value: v(mk?.newClientsToday),
       sub: 'Inscriptions du jour' },
     can.financeKpis && { id: 'pass', icon: Ticket, color: '#8b5cf6', label: 'Pass achetés', value: v(financeKpis?.passActivatedToday),
@@ -806,7 +892,7 @@ export default function Dashboard() {
             <Activity size={15} color="var(--primary)" />
             <span style={{ fontSize: 14, fontWeight: 600 }}>Santé technique</span>
             <span style={{ marginLeft: 'auto', fontSize: 11, color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: 10 }}>
-              <span><Wifi size={11} style={{ marginRight: 3, verticalAlign: -1 }} />{health.sockets?.connected ?? '?'} connexions</span>
+              <span><Wifi size={11} style={{ marginRight: 3, verticalAlign: -1 }} />{health.sockets?.connected ?? '?'} connexion{(health.sockets?.connected ?? 0) > 1 ? 's' : ''}</span>
               <span>en service depuis {Math.floor((health.uptime ?? 0) / 3600)} h {Math.floor(((health.uptime ?? 0) % 3600) / 60)} min</span>
             </span>
           </button>
@@ -847,7 +933,7 @@ export default function Dashboard() {
       {openModal === 'drivers'        && <DriverActivityModal {...modalProps} />}
       {openModal === 'cancellation'   && (isSuper ? <CancellationModal {...modalProps} /> : <CancellationRateModal {...modalProps} />)}
       {openModal === 'newClients'     && <NewClientsModal {...modalProps} />}
-      {openModal === 'clients'        && <RetentionModal {...modalProps} focus="active" />}
+      {openModal === 'clients'        && <RetentionModal {...modalProps} focus="active" title="Clients inscrits" />}
       {openModal === 'retention'      && <RetentionModal {...modalProps} focus="retention" />}
       {openModal === 'clientAttempts' && <OrderingAccountsModal kind="clients" {...modalProps} />}
       {openModal === 'demPro'         && <DemProAccountsModal {...modalProps} />}
