@@ -56,4 +56,17 @@ export const ACTION_ROLES = {
   // Parrainage › compteur des parrainages DEM Pro : /admin/dem-pro/referrals ;
   // le rôle Marketing ne voit pas les parrainages DEM Pro aujourd'hui → Super seul.
   proReferralCounter: [],
+  // Chefs de flotte (page visible de Super, Ass. exéc. et Service Client) :
+  // créer, supprimer, suspendre (POST, DELETE, /suspend) : Super seul ;
+  chefManage: [],
+  // modifier et mot de passe provisoire (PATCH /:id, /reset-password) :
+  // Super + Service Client ;
+  chefEdit: ['SERVICE_CLIENT'],
+  // valider / réactiver le chef (/validate) : Super + Ass. exéc. ;
+  chefValidate: ['ASSISTANCE_EXECUTIVE'],
+  // coursiers de la flotte (valider, suspendre, réactiver, rattacher,
+  // retirer) : Super + Ass. exéc. — le Service Client garde la lecture ;
+  fleetDriverActions: ['ASSISTANCE_EXECUTIVE'],
+  // signaler un chef : POST /admin/report-user (Super, Dev, SC, Ass. exéc.).
+  reportChef: ['DEV', 'SERVICE_CLIENT', 'ASSISTANCE_EXECUTIVE'],
 }
