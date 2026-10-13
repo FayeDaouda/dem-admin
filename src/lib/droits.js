@@ -46,4 +46,8 @@ export const ACTION_ROLES = {
   passDue:      [], // Finance › Pass coursiers, dû et prélèvement : Super seul (décision du plan de refonte)
   passSettings: [], // Tarifs et zones, activation et montants des pass : PUT /admin/forfait/config, Super seul
   freeCourseOffer: [], // Marketing › Acquisition, offre 100 clients : /admin/acquisition/free-course, Super seul
+  // Tarifs et zones : promo prix unique, frais de mise en relation, matrice
+  // des zones, pass — lecture serveur Super + Finance ; la page est visible de
+  // Super + Dev, donc masqués au rôle Dev (ils lui affichaient une erreur).
+  tariffBlocks: ['FINANCE'],
 }

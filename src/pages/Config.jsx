@@ -10,7 +10,9 @@ import PassLivreursSection from './PassLivreursSection'
 import PassForfaitSettings from './PassForfaitSettings'
 import { useAuth } from '../contexts/AuthContext'
 import { canSee, ACTION_ROLES } from '../lib/droits'
-import AppVersionTab from './AppVersionTab'
+import PageHeader from '../components/PageHeader'
+import TabBar from '../components/TabBar'
+import { useUrlTab } from '../lib/useUrlTab'
 import DeliveryZoneTab from './DeliveryZoneTab'
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -48,21 +50,23 @@ const btnOutline = {
 }
 
 // ── Page principale ───────────────────────────────────────────────────────────
+const CONFIG_TABS = [
+  { key: 'tarifs', label: 'Tarifs' },
+  { key: 'surge',  label: 'Heures de pointe' },
+  { key: 'zone',   label: 'Zone de livraison' },
+]
+
+// Tarifs et zones (plan de refonte, étape 3.5) — la version de l'app a sa
+// propre page dans Administration (/version-app).
 export default function Config() {
-  const [tab, setTab] = useState('tarifs')
+  const [tab, setTab] = useUrlTab(CONFIG_TABS)
   return (
     <div>
-      <h1 style={{ fontSize: 22, fontWeight: 700, marginBottom: 20 }}>Configuration</h1>
-      <div style={{ display: 'flex', gap: 4, marginBottom: 24, background: 'rgba(255,255,255,.45)', borderRadius: 'var(--radius)', padding: 4, width: 'fit-content' }}>
-        <button style={TAB(tab === 'tarifs')}      onClick={() => setTab('tarifs')}>Tarifs</button>
-        <button style={TAB(tab === 'surge')}        onClick={() => setTab('surge')}>Heures de pointe</button>
-        <button style={TAB(tab === 'version')}      onClick={() => setTab('version')}>Version de l'app</button>
-        <button style={TAB(tab === 'zone')}         onClick={() => setTab('zone')}>Zone de livraison</button>
-      </div>
-      {tab === 'tarifs'      && <TarifsTab />}
-      {tab === 'surge'       && <SurgeTab />}
-      {tab === 'version'     && <AppVersionTab />}
-      {tab === 'zone'        && <DeliveryZoneTab />}
+      <PageHeader title="Tarifs et zones" subtitle="Prix des courses, pass coursiers, heures de pointe et zone de livraison" />
+      <TabBar tabs={CONFIG_TABS} active={tab} onChange={setTab} />
+      {tab === 'tarifs' && <TarifsTab />}
+      {tab === 'surge'  && <SurgeTab />}
+      {tab === 'zone'   && <DeliveryZoneTab />}
     </div>
   )
 }
@@ -76,6 +80,7 @@ export default function Config() {
 // actif en prod après une tentative de désactivation.
 function TarifsTab() {
   const { user } = useAuth()
+  const showTariffBlocks = canSee(user?.adminRole, ACTION_ROLES.tariffBlocks)
   const [config,  setConfig]  = useState({})
   const [draft,   setDraft]   = useState({})
   const [connectionFee, setConnectionFee] = useState(100)
@@ -125,9 +130,9 @@ function TarifsTab() {
           au-dessus de TarifsTab). */}
       {/* Promotion prix unique — au-dessus de la matrice : quand elle est
           active, elle remplace tous les prix (voir FlatPromoSection.jsx). */}
-      <FlatPromoSection />
-      <CashFeeSection />
-      <ZoneMatrixSection />
+      {showTariffBlocks && <FlatPromoSection />}
+      {showTariffBlocks && <CashFeeSection />}
+      {showTariffBlocks && <ZoneMatrixSection />}
 
       {/* Le bouton Sauvegarder ci-dessous ne concerne QUE les champs
           /admin/config en dessous (tarif de base, DEM Pro, position coursier),
@@ -204,7 +209,7 @@ function TarifsTab() {
           /admin/config). Ne pas la dupliquer sur une autre page (voir
           commentaire au-dessus de TarifsTab). */}
       <div style={{ marginTop: 16 }}>
-        <PassLivreursSection />
+        {showTariffBlocks && <PassLivreursSection />}
         {canSee(user?.adminRole, ACTION_ROLES.passSettings) && (
           <div style={{ marginTop: 16 }}><PassForfaitSettings /></div>
         )}
