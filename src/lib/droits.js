@@ -56,4 +56,13 @@ export const ACTION_ROLES = {
   // Parrainage › compteur des parrainages DEM Pro : /admin/dem-pro/referrals ;
   // le rôle Marketing ne voit pas les parrainages DEM Pro aujourd'hui → Super seul.
   proReferralCounter: [],
+  // Clients (page visible de Super, Dev et Service Client) :
+  // créer (POST /admin/clients) : Super seul ;
+  clientCreate: [],
+  // modifier (PATCH /admin/clients/:id) : Super + Service Client ;
+  clientEdit: ['SERVICE_CLIENT'],
+  // bannir / débannir, supprimer, décider d'un changement de numéro
+  // (/ban, /unban, DELETE, /phone-change) : Super seul ; la conversion en
+  // DEM Pro reste réservée au Super comme avant.
+  clientManage: [],
 }
