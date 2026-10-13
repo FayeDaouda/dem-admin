@@ -56,4 +56,22 @@ export const ACTION_ROLES = {
   // Parrainage › compteur des parrainages DEM Pro : /admin/dem-pro/referrals ;
   // le rôle Marketing ne voit pas les parrainages DEM Pro aujourd'hui → Super seul.
   proReferralCounter: [],
+  // Coursiers (page visible de Super, Dev, Ass. exéc. et Service Client) :
+  // créer (POST /admin/drivers) et envoyer des pièces (PATCH .../documents) : Super seul ;
+  driverCreate: [],
+  driverDocsUpload: [],
+  // modifier (PATCH /admin/drivers/:id) : Super + Ass. exéc. + Service Client ;
+  driverEdit: ['ASSISTANCE_EXECUTIVE', 'SERVICE_CLIENT'],
+  // activer / refuser un nouveau coursier (/validate) et suspendre /
+  // réactiver (/suspend, /activate) : Super + Ass. exéc. (le Service Client
+  // passe par « Demander une suspension », comme avant) ;
+  driverValidate: ['ASSISTANCE_EXECUTIVE'],
+  driverSuspend:  ['ASSISTANCE_EXECUTIVE'],
+  // supprimer, désarchiver, décider d'un changement de numéro : Super seul ;
+  driverManage: [],
+  // statistiques de paiement (/payment-stats) : Super + Finance.
+  driverPaymentStats: ['FINANCE'],
+  // Signaler un coursier depuis sa fiche : POST /admin/report-user (Super,
+  // Dev, SC, Ass. exéc.) — sans recherche de client, donc ouvert à l'Ass. exéc.
+  reportDriver: ['DEV', 'SERVICE_CLIENT', 'ASSISTANCE_EXECUTIVE'],
 }
