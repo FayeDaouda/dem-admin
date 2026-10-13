@@ -2,6 +2,9 @@ import { useState, useEffect, useCallback } from 'react'
 import api from '../lib/api'
 import { glass, glassInput, pageWrap, pageScroll } from '../lib/glassStyles'
 import { useAutoRefresh } from '../lib/useAutoRefresh'
+import { useAuth } from '../contexts/AuthContext'
+import { canSee, ACTION_ROLES } from '../lib/droits'
+import ProReferralCounter from './ProReferralCounter'
 
 const Card = ({ children, style = {} }) => (
   <div style={{ ...glass, padding: '20px 24px', ...style }}>{children}</div>
@@ -15,6 +18,7 @@ const StatBox = ({ label, value, color }) => (
 )
 
 export default function Parrainage() {
+  const { user } = useAuth()
   const [data,     setData]     = useState(null)
   const [loading,  setLoading]  = useState(true)
   const [search,   setSearch]   = useState('')
@@ -43,7 +47,7 @@ export default function Parrainage() {
       <div style={{ marginBottom: 24, flexShrink: 0 }}>
         <h1 style={{ fontSize: 22, fontWeight: 700 }}>Parrainage</h1>
         <p style={{ color: 'var(--text-muted)', fontSize: 13, marginTop: 4 }}>
-          Suivi des parrainages et credits MLM distribues.
+          Parrainages des clients. Ceux des commerçants DEM Pro se gèrent dans DEM Pro › Parrainage.
         </p>
       </div>
 
@@ -52,6 +56,7 @@ export default function Parrainage() {
         <StatBox label="Parrains (au moins 1 filleul)" value={data?.referrers?.length ?? 0} color="#22c55e" />
         {/* Aucun crédit de parrainage n'est versé dans l'app — l'ancien chiffre était 20 % de toutes les commissions */}
         <StatBox label="Bonus promis (non versés)" value={`${bonusRecorded.toLocaleString()} F`} color="#f59e0b" />
+        {canSee(user?.adminRole, ACTION_ROLES.proReferralCounter) && <ProReferralCounter />}
       </div>
 
       <input

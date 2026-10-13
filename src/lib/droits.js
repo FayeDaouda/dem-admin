@@ -54,4 +54,7 @@ export const ACTION_ROLES = {
   // exéc.) mais la recherche du client passe par /admin/clients, refusée à
   // l'Assistance exécutive → Super, Dev et Service Client.
   reportUser: ['DEV', 'SERVICE_CLIENT'],
+  // Parrainage › compteur des parrainages DEM Pro : /admin/dem-pro/referrals ;
+  // le rôle Marketing ne voit pas les parrainages DEM Pro aujourd'hui → Super seul.
+  proReferralCounter: [],
 }
