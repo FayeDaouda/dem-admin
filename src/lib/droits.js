@@ -42,4 +42,5 @@ export const TAB_ROLES = {
 // Actions réservées, à l'intérieur d'un écran.
 export const ACTION_ROLES = {
   giftForfait: [], // pass offerts : serveur Super + Finance, écran Promotions visible de Super + Marketing → Super seul
+  feesSinceLaunch: [], // Finance › Revenus, frais depuis le lancement : /admin/acquisition/fees, Super seul
 }

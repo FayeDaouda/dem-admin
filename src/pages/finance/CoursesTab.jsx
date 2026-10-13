@@ -14,7 +14,6 @@ function Line({ label, value, color }) {
 }
 
 function PeriodCard({ label, rev }) {
-  const ch = rev.ordersByChannel
   return (
     <div style={{ ...glass, padding: '18px 20px', flex: '1 1 240px' }}>
       <div style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 700, letterSpacing: '.5px', marginBottom: 12, textTransform: 'uppercase' }}>{label}</div>
@@ -26,13 +25,6 @@ function PeriodCard({ label, rev }) {
       <Line label="Remises promo (payées par DEM)" value={formatF(rev.promoCost)} />
       <Line label="Prix moyen d'une course (hors remise)" value={formatF(rev.avgDeliveryPrice)} color="#06b6d4" />
 
-      <div style={{ borderTop: '1px solid rgba(0,119,182,0.12)', marginTop: 10, paddingTop: 8 }}>
-        <div style={{ fontSize: 10, color: 'var(--text-muted)', fontWeight: 700, letterSpacing: '.5px', marginBottom: 4 }}>PAIEMENT DE CES COURSES</div>
-        <Line label="Payées en ligne" value={formatCount(ch.online)} color="#22c55e" />
-        <Line label="Payées en espèces (coursier)" value={formatCount(ch.cash)} />
-        <Line label="Pas encore payées" value={formatCount(ch.unpaid)} color="#94a3b8" />
-        <Line label="En litige" value={formatCount(ch.disputed)} color="#ef4444" />
-      </div>
     </div>
   )
 }
@@ -59,7 +51,7 @@ export default function CoursesTab() {
     <div>
       <p style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 0, marginBottom: 14, lineHeight: 1.5 }}>
         Courses comptées à leur date de livraison. Prix moyen = ce que paie le client avant remise (part coursier + commission DEM).
-        Les quatre modes de paiement couvrent toutes les courses livrées (leur somme = nombre de courses livrées).
+        La répartition par mode de paiement est dans Finance › Paiements › Encaissements.
       </p>
       <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap' }}>
         <PeriodCard label="Aujourd'hui" rev={data.today} />

@@ -1,24 +1,20 @@
 import { useState } from 'react'
-import { RefreshCw, Wallet, Receipt, Ticket, Package, TrendingUp } from 'lucide-react'
+import { RefreshCw, Wallet, Receipt, Ticket } from 'lucide-react'
 import { pageWrap, pageScroll } from '../../lib/glassStyles'
 import PageHeader from '../../components/PageHeader'
 import TabBar from '../../components/TabBar'
 import { useUrlTab } from '../../lib/useUrlTab'
 import FinanceKpiRow from './components/FinanceKpiRow'
-import RevenueTab from './RevenueTab'
+import RevenusTab from './RevenusTab'
 import PaymentsTab from './PaymentsTab'
 import PassTab from './PassTab'
-import CoursesTab from './CoursesTab'
-import CaCoursesTab from './CaCoursesTab'
 
 // Onglet ouvert dans l'adresse (?tab=…). Les prix (pass coursiers, zones,
 // frais) se règlent dans Tarifs et zones, jamais ici.
 const TABS = [
-  { key: 'revenue',    label: 'Revenus',            icon: Wallet,     Component: RevenueTab },
+  { key: 'revenue',    label: 'Revenus',            icon: Wallet,     Component: RevenusTab },
   { key: 'paiements',  label: 'Paiements',          icon: Receipt,    Component: PaymentsTab },
   { key: 'pass',       label: 'Pass coursiers',     icon: Ticket,     Component: PassTab },
-  { key: 'courses',    label: 'Courses',            icon: Package,    Component: CoursesTab },
-  { key: 'ca-courses', label: 'Commission courses', icon: TrendingUp, Component: CaCoursesTab },
 ]
 
 export default function Finance() {

@@ -22,7 +22,6 @@ const TAB_STYLE = (active) => ({
 const TABS = [
   { id: 'forfait',        label: 'Pass',             icon: Zap },
   { id: 'clients',        label: '100 Clients',      icon: Users },
-  { id: 'fees',           label: 'Frais',            icon: DollarSign },
 ]
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -85,7 +84,6 @@ export default function Acquisition() {
       <div style={pageScroll}>
         {tab === 'forfait'        && <PassTab notify={notify} />}
         {tab === 'clients'        && <ClientsTab notify={notify} />}
-        {tab === 'fees'           && <FeesTab />}
       </div>
 
       {snack && <Snack msg={snack.msg} ok={snack.ok} />}
@@ -629,54 +627,6 @@ function AmbassadeursTab() {
           </Card>
         )
       })}
-    </div>
-  )
-}
-
-// ── Tab Frais ─────────────────────────────────────────────────────────────────
-function FeesTab() {
-  const [data,    setData]    = useState(null)
-  const [loading, setLoading] = useState(true)
-
-  const load = useCallback(async (silent = false) => {
-    if (!silent) setLoading(true)
-    try {
-      const r = await api.get('/admin/acquisition/fees')
-      setData(r.data)
-    } catch { /* silencieux */ }
-    finally { if (!silent) setLoading(false) }
-  }, [])
-
-  useEffect(() => { load() }, [load])
-  useAutoRefresh(() => load(true))
-
-  if (loading) return <div style={{ color: 'var(--text-muted)' }}>Chargement…</div>
-
-  const fee       = data?.connectionFee ?? 100
-  const billed    = data?.commissionBilled ?? 0
-  const collected = data?.commissionCollected ?? 0
-  const deliveredCount = data?.deliveredCount ?? 0
-
-  return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 16, maxWidth: 600 }}>
-      {/* Mêmes définitions que Finance : facturés = demFee réel des courses livrées ;
-          encaissés = payés en ligne / wallet, ou repris sur le wallet du coursier (espèces) */}
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12 }}>
-        <StatBox label="Frais facturés depuis le lancement" value={`${billed.toLocaleString()} FCFA`} color="var(--primary)" />
-        <StatBox label="Dont encaissés par DEM" value={`${collected.toLocaleString()} FCFA`} color="var(--success)" />
-      </div>
-
-      <Card>
-        <Label>Frais de mise en relation</Label>
-        <p style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 12 }}>
-          Un seul montant, prélevé sur chaque course et chaque arrêt de tournée, quel que soit le paiement
-          (wallet, mobile money, espèces). Réglable dans Configuration › Tarifs.
-        </p>
-        <div style={{ fontSize: 26, fontWeight: 800, color: 'var(--primary)' }}>{fee.toLocaleString()} F <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-muted)' }}>par course</span></div>
-        <div style={{ marginTop: 14, padding: '10px 12px', background: 'rgba(0,180,216,.06)', borderRadius: 8, fontSize: 12, color: 'var(--text-muted)' }}>
-          Frais moyens réels : {deliveredCount > 0 ? Math.round(billed / deliveredCount).toLocaleString() : 0} FCFA par course livrée ({deliveredCount.toLocaleString()} courses)
-        </div>
-      </Card>
     </div>
   )
 }
