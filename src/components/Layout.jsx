@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import { NavLink, useNavigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import { Gift,
-  LayoutDashboard, Package, Users, LogOut, Bike, Map, Menu, X, TrendingUp, ShieldCheck, AlertTriangle, ScrollText, UserCog, Briefcase, UsersRound, SlidersHorizontal, Award, GitBranch, Bell, Wallet, Table2, KeyRound, Wrench, Search, Headset, Smartphone, ChevronDown, ChevronRight,
+  LayoutDashboard, Package, Users, LogOut, Bike, Map, Menu, X, TrendingUp, ShieldCheck, AlertTriangle, ScrollText, UserCog, Briefcase, UsersRound, SlidersHorizontal, Award, GitBranch, Bell, Wallet, Table2, KeyRound, Wrench, Search, Headset, Smartphone, ChevronDown, Gauge, Activity, Contact, Banknote, Rocket, Settings,
 } from 'lucide-react'
 import logoSrc from '../assets/logo-dem.svg'
 import { useResponsive } from '../lib/useResponsive'
@@ -15,12 +15,12 @@ import GlobalSearch from './GlobalSearch'
 // keywords : autres mots qui retrouvent la page dans la recherche du menu.
 // group : groupe du menu (GROUPS), dans l'ordre d'affichage.
 const GROUPS = [
-  { key: 'pilotage',       label: 'Pilotage' },
-  { key: 'operations',     label: 'Opérations' },
-  { key: 'comptes',        label: 'Comptes' },
-  { key: 'argent',         label: 'Argent' },
-  { key: 'croissance',     label: 'Croissance' },
-  { key: 'administration', label: 'Administration' },
+  { key: 'pilotage',       label: 'Pilotage',       icon: Gauge },
+  { key: 'operations',     label: 'Opérations',     icon: Activity },
+  { key: 'comptes',        label: 'Comptes',        icon: Contact },
+  { key: 'argent',         label: 'Argent',         icon: Banknote },
+  { key: 'croissance',     label: 'Croissance',     icon: Rocket },
+  { key: 'administration', label: 'Administration', icon: Settings },
 ]
 
 const NAV = [
@@ -168,7 +168,8 @@ export default function Layout({ children }) {
     return to === '/' ? location.pathname === '/' : (location.pathname === to || location.pathname.startsWith(`${to}/`))
   }
 
-  function renderItem({ to, icon: Icon, label: resolvedLabel }, index) {
+  // nested : entrée affichée sous le titre de son bloc (plus petite, en retrait)
+  function renderItem({ to, icon: Icon, label: resolvedLabel }, index, nested = false) {
     // Avec une recherche en cours : la ligne choisie au clavier (Entrée l'ouvre)
     const highlighted = terms.length > 0 && index === activeIndex
     return (
@@ -182,19 +183,19 @@ export default function Layout({ children }) {
           display: 'flex',
           alignItems: 'center',
           gap: collapsed ? 0 : 10,
-          padding: collapsed ? '10px 0' : '9px 12px',
+          padding: collapsed ? '10px 0' : nested ? '7px 10px' : '9px 12px',
           justifyContent: collapsed ? 'center' : 'flex-start',
           borderRadius: 'var(--radius-sm)',
           color: '#ffffff',
           background: isActive ? 'rgba(255,255,255,0.22)' : 'transparent',
           boxShadow: highlighted ? 'inset 0 0 0 1.5px rgba(255,255,255,0.75)' : 'none',
           fontWeight: isActive ? 600 : 400,
-          fontSize: 13,
+          fontSize: nested ? 12.5 : 13,
           transition: 'all .15s',
           whiteSpace: 'nowrap',
         } }}
       >
-        <Icon size={17} />
+        <Icon size={nested ? 15 : 17} />
         {!collapsed && resolvedLabel}
       </NavLink>
     )
@@ -301,16 +302,25 @@ export default function Layout({ children }) {
             if (items.length === 0) return null
             // Le groupe de la page ouverte reste toujours déplié
             const open = !closedGroups.has(g.key) || items.some(n => entryActive(n.to, pathActive(n.to)))
+            const GroupIcon = g.icon
             return (
-              <div key={g.key} style={{ marginBottom: 4 }}>
-                <button onClick={() => toggleGroup(g.key)} aria-expanded={open} style={{
-                  display: 'flex', alignItems: 'center', gap: 4, width: '100%', background: 'none', border: 'none',
-                  padding: '8px 12px 4px', cursor: 'pointer', color: 'rgba(255,255,255,0.72)',
-                  fontSize: 10.5, fontWeight: 700, letterSpacing: 0.6, textTransform: 'uppercase',
+              <div key={g.key} style={{ marginBottom: 6 }}>
+                {/* Titre du bloc : plus grand que ses entrées, un clic plie ou déplie le bloc */}
+                <button onClick={() => toggleGroup(g.key)} aria-expanded={open} className="nav-group-title" style={{
+                  display: 'flex', alignItems: 'center', gap: 10, width: '100%', border: 'none',
+                  padding: '10px 12px', borderRadius: 'var(--radius-sm)', cursor: 'pointer',
+                  background: open ? 'rgba(255,255,255,0.10)' : 'transparent',
+                  color: '#ffffff', fontSize: 14.5, fontWeight: 700, textAlign: 'left',
                 }}>
-                  {open ? <ChevronDown size={12} /> : <ChevronRight size={12} />} {g.label}
+                  <GroupIcon size={18} />
+                  <span style={{ flex: 1 }}>{g.label}</span>
+                  <ChevronDown size={16} style={{ transition: 'transform .2s', transform: open ? 'none' : 'rotate(-90deg)', opacity: 0.85 }} />
                 </button>
-                {open && items.map(item => renderItem(item, shownNav.indexOf(item)))}
+                {open && (
+                  <div style={{ marginLeft: 20, paddingLeft: 8, borderLeft: '1px solid rgba(255,255,255,0.28)', marginTop: 2, display: 'flex', flexDirection: 'column', gap: 1 }}>
+                    {items.map(item => renderItem(item, shownNav.indexOf(item), true))}
+                  </div>
+                )}
               </div>
             )
           })}
