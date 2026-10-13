@@ -81,22 +81,22 @@ export default function FleetDashboard() {
             {stats.isFleetReady ? (
               <div style={{ ...glass, padding: '14px 18px', marginBottom: 18, display: 'flex', alignItems: 'center', gap: 10, color: '#22c55e' }}>
                 <ShieldCheck size={18} style={{ flexShrink: 0 }} />
-                <span style={{ fontSize: 13, fontWeight: 600 }}>Votre flotte est prête (≥ {stats.fleetMin} livreurs actifs).</span>
+                <span style={{ fontSize: 13, fontWeight: 600 }}>Votre flotte est prête (≥ {stats.fleetMin} coursiers actifs).</span>
               </div>
             ) : (
               <div style={{ ...glass, padding: '14px 18px', marginBottom: 18, display: 'flex', alignItems: 'center', gap: 10, color: '#f59e0b' }}>
                 <AlertTriangle size={18} style={{ flexShrink: 0 }} />
                 <span style={{ fontSize: 13, fontWeight: 600 }}>
-                  Il vous faut au moins {stats.fleetMin} livreurs actifs ({stats.activeCount}/{stats.fleetMin}) pour activer votre flotte.
+                  Il vous faut au moins {stats.fleetMin} coursiers actifs ({stats.activeCount}/{stats.fleetMin}) pour activer votre flotte.
                 </span>
               </div>
             )}
 
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 16 }}>
-              <StatCard icon={Radio}      label="Livreurs en ligne"              value={`${stats.onlineCount} / ${stats.fleetSize}`} color="#22c55e" />
+              <StatCard icon={Radio}      label="Coursiers en ligne"              value={`${stats.onlineCount} / ${stats.fleetSize}`} color="#22c55e" />
               <StatCard icon={Navigation} label="Courses en cours"               value={stats.coursesInProgress} color="#7c3aed" />
               <StatCard icon={Wallet}     label="Gains de la flotte (aujourd'hui)" value={`${stats.earningsToday.toLocaleString()} F`} color="#0077b6" />
-              <StatCard icon={WifiOff}    label="Livreurs hors ligne"            value={stats.offlineCount} color="#94a3b8" />
+              <StatCard icon={WifiOff}    label="Coursiers hors ligne"            value={stats.offlineCount} color="#94a3b8" />
               <StatCard icon={Bell}       label="Alertes en cours"               value={stats.alertsCount} color="#ef4444" onClick={() => navigate('/fleet/alerts')} />
             </div>
 

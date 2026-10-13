@@ -103,9 +103,9 @@ export default function FleetMap() {
     <div style={pageWrap}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12, marginBottom: 16, flexShrink: 0 }}>
         <div>
-          <h1 style={{ fontSize: 22, fontWeight: 700 }}>Suivi des livreurs</h1>
+          <h1 style={{ fontSize: 22, fontWeight: 700 }}>Suivi des coursiers</h1>
           <p style={{ color: 'var(--text-muted)', fontSize: 12, marginTop: 2 }}>
-            {onlineCount} / {drivers.length} livreur{drivers.length !== 1 ? 's' : ''} en ligne
+            {onlineCount} / {drivers.length} coursier{drivers.length !== 1 ? 's' : ''} en ligne
           </p>
         </div>
         <button onClick={fetchLive} style={btnOutline}><RefreshCw size={14} /> Actualiser</button>
@@ -175,9 +175,9 @@ export default function FleetMap() {
         </div>
 
         <div style={{ ...glass, padding: '16px 20px' }}>
-          <h2 style={{ fontSize: 15, fontWeight: 700, marginBottom: 12 }}>Mes livreurs actifs</h2>
+          <h2 style={{ fontSize: 15, fontWeight: 700, marginBottom: 12 }}>Mes coursiers actifs</h2>
           {drivers.length === 0 ? (
-            <div style={{ color: 'var(--text-muted)', fontSize: 13 }}>Aucun livreur actif pour le moment.</div>
+            <div style={{ color: 'var(--text-muted)', fontSize: 13 }}>Aucun coursier actif pour le moment.</div>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
               {drivers.map(d => {

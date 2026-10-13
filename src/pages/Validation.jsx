@@ -96,7 +96,7 @@ export default function Validation() {
           <span style={{ display:'flex', alignItems:'center', gap:6 }}><Shield size={13} />Chefs de flotte</span>
         </button>
         <button style={TAB(tab === 'drivers')} onClick={() => setTab('drivers')}>
-          <span style={{ display:'flex', alignItems:'center', gap:6 }}><Truck size={13} />Livreurs en attente</span>
+          <span style={{ display:'flex', alignItems:'center', gap:6 }}><Truck size={13} />Coursiers en attente</span>
         </button>
         <button style={TAB(tab === 'kyc-review')} onClick={() => setTab('kyc-review')}>
           <span style={{ display:'flex', alignItems:'center', gap:6 }}><FileWarning size={13} />KYC à réviser</span>
@@ -218,7 +218,7 @@ function AmbassadorsTab({ isServiceClient, highlightId }) {
                 <div style={{ fontSize:12, color:'var(--text-muted)', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>
                   {am.phone}
                   {am.companyName && <> · {am.companyName}</>}
-                  <> · <strong>{am._count?.managedDrivers ?? 0}</strong> livreur(s)</>
+                  <> · <strong>{am._count?.managedDrivers ?? 0}</strong> coursier(s)</>
                 </div>
               </div>
               <StatusBadge status={am.chefDeFlotteStatus} />
@@ -278,7 +278,7 @@ function AmbassadorsTab({ isServiceClient, highlightId }) {
                 {/* Action ACTIVE → Suspendre (SUPER uniquement — SC passe par "Demander suspension" sur la page Chefs de flotte) */}
                 {am.chefDeFlotteStatus === 'ACTIVE' && !isServiceClient && (
                   <button style={{ ...btnRefuse, alignSelf:'flex-start' }} onClick={() => setSuspendTarget(am)}>
-                    Suspendre (+ tous ses livreurs)
+                    Suspendre (+ tous ses coursiers)
                   </button>
                 )}
 
@@ -311,7 +311,7 @@ function AmbassadorsTab({ isServiceClient, highlightId }) {
   </>)
 }
 
-// ── Tab Livreurs en attente ───────────────────────────────────────────────────
+// ── Tab Coursiers en attente ───────────────────────────────────────────────────
 function DriversTab({ highlightId }) {
   const [list,     setList]     = useState([])
   const [loading,  setLoading]  = useState(true)
@@ -359,7 +359,7 @@ function DriversTab({ highlightId }) {
       </div>
 
       {loading ? <div style={{ color:'var(--text-muted)' }}>Chargement…</div>
-      : list.length === 0 ? <div style={{ ...card, color:'var(--text-muted)', textAlign:'center', padding:32 }}>Aucun livreur en attente.</div>
+      : list.length === 0 ? <div style={{ ...card, color:'var(--text-muted)', textAlign:'center', padding:32 }}>Aucun coursier en attente.</div>
       : list.map(d => {
         const isOpen       = expanded === d.id
         const insurance    = d.insuranceExpiry ? new Date(d.insuranceExpiry) : null
@@ -472,9 +472,9 @@ function DriversTab({ highlightId }) {
 }
 
 // ── Tab KYC à réviser (driverStatus : UNDER_REVIEW / PENDING_DOCUMENTS) ────────
-// Système distinct de "Livreurs en attente" ci-dessus (qui opère sur
+// Système distinct de "Coursiers en attente" ci-dessus (qui opère sur
 // chefDeFlotteStatus, la validation à l'inscription) — ici on gère le rejet
-// document par document une fois le livreur déjà actif, sans le suspendre.
+// document par document une fois le coursier déjà actif, sans le suspendre.
 const KYC_FIELDS = [
   ['licenseFront',   'Permis recto'],
   ['licenseBack',    'Permis verso'],
@@ -543,7 +543,7 @@ function KycReviewTab({ highlightId }) {
       </div>
 
       {loading ? <div style={{ color:'var(--text-muted)' }}>Chargement…</div>
-      : list.length === 0 ? <div style={{ ...card, color:'var(--text-muted)', textAlign:'center', padding:32 }}>Aucun livreur à réviser.</div>
+      : list.length === 0 ? <div style={{ ...card, color:'var(--text-muted)', textAlign:'center', padding:32 }}>Aucun coursier à réviser.</div>
       : list.map(d => {
         const isOpen = expanded === d.id
         const rejections = d.rejectedDocuments ?? {}
@@ -632,7 +632,7 @@ function KycReviewTab({ highlightId }) {
                   onClick={() => canVerify && handleVerify(d.id)}
                   title={!canVerify ? 'Documents manquants ou rejets non corrigés' : ''}
                 >
-                  <CheckCircle size={13} /> Vérifier — certifier ce livreur
+                  <CheckCircle size={13} /> Vérifier — certifier ce coursier
                 </button>
               </div>
             )}
@@ -791,12 +791,12 @@ const REQUEST_KIND_LABELS = {
   GESTE_FREE_RIDE:  'Course gratuite',
   GESTE_DISCOUNT:   'Remise',
   TARIFF_CHANGE:    'Modification tarifaire',
-  DRIVER_SUSPEND:   'Suspension livreur',
+  DRIVER_SUSPEND:   'Suspension coursier',
   CHEF_SUSPEND:     'Suspension chef de flotte',
 }
 
 // kindFilter distingue les demandes soumises par le Service Client (création/
-// suspension DEM Pro, gestes commerciaux, suspensions livreur/chef de flotte)
+// suspension DEM Pro, gestes commerciaux, suspensions coursier/chef de flotte)
 // de celles soumises par l'admin Finance (TARIFF_CHANGE) — même backend
 // (/admin/requests), deux onglets pour ne pas les noyer les unes dans les autres.
 // Références stables (pas de fonction inline) pour ne pas invalider le

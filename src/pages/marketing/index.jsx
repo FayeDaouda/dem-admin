@@ -1,59 +1,73 @@
 import { useState } from 'react'
-import { RefreshCw, TrendingUp, Repeat, Package, Megaphone, Percent } from 'lucide-react'
+import { RefreshCw, TrendingUp, Repeat, Package, Percent } from 'lucide-react'
 import { pageWrap, pageScroll } from '../../lib/glassStyles'
+import { useAuth } from '../../contexts/AuthContext'
+import { canSee, TAB_ROLES, ACTION_ROLES } from '../../lib/droits'
+import PageHeader from '../../components/PageHeader'
+import TabBar from '../../components/TabBar'
+import { useUrlTab } from '../../lib/useUrlTab'
 import MarketingKpiRow from './components/MarketingKpiRow'
 import AcquisitionTab from './AcquisitionTab'
 import RetentionTab from './RetentionTab'
 import CoursesTab from './CoursesTab'
-import CampaignsTab from './CampaignsTab'
+import { Milestones } from './CampaignBlocks'
 import PromotionsTab from './PromotionsTab'
+import FreeCourseSection from './FreeCourseSection'
 
-const TABS = [
-  ['acquisition', 'Acquisition',        TrendingUp, AcquisitionTab],
-  ['retention',   'Rétention',          Repeat,     RetentionTab],
-  ['courses',     'Comportement courses', Package,  CoursesTab],
-  ['promotions',  'Promotions',          Percent,   PromotionsTab],
-  ['campaigns',   'Campagnes & alertes', Megaphone, CampaignsTab],
+// Acquisition + offre de lancement « 100 clients » (Super Admin seul)
+function AcquisitionWithOffer() {
+  const { user } = useAuth()
+  return (
+    <>
+      <AcquisitionTab />
+      {canSee(user?.adminRole, ACTION_ROLES.freeCourseOffer) && (
+        <section style={{ marginTop: 28 }}>
+          <h2 style={{ fontSize: 15, fontWeight: 700, margin: '0 0 12px' }}>Offre de lancement : 100 premiers clients</h2>
+          <FreeCourseSection />
+        </section>
+      )}
+    </>
+  )
+}
+
+const ALL_TABS = [
+  { key: 'acquisition', label: 'Acquisition',          icon: TrendingUp, Component: AcquisitionWithOffer },
+  { key: 'retention',   label: 'Rétention',            icon: Repeat,     Component: RetentionTab },
+  { key: 'courses',     label: 'Comportement courses', icon: Package,    Component: CoursesTab },
+  { key: 'promotions',  label: 'Promotions',           icon: Percent,    Component: PromotionsTab },
 ]
 
+// Espace Marketing — onglet ouvert dans l'adresse (?tab=), onglets et
+// indicateurs filtrés par rôle (lib/droits.js) : l'Assistance exécutive n'y
+// voit que l'onglet Acquisition.
 export default function Marketing() {
-  const [tab, setTab] = useState('acquisition')
+  const { user } = useAuth()
+  const role = user?.adminRole
+  const tabs = ALL_TABS.filter(t => canSee(role, TAB_ROLES.marketing[t.key]))
+  const [tab, setTab] = useUrlTab(tabs)
   const [reloadKey, setReloadKey] = useState(0)
 
-  const Active = TABS.find(([key]) => key === tab)[3]
+  const Active = tabs.find(t => t.key === tab)?.Component
+  const showKpis = canSee(role, TAB_ROLES.marketing.overview)
 
   return (
     <div style={pageWrap}>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16, flexShrink: 0 }}>
-        <div>
-          <h1 style={{ fontSize: 22, fontWeight: 700, marginBottom: 2 }}>Dashboard</h1>
-          <p style={{ color: 'var(--text-muted)', fontSize: 12, margin: 0 }}>
-            Acquisition, rétention, comportement utilisateur et campagnes
-          </p>
-        </div>
-        <button onClick={() => setReloadKey(k => k + 1)} style={btnOutline}>
-          <RefreshCw size={14} /> Actualiser
-        </button>
-      </div>
+      <PageHeader
+        title="Marketing"
+        subtitle={showKpis ? 'Acquisition, rétention, comportement des courses et promotions' : 'Évolution des inscriptions'}
+        actions={<button onClick={() => setReloadKey(k => k + 1)} style={btnOutline}><RefreshCw size={14} /> Actualiser</button>}
+      />
 
       <div style={pageScroll}>
-        <MarketingKpiRow reloadKey={reloadKey} />
-
-        <div style={{ display: 'flex', gap: 4, marginBottom: 20, background: 'rgba(255,255,255,.45)', borderRadius: 'var(--radius)', padding: 4, width: 'fit-content', flexWrap: 'wrap' }}>
-          {TABS.map(([key, label, Icon]) => (
-            <button key={key} onClick={() => setTab(key)} style={{
-              padding: '7px 16px', borderRadius: 'var(--radius-sm)', border: 'none', cursor: 'pointer',
-              background: tab === key ? 'var(--primary)' : 'transparent',
-              color: tab === key ? '#fff' : 'var(--text-muted)',
-              fontWeight: tab === key ? 700 : 500, fontSize: 13,
-              display: 'flex', alignItems: 'center', gap: 6,
-            }}>
-              <Icon size={13} /> {label}
-            </button>
-          ))}
-        </div>
-
-        <Active key={`${tab}-${reloadKey}`} />
+        {showKpis && <MarketingKpiRow reloadKey={reloadKey} />}
+        {showKpis && (
+          <details style={{ marginBottom: 20 }}>
+            <summary style={{ cursor: 'pointer', fontSize: 14, fontWeight: 700, marginBottom: 10 }}>Jalons de croissance</summary>
+            <Milestones key={reloadKey} />
+          </details>
+        )}
+        <TabBar tabs={tabs} active={tab} onChange={setTab} />
+        {Active && <Active key={`${tab}-${reloadKey}`} />}
       </div>
     </div>
   )

@@ -57,12 +57,12 @@ export default function PassTab() {
     { name: 'Avec passe valide', value: data.driversWithActivePass },
     { name: 'Sans passe valide', value: data.driversWithoutActivePass },
   ]
-  const filename = (ext) => `pass-livreurs-${new Date().toISOString().slice(0, 10)}.${ext}`
+  const filename = (ext) => `pass-coursiers-${new Date().toISOString().slice(0, 10)}.${ext}`
 
   return (
     <div>
       <p style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 0, marginBottom: 14, lineHeight: 1.5 }}>
-        <strong>Achetés</strong> = passes réellement payées (prélèvement sur le wallet du livreur ou paiement direct), au montant payé après éventuelle réduction.
+        <strong>Achetés</strong> = passes réellement payées (prélèvement sur le wallet du coursier ou paiement direct), au montant payé après éventuelle réduction.
         <strong> Offerts</strong> = passes offertes par un admin, qui ne rapportent rien. Une passe est valide 24h à partir de son paiement (plus si offerte).
       </p>
 
@@ -70,7 +70,7 @@ export default function PassTab() {
         <button onClick={() => { exportCsv({ filename: filename('csv'), columns: EXPORT_COLUMNS, rows: data.trend }); logExport('csv') }} style={btnOutline}>
           Exporter CSV
         </button>
-        <ExportPdfButton title="Pass livreurs" filename={filename('pdf')} columns={EXPORT_COLUMNS} rows={data.trend} onExport={() => logExport('pdf')} />
+        <ExportPdfButton title="Pass coursiers" filename={filename('pdf')} columns={EXPORT_COLUMNS} rows={data.trend} onExport={() => logExport('pdf')} />
       </div>
 
       <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginBottom: 20 }}>
@@ -95,7 +95,7 @@ export default function PassTab() {
         </div>
 
         <div style={{ ...glass, padding: '18px 20px' }}>
-          <h2 style={{ fontSize: 14, fontWeight: 600, marginBottom: 14 }}>Livreurs — passe valide en ce moment</h2>
+          <h2 style={{ fontSize: 14, fontWeight: 600, marginBottom: 14 }}>Coursiers — passe valide en ce moment</h2>
           <ResponsiveContainer width="100%" height={180}>
             <PieChart>
               <Pie data={pieData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={65} label={({ percent }) => `${(percent * 100).toFixed(0)}%`}>
@@ -105,7 +105,7 @@ export default function PassTab() {
             </PieChart>
           </ResponsiveContainer>
           <div style={{ fontSize: 12, color: 'var(--text-muted)', textAlign: 'center', marginTop: 8 }}>
-            {formatCount(data.driversWithActivePass)} / {formatCount(data.totalActiveDrivers)} comptes livreurs actifs (non suspendus, non supprimés)
+            {formatCount(data.driversWithActivePass)} / {formatCount(data.totalActiveDrivers)} comptes coursiers actifs (non suspendus, non supprimés)
           </div>
         </div>
       </div>

@@ -3,7 +3,6 @@ import { Wrench, Eye, Play, CheckCircle2, AlertTriangle, RefreshCw } from 'lucid
 import api from '../lib/api'
 import { glass, pageWrap, pageScroll } from '../lib/glassStyles'
 import { formatF, formatCount } from '../lib/format'
-import OtpUnblockPanel from '../components/OtpUnblockPanel'
 import SmsRoutingPanel from '../components/SmsRoutingPanel'
 import PinSettingsPanel from '../components/PinSettingsPanel'
 
@@ -54,8 +53,6 @@ export default function Maintenance() {
         <div style={{ marginTop: 24 }}><SmsRoutingPanel /></div>
         {/* Code secret : activation (SUPER uniquement) */}
         <div style={{ marginTop: 24 }}><PinSettingsPanel /></div>
-        {/* Outil support aussi accessible au SUPER (le tableau Service Client lui est masqué) */}
-        <div style={{ marginTop: 24 }}><OtpUnblockPanel /></div>
       </div>
     </div>
   )
@@ -80,7 +77,7 @@ function TaskCard({ index, task, onDone }) {
 
   async function runTask() {
     const label = task.requiresExpectedTotal
-      ? `Verser ${formatF(preview.total)} aux livreurs${notify ? ' et les notifier' : ''} ?`
+      ? `Verser ${formatF(preview.total)} aux coursiers${notify ? ' et les notifier' : ''} ?`
       : `Exécuter « ${task.title} » ?\n\n${preview.summary}`
     if (!confirm(`${label}\n\nCette action modifie les données de production.`)) return
     setBusy('run'); setError('')
@@ -156,7 +153,7 @@ function SubsidyPreview({ preview, notify, onNotify }) {
     <div style={{ marginTop: 10 }}>
       <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
         <thead>
-          <tr>{['Livreur', 'Téléphone', 'Commandes', 'Montant dû'].map(h => <th key={h} style={th}>{h}</th>)}</tr>
+          <tr>{['Coursier', 'Téléphone', 'Commandes', 'Montant dû'].map(h => <th key={h} style={th}>{h}</th>)}</tr>
         </thead>
         <tbody>
           {preview.byDriver.map(d => (
@@ -181,7 +178,7 @@ function SubsidyPreview({ preview, notify, onNotify }) {
       )}
       <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, marginTop: 10, cursor: 'pointer' }}>
         <input type="checkbox" checked={notify} onChange={e => onNotify(e.target.checked)} />
-        Notifier chaque livreur du montant crédité
+        Notifier chaque coursier du montant crédité
       </label>
     </div>
   )

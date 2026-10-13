@@ -18,7 +18,7 @@ const NOTE_MIN = 15
 export default function CashoutReviewModal({ tx, mode, onClose, onDone }) {
   const refund = mode === 'refund'
   const amount = formatF(Math.abs(tx.amount))
-  const name = tx.user?.name ?? 'ce livreur ou marchand'
+  const name = tx.user?.name ?? 'ce coursier ou marchand'
   const [reference, setReference] = useState('')
   const [note, setNote] = useState('')
   const [checked, setChecked] = useState(false)

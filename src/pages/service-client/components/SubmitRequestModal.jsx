@@ -9,7 +9,7 @@ const KIND_LABELS = {
   DEM_PRO_ACTIVATE: 'Demande de réactivation de compte DEM Pro',
   GESTE_FREE_RIDE:  'Demande de course gratuite',
   GESTE_DISCOUNT:   'Demande de remise',
-  DRIVER_SUSPEND:   'Demande de suspension de livreur',
+  DRIVER_SUSPEND:   'Demande de suspension de coursier',
   CHEF_SUSPEND:     'Demande de suspension de chef de flotte',
 }
 

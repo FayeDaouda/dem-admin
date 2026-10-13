@@ -8,7 +8,7 @@ import { glass, glassInput, pageWrap, pageScroll, stickyTh, stickyCol, stickyThC
 import DocThumb from '../components/DocThumb'
 import { useUrlQuery } from '../lib/useUrlQuery'
 
-// Montant payé par le client = part livreur (price) + frais DEM − réduction
+// Montant payé par le client = part coursier (price) + frais DEM − réduction
 // (même calcul que l'app : core/utils/price_format.dart:clientChargeFor).
 const clientCharge = o => Math.max(0, (o.price ?? 0) + (o.demFee ?? 0) - (o.discountAmount ?? 0))
 
@@ -47,7 +47,7 @@ export default function Orders() {
       const res = await api.get(`/admin/orders/${order.id}/assignable-drivers`)
       setDriverPicker({ drivers: res.data?.drivers ?? [], loading: false, error: null })
     } catch (e) {
-      setDriverPicker({ drivers: [], loading: false, error: e.response?.data?.message ?? 'Erreur de chargement des livreurs.' })
+      setDriverPicker({ drivers: [], loading: false, error: e.response?.data?.message ?? 'Erreur de chargement des coursiers.' })
     }
   }
 
@@ -68,7 +68,7 @@ export default function Orders() {
       setDriverPicker(null)
       fetch()
     } catch (e) {
-      alert(e.response?.data?.message ?? 'Erreur lors de l\'attribution du livreur')
+      alert(e.response?.data?.message ?? 'Erreur lors de l\'attribution du coursier')
     } finally {
       setAssigning(false)
     }
@@ -78,12 +78,12 @@ export default function Orders() {
     setAssigning(true)
     try {
       const res = await api.patch(`/admin/orders/${detail.id}/suggest`, { driverId })
-      alert(res.data?.message ?? 'Course suggérée au livreur.')
+      alert(res.data?.message ?? 'Course suggérée au coursier.')
       setDetail(null)
       setDriverPicker(null)
       fetch()
     } catch (e) {
-      alert(e.response?.data?.message ?? 'Erreur lors de la suggestion au livreur')
+      alert(e.response?.data?.message ?? 'Erreur lors de la suggestion au coursier')
     } finally {
       setAssigning(false)
     }
@@ -104,7 +104,7 @@ export default function Orders() {
   }
 
   const redispatch = async (id) => {
-    if (!globalThis.confirm('Forcer un re-dispatch ? Le livreur actuel sera retiré et un nouveau sera recherché automatiquement.')) return
+    if (!globalThis.confirm('Forcer un re-dispatch ? Le coursier actuel sera retiré et un nouveau sera recherché automatiquement.')) return
     setRedispatching(true)
     try {
       await api.patch(`/admin/orders/${id}/redispatch`)
@@ -117,7 +117,7 @@ export default function Orders() {
     }
   }
 
-  // Le motif d'annulation détermine le message envoyé au client/livreur —
+  // Le motif d'annulation détermine le message envoyé au client/coursier —
   // toujours choisi dans une liste préparée par le backend (jamais de texte
   // libre affiché tel quel), voir dem-backend/admin-cancel-reasons.js.
   const openCancelPicker = async (orderId) => {
@@ -236,7 +236,7 @@ export default function Orders() {
           <table style={tableStyle}>
             <thead>
               <tr>
-                {['#', 'ID', 'Type', 'Statut', 'Client', 'Livreur', 'Prix client', 'Paiement', 'Date'].map((h, i) => (
+                {['#', 'ID', 'Type', 'Statut', 'Client', 'Coursier', 'Prix client', 'Paiement', 'Date'].map((h, i) => (
                   <th key={h} style={{ ...thStyle, ...(i === 0 ? stickyThCol : stickyTh) }}>{h}</th>
                 ))}
               </tr>
@@ -286,10 +286,10 @@ export default function Orders() {
               <Row label="Paiement"      value={detail.status === 'CANCELLED' ? '—' : <Badge status={detail.paymentStatus ?? 'PENDING'} />} />
               <Row label="Client"        value={clientDisplayName(detail.client, detail.clientName, detail.clientPhone)} />
               <Row label="Tél. client"   value={firstNonEmpty(detail.client?.phone, detail.clientPhone)} />
-              <Row label="Livreur"       value={firstNonEmpty(detail.driver?.name, detail.driver?.phone)} />
-              <Row label="Tél. livreur"  value={firstNonEmpty(detail.driver?.phone)} />
+              <Row label="Coursier"       value={firstNonEmpty(detail.driver?.name, detail.driver?.phone)} />
+              <Row label="Tél. coursier"  value={firstNonEmpty(detail.driver?.phone)} />
               <Row label="Prix client"   value={`${clientCharge(detail).toLocaleString()} F`} />
-              <Row label="Part livreur"  value={`${detail.price?.toLocaleString()} F`} />
+              <Row label="Part coursier"  value={`${detail.price?.toLocaleString()} F`} />
               <Row label="Frais DEM"     value={`${(detail.demFee ?? 0).toLocaleString()} F`} />
               {detail.discountAmount > 0 && <Row label="Réduction" value={
                 <span>
@@ -330,7 +330,7 @@ export default function Orders() {
                     onClick={() => openDriverPicker(detail)}
                     style={{ ...btnOutline, color: '#0077b6', borderColor: '#0077b6', background: 'rgba(0,119,182,0.08)' }}
                   >
-                    🚴 Choisir un livreur
+                    🚴 Choisir un coursier
                   </button>
                 )}
                 {!isFinance && detail.status === 'ACCEPTED' && (
@@ -366,21 +366,21 @@ export default function Orders() {
         </div>
       )}
 
-      {/* Sélecteur de livreur */}
+      {/* Sélecteur de coursier */}
       {driverPicker && (
         <div style={{ ...overlay, zIndex: 110 }} onClick={() => setDriverPicker(null)}>
           <div style={{ ...modalBox, width: 460 }} onClick={e => e.stopPropagation()}>
-            <h2 style={{ marginBottom: 4, fontSize: 16 }}>Choisir un livreur</h2>
+            <h2 style={{ marginBottom: 4, fontSize: 16 }}>Choisir un coursier</h2>
             <p style={{ marginBottom: 16, fontSize: 12, color: 'var(--text-muted)' }}>
-              <strong>Suggérer</strong> envoie une offre que le livreur peut accepter ou refuser.{' '}
+              <strong>Suggérer</strong> envoie une offre que le coursier peut accepter ou refuser.{' '}
               <strong>Attribuer directement</strong> lui assigne la course sans confirmation de sa part.
             </p>
             {driverPicker.loading ? (
-              <div style={{ color: 'var(--text-muted)', padding: 12 }}>Chargement des livreurs disponibles…</div>
+              <div style={{ color: 'var(--text-muted)', padding: 12 }}>Chargement des coursiers disponibles…</div>
             ) : driverPicker.error ? (
               <div style={{ color: '#e53e3e', padding: 12 }}>{driverPicker.error}</div>
             ) : driverPicker.drivers.length === 0 ? (
-              <div style={{ color: 'var(--text-muted)', padding: 12 }}>Aucun livreur disponible pour le moment.</div>
+              <div style={{ color: 'var(--text-muted)', padding: 12 }}>Aucun coursier disponible pour le moment.</div>
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8, maxHeight: 360, overflowY: 'auto' }}>
                 {driverPicker.drivers.map(d => (
@@ -427,13 +427,13 @@ export default function Orders() {
         </div>
       )}
 
-      {/* Motif d'annulation — obligatoire, jamais de texte libre envoyé au client/livreur */}
+      {/* Motif d'annulation — obligatoire, jamais de texte libre envoyé au client/coursier */}
       {cancelPicker && (
         <div style={{ ...overlay, zIndex: 120 }} onClick={() => !cancelling && setCancelPicker(null)}>
           <div style={{ ...modalBox, width: 460 }} onClick={e => e.stopPropagation()}>
             <h2 style={{ marginBottom: 4, fontSize: 16 }}>Annuler la commande</h2>
             <p style={{ marginBottom: 16, fontSize: 12, color: 'var(--text-muted)' }}>
-              Le motif choisi détermine le message envoyé au client (et au livreur si assigné) —
+              Le motif choisi détermine le message envoyé au client (et au coursier si assigné) —
               jamais le mot "admin", toujours une formulation professionnelle déjà rédigée.
             </p>
             {cancelReasons === null ? (
@@ -452,7 +452,7 @@ export default function Orders() {
                   ))}
                 </select>
                 <label style={{ display: 'block', fontSize: 12, fontWeight: 600, marginBottom: 6 }}>
-                  Note interne (optionnelle — jamais montrée au client/livreur)
+                  Note interne (optionnelle — jamais montrée au client/coursier)
                 </label>
                 <textarea
                   value={cancelPicker.note}

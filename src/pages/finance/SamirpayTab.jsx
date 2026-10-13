@@ -143,7 +143,7 @@ export default function SamirpayTab() {
         columns: [
           { header: 'ID commande', key: 'id' },
           { header: 'Payé par le client', key: 'amount' },
-          { header: 'Part livreur', key: 'price' }, { header: 'Commission DEM', key: 'demFee' },
+          { header: 'Part coursier', key: 'price' }, { header: 'Commission DEM', key: 'demFee' },
           { header: 'Remise promo', key: 'discountAmount' },
           { header: 'Opérateur', key: 'operatorLabel' },
           { header: 'Transaction SamirPay', key: 'samirpayTransactionId' },
@@ -297,11 +297,11 @@ export default function SamirpayTab() {
                 {health.lowBalance && <div style={{ fontSize: 11, color: '#e53e3e', fontWeight: 600 }}>⚠ Solde bas</div>}
               </div>
               <div>
-                <div style={{ fontSize: 10, color: 'var(--text-muted)', fontWeight: 700, letterSpacing: '.5px' }}>RETIRABLE DÛ (LIVREURS + COMMERÇANTS)</div>
+                <div style={{ fontSize: 10, color: 'var(--text-muted)', fontWeight: 700, letterSpacing: '.5px' }}>RETIRABLE DÛ (COURSIERS + COMMERÇANTS)</div>
                 <div style={{ fontSize: 20, fontWeight: 800 }}>{formatF(health.expectedWithdrawable)}</div>
                 {health.expectedWithdrawableByRole && (
                   <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>
-                    Livreurs : {formatF(health.expectedWithdrawableByRole.drivers)} · Commerçants DEM Pro : {formatF(health.expectedWithdrawableByRole.merchants)}
+                    Coursiers : {formatF(health.expectedWithdrawableByRole.drivers)} · Commerçants DEM Pro : {formatF(health.expectedWithdrawableByRole.merchants)}
                   </div>
                 )}
               </div>
@@ -371,7 +371,7 @@ export default function SamirpayTab() {
           <div style={{ overflowX: 'auto', marginBottom: 14 }}>
             <div style={{ fontSize: 12, fontWeight: 700, marginBottom: 6 }}>Doubles paiements</div>
             <p style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 8 }}>
-              Payés en ligne alors que la commande était déjà payée (au livreur, ou par un autre paiement en ligne) : montant réellement encaissé par SamirPay.
+              Payés en ligne alors que la commande était déjà payée (au coursier, ou par un autre paiement en ligne) : montant réellement encaissé par SamirPay.
             </p>
             <table style={{ width: '100%', minWidth: 640, borderCollapse: 'collapse' }}>
               <thead><tr>
@@ -386,7 +386,7 @@ export default function SamirpayTab() {
                     <td style={tdStyle}>{PM_LABELS[d.operatorName] ?? d.operatorName ?? '—'}</td>
                     <td style={tdStyle}><code style={{ fontSize: 11 }}>{d.transactionId}</code></td>
                     <td style={tdStyle}>{new Date(d.receivedAt).toLocaleString('fr-FR')}</td>
-                    <td style={tdStyle}>{d.reason === 'ALREADY_PAID_ONLINE' ? 'En ligne (autre paiement)' : 'Au livreur'}</td>
+                    <td style={tdStyle}>{d.reason === 'ALREADY_PAID_ONLINE' ? 'En ligne (autre paiement)' : 'Au coursier'}</td>
                     <td style={tdStyle}>
                       {isSuper && (
                         <button onClick={() => confirmDuplicateRefund(d.id)} disabled={confirmingId === d.id} style={btnConfirm}>
@@ -543,7 +543,7 @@ export default function SamirpayTab() {
           Retraits en vérification manuelle {manualReview?.length > 0 && <span style={{ color: '#e53e3e' }}>({manualReview.length})</span>}
         </h2>
         <p style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 14 }}>
-          Panne réseau pendant le virement : le montant est réservé sur le solde du livreur ou du marchand tant que le retrait n'est pas clos.
+          Panne réseau pendant le virement : le montant est réservé sur le solde du coursier ou du marchand tant que le retrait n'est pas clos.
           Vérifiez l'issue dans le tableau de bord SamirPay (ou Wave / Orange Money), puis confirmez-le ou remboursez-le.
           Au-delà de {REVIEW_ALERT_HOURS} h, une alerte financière part.
         </p>
@@ -559,7 +559,7 @@ export default function SamirpayTab() {
             <table style={{ width: '100%', minWidth: 560, borderCollapse: 'collapse' }}>
               <thead>
                 <tr>
-                  <th style={thStyle}>Livreur</th>
+                  <th style={thStyle}>Coursier</th>
                   <th style={thStyle}>Téléphone</th>
                   <th style={thStyle}>Montant</th>
                   <th style={thStyle}>Description</th>

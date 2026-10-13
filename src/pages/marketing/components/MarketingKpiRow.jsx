@@ -5,7 +5,7 @@ import StatCard from '../../../components/StatCard'
 import { NewClientsModal, RetentionModal, CancellationModal, CompletedOrdersModal, BroadcastHistoryModal } from './MarketingKpiModals'
 import { useAutoRefresh } from '../../../lib/useAutoRefresh'
 
-const TARGET_LABELS = { all: 'Tous', clients: 'Clients', drivers: 'Livreurs', dem_pro: 'DEM Pro' }
+const TARGET_LABELS = { all: 'Tous', clients: 'Clients', drivers: 'Coursiers', dem_pro: 'DEM Pro' }
 
 export default function MarketingKpiRow({ reloadKey }) {
   const [kpis, setKpis] = useState(null)

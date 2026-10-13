@@ -49,7 +49,7 @@ export default function AcquisitionTab() {
         <ExportPdfButton
           title="Acquisition — inscriptions"
           filename={`acquisition-${new Date().toISOString().slice(0, 10)}.pdf`}
-          columns={[{ header: 'Date', key: 'date' }, { header: 'Nouveaux clients', key: 'clients' }, { header: 'Nouveaux livreurs', key: 'drivers' }]}
+          columns={[{ header: 'Date', key: 'date' }, { header: 'Nouveaux clients', key: 'clients' }, { header: 'Nouveaux coursiers', key: 'drivers' }]}
           rows={exportRows}
         />
       </div>
@@ -67,7 +67,7 @@ export default function AcquisitionTab() {
         <PeriodBox label="6 MOIS" value={data.newClients.sixMonths} />
       </div>
 
-      <h2 style={{ fontSize: 14, fontWeight: 700, marginBottom: 10 }}>Nouveaux livreurs</h2>
+      <h2 style={{ fontSize: 14, fontWeight: 700, marginBottom: 10 }}>Nouveaux coursiers</h2>
       <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginBottom: 20 }}>
         <PeriodBox label="AUJOURD'HUI" value={data.newDrivers.today} />
         <PeriodBox label="7 JOURS" value={data.newDrivers.week} />
@@ -101,7 +101,7 @@ export default function AcquisitionTab() {
               <Tooltip contentStyle={TOOLTIP_STYLE} />
               <Legend wrapperStyle={{ fontSize: 12 }} />
               <Line type="monotone" dataKey="clients" name="Clients" stroke="#06b6d4" strokeWidth={2} dot={{ fill: '#06b6d4', r: 3 }} />
-              <Line type="monotone" dataKey="drivers" name="Livreurs" stroke="#8b5cf6" strokeWidth={2} dot={{ fill: '#8b5cf6', r: 3 }} />
+              <Line type="monotone" dataKey="drivers" name="Coursiers" stroke="#8b5cf6" strokeWidth={2} dot={{ fill: '#8b5cf6', r: 3 }} />
             </LineChart>
           </ResponsiveContainer>
         </div>

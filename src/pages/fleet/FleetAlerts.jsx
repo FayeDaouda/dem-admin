@@ -83,7 +83,7 @@ export default function FleetAlerts() {
                     <div>
                       <div style={{ fontWeight: 700, fontSize: 14 }}>{a.label}</div>
                       <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2 }}>
-                        {a.driverName?.trim() || a.driverPhone || 'Livreur inconnu'}
+                        {a.driverName?.trim() || a.driverPhone || 'Coursier inconnu'}
                         {a.orderId && ` · Commande #${a.orderId.slice(-6)}`}
                       </div>
                       {a.notes && (

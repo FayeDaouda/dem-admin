@@ -22,7 +22,7 @@ export const hoursSince = (date, now = Date.now()) => Math.floor((now - new Date
 // dem-backend/src/modules/admin/admin.kpi-definitions.js:paymentChannelOf
 export const CHANNEL_LABELS = {
   ONLINE:   'Payée en ligne',
-  CASH:     'Cash (livreur)',
+  CASH:     'Cash (coursier)',
   UNPAID:   'Non payée',
   DISPUTED: 'Litige',
 }

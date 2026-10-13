@@ -6,17 +6,14 @@ import Layout      from './components/Layout'
 import Login       from './pages/Login'
 import ChangePasswordRequired from './pages/ChangePasswordRequired'
 import Dashboard   from './pages/Dashboard'
-import Payments    from './pages/Payments'
 import Orders      from './pages/Orders'
 import Drivers     from './pages/Drivers'
 import Clients     from './pages/Clients'
 import Config      from './pages/Config'
-import Acquisition from './pages/Acquisition'
-import AcquisitionOverview from './pages/AcquisitionOverview'
-import Promotions from './pages/Promotions'
+import AppVersion from './pages/AppVersion'
+import CodesAcces from './pages/CodesAcces'
+import Relances from './pages/Relances'
 import Rewards from './pages/Rewards'
-import NewProfiles from './pages/NewProfiles'
-import OutreachTable from './pages/OutreachTable'
 import Validation    from './pages/Validation'
 import Incidents    from './pages/Incidents'
 import Audit        from './pages/Audit'
@@ -28,9 +25,9 @@ import Marketing from './pages/marketing'
 import Finance from './pages/finance'
 import Equipes from './pages/Equipes'
 import Maintenance from './pages/Maintenance'
-import { ClientBadgesPage, DriverBadgesPage } from './pages/Badges'
+import BadgesPage from './pages/Badges'
 import Parrainage from './pages/Parrainage'
-import Broadcast from './pages/Broadcast'
+import Notifications from './pages/Notifications'
 
 const LiveMap     = lazy(() => import('./pages/LiveMap'))
 const FleetSection = lazy(() => import('./pages/fleet/FleetSection'))
@@ -104,21 +101,28 @@ function AppRoutes() {
       <Route path="/marketing" element={<ProtectedRoute><Marketing /></ProtectedRoute>} />
       <Route path="/finance" element={<ProtectedRoute><Finance /></ProtectedRoute>} />
       <Route path="/map" element={<ProtectedRoute><LiveMap /></ProtectedRoute>} />
-      <Route path="/payments" element={<ProtectedRoute><Payments /></ProtectedRoute>} />
+      <Route path="/payments" element={<Navigate to="/finance?tab=paiements&vue=impayes" replace />} />
       <Route path="/orders"   element={<ProtectedRoute><Orders /></ProtectedRoute>} />
       <Route path="/drivers"  element={<ProtectedRoute><Drivers /></ProtectedRoute>} />
       <Route path="/clients"  element={<ProtectedRoute><Clients /></ProtectedRoute>} />
-      <Route path="/config"      element={<ProtectedRoute><Config /></ProtectedRoute>} />
-      <Route path="/acquisition" element={<ProtectedRoute><Acquisition /></ProtectedRoute>} />
-      <Route path="/acquisition-overview" element={<ProtectedRoute><AcquisitionOverview /></ProtectedRoute>} />
-      <Route path="/promotions" element={<ProtectedRoute><Promotions /></ProtectedRoute>} />
+      <Route path="/tarifs" element={<ProtectedRoute><Config /></ProtectedRoute>} />
+      <Route path="/config" element={<Navigate to="/tarifs" replace />} />
+      <Route path="/version-app" element={<ProtectedRoute><AppVersion /></ProtectedRoute>} />
+      <Route path="/codes-acces" element={<ProtectedRoute><CodesAcces /></ProtectedRoute>} />
+      <Route path="/acquisition" element={<Navigate to="/marketing?tab=acquisition" replace />} />
+      {/* Anciennes adresses — redirigées sans échéance (plan de refonte, étape 1) */}
+      <Route path="/acquisition-overview" element={<Navigate to="/marketing?tab=acquisition" replace />} />
+      <Route path="/promotions" element={<Navigate to="/marketing?tab=promotions" replace />} />
       <Route path="/recompenses" element={<ProtectedRoute><Rewards /></ProtectedRoute>} />
-      <Route path="/nouveaux-profils" element={<ProtectedRoute><NewProfiles /></ProtectedRoute>} />
-      <Route path="/tableau" element={<ProtectedRoute><OutreachTable /></ProtectedRoute>} />
-      <Route path="/badges/clients" element={<ProtectedRoute><ClientBadgesPage /></ProtectedRoute>} />
-      <Route path="/badges/drivers" element={<ProtectedRoute><DriverBadgesPage /></ProtectedRoute>} />
+      <Route path="/nouveaux-profils" element={<Navigate to="/relances?tab=inscrits" replace />} />
+      <Route path="/tableau" element={<Navigate to="/relances?tab=appels" replace />} />
+      <Route path="/relances" element={<ProtectedRoute><Relances /></ProtectedRoute>} />
+      <Route path="/badges" element={<ProtectedRoute><BadgesPage /></ProtectedRoute>} />
+      <Route path="/badges/clients" element={<Navigate to="/badges?tab=clients" replace />} />
+      <Route path="/badges/drivers" element={<Navigate to="/badges?tab=coursiers" replace />} />
       <Route path="/parrainage" element={<ProtectedRoute><Parrainage /></ProtectedRoute>} />
-      <Route path="/broadcast"  element={<ProtectedRoute><Broadcast /></ProtectedRoute>} />
+      <Route path="/notifications" element={<ProtectedRoute><Notifications /></ProtectedRoute>} />
+      <Route path="/broadcast" element={<Navigate to="/notifications" replace />} />
       <Route path="/incidents"   element={<ProtectedRoute><Incidents /></ProtectedRoute>} />
       <Route path="/audit"       element={<ProtectedRoute><Audit /></ProtectedRoute>} />
       <Route path="/validation"      element={<ProtectedRoute><Validation /></ProtectedRoute>} />

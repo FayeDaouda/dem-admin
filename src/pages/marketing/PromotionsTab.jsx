@@ -2,9 +2,11 @@ import { useState, useEffect, useCallback } from 'react'
 import { Plus, Pencil, Trash2, Gift, Search, ToggleLeft, ToggleRight, Check, X } from 'lucide-react'
 import api from '../../lib/api'
 import { glass, glassInput } from '../../lib/glassStyles'
+import { useAuth } from '../../contexts/AuthContext'
+import { canSee, ACTION_ROLES } from '../../lib/droits'
 
 const TYPE_LABELS = { FREE_COURSE: 'Course gratuite', PERCENT_OFF: 'Réduction %', FIXED_OFF: 'Montant fixe' }
-const TARGET_LABELS = { CLIENT: 'Clients', DEM_PRO: 'DEM Pro', DRIVER: 'Livreurs (passe)', ALL: 'Clients + DEM Pro' }
+const TARGET_LABELS = { CLIENT: 'Clients', DEM_PRO: 'DEM Pro', DRIVER: 'Coursiers (passe)', ALL: 'Clients + DEM Pro' }
 
 const card       = { ...glass, padding: '20px 24px' }
 const tableStyle = { width: '100%', minWidth: 760, borderCollapse: 'collapse' }
@@ -22,6 +24,7 @@ const EMPTY_FORM = {
 }
 
 export default function PromotionsTab() {
+  const { user } = useAuth()
   const [campaigns, setCampaigns] = useState(null)
   const [form, setForm] = useState(null) // null = fermé, {} = création, {...} = édition
   const [saving, setSaving] = useState(false)
@@ -109,8 +112,8 @@ export default function PromotionsTab() {
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <p style={{ fontSize: 12, color: 'var(--text-muted)', margin: 0, maxWidth: 560 }}>
-          Le livreur touche toujours 100% du prix de la course — DEM finance la réduction accordée
-          au client, jamais le livreur.
+          Le coursier touche toujours 100% du prix de la course — DEM finance la réduction accordée
+          au client, jamais le coursier.
         </p>
         <button onClick={openCreate} style={btnPrimary}>
           <Plus size={14} /> Nouvelle campagne
@@ -177,7 +180,8 @@ export default function PromotionsTab() {
         </div>
       </div>
 
-      <GiftForfaitCard />
+      {/* Pass offerts : le serveur les réserve à Super et Finance (lib/droits.js) */}
+      {canSee(user?.adminRole, ACTION_ROLES.giftForfait) && <GiftForfaitCard />}
 
       {form && (
         <div style={overlay} onClick={() => !saving && setForm(null)}>
@@ -215,7 +219,7 @@ export default function PromotionsTab() {
               <option value="ALL">Tous (clients + DEM Pro)</option>
               <option value="CLIENT">Clients uniquement</option>
               <option value="DEM_PRO">DEM Pro uniquement</option>
-              <option value="DRIVER">Livreurs — réduction sur la passe</option>
+              <option value="DRIVER">Coursiers — réduction sur la passe</option>
             </select>
             {form.targetRole === 'DRIVER' && (
               <p style={{ fontSize: 11.5, color: 'var(--text-muted)', marginTop: 4 }}>
@@ -305,14 +309,14 @@ export default function PromotionsTab() {
   )
 }
 
-// ── Récompenser un livreur — passe offerte, sans débit wallet ────────────────
+// ── Récompenser un coursier — passe offerte, sans débit wallet ────────────────
 function GiftForfaitCard() {
   const [search, setSearch] = useState('')
   const [results, setResults] = useState([])
   const [searching, setSearching] = useState(false)
   const [searchError, setSearchError] = useState('')
   const [hasSearched, setHasSearched] = useState(false)
-  const [selected, setSelected] = useState([]) // plusieurs livreurs possibles — cadeau groupé
+  const [selected, setSelected] = useState([]) // plusieurs coursiers possibles — cadeau groupé
   const [days, setDays] = useState(1)
   const [sending, setSending] = useState(false)
   const [message, setMessage] = useState(null)
@@ -366,8 +370,8 @@ function GiftForfaitCard() {
         setMessage({
           ok: failures.length === 0,
           text: failures.length === 0
-            ? `Passe offerte à ${res.data.succeeded} livreur(s).`
-            : `Passe offerte à ${res.data.succeeded} livreur(s) — échec pour ${failures.map(f => `${nameOf[f.driverId] ?? f.driverId} (${f.message})`).join(', ')}.`,
+            ? `Passe offerte à ${res.data.succeeded} coursier(s).`
+            : `Passe offerte à ${res.data.succeeded} coursier(s) — échec pour ${failures.map(f => `${nameOf[f.driverId] ?? f.driverId} (${f.message})`).join(', ')}.`,
         })
       }
       setSelected([]); setResults([]); setSearch('')
@@ -380,11 +384,11 @@ function GiftForfaitCard() {
     <div style={card}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
         <Gift size={16} color="var(--primary)" />
-        <h2 style={{ fontSize: 15, fontWeight: 700, margin: 0 }}>Récompenser un ou plusieurs livreurs</h2>
+        <h2 style={{ fontSize: 15, fontWeight: 700, margin: 0 }}>Récompenser un ou plusieurs coursiers</h2>
       </div>
       <p style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 4, marginBottom: 14 }}>
-        Offre une passe journalière gratuite (aucun débit wallet) — se cumule si le livreur a déjà une passe active.
-        Sélectionnez un ou plusieurs livreurs pour un cadeau groupé.
+        Offre une passe journalière gratuite (aucun débit wallet) — se cumule si le coursier a déjà une passe active.
+        Sélectionnez un ou plusieurs coursiers pour un cadeau groupé.
       </p>
 
       <div style={{ position: 'relative' }}>
@@ -392,7 +396,7 @@ function GiftForfaitCard() {
         <input
           value={search}
           onChange={e => setSearch(e.target.value)}
-          placeholder="Nom ou numéro de téléphone du livreur…"
+          placeholder="Nom ou numéro de téléphone du coursier…"
           style={{ ...glassInput, width: '100%', paddingLeft: 32 }}
         />
         {searching && (
@@ -407,7 +411,7 @@ function GiftForfaitCard() {
       )}
       {!searchError && !searching && hasSearched && results.length === 0 && (
         <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 6 }}>
-          Aucun livreur trouvé pour « {search.trim()} ».
+          Aucun coursier trouvé pour « {search.trim()} ».
         </div>
       )}
 
@@ -462,7 +466,7 @@ function GiftForfaitCard() {
               <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>jour(s)</span>
             </span>
             <button onClick={sendGift} disabled={sending} style={btnPrimary}>
-              {sending ? 'Envoi…' : `Offrir la passe à ${selected.length} livreur${selected.length > 1 ? 's' : ''}`}
+              {sending ? 'Envoi…' : `Offrir la passe à ${selected.length} coursier${selected.length > 1 ? 's' : ''}`}
             </button>
             <button onClick={() => setSelected([])} style={btnOutline}>Tout désélectionner</button>
           </div>

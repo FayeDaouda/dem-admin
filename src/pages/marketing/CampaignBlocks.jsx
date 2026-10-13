@@ -1,29 +1,15 @@
+// Blocs de l'ancien onglet Marketing › Campagnes et alertes (plan de
+// refonte, 3.10) : historique des envois et alerte dans l'app → page
+// Notifications ; jalons de croissance → Marketing.
 import { useState, useEffect, useCallback } from 'react'
-import { Link } from 'react-router-dom'
-import { Send, MessageSquareWarning, Trophy, ArrowRight } from 'lucide-react'
 import api from '../../lib/api'
-import { glass, glassInput } from '../../lib/glassStyles'
+import { glassInput } from '../../lib/glassStyles'
 import { useAutoRefresh } from '../../lib/useAutoRefresh'
 import { targetLabel } from '../../lib/broadcastTargets'
 
-const AUDIENCE_OPTIONS = [['all', 'Tous'], ['clients', 'Clients'], ['drivers', 'Livreurs']]
+const AUDIENCE_OPTIONS = [['all', 'Tous'], ['clients', 'Clients'], ['drivers', 'Coursiers']]
 
-function Section({ icon: Icon, title, children, action }) {
-  return (
-    <div style={{ ...glass, padding: '18px 20px', marginBottom: 16 }}>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <Icon size={16} color="var(--primary)" />
-          <h2 style={{ fontSize: 15, fontWeight: 700, margin: 0 }}>{title}</h2>
-        </div>
-        {action}
-      </div>
-      {children}
-    </div>
-  )
-}
-
-function AlertForm() {
+export function AlertForm() {
   const [banner, setBanner] = useState(null)
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
@@ -86,7 +72,7 @@ function AlertForm() {
   )
 }
 
-function BroadcastHistory() {
+export function BroadcastHistory() {
   const [broadcasts, setBroadcasts] = useState([])
   const [loading, setLoading] = useState(true)
 
@@ -127,7 +113,7 @@ function BroadcastHistory() {
   )
 }
 
-function Milestones() {
+export function Milestones() {
   const [data, setData] = useState(null)
 
   const load = useCallback(async () => {
@@ -162,32 +148,6 @@ function Milestones() {
           </div>
         ))}
       </div>
-    </div>
-  )
-}
-
-export default function CampaignsTab() {
-  return (
-    <div>
-      <Section
-        icon={Send}
-        title="Notifications push"
-        action={
-          <Link to="/broadcast" style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, fontWeight: 600, color: 'var(--primary)', textDecoration: 'none' }}>
-            Envoyer une notification <ArrowRight size={13} />
-          </Link>
-        }
-      >
-        <BroadcastHistory />
-      </Section>
-
-      <Section icon={MessageSquareWarning} title="Alerte in-app">
-        <AlertForm />
-      </Section>
-
-      <Section icon={Trophy} title="Jalons de croissance">
-        <Milestones />
-      </Section>
     </div>
   )
 }

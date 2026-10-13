@@ -1,17 +1,19 @@
 import { useState, useEffect, useCallback } from 'react'
-import api from '../lib/api'
-import Badge from '../components/Badge'
+import api from '../../lib/api'
+import Badge from '../../components/Badge'
 import { RefreshCw } from 'lucide-react'
-import { glass, glassModal, glassInput, pageWrap, pageScroll, stickyTh } from '../lib/glassStyles'
-import { useAutoRefresh } from '../lib/useAutoRefresh'
+import { glass, glassModal, glassInput, stickyTh } from '../../lib/glassStyles'
+import { useAutoRefresh } from '../../lib/useAutoRefresh'
 
 const PAYMENT_METHODS = ['', 'CASH', 'WAVE', 'ORANGE_MONEY']
-// Toujours un paiement reçu PAR LE LIVREUR (Wave / OM sur son numéro) — un
+// Toujours un paiement reçu PAR LE COURSIER (Wave / OM sur son numéro) — un
 // paiement en ligne DEM (SamirPay) se confirme tout seul et n'arrive jamais ici.
-const PM_LABELS = { '': 'Non précisé', CASH: 'Espèces', WAVE: 'Wave (au livreur)', ORANGE_MONEY: 'Orange Money (au livreur)' }
+const PM_LABELS = { '': 'Non précisé', CASH: 'Espèces', WAVE: 'Wave (au coursier)', ORANGE_MONEY: 'Orange Money (au coursier)' }
 const LIMIT = 50
 
-export default function Payments() {
+// Impayés et litiges des courses livrées — ancienne page /payments, devenue
+// une vue de Finance › Paiements (plan de refonte, étape 3.1).
+export default function UnpaidTab() {
   const [orders, setOrders]   = useState([])
   const [total, setTotal]     = useState(0)
   const [counts, setCounts]   = useState(null)
@@ -57,7 +59,7 @@ export default function Payments() {
         : { paymentStatus: 'DISPUTED', disputeNotes: form.disputeNotes }
       const res = await api.patch(`/admin/orders/${modal.order.id}/payment`, body)
       const notes = []
-      if (res.data?.promoSubsidyCredited) notes.push(`remboursement promo de ${res.data.promoSubsidyCredited.toLocaleString()} F crédité au livreur`)
+      if (res.data?.promoSubsidyCredited) notes.push(`remboursement promo de ${res.data.promoSubsidyCredited.toLocaleString()} F crédité au coursier`)
       if (res.data?.cashFeeCharged) notes.push(`mise en relation de ${res.data.cashFeeCharged.toLocaleString()} F prélevée sur son wallet`)
       if (notes.length) alert(`Paiement confirmé — ${notes.join(' ; ')}.`)
       setModal(null)
@@ -74,9 +76,8 @@ export default function Payments() {
   const totalPages = Math.max(1, Math.ceil(total / LIMIT))
 
   return (
-    <div style={pageWrap}>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24, flexShrink: 0 }}>
-        <h1 style={{ fontSize: 22, fontWeight: 700 }}>Paiements</h1>
+    <div>
+      <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 12 }}>
         <button onClick={fetch} style={btnOutline}>
           <RefreshCw size={14} /> Actualiser
         </button>
@@ -148,7 +149,7 @@ export default function Payments() {
       </div>
 
       {/* Table */}
-      <div style={pageScroll}>
+      <div>
       <div style={card}>
         {loading ? (
           <div style={{ color: 'var(--text-muted)', padding: 20 }}>Chargement…</div>
@@ -158,7 +159,7 @@ export default function Payments() {
           <table style={tableStyle}>
             <thead>
               <tr>
-                {['#', 'ID', 'Type', 'Client', 'Livreur', 'Dû par le client', 'Statut paiement', 'Note litige', 'Action'].map(h => (
+                {['#', 'ID', 'Type', 'Client', 'Coursier', 'Dû par le client', 'Statut paiement', 'Note litige', 'Action'].map(h => (
                   <th key={h} style={{ ...thStyle, ...stickyTh }}>{h}</th>
                 ))}
               </tr>
@@ -171,8 +172,8 @@ export default function Payments() {
                   <td style={tdStyle}><Badge status={o.orderType} /></td>
                   <td style={tdStyle}>{o.client?.name ?? o.client?.phone ?? '—'}</td>
                   <td style={tdStyle}>{o.driver?.name ?? '—'}</td>
-                  {/* Prix livreur + frais DEM − promo (+ produits en paiement intégré) */}
-                  <td style={{ ...tdStyle, fontWeight: 600 }} title={`Part livreur : ${o.price?.toLocaleString()} F`}>{(o.amountDue ?? o.price)?.toLocaleString()} F</td>
+                  {/* Prix coursier + frais DEM − promo (+ produits en paiement intégré) */}
+                  <td style={{ ...tdStyle, fontWeight: 600 }} title={`Part coursier : ${o.price?.toLocaleString()} F`}>{(o.amountDue ?? o.price)?.toLocaleString()} F</td>
                   <td style={tdStyle}><Badge status={o.paymentStatus} /></td>
                   <td style={tdStyle}>
                     {o.disputeNotes

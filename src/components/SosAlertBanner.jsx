@@ -32,7 +32,7 @@ function since(iso) {
 }
 
 /**
- * Bandeau rouge en haut de TOUTES les pages tant qu'une alerte SOS livreur
+ * Bandeau rouge en haut de TOUTES les pages tant qu'une alerte SOS coursier
  * est « Nouveau » (non prise en charge). Disparaît dès qu'un admin passe
  * l'incident « En cours » ou « Résolu » dans la page Incidents.
  */
@@ -99,8 +99,8 @@ export default function SosAlertBanner() {
             <div style={{ flex: 1, minWidth: 220 }}>
               <div style={{ fontWeight: 800, fontSize: 14 }}>
                 {safe
-                  ? `${a.driverName ?? 'Le livreur'} indique être en sécurité — SOS à clore`
-                  : `SOS livreur — ${a.driverName ?? 'livreur'}`}
+                  ? `${a.driverName ?? 'Le coursier'} indique être en sécurité — SOS à clore`
+                  : `SOS coursier — ${a.driverName ?? 'coursier'}`}
               </div>
               <div style={{ fontSize: 12, opacity: 0.9 }}>
                 {since(a.openedAt)}

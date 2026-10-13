@@ -6,8 +6,8 @@ import { glass } from '../../../lib/glassStyles'
 const TOOLTIP_STYLE = { background: '#fff', border: '1px solid var(--border)', borderRadius: 6, color: 'var(--text)', fontSize: 12, boxShadow: '0 2px 8px rgba(0,0,0,0.10)' }
 
 const REASON_LABELS = {
-  NO_DRIVER_FOUND: 'Aucun livreur trouvé', CHANGED_MIND: "Changement d'avis", TOO_LONG: 'Trop long',
-  WRONG_ADDRESS: 'Adresse erronée', PRICE: 'Prix', DRIVER_ISSUE: 'Problème livreur',
+  NO_DRIVER_FOUND: 'Aucun coursier trouvé', CHANGED_MIND: "Changement d'avis", TOO_LONG: 'Trop long',
+  WRONG_ADDRESS: 'Adresse erronée', PRICE: 'Prix', DRIVER_ISSUE: 'Problème coursier',
   OTHER: 'Autre', NON_RENSEIGNE: 'Non renseigné',
 }
 
@@ -318,7 +318,7 @@ export function CompletedOrdersModal({ icon, color, onClose }) {
 }
 
 // ── KPI : Dernière notification push ──────────────────────────────────────────
-const TARGET_LABELS = { all: 'Tous', clients: 'Clients', drivers: 'Livreurs', dem_pro: 'DEM Pro' }
+const TARGET_LABELS = { all: 'Tous', clients: 'Clients', drivers: 'Coursiers', dem_pro: 'DEM Pro' }
 
 export function BroadcastHistoryModal({ icon, color, onClose }) {
   const [page, setPage] = useState(1)

@@ -1,64 +1,39 @@
 import { useState } from 'react'
-import { RefreshCw, Wallet, Receipt, Ticket, Package, TrendingUp, ShieldAlert } from 'lucide-react'
+import { RefreshCw, Wallet, Receipt, Ticket } from 'lucide-react'
 import { pageWrap, pageScroll } from '../../lib/glassStyles'
+import PageHeader from '../../components/PageHeader'
+import TabBar from '../../components/TabBar'
+import { useUrlTab } from '../../lib/useUrlTab'
 import FinanceKpiRow from './components/FinanceKpiRow'
-import RevenueTab from './RevenueTab'
-import TransactionsTab from './TransactionsTab'
-import PassTab from './PassTab'
-import CoursesTab from './CoursesTab'
-import CaCoursesTab from './CaCoursesTab'
-import SamirpayTab from './SamirpayTab'
+import RevenusTab from './RevenusTab'
+import PaymentsTab from './PaymentsTab'
+import PassCoursiersTab from './PassCoursiersTab'
 
-// Onglet "Tarifs" retiré — Pass livreurs + pricing par zone ont déménagé sur
-// la page Tarifs dédiée du menu (Config, voir ZoneMatrixSection.jsx et
-// PassLivreursSection.jsx dans pages/) ; base_fare/price_per_km/grille de
-// commissions s'éditent déjà là-bas aussi. Ne pas les remettre en double ici.
+// Onglet ouvert dans l'adresse (?tab=…). Les prix (pass coursiers, zones,
+// frais) se règlent dans Tarifs et zones, jamais ici.
 const TABS = [
-  ['revenue',      'Revenus',      Wallet,             RevenueTab],
-  ['transactions', 'Paiements des courses', Receipt,    TransactionsTab],
-  ['pass',         'Pass livreurs', Ticket,             PassTab],
-  ['courses',      'Courses',      Package,            CoursesTab],
-  ['ca-courses',   'Commission courses', TrendingUp,    CaCoursesTab],
-  ['samirpay',     'Paiement en ligne', ShieldAlert,    SamirpayTab],
+  { key: 'revenue',    label: 'Revenus',            icon: Wallet,     Component: RevenusTab },
+  { key: 'paiements',  label: 'Paiements',          icon: Receipt,    Component: PaymentsTab },
+  { key: 'pass',       label: 'Pass coursiers',     icon: Ticket,     Component: PassCoursiersTab },
 ]
 
 export default function Finance() {
-  const [tab, setTab] = useState('revenue')
+  const [tab, setTab] = useUrlTab(TABS)
   const [reloadKey, setReloadKey] = useState(0)
 
-  const Active = TABS.find(([key]) => key === tab)[3]
+  const Active = TABS.find(t => t.key === tab).Component
 
   return (
     <div style={pageWrap}>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16, flexShrink: 0 }}>
-        <div>
-          <h1 style={{ fontSize: 22, fontWeight: 700, marginBottom: 2 }}>Finance</h1>
-          <p style={{ color: 'var(--text-muted)', fontSize: 12, margin: 0 }}>
-            Suivi financier, transactions et propositions tarifaires
-          </p>
-        </div>
-        <button onClick={() => setReloadKey(k => k + 1)} style={btnOutline}>
-          <RefreshCw size={14} /> Actualiser
-        </button>
-      </div>
+      <PageHeader
+        title="Finance"
+        subtitle="Revenus, paiements et pass coursiers"
+        actions={<button onClick={() => setReloadKey(k => k + 1)} style={btnOutline}><RefreshCw size={14} /> Actualiser</button>}
+      />
 
       <div style={pageScroll}>
         <FinanceKpiRow reloadKey={reloadKey} />
-
-        <div style={{ display: 'flex', gap: 4, marginBottom: 20, background: 'rgba(255,255,255,.45)', borderRadius: 'var(--radius)', padding: 4, width: 'fit-content', flexWrap: 'wrap' }}>
-          {TABS.map(([key, label, Icon]) => (
-            <button key={key} onClick={() => setTab(key)} style={{
-              padding: '7px 16px', borderRadius: 'var(--radius-sm)', border: 'none', cursor: 'pointer',
-              background: tab === key ? 'var(--primary)' : 'transparent',
-              color: tab === key ? '#fff' : 'var(--text-muted)',
-              fontWeight: tab === key ? 700 : 500, fontSize: 13,
-              display: 'flex', alignItems: 'center', gap: 6,
-            }}>
-              <Icon size={13} /> {label}
-            </button>
-          ))}
-        </div>
-
+        <TabBar tabs={TABS} active={tab} onChange={setTab} />
         <Active key={`${tab}-${reloadKey}`} />
       </div>
     </div>

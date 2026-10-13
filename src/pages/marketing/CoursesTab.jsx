@@ -46,7 +46,7 @@ export default function CoursesTab() {
       <p style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 0, marginBottom: 14, lineHeight: 1.5 }}>
         Livrées / annulées = courses livrées ou annulées ce jour-là (date de l'événement). <strong>Taux d'annulation</strong> = part des commandes
         créées sur les 30 derniers jours aujourd'hui annulées (une seule population). <strong>Délai d'acceptation</strong> = temps entre la commande
-        et son acceptation par un livreur, commandes immédiates uniquement (une commande programmée est acceptée à l'avance).
+        et son acceptation par un coursier, commandes immédiates uniquement (une commande programmée est acceptée à l'avance).
       </p>
       <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginBottom: 20 }}>
         <PeriodBox label="AUJOURD'HUI" completed={data.completed.today} cancelled={data.cancelled.today} />

@@ -8,7 +8,7 @@ import { glass, glassInput } from '../lib/glassStyles'
 // d'abord quelques numéros pilotes, puis rôle par rôle. Désactiver un rôle
 // ramène l'app au SMS sans effacer les codes déjà créés.
 
-const ROLE_LABELS = { DRIVER: 'Livreurs', DEM_PRO: 'DEM Pro', CLIENT: 'Clients', CHEF_DE_FLOTTE: 'Chefs de flotte' }
+const ROLE_LABELS = { DRIVER: 'Coursiers', DEM_PRO: 'DEM Pro', CLIENT: 'Clients', CHEF_DE_FLOTTE: 'Chefs de flotte' }
 
 export default function PinSettingsPanel() {
   const [settings, setSettings] = useState(null)

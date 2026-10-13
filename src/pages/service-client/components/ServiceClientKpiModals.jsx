@@ -142,7 +142,7 @@ export function ActiveOrdersModal({ icon, color, onClose }) {
       ) : (
         <table style={tableStyle}>
           <thead>
-            <tr>{['Statut', 'Client', 'Livreur', 'Départ', 'Arrivée', 'Prix', 'Prise en charge'].map(h => <th key={h} style={thStyle}>{h}</th>)}</tr>
+            <tr>{['Statut', 'Client', 'Coursier', 'Départ', 'Arrivée', 'Prix', 'Prise en charge'].map(h => <th key={h} style={thStyle}>{h}</th>)}</tr>
           </thead>
           <tbody>
             {data.orders.map(o => (
@@ -163,7 +163,7 @@ export function ActiveOrdersModal({ icon, color, onClose }) {
   )
 }
 
-// ── KPI : En attente d'un livreur ─────────────────────────────────────────────
+// ── KPI : En attente d'un coursier ─────────────────────────────────────────────
 // "Toutes" = même population que la carte ; les autres onglets ne gardent
 // que les commandes en attente depuis plus du délai choisi.
 const STUCK_PENDING_PERIODS = [
@@ -191,7 +191,7 @@ export function StuckPendingOrdersModal({ icon, color, onClose }) {
   }, [period])
 
   return (
-    <Shell icon={icon} color={color} title="Courses en attente d'un livreur" onClose={onClose}>
+    <Shell icon={icon} color={color} title="Courses en attente d'un coursier" onClose={onClose}>
       <PeriodTabs periods={STUCK_PENDING_PERIODS} active={period} onChange={setPeriod} color={color} prefix={p => p.key === 'all' ? '' : 'Depuis plus de '} />
       <div style={{ marginBottom: 20 }}>
         <StatBox label={period === 'all' ? 'En attente maintenant' : 'En attente depuis plus de ce délai'} value={data?.total ?? 0} color={color} />
@@ -226,7 +226,7 @@ export function StuckPendingOrdersModal({ icon, color, onClose }) {
   )
 }
 
-// ── KPI : Livreurs actifs ─────────────────────────────────────────────────────
+// ── KPI : Coursiers actifs ─────────────────────────────────────────────────────
 const DRIVER_PRESENCE_PERIODS = [
   { key: 'live', label: 'En live' },
   { key: '1h',   label: '1h' },
@@ -250,7 +250,7 @@ export function DriverActivityModal({ icon, color, onClose }) {
   }, [period])
 
   return (
-    <Shell icon={icon} color={color} title="Livreurs actifs" onClose={onClose}>
+    <Shell icon={icon} color={color} title="Coursiers actifs" onClose={onClose}>
       <div style={{ display: 'flex', gap: 6, marginBottom: 20, flexWrap: 'wrap' }}>
         {DRIVER_PRESENCE_PERIODS.map(p => (
           <button key={p.key} onClick={() => setPeriod(p.key)} style={{
@@ -265,18 +265,18 @@ export function DriverActivityModal({ icon, color, onClose }) {
         ))}
       </div>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 12, marginBottom: 20 }}>
-        <StatBox label="Livreurs actifs" value={data?.totalActive ?? 0} color={color} />
+        <StatBox label="Coursiers actifs" value={data?.totalActive ?? 0} color={color} />
         <StatBox label="En ligne maintenant" value={data?.onlineNowCount ?? 0} color={color} />
         <StatBox label="Flotte totale" value={data?.totalRegistered ?? 0} color={color} />
       </div>
       {loading ? (
         <div style={{ color: 'var(--text-muted)', textAlign: 'center', padding: 40 }}>Chargement...</div>
       ) : !data || data.drivers.length === 0 ? (
-        <div style={{ color: 'var(--text-muted)', textAlign: 'center', padding: 40 }}>Aucun livreur actif sur cette période.</div>
+        <div style={{ color: 'var(--text-muted)', textAlign: 'center', padding: 40 }}>Aucun coursier actif sur cette période.</div>
       ) : (
         <table style={tableStyle}>
           <thead>
-            <tr>{['Livreur', 'Téléphone', 'Véhicule', 'Statut', 'Dernière connexion'].map(h => <th key={h} style={thStyle}>{h}</th>)}</tr>
+            <tr>{['Coursier', 'Téléphone', 'Véhicule', 'Statut', 'Dernière connexion'].map(h => <th key={h} style={thStyle}>{h}</th>)}</tr>
           </thead>
           <tbody>
             {data.drivers.map(d => (
@@ -337,7 +337,7 @@ export function IncidentsModal({ icon, color, onClose }) {
       ) : (
         <table style={tableStyle}>
           <thead>
-            <tr>{['Type', 'Sévérité', 'Livreur', 'Statut', 'Ouvert depuis'].map(h => <th key={h} style={thStyle}>{h}</th>)}</tr>
+            <tr>{['Type', 'Sévérité', 'Coursier', 'Statut', 'Ouvert depuis'].map(h => <th key={h} style={thStyle}>{h}</th>)}</tr>
           </thead>
           <tbody>
             {filtered.map(i => (
@@ -358,8 +358,8 @@ export function IncidentsModal({ icon, color, onClose }) {
   )
 }
 
-// ── KPI : Livreurs / Clients notés < 3/5 ──────────────────────────────────────
-// Livreurs : note moyenne REÇUE. Clients : note moyenne DONNÉE (insatisfaction).
+// ── KPI : Coursiers / Clients notés < 3/5 ──────────────────────────────────────
+// Coursiers : note moyenne REÇUE. Clients : note moyenne DONNÉE (insatisfaction).
 export function LowRatingModal({ icon, color, onClose, role, title }) {
   const [data, setData] = useState(null)
   const [loading, setLoading] = useState(true)
@@ -383,7 +383,7 @@ export function LowRatingModal({ icon, color, onClose, role, title }) {
       {loading ? (
         <div style={{ color: 'var(--text-muted)', textAlign: 'center', padding: 40 }}>Chargement...</div>
       ) : list.length === 0 ? (
-        <div style={{ color: 'var(--text-muted)', textAlign: 'center', padding: 40 }}>{isDriver ? 'Aucun livreur noté en dessous de 3/5.' : 'Aucun client ne donne une note moyenne sous 3/5.'}</div>
+        <div style={{ color: 'var(--text-muted)', textAlign: 'center', padding: 40 }}>{isDriver ? 'Aucun coursier noté en dessous de 3/5.' : 'Aucun client ne donne une note moyenne sous 3/5.'}</div>
       ) : (
         <table style={tableStyle}>
           <thead>
@@ -413,8 +413,8 @@ const CANCEL_PERIODS = [
 ]
 
 const REASON_LABELS = {
-  NO_DRIVER_FOUND: 'Aucun livreur trouvé', CHANGED_MIND: "Changement d'avis", TOO_LONG: 'Trop long',
-  WRONG_ADDRESS: 'Adresse erronée', PRICE: 'Prix', DRIVER_ISSUE: 'Problème livreur',
+  NO_DRIVER_FOUND: 'Aucun coursier trouvé', CHANGED_MIND: "Changement d'avis", TOO_LONG: 'Trop long',
+  WRONG_ADDRESS: 'Adresse erronée', PRICE: 'Prix', DRIVER_ISSUE: 'Problème coursier',
   OTHER: 'Autre', NON_RENSEIGNE: 'Non renseigné',
 }
 

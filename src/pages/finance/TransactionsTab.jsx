@@ -72,7 +72,7 @@ export default function TransactionsTab() {
         columns: [
           { header: 'ID', key: 'id' }, { header: 'Type', key: 'orderType' },
           { header: 'Livrée le', key: 'deliveredAt' },
-          { header: 'Payé par le client', key: 'clientCharge' }, { header: 'Part livreur', key: 'price' },
+          { header: 'Payé par le client', key: 'clientCharge' }, { header: 'Part coursier', key: 'price' },
           { header: 'Commission DEM', key: 'demFee' }, { header: 'Remise promo', key: 'discountAmount' },
           { header: 'Canal', key: 'channelLabel' }, { header: 'Payée en ligne le', key: 'paidOnlineAt' },
           { header: 'Statut paiement', key: 'paymentStatus' },
@@ -92,16 +92,16 @@ export default function TransactionsTab() {
   return (
     <div>
       <p style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 0, marginBottom: 14, lineHeight: 1.5 }}>
-        Courses livrées sur la période (date de livraison). Montant = ce que le client a payé (part livreur + commission DEM − remise promo).
+        Courses livrées sur la période (date de livraison). Montant = ce que le client a payé (part coursier + commission DEM − remise promo).
         <strong> En ligne</strong> = paiement SamirPay confirmé, argent reçu par DEM, avec l'opérateur réellement utilisé.
-        <strong> Cash</strong> = paiement confirmé hors application : le livreur a encaissé, y compris la commission DEM.
+        <strong> Cash</strong> = paiement confirmé hors application : le coursier a encaissé, y compris la commission DEM.
       </p>
 
       {s && (
         <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginBottom: 20 }}>
           <SummaryBox label="EN LIGNE — WAVE"         bucket={s.onlineWave}        color="#00a3e0" />
           <SummaryBox label="EN LIGNE — ORANGE MONEY" bucket={s.onlineOrangeMoney} color="#ff7900" />
-          <SummaryBox label="CASH (LIVREUR)"          bucket={s.cash}              color="#6366f1" />
+          <SummaryBox label="CASH (COURSIER)"          bucket={s.cash}              color="#6366f1" />
           <SummaryBox label="NON PAYÉES"              bucket={s.unpaid}            color="#94a3b8" />
           <SummaryBox label="LITIGES"                 bucket={s.disputed}          color="#ef4444" />
         </div>
@@ -112,7 +112,7 @@ export default function TransactionsTab() {
         <select value={channel} onChange={e => { setChannel(e.target.value); setPage(1) }} style={{ ...glassInput, width: 190 }}>
           <option value="">Canal : Tous</option>
           <option value="ONLINE">Payées en ligne</option>
-          <option value="CASH">Cash (livreur)</option>
+          <option value="CASH">Cash (coursier)</option>
           <option value="UNPAID">Non payées</option>
           <option value="DISPUTED">Litiges</option>
         </select>
@@ -131,7 +131,7 @@ export default function TransactionsTab() {
           <table style={{ width: '100%', minWidth: 860, borderCollapse: 'collapse' }}>
             <thead>
               <tr>
-                {['ID', 'Livrée le', 'Payé par le client', 'Part livreur', 'Commission DEM', 'Remise', 'Canal', 'Statut paiement'].map(h => (
+                {['ID', 'Livrée le', 'Payé par le client', 'Part coursier', 'Commission DEM', 'Remise', 'Canal', 'Statut paiement'].map(h => (
                   <th key={h} style={{ ...thStyle, ...stickyTh }}>{h}</th>
                 ))}
               </tr>

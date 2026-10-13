@@ -74,7 +74,7 @@ export default function FleetExtension() {
           <>
             <div style={{ ...glass, padding: '18px 20px', marginBottom: 20 }}>
               <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>Limite actuelle de votre flotte</div>
-              <div style={{ fontSize: 22, fontWeight: 700, marginTop: 2 }}>{fleetMax ?? '—'} livreurs</div>
+              <div style={{ fontSize: 22, fontWeight: 700, marginTop: 2 }}>{fleetMax ?? '—'} coursiers</div>
             </div>
 
             <div style={{ ...glass, padding: '20px 24px', marginBottom: 20 }}>
@@ -103,7 +103,7 @@ export default function FleetExtension() {
                     <textarea
                       value={justification}
                       onChange={e => setJustification(e.target.value)}
-                      placeholder="Expliquez pourquoi vous avez besoin de plus de livreurs…"
+                      placeholder="Expliquez pourquoi vous avez besoin de plus de coursiers…"
                       required
                       rows={3}
                       style={{ ...glassInput, resize: 'vertical', fontFamily: 'inherit' }}
@@ -129,7 +129,7 @@ export default function FleetExtension() {
                   {requests.map(r => (
                     <div key={r.id} style={{ borderBottom: '1px solid var(--border)', paddingBottom: 10 }}>
                       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
-                        <span style={{ fontWeight: 700, fontSize: 14 }}>{r.requestedSize} livreurs</span>
+                        <span style={{ fontWeight: 700, fontSize: 14 }}>{r.requestedSize} coursiers</span>
                         <span style={{ fontSize: 12, fontWeight: 600, color: statusColor(r.status) }}>{statusLabel(r.status)}</span>
                       </div>
                       <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 4 }}>{r.justification}</div>

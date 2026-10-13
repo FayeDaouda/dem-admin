@@ -1,11 +1,13 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useLocation } from 'react-router-dom'
-import { AlertTriangle, RefreshCw, Filter } from 'lucide-react'
+import { AlertTriangle, RefreshCw, Filter, Flag } from 'lucide-react'
 import api from '../lib/api'
 import { connectSocket, disconnectSocket } from '../lib/socket'
 import { glass, glassInput, pageWrap, pageScroll, stickyTh } from '../lib/glassStyles'
 import { useAuth } from '../contexts/AuthContext'
 import SosPhonesCard from './SosPhonesCard'
+import ReportUserModal from '../components/ReportUserModal'
+import { canSee, ACTION_ROLES } from '../lib/droits'
 
 // ── Constantes ────────────────────────────────────────────────────────────────
 const SEVERITY_CFG = {
@@ -22,7 +24,7 @@ const STATUS_CFG = {
 }
 
 const TYPE_LABELS = {
-  SOS:                '🆘 Alerte SOS livreur',
+  SOS:                '🆘 Alerte SOS coursier',
   DRIVER_ABANDONED:   '🏃 Driver disparu (ACCEPTED)',
   DRIVER_UNREACHABLE: '📵 Driver introuvable (colis en transit)',
   PAYMENT_DISPUTE:    '💸 Litige paiement',
@@ -50,6 +52,7 @@ export default function Incidents() {
   const [detail, setDetail]       = useState(null)
   const [filterStatus, setFilterStatus] = useState('')
   const [filterType, setFilterType]     = useState('')
+  const [showReport, setShowReport]     = useState(false)
   const [saving, setSaving]       = useState(false)
   const [editNotes, setEditNotes] = useState('')
   const [editStatus, setEditStatus] = useState('')
@@ -151,10 +154,18 @@ export default function Incidents() {
             </span>
           )}
         </div>
-        <button onClick={fetch} style={btnOutline}>
-          <RefreshCw size={14} /> Actualiser
-        </button>
+        <div style={{ display: 'flex', gap: 8 }}>
+          {canSee(user?.adminRole, ACTION_ROLES.reportUser) && (
+            <button onClick={() => setShowReport(true)} style={btnOutline}>
+              <Flag size={14} /> Signaler un utilisateur
+            </button>
+          )}
+          <button onClick={fetch} style={btnOutline}>
+            <RefreshCw size={14} /> Actualiser
+          </button>
+        </div>
       </div>
+      {showReport && <ReportUserModal onClose={() => { setShowReport(false); fetch() }} />}
 
       {/* ── Stat cards ── */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 12, marginBottom: 24, flexShrink: 0 }}>
@@ -204,7 +215,7 @@ export default function Incidents() {
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
             <thead>
               <tr>
-                {['#', 'Sévérité', 'Type', 'Statut', 'Order ID', 'Livreur', 'Hors-ligne', 'Ouvert le', 'Notes'].map(h => (
+                {['#', 'Sévérité', 'Type', 'Statut', 'Order ID', 'Coursier', 'Hors-ligne', 'Ouvert le', 'Notes'].map(h => (
                   <th key={h} style={{ ...thStyle, ...stickyTh }}>{h}</th>
                 ))}
               </tr>
@@ -254,7 +265,7 @@ export default function Incidents() {
             {/* Infos */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8, fontSize: 13, marginBottom: 20 }}>
               <Row label="Commande"   value={<code>{detail.orderId ?? '—'}</code>} />
-              <Row label="Livreur"    value={detail.driverName  ?? '—'} />
+              <Row label="Coursier"    value={detail.driverName  ?? '—'} />
               <Row label="Téléphone"  value={detail.driverPhone ? <a href={`tel:${detail.driverPhone}`} style={{ color: '#0077b6' }}>{detail.driverPhone}</a> : '—'} />
               {detail.type === 'SOS' ? (
                 <>

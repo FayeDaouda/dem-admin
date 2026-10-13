@@ -7,7 +7,12 @@ import ZoneMatrixSection from './ZoneMatrixSection'
 import FlatPromoSection from './FlatPromoSection'
 import CashFeeSection from './CashFeeSection'
 import PassLivreursSection from './PassLivreursSection'
-import AppVersionTab from './AppVersionTab'
+import PassForfaitSettings from './PassForfaitSettings'
+import { useAuth } from '../contexts/AuthContext'
+import { canSee, ACTION_ROLES } from '../lib/droits'
+import PageHeader from '../components/PageHeader'
+import TabBar from '../components/TabBar'
+import { useUrlTab } from '../lib/useUrlTab'
 import DeliveryZoneTab from './DeliveryZoneTab'
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -17,7 +22,7 @@ const CONFIG_META = {
   dem_pro_commission_rate: { label: 'Commission DEM Pro – Wallet (%)', description: 'Prélevée sur la part "produit" des commandes payées via le paiement intégré DEM Pro (wallet)' },
   dem_pro_price_pro:       { label: 'Abonnement DEM Pro – Pro (F/mois)',      description: 'Prix mensuel facturé pour passer du palier Gratuit à Pro' },
   dem_pro_price_business:  { label: 'Abonnement DEM Pro – Business (F/mois)', description: 'Prix mensuel facturé pour passer au palier Business' },
-  driver_location_interval_sec: { label: 'Position du livreur en course – envoi toutes les (s)', description: 'Rythme auquel l\'app livreur envoie sa position pendant une course (3 à 30 s, 4 s si vide). Plus court = moto plus à jour côté client ; repasser à 10 en cas de charge serveur. Pris en compte au début de la course suivante.', placeholder: '4' },
+  driver_location_interval_sec: { label: 'Position du coursier en course – envoi toutes les (s)', description: 'Rythme auquel l\'app coursier envoie sa position pendant une course (3 à 30 s, 4 s si vide). Plus court = moto plus à jour côté client ; repasser à 10 en cas de charge serveur. Pris en compte au début de la course suivante.', placeholder: '4' },
 }
 
 
@@ -45,33 +50,37 @@ const btnOutline = {
 }
 
 // ── Page principale ───────────────────────────────────────────────────────────
+const CONFIG_TABS = [
+  { key: 'tarifs', label: 'Tarifs' },
+  { key: 'surge',  label: 'Heures de pointe' },
+  { key: 'zone',   label: 'Zone de livraison' },
+]
+
+// Tarifs et zones (plan de refonte, étape 3.5) — la version de l'app a sa
+// propre page dans Administration (/version-app).
 export default function Config() {
-  const [tab, setTab] = useState('tarifs')
+  const [tab, setTab] = useUrlTab(CONFIG_TABS)
   return (
     <div>
-      <h1 style={{ fontSize: 22, fontWeight: 700, marginBottom: 20 }}>Configuration</h1>
-      <div style={{ display: 'flex', gap: 4, marginBottom: 24, background: 'rgba(255,255,255,.45)', borderRadius: 'var(--radius)', padding: 4, width: 'fit-content' }}>
-        <button style={TAB(tab === 'tarifs')}      onClick={() => setTab('tarifs')}>Tarifs</button>
-        <button style={TAB(tab === 'surge')}        onClick={() => setTab('surge')}>Heures de pointe</button>
-        <button style={TAB(tab === 'version')}      onClick={() => setTab('version')}>Version de l'app</button>
-        <button style={TAB(tab === 'zone')}         onClick={() => setTab('zone')}>Zone de livraison</button>
-      </div>
-      {tab === 'tarifs'      && <TarifsTab />}
-      {tab === 'surge'       && <SurgeTab />}
-      {tab === 'version'     && <AppVersionTab />}
-      {tab === 'zone'        && <DeliveryZoneTab />}
+      <PageHeader title="Tarifs et zones" subtitle="Prix des courses, pass coursiers, heures de pointe et zone de livraison" />
+      <TabBar tabs={CONFIG_TABS} active={tab} onChange={setTab} />
+      {tab === 'tarifs' && <TarifsTab />}
+      {tab === 'surge'  && <SurgeTab />}
+      {tab === 'zone'   && <DeliveryZoneTab />}
     </div>
   )
 }
 
 // ── Tab Tarifs ────────────────────────────────────────────────────────────────
-// Le contrôle "Pass livreurs — bloquer la mise en ligne" vit uniquement dans
+// Le contrôle "Pass coursiers — bloquer la mise en ligne" vit uniquement dans
 // Finance > Tarifs (finance/TariffsTab.jsx) — il vivait aussi ici avant,
 // deux pages indépendantes éditant le même flag avec chacune leur propre état
 // local pouvait écraser silencieusement le changement fait sur l'autre page
 // (toggle basé sur un état devenu périmé) — cause probable d'un pass resté
 // actif en prod après une tentative de désactivation.
 function TarifsTab() {
+  const { user } = useAuth()
+  const showTariffBlocks = canSee(user?.adminRole, ACTION_ROLES.tariffBlocks)
   const [config,  setConfig]  = useState({})
   const [draft,   setDraft]   = useState({})
   const [connectionFee, setConnectionFee] = useState(100)
@@ -121,12 +130,12 @@ function TarifsTab() {
           au-dessus de TarifsTab). */}
       {/* Promotion prix unique — au-dessus de la matrice : quand elle est
           active, elle remplace tous les prix (voir FlatPromoSection.jsx). */}
-      <FlatPromoSection />
-      <CashFeeSection />
-      <ZoneMatrixSection />
+      {showTariffBlocks && <FlatPromoSection />}
+      {showTariffBlocks && <CashFeeSection />}
+      {showTariffBlocks && <ZoneMatrixSection />}
 
       {/* Le bouton Sauvegarder ci-dessous ne concerne QUE les champs
-          /admin/config en dessous (tarif de base, DEM Pro, position livreur),
+          /admin/config en dessous (tarif de base, DEM Pro, position coursier),
           pas la matrice. */}
       <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 28, marginBottom: 16 }}>
         <button onClick={handleSave} disabled={!hasChanges || saving} style={btnSave(hasChanges)}>
@@ -181,7 +190,7 @@ function TarifsTab() {
                       </div>
                       <div style={{ height: 1, background: 'rgba(0,0,0,.08)', margin: '3px 0' }} />
                       <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                        <span style={{ fontWeight: 700 }}>Part du livreur</span>
+                        <span style={{ fontWeight: 700 }}>Part du coursier</span>
                         <span style={{ fontWeight: 800, fontSize: 15 }}>{(coursePx - demFee).toLocaleString()} F</span>
                       </div>
                     </div>
@@ -196,11 +205,14 @@ function TarifsTab() {
         </div>
       )}
 
-      {/* Pass livreurs — section indépendante (endpoint distinct de
+      {/* Pass coursiers — section indépendante (endpoint distinct de
           /admin/config). Ne pas la dupliquer sur une autre page (voir
           commentaire au-dessus de TarifsTab). */}
       <div style={{ marginTop: 16 }}>
-        <PassLivreursSection />
+        {showTariffBlocks && <PassLivreursSection />}
+        {canSee(user?.adminRole, ACTION_ROLES.passSettings) && (
+          <div style={{ marginTop: 16 }}><PassForfaitSettings /></div>
+        )}
         {/* Paliers Starter/Business/Premium : réglés dans DEM Pro > Offres DEM Pro
             (prix, limites, interrupteur et suivi au même endroit). */}
         <Link to="/dem-pro?onglet=offres" style={{ ...glass, display: 'block', padding: '14px 18px', textDecoration: 'none', color: 'inherit' }}>

@@ -44,11 +44,11 @@ export default function KpiRow({ reloadKey }) {
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 10, marginBottom: 20 }}>
         <StatCard icon={Package}       label="Courses"                              value={v(stats?.orders?.total)}   color="#0077b6" onClick={() => setOpenModal('courses')} />
         <StatCard icon={TrendingUp}    label="Courses en cours"                     value={v(stats?.orders?.active)}  color="#6366f1" onClick={() => setOpenModal('active')} />
-        <StatCard icon={AlertTriangle} label="En attente d'un livreur"              value={v(stats?.orders?.pending)} color="#f59e0b" onClick={() => setOpenModal('pending')} />
-        <StatCard icon={Bike}          label="Livreurs actifs"                      value={v(stats?.drivers?.available)} sub={`/ ${stats?.drivers?.total ?? 0}`} color="#22c55e" onClick={() => setOpenModal('drivers')} />
+        <StatCard icon={AlertTriangle} label="En attente d'un coursier"              value={v(stats?.orders?.pending)} color="#f59e0b" onClick={() => setOpenModal('pending')} />
+        <StatCard icon={Bike}          label="Coursiers actifs"                      value={v(stats?.drivers?.available)} sub={`/ ${stats?.drivers?.total ?? 0}`} color="#22c55e" onClick={() => setOpenModal('drivers')} />
         {/* Ouvert = non résolu (nouveau + en cours) — même chiffre que la page Incidents */}
         <StatCard icon={AlertTriangle} label="Incidents ouverts"                    value={v(kpis?.openIncidents)}    color="#ef4444" onClick={() => setOpenModal('incidents')} />
-        <StatCard icon={Star}          label="Livreurs notés < 3/5"                 value={v(kpis?.lowRatingDrivers)} color="#f59e0b" onClick={() => setOpenModal('lowDrivers')} />
+        <StatCard icon={Star}          label="Coursiers notés < 3/5"                 value={v(kpis?.lowRatingDrivers)} color="#f59e0b" onClick={() => setOpenModal('lowDrivers')} />
         {/* Moyenne des notes DONNÉES par le client (clients mécontents à recontacter) */}
         <StatCard icon={Star}          label="Clients insatisfaits (note donnée < 3/5)" value={v(kpis?.lowRatingClients)} color="#f59e0b" onClick={() => setOpenModal('lowClients')} />
         <StatCard icon={XCircle}       label="Taux annulation (jour)"               value={loading ? '…' : `${kpis?.cancellationRateToday ?? 0}%`} color="#6366f1" onClick={() => setOpenModal('cancellation')} />
@@ -64,7 +64,7 @@ export default function KpiRow({ reloadKey }) {
       {openModal === 'pending'      && <StuckPendingOrdersModal icon={AlertTriangle} color="#f59e0b" onClose={() => setOpenModal(null)} />}
       {openModal === 'drivers'      && <DriverActivityModal     icon={Bike}          color="#22c55e" onClose={() => setOpenModal(null)} />}
       {openModal === 'incidents'    && <IncidentsModal          icon={AlertTriangle} color="#ef4444" onClose={() => setOpenModal(null)} />}
-      {openModal === 'lowDrivers'   && <LowRatingModal          icon={Star}          color="#f59e0b" onClose={() => setOpenModal(null)} role="DRIVER" title="Livreurs notés < 3/5" />}
+      {openModal === 'lowDrivers'   && <LowRatingModal          icon={Star}          color="#f59e0b" onClose={() => setOpenModal(null)} role="DRIVER" title="Coursiers notés < 3/5" />}
       {openModal === 'lowClients'   && <LowRatingModal          icon={Star}          color="#f59e0b" onClose={() => setOpenModal(null)} role="CLIENT" title="Clients insatisfaits (note moyenne donnée < 3/5)" />}
       {openModal === 'cancellation' && <CancellationRateModal   icon={XCircle}       color="#6366f1" onClose={() => setOpenModal(null)} />}
       {openModal === 'demPro'       && <DemProAccountsModal     icon={Briefcase}     color="#06b6d4" onClose={() => setOpenModal(null)} />}

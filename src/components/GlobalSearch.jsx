@@ -11,7 +11,7 @@ import { glass, glassInput } from '../lib/glassStyles'
 
 const ROLE_META = {
   CLIENT:         { label: 'Client',         icon: User,  path: '/clients' },
-  DRIVER:         { label: 'Livreur',        icon: Bike,  path: '/drivers' },
+  DRIVER:         { label: 'Coursier',        icon: Bike,  path: '/drivers' },
   DEM_PRO:        { label: 'DEM Pro',        icon: Store, path: '/dem-pro' },
   CHEF_DE_FLOTTE: { label: 'Chef de flotte', icon: Users, path: '/chefs-de-flotte' },
 }

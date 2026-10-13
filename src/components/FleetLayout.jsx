@@ -8,8 +8,8 @@ import FleetNotifications from './FleetNotifications'
 
 const NAV = [
   { to: '/fleet',           icon: LayoutDashboard, label: 'Dashboard' },
-  { to: '/fleet/drivers',   icon: Truck,           label: 'Mes livreurs' },
-  { to: '/fleet/map',       icon: MapPin,          label: 'Suivi livreurs' },
+  { to: '/fleet/drivers',   icon: Truck,           label: 'Mes coursiers' },
+  { to: '/fleet/map',       icon: MapPin,          label: 'Suivi coursiers' },
   { to: '/fleet/alerts',    icon: Bell,            label: 'Alertes' },
   { to: '/fleet/extension', icon: TrendingUp,      label: 'Extension de flotte' },
 ]

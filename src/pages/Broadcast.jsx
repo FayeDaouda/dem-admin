@@ -9,7 +9,7 @@ import { targetLabel } from '../lib/broadcastTargets'
 // que celui qu'il renvoie pour les notifications programmées).
 const PROFILES = [
   { value: 'clients', label: 'Clients',          icon: Users,     desc: 'Utilisateurs avec le rôle Client' },
-  { value: 'drivers', label: 'Livreurs',         icon: Bike,      desc: 'Utilisateurs avec le rôle Livreur' },
+  { value: 'drivers', label: 'Coursiers',         icon: Bike,      desc: 'Utilisateurs avec le rôle Coursier' },
   { value: 'dem_pro', label: 'DEM Pro',          icon: Briefcase, desc: 'Comptes entreprise DEM Pro' },
   { value: 'chefs',   label: 'Chefs de flotte',  icon: Truck,     desc: 'Gestionnaires de flotte' },
 ]
@@ -30,7 +30,7 @@ const TEMPLATES = [
     body: 'Commandez vos livraisons dès maintenant. Rapide, fiable et au meilleur prix. Bienvenue sur DEM !',
   },
   {
-    label: 'Appel aux livreurs',
+    label: 'Appel aux coursiers',
     title: 'Les commandes arrivent ! 🏍️',
     body: 'Connectez-vous maintenant pour recevoir vos premières courses. Bonne route avec DEM !',
   },
@@ -48,7 +48,7 @@ function toDatetimeLocal(date) {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
 }
 
-export default function Broadcast() {
+export default function Broadcast({ embedded = false }) {
   const [selected, setSelected] = useState([...ALL_PROFILES])
   const target = toTarget(selected)
   const [title, setTitle]     = useState('')
@@ -210,11 +210,13 @@ export default function Broadcast() {
   }
 
   return (
-    <div style={pageWrap}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 24 }}>
-        <Bell size={22} color="var(--primary)" />
-        <h1 style={{ fontSize: 22, fontWeight: 700 }}>Notification broadcast</h1>
-      </div>
+    <div style={embedded ? undefined : pageWrap}>
+      {!embedded && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 24 }}>
+          <Bell size={22} color="var(--primary)" />
+          <h1 style={{ fontSize: 22, fontWeight: 700 }}>Notification broadcast</h1>
+        </div>
+      )}
 
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20, maxWidth: 900 }}>
 

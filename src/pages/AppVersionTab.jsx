@@ -80,7 +80,7 @@ export default function AppVersionTab() {
       <p style={{ fontSize: 12.5, color: 'var(--text-muted)', margin: '0 0 16px', lineHeight: 1.6 }}>
         Indiquez la dernière version <strong>une fois validée par le store</strong> : les utilisateurs d'une version plus ancienne
         verront « Nouvelle version disponible » à chaque ouverture de l'app. En dessous de la version minimale, la mise à jour est
-        obligatoire (à réserver aux correctifs critiques). Client, livreur et DEM Pro : même app, même réglage.
+        obligatoire (à réserver aux correctifs critiques). Client, coursier et DEM Pro : même app, même réglage.
       </p>
 
       <div style={{ display: 'grid', gridTemplateColumns: '110px 1fr 1fr', gap: 12, fontSize: 11.5, fontWeight: 700, color: 'var(--text-muted)', marginBottom: 6 }}>
