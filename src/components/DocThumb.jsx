@@ -1,10 +1,12 @@
 import { useState } from 'react'
+import { createPortal } from 'react-dom'
 
 // Miniature cliquable pour une image (document, photo de preuve...) avec
 // zoom plein écran — état vide si l'URL est absente. Partagé entre Drivers
 // (documents véhicule/CNI, taille par défaut) et Orders (preuve de
 // livraison, agrandie via width/height — plus importante à distinguer
-// clairement qu'un document KYC).
+// clairement qu'un document KYC). Le zoom est rendu dans <body> : posé dans
+// une carte en verre (backdrop-filter), il resterait coincé dans la carte.
 export default function DocThumb({ url, label, width = 80, height = 64 }) {
   const [zoomed, setZoomed] = useState(false)
   if (!url) return (
@@ -21,10 +23,11 @@ export default function DocThumb({ url, label, width = 80, height = 64 }) {
           <span style={{ fontSize: 9, color: '#fff' }}>{label}</span>
         </div>
       </div>
-      {zoomed && (
+      {zoomed && createPortal(
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.75)', zIndex: 300, display: 'flex', alignItems: 'center', justifyContent: 'center' }} onClick={() => setZoomed(false)}>
           <img src={url} alt={label} style={{ maxWidth: '90vw', maxHeight: '85vh', borderRadius: 12 }} />
-        </div>
+        </div>,
+        document.body,
       )}
     </>
   )
