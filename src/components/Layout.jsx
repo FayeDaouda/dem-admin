@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import { NavLink, useNavigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import { Gift,
-  LayoutDashboard, CreditCard, Package, Users, LogOut, Bike, Map, Menu, X, TrendingUp, ShieldCheck, AlertTriangle, ScrollText, UserCog, Briefcase, UsersRound, SlidersHorizontal, Award, GitBranch, Bell, Wallet, UserPlus, Table2, Percent, KeyRound, Wrench, Search,
+  LayoutDashboard, CreditCard, Package, Users, LogOut, Bike, Map, Menu, X, TrendingUp, ShieldCheck, AlertTriangle, ScrollText, UserCog, Briefcase, UsersRound, SlidersHorizontal, Award, GitBranch, Bell, Wallet, UserPlus, Table2, KeyRound, Wrench, Search, Headset, Target, ChevronDown, ChevronRight,
 } from 'lucide-react'
 import logoSrc from '../assets/logo-dem.svg'
 import { useResponsive } from '../lib/useResponsive'
@@ -10,40 +10,52 @@ import SosAlertBanner from './SosAlertBanner'
 import GlobalSearch from './GlobalSearch'
 
 // roles: undefined = tous les rôles. Sinon tableau des rôles autorisés (SUPER bypass toujours).
-// ASSISTANCE_EXECUTIVE (Assistant Exécutif) : périmètre opérationnel restreint — Dashboard (sans
-// finance), Carte live, Coursiers, Courses, Validation, Incidents, Nouveaux profils, Chefs de flotte
-// (lecture), Acquisition (lecture), Tableau, Badge coursier (lecture). Pas de Finance, Paiements,
-// Service client, Audit, Marketing, Badge client, Parrainage, Notification, Équipes, Clients (fiche
-// complète), DEM Pro (facturation) ni Tarifs.
+// hideForSuper : entrée réservée au rôle métier (le Poste Service Client est
+// caché au Super Admin, décision du plan de refonte).
 // keywords : autres mots qui retrouvent la page dans la recherche du menu.
-const NAV = [
-  { to: '/',                 icon: LayoutDashboard, label: 'Dashboard',       roles: ['SUPER','DEV','ASSISTANCE_EXECUTIVE'] },
-  { to: '/marketing',       icon: LayoutDashboard,  label: 'Dashboard', roles: ['SUPER','MARKETING'], hideForSuper: true },
-  { to: '/service-client',  icon: LayoutDashboard,  label: 'Dashboard', roles: ['SUPER','SERVICE_CLIENT'], hideForSuper: true },
-  { to: '/map',              icon: Map,             label: 'Carte live',      keywords: 'map positions suivi', roles: ['SUPER','DEV','ASSISTANCE_EXECUTIVE','SERVICE_CLIENT'] },
-  { to: '/clients',          icon: Users,           label: 'Clients',         roles: ['SUPER','DEV','SERVICE_CLIENT'] },
-  { to: '/drivers',          icon: Bike,            label: 'Coursiers',       keywords: 'coursiers motos drivers', roles: ['SUPER','DEV','ASSISTANCE_EXECUTIVE','SERVICE_CLIENT'] },
-  { to: '/dem-pro',          icon: Briefcase,       label: 'DEM Pro',         keywords: 'boutiques commerçants offres paliers', roles: ['SUPER','SERVICE_CLIENT'] },
-  { to: '/chefs-de-flotte',  icon: UserCog,         label: 'Chefs de flotte', keywords: 'flottes', roles: ['SUPER','ASSISTANCE_EXECUTIVE','SERVICE_CLIENT'] },
-  { to: '/validation',       icon: ShieldCheck,     label: 'Validation',      keywords: 'documents vérification inscriptions', roles: ['SUPER','ASSISTANCE_EXECUTIVE','SERVICE_CLIENT'] },
-  { to: '/nouveaux-profils', icon: UserPlus,        label: 'Nouveaux profils', roles: ['SUPER','SERVICE_CLIENT','ASSISTANCE_EXECUTIVE'] },
-  { to: '/tableau',          icon: Table2,          label: 'Relances',         keywords: 'tableau appels prospection', roles: ['SUPER','SERVICE_CLIENT','ASSISTANCE_EXECUTIVE'] },
-  { to: '/finance',          icon: Wallet,          label: 'Finance',         roles: ['SUPER','FINANCE'], labelForRole: { FINANCE: 'Dashboard' } },
-  { to: '/payments',         icon: CreditCard,      label: 'Paiements',       keywords: 'wave orange money retraits transactions', roles: ['SUPER','FINANCE'] },
-  { to: '/orders',           icon: Package,         label: 'Courses',         keywords: 'commandes livraisons orders tournées', roles: ['SUPER','DEV','FINANCE','SERVICE_CLIENT','ASSISTANCE_EXECUTIVE'] },
-  { to: '/config',           icon: SlidersHorizontal, label: 'Tarifs',        keywords: 'prix zones config promo prix unique', roles: ['SUPER','DEV'] },
-  { to: '/audit',            icon: ScrollText,       label: 'Audit',          keywords: 'journal historique', roles: ['SUPER','DEV'] },
-  { to: '/incidents',        icon: AlertTriangle,    label: 'Incidents',      keywords: 'sos alertes litiges', roles: ['SUPER','DEV','SERVICE_CLIENT','ASSISTANCE_EXECUTIVE'] },
-  { to: '/badges',          icon: Award,            label: 'Badges',         keywords: 'badge client coursier paliers', roles: ['SUPER','MARKETING','ASSISTANCE_EXECUTIVE'] },
-  { to: '/parrainage',      icon: GitBranch,        label: 'Parrainage',     roles: ['SUPER','MARKETING'] },
-  { to: '/acquisition',     icon: TrendingUp,       label: 'Acquisition',    roles: ['SUPER'] },
-  { to: '/recompenses',     icon: Gift,             label: 'Récompenses',    keywords: 'cadeaux bonus', roles: ['SUPER','MARKETING'] },
-  { to: '/marketing?tab=promotions',  icon: Percent,    label: 'Promotions',  keywords: 'codes promo réductions', roles: ['SUPER','MARKETING'] },
-  { to: '/marketing?tab=acquisition', icon: TrendingUp, label: 'Acquisition', roles: ['ASSISTANCE_EXECUTIVE'], hideForSuper: true },
-  { to: '/broadcast',       icon: Bell,             label: 'Notification',   keywords: 'push broadcast envoi messages', roles: ['SUPER','MARKETING'] },
-  { to: '/equipes',          icon: UsersRound,       label: 'Equipes',        keywords: 'admins comptes rôles', roles: ['SUPER'] },
-  { to: '/maintenance',      icon: Wrench,           label: 'Maintenance',    keywords: 'code secret sms otp interrupteurs version', roles: ['SUPER'] },
+// group : groupe du menu (GROUPS), dans l'ordre d'affichage.
+const GROUPS = [
+  { key: 'pilotage',       label: 'Pilotage' },
+  { key: 'operations',     label: 'Opérations' },
+  { key: 'comptes',        label: 'Comptes' },
+  { key: 'argent',         label: 'Argent' },
+  { key: 'croissance',     label: 'Croissance' },
+  { key: 'administration', label: 'Administration' },
 ]
+
+const NAV = [
+  { group: 'pilotage',   to: '/',                icon: LayoutDashboard, label: 'Dashboard',            roles: ['SUPER','DEV','ASSISTANCE_EXECUTIVE'] },
+  { group: 'pilotage',   to: '/map',             icon: Map,             label: 'Carte live',           keywords: 'map positions suivi', roles: ['SUPER','DEV','ASSISTANCE_EXECUTIVE','SERVICE_CLIENT'] },
+  { group: 'operations', to: '/orders',          icon: Package,         label: 'Courses',              keywords: 'commandes livraisons orders tournées', roles: ['SUPER','DEV','FINANCE','SERVICE_CLIENT','ASSISTANCE_EXECUTIVE'] },
+  { group: 'operations', to: '/incidents',       icon: AlertTriangle,   label: 'Incidents',            keywords: 'sos alertes litiges', roles: ['SUPER','DEV','SERVICE_CLIENT','ASSISTANCE_EXECUTIVE'] },
+  { group: 'operations', to: '/validation',      icon: ShieldCheck,     label: 'Validation',           keywords: 'documents vérification inscriptions', roles: ['SUPER','ASSISTANCE_EXECUTIVE','SERVICE_CLIENT'] },
+  { group: 'operations', to: '/service-client',  icon: Headset,         label: 'Poste Service Client', keywords: 'dashboard gestes demandes', roles: ['SUPER','SERVICE_CLIENT'], hideForSuper: true },
+  { group: 'comptes',    to: '/clients',         icon: Users,           label: 'Clients',              roles: ['SUPER','DEV','SERVICE_CLIENT'] },
+  { group: 'comptes',    to: '/drivers',         icon: Bike,            label: 'Coursiers',            keywords: 'livreurs motos drivers', roles: ['SUPER','DEV','ASSISTANCE_EXECUTIVE','SERVICE_CLIENT'] },
+  { group: 'comptes',    to: '/dem-pro',         icon: Briefcase,       label: 'DEM Pro',              keywords: 'boutiques commerçants offres paliers parrainage', roles: ['SUPER','SERVICE_CLIENT'] },
+  { group: 'comptes',    to: '/chefs-de-flotte', icon: UserCog,         label: 'Chefs de flotte',      keywords: 'flottes', roles: ['SUPER','ASSISTANCE_EXECUTIVE','SERVICE_CLIENT'] },
+  { group: 'argent',     to: '/finance',         icon: Wallet,          label: 'Finance',              keywords: 'dashboard revenus commission pass', roles: ['SUPER','FINANCE'] },
+  { group: 'argent',     to: '/payments',        icon: CreditCard,      label: 'Paiements',            keywords: 'wave orange money retraits transactions impayés litiges', roles: ['SUPER','FINANCE'] },
+  { group: 'argent',     to: '/config',          icon: SlidersHorizontal, label: 'Tarifs et zones',    keywords: 'prix zones config promo prix unique heures de pointe', roles: ['SUPER','DEV'] },
+  { group: 'croissance', to: '/marketing',       icon: TrendingUp,      label: 'Marketing',            keywords: 'dashboard acquisition rétention promotions codes promo campagnes', roles: ['SUPER','MARKETING','ASSISTANCE_EXECUTIVE'] },
+  { group: 'croissance', to: '/acquisition',     icon: Target,          label: "Plan d'acquisition",   keywords: 'pass 100 clients frais', roles: ['SUPER'] },
+  { group: 'croissance', to: '/recompenses',     icon: Gift,            label: 'Récompenses',          keywords: 'cadeaux bonus', roles: ['SUPER','MARKETING'] },
+  { group: 'croissance', to: '/parrainage',      icon: GitBranch,       label: 'Parrainage',           roles: ['SUPER','MARKETING'] },
+  { group: 'croissance', to: '/badges',          icon: Award,           label: 'Badges',               keywords: 'badge client coursier paliers', roles: ['SUPER','MARKETING','ASSISTANCE_EXECUTIVE'] },
+  { group: 'croissance', to: '/broadcast',       icon: Bell,            label: 'Notifications',        keywords: 'push broadcast envoi messages', roles: ['SUPER','MARKETING'] },
+  { group: 'croissance', to: '/tableau',         icon: Table2,          label: 'Relances',             keywords: 'tableau appels prospection', roles: ['SUPER','SERVICE_CLIENT','ASSISTANCE_EXECUTIVE'] },
+  { group: 'croissance', to: '/nouveaux-profils', icon: UserPlus,       label: 'Nouveaux profils',     keywords: 'inscriptions', roles: ['SUPER','SERVICE_CLIENT','ASSISTANCE_EXECUTIVE'] },
+  { group: 'administration', to: '/equipes',     icon: UsersRound,      label: 'Équipes',              keywords: 'admins comptes rôles', roles: ['SUPER'] },
+  { group: 'administration', to: '/audit',       icon: ScrollText,      label: 'Audit',                keywords: 'journal historique', roles: ['SUPER','DEV'] },
+  { group: 'administration', to: '/maintenance', icon: Wrench,          label: 'Maintenance',          keywords: 'code secret sms otp interrupteurs', roles: ['SUPER'] },
+]
+
+const CLOSED_GROUPS_KEY = 'dem_admin_menu_groupes_fermes'
+
+function loadClosedGroups() {
+  try { return new Set(JSON.parse(localStorage.getItem(CLOSED_GROUPS_KEY) ?? '[]')) }
+  catch { return new Set() }
+}
 
 const ROLE_LABELS = {
   SUPER:                { label: 'Super Admin',           color: '#f59e0b' },
@@ -58,8 +70,6 @@ const ROLE_LABELS = {
 const normalize = (text) => text.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase()
 
 function canSeeNav(item, adminRole) {
-  // Dashboards Community/Service Client : leurs KPI sont intégrés au Dashboard
-  // principal, SUPER n'a donc pas besoin de l'entrée de menu dédiée.
   if (item.hideForSuper && (!adminRole || adminRole === 'SUPER')) return false
   if (!item.roles) return true          // pas de restriction
   if (!adminRole || adminRole === 'SUPER') return true  // SUPER voit tout
@@ -94,7 +104,17 @@ export default function Layout({ children }) {
   }, [isMobile])
 
   const visibleNav = NAV.filter(item => canSeeNav(item, user?.adminRole))
-    .map(item => ({ ...item, label: item.labelForRole?.[user?.adminRole] ?? item.label }))
+  const [closedGroups, setClosedGroups] = useState(loadClosedGroups)
+
+  function toggleGroup(key) {
+    setClosedGroups(prev => {
+      const next = new Set(prev)
+      if (next.has(key)) next.delete(key)
+      else next.add(key)
+      try { localStorage.setItem(CLOSED_GROUPS_KEY, JSON.stringify([...next])) } catch { /* stockage indisponible */ }
+      return next
+    })
+  }
   const terms = normalize(pageQuery).split(/\s+/).filter(Boolean)
   // Entrée active : une entrée vers un onglet (/marketing?tab=…) n'est active
   // que sur cet onglet, et masque alors l'entrée de la page elle-même.
@@ -142,6 +162,43 @@ export default function Layout({ children }) {
   function handleLogout() {
     logout()
     navigate('/login')
+  }
+
+  // Même règle que NavLink : '/' exact, les autres entrées couvrent aussi leurs sous-pages
+  function pathActive(to) {
+    return to === '/' ? location.pathname === '/' : (location.pathname === to || location.pathname.startsWith(`${to}/`))
+  }
+
+  function renderItem({ to, icon: Icon, label: resolvedLabel }, index) {
+    // Avec une recherche en cours : la ligne choisie au clavier (Entrée l'ouvre)
+    const highlighted = terms.length > 0 && index === activeIndex
+    return (
+      <NavLink
+        key={to}
+        to={to}
+        end={to === '/'}
+        title={collapsed ? resolvedLabel : undefined}
+        onClick={() => { setPageQuery(''); setActiveIndex(0) }}
+        style={({ isActive: navActive }) => { const isActive = entryActive(to, navActive); return {
+          display: 'flex',
+          alignItems: 'center',
+          gap: collapsed ? 0 : 10,
+          padding: collapsed ? '10px 0' : '9px 12px',
+          justifyContent: collapsed ? 'center' : 'flex-start',
+          borderRadius: 'var(--radius-sm)',
+          color: '#ffffff',
+          background: isActive ? 'rgba(255,255,255,0.22)' : 'transparent',
+          boxShadow: highlighted ? 'inset 0 0 0 1.5px rgba(255,255,255,0.75)' : 'none',
+          fontWeight: isActive ? 600 : 400,
+          fontSize: 13,
+          transition: 'all .15s',
+          whiteSpace: 'nowrap',
+        } }}
+      >
+        <Icon size={17} />
+        {!collapsed && resolvedLabel}
+      </NavLink>
+    )
   }
 
   const collapsed = isTablet  // sidebar icônes seules sur tablette
@@ -230,37 +287,34 @@ export default function Layout({ children }) {
             Aucune page pour « {pageQuery.trim()} »
           </div>
         )}
-        {shownNav.map(({ to, icon: Icon, label: resolvedLabel }, index) => {
-          // Avec une recherche en cours : la ligne choisie au clavier (Entrée l'ouvre)
-          const highlighted = terms.length > 0 && index === activeIndex
-          return (
-          <NavLink
-            key={to}
-            to={to}
-            end={to === '/'}
-            title={collapsed ? resolvedLabel : undefined}
-            onClick={() => { setPageQuery(''); setActiveIndex(0) }}
-            style={({ isActive: navActive }) => { const isActive = entryActive(to, navActive); return {
-              display: 'flex',
-              alignItems: 'center',
-              gap: collapsed ? 0 : 10,
-              padding: collapsed ? '10px 0' : '9px 12px',
-              justifyContent: collapsed ? 'center' : 'flex-start',
-              borderRadius: 'var(--radius-sm)',
-              color: '#ffffff',
-              background: isActive ? 'rgba(255,255,255,0.22)' : 'transparent',
-              boxShadow: highlighted ? 'inset 0 0 0 1.5px rgba(255,255,255,0.75)' : 'none',
-              fontWeight: isActive ? 600 : 400,
-              fontSize: 13,
-              transition: 'all .15s',
-              whiteSpace: 'nowrap',
-            } }}
-          >
-            <Icon size={17} />
-            {!collapsed && resolvedLabel}
-          </NavLink>
-          )
-        })}
+        {terms.length > 0 || collapsed
+          // Recherche en cours ou icônes seules : liste à plat (séparateur entre groupes en icônes seules)
+          ? shownNav.map((item, index) => (
+            <div key={item.to}>
+              {collapsed && index > 0 && item.group !== shownNav[index - 1].group && (
+                <div style={{ height: 1, background: 'rgba(255,255,255,0.22)', margin: '6px 10px' }} />
+              )}
+              {renderItem(item, index)}
+            </div>
+          ))
+          : GROUPS.map(g => {
+            const items = shownNav.filter(n => n.group === g.key)
+            if (items.length === 0) return null
+            // Le groupe de la page ouverte reste toujours déplié
+            const open = !closedGroups.has(g.key) || items.some(n => entryActive(n.to, pathActive(n.to)))
+            return (
+              <div key={g.key} style={{ marginBottom: 4 }}>
+                <button onClick={() => toggleGroup(g.key)} aria-expanded={open} style={{
+                  display: 'flex', alignItems: 'center', gap: 4, width: '100%', background: 'none', border: 'none',
+                  padding: '8px 12px 4px', cursor: 'pointer', color: 'rgba(255,255,255,0.72)',
+                  fontSize: 10.5, fontWeight: 700, letterSpacing: 0.6, textTransform: 'uppercase',
+                }}>
+                  {open ? <ChevronDown size={12} /> : <ChevronRight size={12} />} {g.label}
+                </button>
+                {open && items.map(item => renderItem(item, shownNav.indexOf(item)))}
+              </div>
+            )
+          })}
       </nav>
 
       {/* User + rôle + Logout */}
