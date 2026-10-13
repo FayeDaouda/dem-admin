@@ -1,14 +1,17 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import api from '../lib/api'
 import { useAuth } from '../contexts/AuthContext'
-import Badge from '../components/Badge'
 import SuspendModal from '../components/SuspendModal'
-import { RefreshCw, BarChart2, Phone, CheckCircle, XCircle, Eye, Plus, Pencil, Trash2, Search, Flag, RotateCcw } from 'lucide-react'
+import { RefreshCw, Phone, CheckCircle, XCircle, Plus, Pencil, Trash2, Search, Flag, RotateCcw, X, MessageCircle, ChevronDown, ChevronUp, PauseCircle, PlayCircle, Send } from 'lucide-react'
 import { glass, glassInput, pageWrap, pageScroll, stickyTh, stickyCol, stickyThCol } from '../lib/glassStyles'
 import SubmitRequestModal from './service-client/components/SubmitRequestModal'
 import DocThumb from '../components/DocThumb'
+import PageHeader from '../components/PageHeader'
+import { canSee, ACTION_ROLES } from '../lib/droits'
 import { useAutoRefresh } from '../lib/useAutoRefresh'
 import { useUrlQuery } from '../lib/useUrlQuery'
+
 
 const DOC_LIST = [
   { key: 'avatar',         label: 'Photo de profil' },
@@ -38,7 +41,7 @@ function formatConnectionTime(seconds) {
 }
 
 // ── Modal Créer / Modifier coursier ────────────────────────────────────────────
-function DriverFormModal({ initial, onClose, onSaved }) {
+function DriverFormModal({ initial, canUploadDocs, onClose, onSaved }) {
   const isEdit = !!initial
   const [form, setForm] = useState({
     name:         initial?.name         ?? '',
@@ -134,8 +137,8 @@ function DriverFormModal({ initial, onClose, onSaved }) {
           </select>
         </div>
 
-        {/* Section documents */}
-        <div style={{ borderTop: '1px solid rgba(0,119,182,.12)', paddingTop: 14, marginTop: 4 }}>
+        {/* Section documents — envoi des pièces réservé au Super Admin (serveur) */}
+        {canUploadDocs && <div style={{ borderTop: '1px solid rgba(0,119,182,.12)', paddingTop: 14, marginTop: 4 }}>
           <button
             type="button"
             onClick={() => setShowDocs(v => !v)}
@@ -175,7 +178,7 @@ function DriverFormModal({ initial, onClose, onSaved }) {
               </div>
             </div>
           )}
-        </div>
+        </div>}
 
         {error && <div style={{ fontSize: 12, color: 'var(--danger)', background: 'rgba(239,68,68,.08)', borderRadius: 6, padding: '7px 10px', marginTop: 12 }}>{error}</div>}
 
@@ -213,21 +216,28 @@ const DEFAULT_BADGE_TIERS = [
 // La suppression définitive efface aussi l'historique (commandes, notes,
 // transactions wallet...) — protégée par une saisie du numéro pour éviter un
 // clic accidentel sur une action irréversible.
-function DeleteDriverModal({ driver, onClose, onArchive, onHardDelete }) {
+function DeleteDriverModal({ driver, onClose, onDone }) {
   const [mode, setMode] = useState(null) // null | 'archive' | 'hard'
   const [confirmText, setConfirmText] = useState('')
   const [busy, setBusy] = useState(false)
+  const [error, setError] = useState('')
   const label = driver.name?.trim() || driver.phone
 
-  async function run(action) {
-    setBusy(true)
-    try { await action() } finally { setBusy(false) }
+  async function run(permanent) {
+    setBusy(true); setError('')
+    try {
+      await api.delete(`/admin/drivers/${driver.id}`, permanent ? { params: { permanent: true } } : undefined)
+      onDone(permanent ? `${label} est supprimé définitivement.` : `${label} est archivé.`)
+    } catch (e) {
+      setError(e.response?.data?.message ?? 'Erreur.')
+    } finally { setBusy(false) }
   }
 
   return (
     <div style={overlay} onClick={onClose}>
       <div style={modalBox} onClick={e => e.stopPropagation()}>
         <h2 style={{ marginBottom: 8, fontSize: 16 }}>Supprimer {label}</h2>
+        {error && <div style={{ color: 'var(--danger)', fontSize: 12, marginBottom: 10 }}>{error}</div>}
 
         {mode === null && (
           <>
@@ -261,11 +271,11 @@ function DeleteDriverModal({ driver, onClose, onArchive, onHardDelete }) {
         {mode === 'archive' && (
           <>
             <p style={{ color: 'var(--text-muted)', fontSize: 13, marginBottom: 20 }}>
-              {label} sera désactivé et son numéro libéré. Son historique (commandes, transactions…) reste consultable via "Voir les comptes supprimés".
+              {label} sera désactivé et son numéro libéré. Son historique (commandes, transactions…) reste consultable dans la vue « Supprimés ».
             </p>
             <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
               <button onClick={() => setMode(null)} style={btnOutline}>Retour</button>
-              <button onClick={() => run(onArchive)} disabled={busy} style={btnPrimary}>
+              <button onClick={() => run(false)} disabled={busy} style={btnPrimary}>
                 {busy ? 'Archivage…' : 'Confirmer l\'archivage'}
               </button>
             </div>
@@ -289,7 +299,7 @@ function DeleteDriverModal({ driver, onClose, onArchive, onHardDelete }) {
             <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
               <button onClick={() => setMode(null)} style={btnOutline}>Retour</button>
               <button
-                onClick={() => run(onHardDelete)}
+                onClick={() => run(true)}
                 disabled={busy || confirmText.trim() !== driver.phone}
                 style={{ padding: '7px 16px', borderRadius: 'var(--radius-sm)', border: 'none', background: 'var(--danger)', color: '#fff', fontWeight: 600, fontSize: 13, cursor: (busy || confirmText.trim() !== driver.phone) ? 'default' : 'pointer', opacity: (busy || confirmText.trim() !== driver.phone) ? 0.5 : 1 }}
               >
@@ -376,114 +386,419 @@ function RestoreDriverModal({ driver, onClose, onRestored }) {
   )
 }
 
+// Vues de la liste (paramètre status du serveur) — « Tous » exclut les
+// comptes supprimés (archivés), consultables dans leur propre vue.
+const VIEWS = [
+  { key: '',        label: 'Tous' },
+  { key: 'online',  label: 'En ligne' },
+  { key: 'offline', label: 'Hors ligne' },
+  { key: 'pending', label: 'Non vérifiés' },
+  { key: 'deleted', label: 'Supprimés' },
+]
+
+const VEHICLE_LABELS = { MOTO: 'Moto', TAXI: 'Taxi', VOITURE: 'Voiture' }
+const fmtDate = v => (v ? new Date(v).toLocaleDateString('fr-FR') : '—')
+const fleetName = d => d.managedBy?.companyName || d.managedBy?.name || d.managedBy?.phone || null
+
+// Un seul statut par coursier (avant : colonnes Statut et Vérifié séparées).
+function DriverStatus({ driver, deleted }) {
+  const s = deleted                                  ? { bg: 'rgba(100,116,139,.14)', color: '#475569', label: 'Supprimé' }
+    : driver.chefDeFlotteStatus === 'PENDING'        ? { bg: 'rgba(245,158,11,.14)',  color: '#b45309', label: 'En attente' }
+    : driver.chefDeFlotteStatus === 'REJECTED'       ? { bg: 'rgba(239,68,68,.12)',   color: '#dc2626', label: 'Refusé' }
+    : driver.isActive                                ? { bg: 'rgba(34,197,94,.12)',   color: '#15803d', label: 'Actif' }
+    :                                                  { bg: 'rgba(239,68,68,.12)',   color: '#dc2626', label: 'Suspendu' }
+  return (
+    <span style={{ display: 'inline-flex', flexDirection: 'column', gap: 2 }}>
+      <span style={{ fontSize: 11.5, fontWeight: 700, padding: '2px 10px', borderRadius: 20, background: s.bg, color: s.color, whiteSpace: 'nowrap', width: 'fit-content' }}>{s.label}</span>
+      {!deleted && !driver.isVerified && driver.chefDeFlotteStatus !== 'PENDING' && (
+        <span style={{ fontSize: 10.5, color: '#b45309', fontWeight: 600 }}>non vérifié</span>
+      )}
+    </span>
+  )
+}
+
+function Avatar({ driver, size = 34 }) {
+  return (
+    <div style={{ width: size, height: size, borderRadius: '50%', overflow: 'hidden', background: 'linear-gradient(135deg,rgba(12,184,222,.15),rgba(6,113,186,.15))', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+      {driver.avatar
+        ? <img src={driver.avatar} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+        : <span style={{ fontWeight: 700, color: '#0671BA', fontSize: size * 0.38 }}>{(driver.name?.trim() || driver.phone || '?')[0].toUpperCase()}</span>}
+    </div>
+  )
+}
+
+function OnlineDot({ online }) {
+  return (
+    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 11, color: online ? '#15803d' : 'var(--text-muted)' }}>
+      <span style={{ width: 7, height: 7, borderRadius: '50%', background: online ? '#22c55e' : '#cbd5e1' }} />
+      {online ? 'En ligne' : 'Hors ligne'}
+    </span>
+  )
+}
+
+// ── Statistiques de paiement (dans la fiche) ──────────────────────────────────
+function PaymentStats({ driverId }) {
+  const [stats, setStats] = useState(null)
+  useEffect(() => {
+    let cancelled = false
+    api.get(`/admin/drivers/${driverId}/payment-stats`)
+      .then(r => { if (!cancelled) setStats(r.data) })
+      .catch(() => { if (!cancelled) setStats(false) })
+    return () => { cancelled = true }
+  }, [driverId])
+  if (stats === false) return null
+  return (
+    <FicheSection title="Statistiques de paiement">
+      {!stats ? <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>Chargement…</span> : (
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+          {[
+            ['Courses payées', stats.paidOrders,    'var(--success)'],
+            ['Total gagné',    `${(stats.totalEarned ?? 0).toLocaleString()} F`, 'var(--primary)'],
+            ['En attente',     stats.pendingOrders, 'var(--warning)'],
+            ['Litiges',        stats.disputedOrders, 'var(--danger)'],
+          ].map(([label, val, color]) => (
+            <div key={label} style={{ background: 'var(--surface2)', borderRadius: 'var(--radius-sm)', padding: '8px 10px', borderLeft: `3px solid ${color}` }}>
+              <div style={{ color: 'var(--text-muted)', fontSize: 11 }}>{label}</div>
+              <div style={{ fontSize: 16, fontWeight: 700, color }}>{val ?? 0}</div>
+            </div>
+          ))}
+        </div>
+      )}
+    </FicheSection>
+  )
+}
+
+// ── Fiche coursier : informations à gauche, contact et actions à droite ─────
+function DriverFiche({ driver: d, deleted, rights, isServiceClient, notice, error, onClose, onAction }) {
+  const [open, setOpen] = useState(null) // 'activate' | 'reactivate' | 'report'
+  const [text, setText] = useState('')
+  const [busy, setBusy] = useState(false)
+  const [localError, setLocalError] = useState('')
+  const digits = (d.phone ?? '').replace(/[^\d]/g, '')
+  const label = d.name?.trim() || d.phone
+  const pending = d.chefDeFlotteStatus === 'PENDING'
+
+  function toggle(action) {
+    setOpen(o => (o === action ? null : action))
+    setText(''); setLocalError('')
+  }
+
+  const inline = {
+    activate:   { title: `Activer ${label} ? Ce coursier pourra commencer à accepter des courses.`, confirm: 'Activer', go: () => api.patch(`/admin/drivers/${d.id}/validate`, { approve: true }), ok: `${label} est activé.` },
+    reactivate: { title: `Réactiver ${label} ?`, confirm: 'Réactiver', go: () => api.patch(`/admin/drivers/${d.id}/activate`), ok: `${label} est réactivé.` },
+    report:     { title: 'Signaler ce coursier', placeholder: 'Motif du signalement', required: true, danger: true, confirm: 'Envoyer le signalement',
+      go: v => api.post('/admin/report-user', { userId: d.id, userRole: 'DRIVER', reason: v }), ok: 'Signalement envoyé (incident ouvert).' },
+  }
+  const current = open ? inline[open] : null
+
+  async function confirmCurrent() {
+    const v = text.trim()
+    if (current.required && !v) { setLocalError('Ce champ est obligatoire.'); return }
+    setBusy(true); setLocalError('')
+    const ok = await onAction(() => current.go(v), current.ok)
+    setBusy(false)
+    if (ok) { setOpen(null); setText('') }
+  }
+
+  const btn = (color, border) => ({ ...btnOutline, color, borderColor: border })
+
+  return (
+    <div style={overlay} onClick={onClose}>
+      <div style={ficheBox} onClick={e => e.stopPropagation()}>
+        {/* En-tête de la fiche */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 12 }}>
+          <Avatar driver={d} size={52} />
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ fontWeight: 700, fontSize: 18 }}>{d.name?.trim() || '—'}</div>
+            <div style={{ fontSize: 13, color: 'var(--text-muted)', display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+              {deleted ? (d.archivedPhone ? `Ancien n° ${d.archivedPhone}` : 'Numéro libéré') : (d.phone ?? '—')}
+              {!deleted && <OnlineDot online={d.isOnlineNow} />}
+            </div>
+          </div>
+          <DriverBadgeChip driver={d} />
+          <DriverStatus driver={d} deleted={deleted} />
+          <button onClick={onClose} style={btnIcon} title="Fermer"><X size={18} /></button>
+        </div>
+
+        {notice && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, fontWeight: 600, color: '#15803d', background: 'rgba(34,197,94,.10)', padding: '8px 12px', borderRadius: 10, marginBottom: 8 }}>
+            <CheckCircle size={14} /> {notice}
+          </div>
+        )}
+        {error && <div style={{ ...errorStyle, marginBottom: 8 }}>{error}</div>}
+
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '0 28px' }}>
+          {/* Colonne gauche : informations, flotte, pièces, paiements */}
+          <div>
+            <FicheSection title="Informations">
+              <Row label="Véhicule" value={VEHICLE_LABELS[d.vehicleType] ?? d.vehicleType ?? '—'} />
+              <Row label="Plaque" value={d.vehiclePlate ?? '—'} />
+              <Row label="Email" value={d.email ?? '—'} />
+              <Row label="Inscrit le" value={fmtDate(d.createdAt)} />
+              <Row label="Vérifié" value={d.isVerified ? '✓ Oui' : 'Non'} />
+              <Row label="Courses livrées" value={<>{d.deliveredCourses ?? 0}{d.avgRating > 0 && <span style={{ color: '#f59e0b', marginLeft: 8 }}>★ {d.avgRating}</span>}</>} />
+              {deleted && <Row label="Supprimé le" value={<>{fmtDate(d.deletedAt)}{d.deletedBySelf ? ' · par le coursier' : ''}</>} />}
+              {d.suspensionReason && !d.isActive && <Row label="Motif" value={d.suspensionReason} />}
+            </FicheSection>
+
+            <FicheSection title="Flotte">
+              {d.managedById ? (
+                <div style={{ fontSize: 13 }}>
+                  <strong>{fleetName(d) ?? '—'}</strong>
+                  {d.managedBy?.phone && <span style={{ color: 'var(--text-muted)' }}> · {d.managedBy.phone}</span>}
+                  <span style={{ marginLeft: 8, fontSize: 11, padding: '1px 8px', borderRadius: 8, fontWeight: 700, background: d.managedBy?.chefDeFlotteStatus === 'ACTIVE' ? 'rgba(124,58,237,.12)' : 'rgba(245,158,11,.12)', color: d.managedBy?.chefDeFlotteStatus === 'ACTIVE' ? '#7c3aed' : '#b45309' }}>
+                    {d.managedBy?.chefDeFlotteStatus === 'ACTIVE' ? 'chef de flotte validé' : 'chef de flotte non validé'}
+                  </span>
+                </div>
+              ) : <span style={{ fontSize: 13 }}>Indépendant</span>}
+            </FicheSection>
+
+            <FicheSection title="Pièces">
+              <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+                <DocThumb url={d.licenseFront}  label="Permis recto" />
+                <DocThumb url={d.licenseBack}   label="Permis verso" />
+                <DocThumb url={d.vehiclePhoto}  label="Véhicule" />
+                <DocThumb url={d.casquePhoto}   label="Casque" />
+                <DocThumb url={d.cniRecto}      label="CNI recto" />
+                <DocThumb url={d.cniVerso}      label="CNI verso" />
+              </div>
+            </FicheSection>
+
+            {rights.paymentStats && !deleted && <PaymentStats driverId={d.id} />}
+          </div>
+
+          {/* Colonne droite : contact et actions */}
+          <div>
+            <FicheSection title="Contact">
+              {!deleted && digits.length >= 7 ? (
+                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                  <a href={`tel:${d.phone}`} style={btnOutline}><Phone size={14} /> Appeler</a>
+                  <a href={`https://wa.me/${digits}`} target="_blank" rel="noreferrer" style={btnOutline}><MessageCircle size={14} /> WhatsApp</a>
+                </div>
+              ) : <span style={{ fontSize: 13, color: 'var(--text-muted)' }}>Pas de numéro actif.</span>}
+            </FicheSection>
+
+            <FicheSection title="Actions">
+              {deleted ? (
+                rights.manage
+                  ? <button onClick={() => onAction('restore')} style={btn('#15803d', 'rgba(34,197,94,.4)')}><RotateCcw size={14} /> Désarchiver</button>
+                  : <span style={{ fontSize: 13, color: 'var(--text-muted)' }}>Désarchivage réservé au Super Admin.</span>
+              ) : (
+                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                  {rights.edit && <button onClick={() => onAction('edit')} style={btnOutline}><Pencil size={14} /> Modifier</button>}
+                  {rights.validate && pending && (<>
+                    <button onClick={() => toggle('activate')} style={btn('#15803d', 'rgba(34,197,94,.4)')}><CheckCircle size={14} /> Activer</button>
+                    <button onClick={() => onAction('reject')} style={btn('#dc2626', 'rgba(239,68,68,.35)')}><XCircle size={14} /> Refuser</button>
+                  </>)}
+                  {rights.suspend && !pending && (d.isActive
+                    ? <button onClick={() => onAction('suspend')} style={btn('#dc2626', 'rgba(239,68,68,.35)')}><PauseCircle size={14} /> Suspendre</button>
+                    : <button onClick={() => toggle('reactivate')} style={btn('#15803d', 'rgba(34,197,94,.4)')}><PlayCircle size={14} /> Réactiver</button>)}
+                  {isServiceClient && d.isActive && (
+                    <button onClick={() => onAction('request')} style={btn('#b45309', 'rgba(245,158,11,.45)')}><Send size={14} /> Demander une suspension</button>
+                  )}
+                  {rights.report && <button onClick={() => toggle('report')} style={btn('#dc2626', 'rgba(239,68,68,.35)')}><Flag size={14} /> Signaler</button>}
+                  {rights.manage && <button onClick={() => onAction('delete')} style={btn('#dc2626', 'rgba(239,68,68,.35)')}><Trash2 size={14} /> Supprimer</button>}
+                  {!rights.edit && !rights.report && <span style={{ fontSize: 13, color: 'var(--text-muted)' }}>Lecture seule.</span>}
+                </div>
+              )}
+
+              {current && (
+                <div style={{ background: 'var(--surface2)', borderRadius: 10, padding: '12px 14px', marginTop: 6, display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  <div style={{ fontSize: 13, fontWeight: 600 }}>{current.title}</div>
+                  {current.placeholder && (
+                    <input autoFocus value={text} onChange={e => { setText(e.target.value); setLocalError('') }} placeholder={current.placeholder} style={inputStyle} />
+                  )}
+                  <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+                    <button onClick={() => toggle(open)} disabled={busy} style={btnOutline}>Retour</button>
+                    <button onClick={confirmCurrent} disabled={busy} style={{ ...btnPrimary, background: current.danger ? '#dc2626' : '#16a34a' }}>
+                      {busy ? 'En cours…' : current.confirm}
+                    </button>
+                  </div>
+                </div>
+              )}
+              {localError && <div style={errorStyle}>{localError}</div>}
+            </FicheSection>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ── Demandes de changement de numéro : bandeau repliable ─────────────────────
+function PhoneRequests({ requests, canDecide, onDecided }) {
+  const [open, setOpen]           = useState(false)
+  const [resolving, setResolving] = useState(null)
+  const [errors, setErrors]       = useState({})
+
+  async function resolve(id, approve) {
+    setResolving(id)
+    setErrors(e => ({ ...e, [id]: null }))
+    try {
+      await api.patch(`/admin/drivers/${id}/phone-change`, { approve })
+      onDecided()
+    } catch (e) {
+      setErrors(er => ({ ...er, [id]: e.response?.data?.message ?? 'Erreur.' }))
+    } finally { setResolving(null) }
+  }
+
+  if (requests.length === 0) return null
+  return (
+    <div style={{ ...glass, padding: '10px 16px', marginBottom: 14, flexShrink: 0 }}>
+      <button onClick={() => setOpen(o => !o)} style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', background: 'none', border: 'none', cursor: 'pointer', padding: 0, color: 'var(--text)' }}>
+        <Phone size={15} color="#b45309" />
+        <span style={{ fontSize: 13.5, fontWeight: 700 }}>
+          {requests.length} demande{requests.length > 1 ? 's' : ''} de changement de numéro
+        </span>
+        {!canDecide && <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>· décision du Super Admin</span>}
+        <span style={{ marginLeft: 'auto', color: 'var(--text-muted)', display: 'flex' }}>{open ? <ChevronUp size={16} /> : <ChevronDown size={16} />}</span>
+      </button>
+      {open && (
+        <div style={{ marginTop: 10, display: 'flex', flexDirection: 'column' }}>
+          {requests.map(d => (
+            <div key={d.id} style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', padding: '8px 0', borderTop: '1px solid var(--border)', fontSize: 13 }}>
+              <span style={{ fontWeight: 600, minWidth: 140 }}>{d.name ?? '—'}</span>
+              <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>{VEHICLE_LABELS[d.vehicleType] ?? d.vehicleType ?? '—'}</span>
+              <span style={{ fontFamily: 'monospace' }}>{d.phone}</span>
+              <span style={{ color: 'var(--text-muted)' }}>→</span>
+              <span style={{ fontFamily: 'monospace', color: 'var(--primary)', fontWeight: 600 }}>{d.pendingPhone ?? '—'}</span>
+              {canDecide && (
+                <div style={{ display: 'flex', gap: 8, marginLeft: 'auto' }}>
+                  {resolving === d.id ? <span style={{ color: 'var(--text-muted)', fontSize: 12 }}>En cours…</span> : (<>
+                    <button onClick={() => resolve(d.id, true)} style={{ ...btnSmall, color: 'var(--success)', borderColor: 'var(--success)' }}><CheckCircle size={13} /> Approuver</button>
+                    <button onClick={() => resolve(d.id, false)} style={{ ...btnSmall, color: 'var(--danger)', borderColor: 'var(--danger)' }}><XCircle size={13} /> Refuser</button>
+                  </>)}
+                </div>
+              )}
+              {errors[d.id] && <div style={{ ...errorStyle, width: '100%' }}>{errors[d.id]}</div>}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ── Page principale ───────────────────────────────────────────────────────────
+const LIMIT = 50
+
 export default function Drivers() {
   const { user } = useAuth()
-  const isServiceClient = user?.adminRole === 'SERVICE_CLIENT'
-  const isSuper = user?.adminRole === 'SUPER'
-  const [restoreTarget, setRestoreTarget] = useState(null)
-  const LIMIT = 50
-  const [drivers, setDrivers]           = useState([])
-  const [total, setTotal]               = useState(0)
-  const [page, setPage]                 = useState(1)
-  const [loading, setLoading]           = useState(true)
-  const [badgeTiers, setBadgeTiers]     = useState(null)
-  const [fleetFilter, setFleetFilter]   = useState('all')
-  const [chefFilter, setChefFilter]     = useState('all')
-  const [search, setSearch]             = useState('')
-  useUrlQuery(setSearch) // recherche globale de l'en-tête (?q=…)
-  const [onlineFilter, setOnlineFilter] = useState('all')
-  const [verifFilter, setVerifFilter]   = useState('all')
-  const [badgeFilter, setBadgeFilter]   = useState('all')
-  const [connectionPeriod, setConnectionPeriod] = useState('today')
-  const [sortCourses, setSortCourses]   = useState(null)
-  const [stats, setStats]               = useState(null)
-  const [detail, setDetail]             = useState(null)
-  const [formTarget, setFormTarget]     = useState(null)
-  const [suspendTarget, setSuspendTarget] = useState(null)
-  const [suspending, setSuspending]     = useState(false)
-  const [rejectTarget, setRejectTarget] = useState(null)
-  const [rejecting, setRejecting]       = useState(false)
-  const [phoneReqs, setPhoneReqs]       = useState([])
-  const [phoneLoading, setPhoneLoading] = useState(true)
-  const [showDeleted, setShowDeleted]   = useState(false)
-  const [deletedDrivers, setDeletedDrivers] = useState([])
-  const [deletedLoading, setDeletedLoading] = useState(false)
-  const [resolving, setResolving]       = useState(null)
-  const [requestTarget, setRequestTarget] = useState(null)
-  const [chefs, setChefs]               = useState([])
-  const [debouncedSearch, setDebouncedSearch] = useState('')
+  const role = user?.adminRole
+  const isServiceClient = role === 'SERVICE_CLIENT'
+  const rights = {
+    create:       canSee(role, ACTION_ROLES.driverCreate),
+    docsUpload:   canSee(role, ACTION_ROLES.driverDocsUpload),
+    edit:         canSee(role, ACTION_ROLES.driverEdit),
+    validate:     canSee(role, ACTION_ROLES.driverValidate),
+    suspend:      canSee(role, ACTION_ROLES.driverSuspend),
+    manage:       canSee(role, ACTION_ROLES.driverManage),
+    paymentStats: canSee(role, ACTION_ROLES.driverPaymentStats),
+    report:       canSee(role, ACTION_ROLES.reportDriver),
+  }
+
+  // Vue, filtres, tri et recherche gardés dans l'adresse : un lien ou un
+  // rechargement rouvre la même liste. ?q= vient aussi de la recherche globale.
+  const [params, setParams] = useSearchParams()
+  const status           = VIEWS.some(v => v.key === params.get('statut')) ? params.get('statut') : ''
+  const fleetFilter      = params.get('flotte') ?? ''
+  const chefFilter       = params.get('chef') ?? ''
+  const badgeFilter      = params.get('badge') ?? ''
+  const sortCourses      = ['desc', 'asc'].includes(params.get('tri')) ? params.get('tri') : null
+  const connectionPeriod = CONNECTION_PERIOD_TABS.some(([k]) => k === params.get('connexion')) ? params.get('connexion') : 'today'
+  const [search, setSearch] = useState(() => params.get('q') ?? '')
+  useUrlQuery(setSearch)
+  const [debouncedSearch, setDebouncedSearch] = useState(search.trim())
+
+  const [drivers, setDrivers]       = useState([])
+  const [total, setTotal]           = useState(0)
+  const [counts, setCounts]         = useState({})
+  const [page, setPage]             = useState(1)
+  const [loading, setLoading]       = useState(true)
+  const [badgeTiers, setBadgeTiers] = useState(null)
+  const [chefs, setChefs]           = useState([])
+  const [phoneReqs, setPhoneReqs]   = useState([])
+
+  // Fiche ouverte et fenêtres qu'elle ouvre
+  const [selected, setSelected]     = useState(null)
+  const [ficheNotice, setFicheNotice] = useState('')
+  const [ficheError, setFicheError] = useState('')
+  const [modal, setModal]           = useState(null) // 'edit' | 'suspend' | 'reject' | 'delete' | 'restore' | 'request'
+  const [modalBusy, setModalBusy]   = useState(false)
+  const [createOpen, setCreateOpen] = useState(false)
+  const [pageNotice, setPageNotice] = useState('') // après une suppression / un désarchivage (fiche fermée)
 
   useEffect(() => {
-    const t = setTimeout(() => setDebouncedSearch(search.trim()), 350)
+    if (!pageNotice) return
+    const t = setTimeout(() => setPageNotice(''), 6000)
     return () => clearTimeout(t)
-  }, [search])
+  }, [pageNotice])
 
-  // Tout filtre / tri modifié → retour page 1
-  useEffect(() => { setPage(1) }, [fleetFilter, chefFilter, onlineFilter, verifFilter, badgeFilter, sortCourses, debouncedSearch])
+  // Plusieurs paramètres changés en une seule fois (sinon le second écrase le premier).
+  function setParam(changes) {
+    setParams(prev => {
+      const next = new URLSearchParams(prev)
+      for (const [k, v] of Object.entries(changes)) {
+        if (v) next.set(k, v)
+        else next.delete(k)
+      }
+      return next
+    }, { replace: true })
+    setPage(1)
+  }
 
-  // Filtres et tri appliqués par le serveur sur TOUS les coursiers (avant :
-  // uniquement sur les 50 de la page chargée).
+  useEffect(() => {
+    const t = setTimeout(() => {
+      const q = search.trim()
+      setDebouncedSearch(q)
+      setPage(1)
+      setParams(prev => {
+        const next = new URLSearchParams(prev)
+        if (q) next.set('q', q)
+        else next.delete('q')
+        return next
+      }, { replace: true })
+    }, 350)
+    return () => clearTimeout(t)
+  }, [search, setParams])
+
+  // Filtres et tri appliqués par le serveur sur TOUS les coursiers ; nombre
+  // de coursiers par vue, avec les mêmes filtres.
   const lastRequest = useRef(0)
   const fetch = useCallback(async (silent = false) => {
     const requestId = ++lastRequest.current
     if (!silent) setLoading(true)
+    const base = {}
+    if (fleetFilter)     base.fleet  = fleetFilter
+    if (chefFilter)      base.chefId = chefFilter
+    if (badgeFilter)     base.badge  = badgeFilter
+    if (debouncedSearch) base.search = debouncedSearch
     try {
-      const params = { page, limit: LIMIT }
-      if (fleetFilter  !== 'all') params.fleet    = fleetFilter
-      if (chefFilter   !== 'all') params.chefId   = chefFilter
-      if (onlineFilter !== 'all') params.online   = onlineFilter
-      if (verifFilter  !== 'all') params.verified = verifFilter
-      if (badgeFilter  !== 'all') params.badge    = badgeFilter
-      if (sortCourses)            params.sort     = `courses_${sortCourses}`
-      if (debouncedSearch)        params.search   = debouncedSearch
-      const res = await api.get('/admin/drivers', { params })
+      const listParams = { ...base, page, limit: LIMIT }
+      if (status)      listParams.status = status
+      if (sortCourses) listParams.sort   = `courses_${sortCourses}`
+      const [list, ...countRes] = await Promise.all([
+        api.get('/admin/drivers', { params: listParams }),
+        ...VIEWS.map(v => api.get('/admin/drivers', { params: { ...base, limit: 1, ...(v.key ? { status: v.key } : {}) } }).catch(() => null)),
+      ])
       if (requestId !== lastRequest.current) return // réponse périmée (filtre changé entre-temps)
-      setDrivers(Array.isArray(res.data?.drivers) ? res.data.drivers : (Array.isArray(res.data) ? res.data : []))
-      setTotal(res.data?.total ?? 0)
+      setDrivers(Array.isArray(list.data?.drivers) ? list.data.drivers : (Array.isArray(list.data) ? list.data : []))
+      setTotal(list.data?.total ?? 0)
+      setCounts(Object.fromEntries(VIEWS.map((v, i) => [v.key, countRes[i]?.data?.total])))
     } catch (e) {
       console.error(e)
     } finally {
       if (!silent && requestId === lastRequest.current) setLoading(false)
     }
-  }, [page, fleetFilter, chefFilter, onlineFilter, verifFilter, badgeFilter, sortCourses, debouncedSearch])
+  }, [page, status, fleetFilter, chefFilter, badgeFilter, sortCourses, debouncedSearch])
 
-  // Comptes archivés (voir deleteDriver côté backend — jamais un vrai DELETE)
-  // — chargés à la demande seulement, pas au chargement de la page (rare,
-  // pas besoin d'un appel API systématique).
-  async function loadDeleted() {
-    setDeletedLoading(true)
-    try {
-      const res = await api.get('/admin/drivers', { params: { status: 'deleted', limit: 100 } })
-      setDeletedDrivers(Array.isArray(res.data?.drivers) ? res.data.drivers : [])
-    } catch (e) {
-      console.error(e)
-    } finally {
-      setDeletedLoading(false)
-    }
-  }
-
-  async function toggleDeleted() {
-    const next = !showDeleted
-    setShowDeleted(next)
-    if (next && deletedDrivers.length === 0) loadDeleted()
-  }
-
-  const fetchPhoneRequests = useCallback(async (silent = false) => {
-    if (!silent) setPhoneLoading(true)
-    try {
-      const res = await api.get('/admin/drivers', { params: { status: 'phone-change', limit: 50 } })
-      setPhoneReqs(Array.isArray(res.data?.drivers) ? res.data.drivers : [])
-    } catch (e) {
-      console.error(e)
-    } finally {
-      if (!silent) setPhoneLoading(false)
-    }
+  const fetchPhoneRequests = useCallback(() => {
+    api.get('/admin/drivers', { params: { status: 'phone-change', limit: 50 } })
+      .then(res => setPhoneReqs(Array.isArray(res.data?.drivers) ? res.data.drivers : []))
+      .catch(e => console.error(e))
   }, [])
 
-  useEffect(() => {
-    fetch()
-    fetchPhoneRequests()
-  }, [fetch, fetchPhoneRequests])
+  useEffect(() => { fetch(); fetchPhoneRequests() }, [fetch, fetchPhoneRequests])
 
   useEffect(() => {
     api.get('/admin/badges/config')
@@ -494,366 +809,143 @@ export default function Drivers() {
       .then(r => setChefs(Array.isArray(r.data?.chefs) ? r.data.chefs : []))
       .catch(() => {})
   }, [])
-  useAutoRefresh(() => { fetch(true); fetchPhoneRequests(true) })
+  useAutoRefresh(() => { fetch(true); fetchPhoneRequests() })
 
-  async function showStats(driverId) {
-    setStats({ driverId, loading: true })
-    try {
-      const res = await api.get(`/admin/drivers/${driverId}/payment-stats`)
-      setStats({ driverId, ...res.data })
-    } catch (e) {
-      setStats(null)
+  function openFiche(d) {
+    setSelected(d); setFicheNotice(''); setFicheError(''); setModal(null)
+  }
+
+  // Après une action : liste rafraîchie et fiche relue (le coursier peut
+  // avoir quitté la vue affichée).
+  async function afterAction(okText) {
+    setFicheNotice(okText); setFicheError('')
+    fetch(true)
+    if (selected && status !== 'deleted') {
+      api.get(`/admin/drivers/${selected.id}`)
+        .then(r => {
+          const f = r.data ?? {}
+          setSelected(s => s && ({ ...s, ...pick(f, ['name', 'phone', 'vehiclePlate', 'managedById', 'managedBy', 'isActive', 'isBanned', 'isVerified', 'chefDeFlotteStatus', 'suspensionReason', 'deletedAt']) }))
+        })
+        .catch(() => {})
     }
   }
 
-  async function handleSuspendConfirm(reason, fix) {
-    if (!suspendTarget) return
-    setSuspending(true)
-    const fullReason = [reason, fix ? `À corriger : ${fix}` : ''].filter(Boolean).join('\n')
+  // Action lancée depuis la fiche : soit une requête (confirmée dans la
+  // fiche), soit l'ouverture d'une fenêtre (suspension, refus, suppression…).
+  async function onFicheAction(action, okText) {
+    if (typeof action === 'string') { setFicheError(''); setModal(action); return true }
     try {
-      await api.patch(`/admin/drivers/${suspendTarget.id}/suspend`, { reason: fullReason })
-      setSuspendTarget(null)
-      fetch()
+      await action()
+      await afterAction(okText)
+      return true
     } catch (e) {
-      alert(e.response?.data?.message ?? 'Erreur.')
-    } finally {
-      setSuspending(false)
+      setFicheError(e.response?.data?.message ?? 'Erreur.')
+      return false
     }
   }
 
-  async function activateDriver(driver) {
-    if (!confirm(`Réactiver ${driver.name ?? driver.phone} ?`)) return
+  async function withReason(request, okText) {
+    setModalBusy(true)
     try {
-      await api.patch(`/admin/drivers/${driver.id}/activate`)
-      fetch()
+      await request()
+      setModal(null)
+      await afterAction(okText)
     } catch (e) {
-      alert(e.response?.data?.message ?? 'Erreur.')
-    }
+      setModal(null)
+      setFicheError(e.response?.data?.message ?? 'Erreur.')
+    } finally { setModalBusy(false) }
   }
 
-  async function activateFleetDriver(driver) {
-    if (!confirm(`Activer ${driver.name ?? driver.phone} ? Ce coursier pourra commencer à accepter des courses.`)) return
-    try {
-      await api.patch(`/admin/drivers/${driver.id}/validate`, { approve: true })
-      fetch()
-    } catch (e) {
-      alert(e.response?.data?.message ?? 'Erreur.')
-    }
-  }
-
-  async function handleRejectConfirm(reason, fix) {
-    if (!rejectTarget) return
-    setRejecting(true)
-    const fullReason = [reason, fix ? `À corriger : ${fix}` : ''].filter(Boolean).join('\n')
-    try {
-      await api.patch(`/admin/drivers/${rejectTarget.id}/validate`, { approve: false, reason: fullReason })
-      setRejectTarget(null)
-      fetch()
-    } catch (e) {
-      alert(e.response?.data?.message ?? 'Erreur.')
-    } finally {
-      setRejecting(false)
-    }
-  }
-
-  const [deleteTarget, setDeleteTarget] = useState(null)
-
-  async function archiveDriver(driver) {
-    try {
-      await api.delete(`/admin/drivers/${driver.id}`)
-      setDeleteTarget(null)
-      fetch()
-    } catch (e) {
-      alert(e.response?.data?.message ?? 'Erreur.')
-    }
-  }
-
-  async function hardDeleteDriver(driver) {
-    try {
-      await api.delete(`/admin/drivers/${driver.id}`, { params: { permanent: true } })
-      setDeleteTarget(null)
-      fetch()
-    } catch (e) {
-      alert(e.response?.data?.message ?? 'Erreur.')
-    }
-  }
-
-  async function reportDriver(driver) {
-    const reason = window.prompt(`Motif du signalement pour ${driver.name ?? driver.phone} :`)
-    if (!reason?.trim()) return
-    try {
-      await api.post('/admin/report-user', { userId: driver.id, userRole: 'DRIVER', reason: reason.trim() })
-      alert('Signalement envoyé.')
-    } catch (e) {
-      alert(e.response?.data?.message ?? 'Erreur.')
-    }
-  }
-
-  async function resolvePhoneChange(driverId, approve) {
-    setResolving(driverId)
-    try {
-      await api.patch(`/admin/drivers/${driverId}/phone-change`, { approve })
-      await fetchPhoneRequests()
-    } catch (e) {
-      alert(e.response?.data?.message ?? 'Erreur')
-    } finally {
-      setResolving(null)
-    }
-  }
-
-  const chefIndexMap = new Map(chefs.map((c, i) => [c.id, i + 1]))
-
-  const sortedDrivers = drivers
+  const fullReason = (reason, fix) => [reason, fix ? `À corriger : ${fix}` : ''].filter(Boolean).join('\n')
+  const label = selected ? (selected.name?.trim() || selected.phone) : ''
+  const deletedView = status === 'deleted'
+  const totalPages = Math.max(1, Math.ceil(total / LIMIT))
+  const hasFilters = !!(fleetFilter || chefFilter || badgeFilter)
 
   return (
     <div style={pageWrap}>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24, flexShrink: 0 }}>
-        <h1 style={{ fontSize: 22, fontWeight: 700 }}>Coursiers</h1>
-        <div style={{ display: 'flex', gap: 8 }}>
-          <button onClick={() => { fetch(); fetchPhoneRequests() }} style={btnOutline}>
-            <RefreshCw size={14} /> Actualiser
-          </button>
-          {!isServiceClient && (
-            <button onClick={() => setFormTarget({})} style={btnPrimary}>
-              <Plus size={14} /> Nouveau coursier
-            </button>
-          )}
-        </div>
-      </div>
+      <PageHeader
+        title="Coursiers"
+        subtitle={`${total.toLocaleString('fr-FR')} coursier${total !== 1 ? 's' : ''} dans cette vue`}
+        actions={<>
+          <button onClick={() => { fetch(); fetchPhoneRequests() }} style={btnOutline}><RefreshCw size={14} /> Actualiser</button>
+          {rights.create && <button onClick={() => setCreateOpen(true)} style={btnPrimary}><Plus size={14} /> Nouveau coursier</button>}
+        </>}
+      />
 
-      {/* ── Demandes changement de numéro ── */}
-      {(phoneLoading || phoneReqs.length > 0) && (
-        <div style={{ marginBottom: 28, flexShrink: 0 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
-            <Phone size={16} color="var(--warning)" />
-            <h2 style={{ fontSize: 15, fontWeight: 700, color: 'var(--text)' }}>
-              Demandes de changement de numéro
-            </h2>
-            {!phoneLoading && (
-              <span style={{
-                background: 'rgba(245,158,11,0.15)',
-                color: '#F59E0B',
-                fontSize: 11, fontWeight: 700,
-                padding: '2px 8px', borderRadius: 20,
-              }}>
-                {phoneReqs.length}
-              </span>
-            )}
-          </div>
+      <PhoneRequests requests={phoneReqs} canDecide={rights.manage} onDecided={fetchPhoneRequests} />
 
-          <div style={card}>
-            {phoneLoading ? (
-              <div style={{ color: 'var(--text-muted)', padding: 20 }}>Chargement…</div>
-            ) : (
-              <table style={tableStyle}>
-                <thead>
-                  <tr>
-                    {['Coursier', 'Véhicule', 'Numéro actuel', '', 'Nouveau numéro', 'Actions'].map(h => (
-                      <th key={h} style={thStyle}>{h}</th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {phoneReqs.map(d => (
-                    <tr key={d.id} style={{ borderBottom: '1px solid var(--border)' }}>
-                      <td style={tdStyle}>
-                        <div style={{ fontWeight: 600 }}>{d.name ?? '—'}</div>
-                      </td>
-                      <td style={tdStyle}>
-                        <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>
-                          {d.vehicleType === 'MOTO' ? '🏍 Moto' : '🚗 Voiture'}
-                        </span>
-                      </td>
-                      <td style={tdStyle}>
-                        <span style={{ fontFamily: 'monospace', fontSize: 13 }}>{d.phone}</span>
-                      </td>
-                      <td style={{ ...tdStyle, color: 'var(--text-muted)', fontSize: 18, textAlign: 'center' }}>→</td>
-                      <td style={tdStyle}>
-                        <span style={{ fontFamily: 'monospace', fontSize: 13, color: 'var(--primary)', fontWeight: 600 }}>
-                          {d.pendingPhone ?? '—'}
-                        </span>
-                      </td>
-                      <td style={tdStyle}>
-                        {isServiceClient ? (
-                          <span style={{ color: 'var(--text-muted)', fontSize: 11 }}>Lecture seule</span>
-                        ) : resolving === d.id ? (
-                          <span style={{ color: 'var(--text-muted)', fontSize: 12 }}>En cours…</span>
-                        ) : (
-                          <div style={{ display: 'flex', gap: 8 }}>
-                            <button
-                              onClick={() => resolvePhoneChange(d.id, true)}
-                              style={{ ...btnSmall, color: 'var(--success)', borderColor: 'var(--success)' }}
-                            >
-                              <CheckCircle size={13} /> Approuver
-                            </button>
-                            <button
-                              onClick={() => resolvePhoneChange(d.id, false)}
-                              style={{ ...btnSmall, color: 'var(--danger)', borderColor: 'var(--danger)' }}
-                            >
-                              <XCircle size={13} /> Refuser
-                            </button>
-                          </div>
-                        )}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            )}
-          </div>
-        </div>
-      )}
-
-      {/* ── Comptes supprimés (archivés) ── */}
-      <div style={{ marginBottom: 20, flexShrink: 0 }}>
-        <button onClick={toggleDeleted} style={{ ...btnOutline, marginBottom: showDeleted ? 12 : 0 }}>
-          <Trash2 size={14} /> {showDeleted ? 'Masquer' : 'Voir'} les comptes supprimés
-        </button>
-        {showDeleted && (
-          <div style={card}>
-            {deletedLoading ? (
-              <div style={{ color: 'var(--text-muted)', padding: 20 }}>Chargement…</div>
-            ) : deletedDrivers.length === 0 ? (
-              <div style={{ color: 'var(--text-muted)', padding: 20 }}>Aucun compte supprimé.</div>
-            ) : (
-              <table style={tableStyle}>
-                <thead>
-                  <tr>
-                    {['Coursier', 'Véhicule', 'Supprimé le', 'Historique', ''].map(h => (
-                      <th key={h} style={thStyle}>{h}</th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {deletedDrivers.map(d => (
-                    <tr key={d.id} style={{ borderBottom: '1px solid var(--border)' }}>
-                      <td style={tdStyle}>
-                        <div style={{ fontWeight: 600 }}>{d.name ?? '—'}</div>
-                        <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>
-                          {d.archivedPhone ? `Ancien n° ${d.archivedPhone}` : 'Numéro libéré'}
-                          {d.deletedBySelf && ' · supprimé par le coursier'}
-                        </div>
-                      </td>
-                      <td style={tdStyle}>
-                        <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>
-                          {d.vehicleType === 'MOTO' ? '🏍 Moto' : d.vehicleType === 'TAXI' ? '🚗 Taxi' : '—'}
-                        </span>
-                      </td>
-                      <td style={tdStyle}>
-                        <span style={{ fontSize: 13 }}>
-                          {d.deletedAt ? new Date(d.deletedAt).toLocaleDateString('fr-FR') : '—'}
-                        </span>
-                      </td>
-                      <td style={tdStyle}>
-                        <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>
-                          {d.deliveredCourses ?? 0} course(s) livrée(s)
-                        </span>
-                      </td>
-                      <td style={tdStyle}>
-                        <div style={{ display: 'flex', gap: 6 }}>
-                          <button onClick={() => setDetail(d)} style={btnSmall} title="Voir infos & documents">
-                            <Eye size={13} /> Voir
-                          </button>
-                          {isSuper && (
-                            <button onClick={() => setRestoreTarget(d)} style={{ ...btnSmall, color: 'var(--success)', borderColor: 'var(--success)' }} title="Remettre le compte en service">
-                              <RotateCcw size={13} /> Désarchiver
-                            </button>
-                          )}
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            )}
-          </div>
-        )}
-      </div>
-
-      {/* ── Liste complète drivers ── */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 12, flexWrap: 'wrap', flexShrink: 0 }}>
-        <h2 style={{ fontSize: 15, fontWeight: 700 }}>Tous les coursiers</h2>
-        <div style={{ display: 'flex', gap: 6, marginLeft: 'auto' }}>
-          {[
-            ['all',         'Tous'],
-            ['fleet',       '🏍 Flotte'],
-            ['independent', '👤 Indépendants'],
-          ].map(([key, label]) => (
-            <button key={key} onClick={() => setFleetFilter(key)} style={{
-              padding: '4px 12px', borderRadius: 20, border: '1px solid rgba(0,119,182,.25)',
-              background: fleetFilter === key ? 'var(--primary)' : 'rgba(255,255,255,.5)',
-              color: fleetFilter === key ? '#fff' : 'var(--text-muted)',
-              fontSize: 12, fontWeight: 600, cursor: 'pointer',
-            }}>{label}</button>
-          ))}
-        </div>
-      </div>
-
-      {/* ── Recherche & filtres ── */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16, flexWrap: 'wrap', flexShrink: 0 }}>
-        <div style={{ position: 'relative', flex: '1 1 220px', maxWidth: 280 }}>
+      {/* Recherche + vues */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10, flexWrap: 'wrap', flexShrink: 0 }}>
+        <div style={{ position: 'relative', flex: '0 1 300px', minWidth: 220 }}>
           <Search size={14} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
-          <input
-            value={search}
-            onChange={e => setSearch(e.target.value)}
-            placeholder="Nom ou téléphone…"
-            style={{ ...glassInput, paddingLeft: 36, width: '100%' }}
-          />
+          <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Nom ou téléphone…" style={{ ...glassInput, paddingLeft: 36, width: '100%' }} />
         </div>
-        <select value={chefFilter} onChange={e => setChefFilter(e.target.value)} style={{ ...glassInput, width: 200 }}>
-          <option value="all">Chef de flotte : Tous</option>
-          {chefs.map(c => (
-            <option key={c.id} value={c.id}>{c.companyName || c.name || c.phone}</option>
-          ))}
+        <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', background: 'rgba(255,255,255,.45)', borderRadius: 'var(--radius)', padding: 4 }}>
+          {VIEWS.map(v => {
+            const active = status === v.key
+            return (
+              <button key={v.key || 'all'} onClick={() => setParam({ statut: v.key })} style={{
+                padding: '6px 12px', borderRadius: 'var(--radius-sm)', border: 'none', cursor: 'pointer', fontSize: 12.5,
+                background: active ? 'var(--primary)' : 'transparent', color: active ? '#fff' : 'var(--text-muted)', fontWeight: active ? 700 : 500,
+              }}>
+                {v.label}{counts[v.key] != null && <span style={{ marginLeft: 5, opacity: 0.8 }}>{counts[v.key].toLocaleString('fr-FR')}</span>}
+              </button>
+            )
+          })}
+        </div>
+      </div>
+
+      {/* Filtres secondaires, sur une ligne */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 14, flexWrap: 'wrap', flexShrink: 0 }}>
+        <select value={fleetFilter} onChange={e => setParam({ flotte: e.target.value })} style={{ ...glassInput, width: 210 }}>
+          <option value="">Flotte et indépendants</option>
+          <option value="fleet">En flotte</option>
+          <option value="independent">Indépendants</option>
         </select>
-        <select value={onlineFilter} onChange={e => setOnlineFilter(e.target.value)} style={{ ...glassInput, width: 160 }}>
-          <option value="all">Disponibilité : Tous</option>
-          <option value="online">🟢 En ligne</option>
-          <option value="offline">⚪ Hors ligne</option>
-        </select>
-        <select value={verifFilter} onChange={e => setVerifFilter(e.target.value)} style={{ ...glassInput, width: 160 }}>
-          <option value="all">Vérification : Tous</option>
-          <option value="verified">✓ Vérifié</option>
-          <option value="pending">En attente</option>
-        </select>
-        <select value={badgeFilter} onChange={e => setBadgeFilter(e.target.value)} style={{ ...glassInput, width: 180 }}>
-          <option value="all">Badge : Tous</option>
+        {chefs.length > 0 && (
+          <select value={chefFilter} onChange={e => setParam({ chef: e.target.value })} style={{ ...glassInput, width: 200 }}>
+            <option value="">Chef de flotte : tous</option>
+            {chefs.map(c => <option key={c.id} value={c.id}>{c.companyName || c.name || c.phone}</option>)}
+          </select>
+        )}
+        <select value={badgeFilter} onChange={e => setParam({ badge: e.target.value })} style={{ ...glassInput, width: 180 }}>
+          <option value="">Badge : tous</option>
           <option value="nouveau">Nouveau</option>
           {(badgeTiers ?? DEFAULT_BADGE_TIERS).map(t => (
             <option key={t.tier} value={t.tier}>{BADGE_VISUALS[t.tier]?.emoji} {t.name}</option>
           ))}
         </select>
+        <select value={connectionPeriod} onChange={e => setParam({ connexion: e.target.value === 'today' ? '' : e.target.value })} style={{ ...glassInput, width: 200 }} title="Période de la colonne Connexion">
+          {CONNECTION_PERIOD_TABS.map(([key, l]) => <option key={key} value={key}>Connexion : {l}</option>)}
+        </select>
+        {hasFilters && (
+          <button onClick={() => setParam({ flotte: '', chef: '', badge: '' })} style={{ ...btnSmall, border: 'none', background: 'none', color: 'var(--primary)', fontWeight: 600 }}>
+            Effacer les filtres
+          </button>
+        )}
       </div>
 
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16, flexWrap: 'wrap', flexShrink: 0 }}>
-        <span style={{ fontSize: 12, color: 'var(--text-muted)', fontWeight: 600 }}>Connexion sur :</span>
-        {CONNECTION_PERIOD_TABS.map(([key, label]) => (
-          <button key={key} onClick={() => setConnectionPeriod(key)} style={{
-            padding: '4px 14px', borderRadius: 20, border: `1px solid ${connectionPeriod === key ? '#7c3aed' : 'rgba(124,58,237,.25)'}`,
-            background: connectionPeriod === key ? '#7c3aed' : 'rgba(124,58,237,.06)',
-            color: connectionPeriod === key ? '#fff' : '#7c3aed',
-            fontSize: 12, fontWeight: 600, cursor: 'pointer',
-          }}>{label}</button>
-        ))}
-      </div>
       <div style={pageScroll}>
+      {pageNotice && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, fontWeight: 600, color: '#15803d', background: 'rgba(34,197,94,.10)', padding: '8px 12px', borderRadius: 10, marginBottom: 10 }}>
+          <CheckCircle size={14} /> {pageNotice}
+        </div>
+      )}
       <div style={card}>
         {loading ? (
           <div style={{ color: 'var(--text-muted)', padding: 20 }}>Chargement…</div>
+        ) : drivers.length === 0 ? (
+          <div style={{ color: 'var(--text-muted)', padding: 20, textAlign: 'center' }}>Aucun coursier{hasFilters || debouncedSearch ? ' pour ce filtre' : ''}.</div>
         ) : (
-          <table style={{ ...tableStyle, minWidth: 900 }}>
+          <table style={{ ...tableStyle, minWidth: 820 }}>
             <thead>
               <tr>
-                {['#', 'Nom', 'Badge', 'Courses', 'Connexion', 'Téléphone', 'Véhicule', 'Statut', 'Vérifié', 'Actions'].map((h, i) => (
+                {['Coursier', 'Badge', 'Courses', 'Connexion', 'Téléphone', 'Statut'].map((h, i) => (
                   <th
                     key={h}
-                    style={{
-                      ...thStyle, ...(i === 0 ? stickyThCol : stickyTh),
-                      ...(h === 'Courses' ? { cursor: 'pointer', userSelect: 'none' } : {}),
-                    }}
-                    onClick={h === 'Courses'
-                      ? () => setSortCourses(s => s === 'desc' ? 'asc' : s === 'asc' ? null : 'desc')
-                      : undefined}
+                    style={{ ...thStyle, ...(i === 0 ? stickyThCol : stickyTh), ...(h === 'Courses' ? { cursor: 'pointer', userSelect: 'none', textAlign: 'center' } : {}) }}
+                    onClick={h === 'Courses' ? () => setParam({ tri: sortCourses === 'desc' ? 'asc' : sortCourses === 'asc' ? '' : 'desc' }) : undefined}
                     title={h === 'Courses' ? 'Trier par nombre de courses' : undefined}
                   >
                     {h}{h === 'Courses' && (sortCourses === 'desc' ? ' ▼' : sortCourses === 'asc' ? ' ▲' : ' ⇅')}
@@ -862,308 +954,158 @@ export default function Drivers() {
               </tr>
             </thead>
             <tbody>
-              {sortedDrivers.map((d, idx) => (
-                <tr key={d.id} style={{ borderBottom: '1px solid var(--border)' }}>
-                  <td style={{ ...tdStyle, color: 'var(--text-muted)', fontSize: 12, width: 40, textAlign: 'center' }}>{(page - 1) * LIMIT + idx + 1}</td>
+              {drivers.map(d => (
+                <tr key={d.id} onClick={() => openFiche(d)} style={{ borderBottom: '1px solid var(--border)', cursor: 'pointer' }} title="Ouvrir la fiche">
                   <td style={{ ...tdStyle, ...stickyCol }}>
-                    <div style={{ fontWeight: 600 }}>{d.name?.trim() || d.phone}</div>
-                    <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', marginTop: 3 }}>
-                      <Badge status={d.isOnlineNow ? 'ONLINE' : 'OFFLINE'} />
-                      {d.managedById && (
-                        <span title={d.managedBy?.companyName || d.managedBy?.name || d.managedBy?.phone || ''} style={{
-                          fontSize: 10, fontWeight: 700, padding: '1px 6px', borderRadius: 8,
-                          background: d.managedBy?.chefDeFlotteStatus === 'ACTIVE' ? 'rgba(124,58,237,.10)' : 'rgba(245,158,11,.12)',
-                          color:      d.managedBy?.chefDeFlotteStatus === 'ACTIVE' ? '#7c3aed' : '#b45309',
-                        }}>
-                          CF.{chefIndexMap.get(d.managedById) ?? '?'}
-                        </span>
-                      )}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                      <Avatar driver={d} />
+                      <div style={{ minWidth: 0 }}>
+                        <div style={{ fontWeight: 600 }}>{d.name?.trim() || d.phone}</div>
+                        <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+                          {!deletedView && <OnlineDot online={d.isOnlineNow} />}
+                          <span style={{ fontSize: 11, color: d.managedById ? '#7c3aed' : 'var(--text-muted)' }}>
+                            {d.managedById ? `Flotte ${fleetName(d) ?? ''}` : 'Indépendant'}
+                          </span>
+                        </div>
+                      </div>
                     </div>
                   </td>
                   <td style={tdStyle}><DriverBadgeChip driver={d} /></td>
                   <td style={{ ...tdStyle, textAlign: 'center' }}>
                     <div style={{ fontWeight: 700 }}>{d.deliveredCourses ?? 0}</div>
-                    {d.avgRating > 0 && (
-                      <div style={{ fontSize: 11, color: '#f59e0b' }}>★ {d.avgRating}</div>
-                    )}
+                    {d.avgRating > 0 && <div style={{ fontSize: 11, color: '#f59e0b' }}>★ {d.avgRating}</div>}
                   </td>
                   <td style={{ ...tdStyle, fontSize: 12, fontWeight: 600, color: '#7c3aed' }}>
                     {formatConnectionTime(d.connectionSecondsByPeriod?.[connectionPeriod])}
                   </td>
-                  <td style={tdStyle}>
-                    {d.phone ? <a href={`tel:${d.phone}`} style={{ color: '#0077b6' }}>{d.phone}</a> : '—'}
+                  <td style={{ ...tdStyle, fontSize: 13 }}>
+                    {deletedView ? <span style={{ color: 'var(--text-muted)', fontSize: 12 }}>{d.archivedPhone ? `Ancien n° ${d.archivedPhone}` : 'Numéro libéré'}</span> : (d.phone ?? '—')}
                   </td>
-                  <td style={tdStyle}>{d.vehicleType ?? '—'}</td>
-                  <td style={tdStyle}>
-                    {d.chefDeFlotteStatus === 'PENDING'
-                      ? <span style={{ color: '#f59e0b' }}>⏳ En attente</span>
-                      : d.chefDeFlotteStatus === 'REJECTED'
-                        ? <span style={{ color: 'var(--danger)' }}>✗ Refusé</span>
-                        : d.isActive
-                          ? <span style={{ color: 'var(--success)' }}>✓ Actif</span>
-                          : <span style={{ color: 'var(--danger)' }}>Suspendu</span>}
-                  </td>
-                  <td style={tdStyle}>
-                    {d.isVerified
-                      ? <span style={{ color: 'var(--success)' }}>✓</span>
-                      : <span style={{ color: 'var(--warning)' }}>En attente</span>}
-                  </td>
-                  <td style={tdStyle}>
-                    <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap' }}>
-                      <button onClick={() => setDetail(d)} style={btnSmall} title="Voir infos & documents">
-                        <Eye size={13} />
-                      </button>
-                      {isServiceClient ? (
-                        <>
-                          <button onClick={() => setFormTarget(d)} style={btnSmall} title="Modifier">
-                            <Pencil size={13} />
-                          </button>
-                          {d.phone && (
-                            <a href={`tel:${d.phone}`} style={btnSmall} title="Appeler">
-                              <Phone size={13} />
-                            </a>
-                          )}
-                          <button onClick={() => reportDriver(d)} style={{ ...btnSmall, color: '#dc2626', borderColor: '#dc2626' }} title="Signaler">
-                            <Flag size={13} />
-                          </button>
-                          {d.isActive && (
-                            <button
-                              onClick={() => setRequestTarget({ id: d.id, label: d.name?.trim() || d.phone })}
-                              style={{ ...btnSmall, color: '#f59e0b', borderColor: '#f59e0b' }}
-                            >
-                              Demander suspension
-                            </button>
-                          )}
-                        </>
-                      ) : (
-                        <>
-                          <button onClick={() => showStats(d.id)} style={btnSmall} title="Statistiques paiement">
-                            <BarChart2 size={13} />
-                          </button>
-                          <button onClick={() => setFormTarget(d)} style={btnSmall} title="Modifier">
-                            <Pencil size={13} />
-                          </button>
-                          {d.phone && (
-                            <a href={`tel:${d.phone}`} style={btnSmall} title="Appeler">
-                              <Phone size={13} />
-                            </a>
-                          )}
-                          {d.chefDeFlotteStatus === 'PENDING' ? (
-                            <>
-                              <button onClick={() => activateFleetDriver(d)} style={{ ...btnSmall, color: 'var(--success)', borderColor: 'var(--success)' }}>Activer</button>
-                              <button onClick={() => setRejectTarget(d)} style={{ ...btnSmall, color: 'var(--danger)', borderColor: 'var(--danger)' }}>Refuser</button>
-                            </>
-                          ) : d.isActive ? (
-                            <button onClick={() => setSuspendTarget(d)} style={{ ...btnSmall, color: 'var(--danger)', borderColor: 'var(--danger)' }}>Suspendre</button>
-                          ) : (
-                            <button onClick={() => activateDriver(d)} style={{ ...btnSmall, color: 'var(--success)', borderColor: 'var(--success)' }}>Réactiver</button>
-                          )}
-                          <button onClick={() => setDeleteTarget(d)} style={{ ...btnSmall, color: 'var(--danger)', borderColor: 'var(--danger)' }} title="Supprimer">
-                            <Trash2 size={13} />
-                          </button>
-                        </>
-                      )}
-                    </div>
-                  </td>
+                  <td style={tdStyle}><DriverStatus driver={d} deleted={deletedView} /></td>
                 </tr>
               ))}
             </tbody>
           </table>
         )}
       </div>
-      </div>
 
       {/* Pagination */}
-      {(() => {
-        const totalPages = Math.max(1, Math.ceil(total / LIMIT))
-        return totalPages > 1 && (
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 12, marginTop: 16, flexShrink: 0 }}>
-            <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page <= 1} style={btnOutline}>← Préc.</button>
-            <span style={{ fontSize: 13, color: 'var(--text-muted)' }}>
-              Page {page} / {totalPages} — {total} coursiers
-            </span>
-            <button onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page >= totalPages} style={btnOutline}>Suiv. →</button>
-          </div>
-        )
-      })()}
+      {totalPages > 1 && (
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 12, marginTop: 16, flexShrink: 0 }}>
+          <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page <= 1} style={btnOutline}>← Préc.</button>
+          <span style={{ fontSize: 13, color: 'var(--text-muted)' }}>Page {page} / {totalPages}</span>
+          <button onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page >= totalPages} style={btnOutline}>Suiv. →</button>
+        </div>
+      )}
+      </div>
 
-      {/* Modal suspension driver */}
-      {suspendTarget && (
-        <SuspendModal
-          target="driver"
-          onConfirm={handleSuspendConfirm}
-          onClose={() => setSuspendTarget(null)}
-          loading={suspending}
+      {selected && (
+        <DriverFiche
+          driver={selected}
+          deleted={deletedView}
+          rights={rights}
+          isServiceClient={isServiceClient}
+          notice={ficheNotice}
+          error={ficheError}
+          onClose={() => setSelected(null)}
+          onAction={onFicheAction}
         />
       )}
 
-      {/* Modal refus driver (nouveau coursier de flotte en attente) */}
-      {rejectTarget && (
+      {/* Fenêtres ouvertes depuis la fiche (au-dessus d'elle) */}
+      {selected && modal === 'suspend' && (
+        <SuspendModal
+          target="driver"
+          onConfirm={(reason, fix) => withReason(() => api.patch(`/admin/drivers/${selected.id}/suspend`, { reason: fullReason(reason, fix) }), `${label} est suspendu.`)}
+          onClose={() => setModal(null)}
+          loading={modalBusy}
+        />
+      )}
+      {selected && modal === 'reject' && (
         <SuspendModal
           target="driver"
           title="Motif de refus"
           confirmLabel="Confirmer le refus"
           loadingLabel="Refus…"
-          onConfirm={handleRejectConfirm}
-          onClose={() => setRejectTarget(null)}
-          loading={rejecting}
+          onConfirm={(reason, fix) => withReason(() => api.patch(`/admin/drivers/${selected.id}/validate`, { approve: false, reason: fullReason(reason, fix) }), `${label} : inscription refusée.`)}
+          onClose={() => setModal(null)}
+          loading={modalBusy}
         />
       )}
-
-      {/* Modal détail driver */}
-      {detail && (
-        <div style={overlay} onClick={() => setDetail(null)}>
-          <div style={{ ...modalBox, width: 560, maxHeight: '90vh', overflowY: 'auto' }} onClick={e => e.stopPropagation()}>
-            {/* Header */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 20 }}>
-              <div style={{ width: 52, height: 52, borderRadius: '50%', background: 'linear-gradient(135deg,#0CB8DE,#0671BA)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22, color: '#fff', fontWeight: 700, flexShrink: 0 }}>
-                {detail.avatar
-                  ? <img src={detail.avatar} alt="" style={{ width: 52, height: 52, borderRadius: '50%', objectFit: 'cover' }} />
-                  : (detail.name ?? '?')[0].toUpperCase()}
-              </div>
-              <div>
-                <div style={{ fontWeight: 700, fontSize: 16 }}>{detail.name ?? '—'}</div>
-                <div style={{ color: 'var(--text-muted)', fontSize: 13 }}>{detail.phone}</div>
-              </div>
-              <div style={{ marginLeft: 'auto', display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4 }}>
-                <span style={{ fontSize: 12, padding: '2px 10px', borderRadius: 20, fontWeight: 600, background: detail.isActive ? 'rgba(16,185,129,.12)' : 'rgba(239,68,68,.12)', color: detail.isActive ? '#059669' : '#dc2626' }}>
-                  {detail.isActive ? '✓ Actif' : 'Suspendu'}
-                </span>
-                <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>
-                  {detail.vehicleType === 'MOTO' ? '🏍 Moto' : detail.vehicleType === 'TAXI' ? '🚗 Taxi' : '—'}
-                </span>
-              </div>
-            </div>
-
-            {/* Infos */}
-            <div style={{ background: 'var(--surface2)', borderRadius: 10, padding: '14px 16px', marginBottom: 16 }}>
-              <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 10 }}>Informations</div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px 16px' }}>
-                {[
-                  ['Plaque', detail.vehiclePlate ?? '—'],
-                  ['Email', detail.email ?? '—'],
-                  ['Vérifié', detail.isVerified ? '✓ Oui' : 'Non'],
-                  ['Inscrit le', detail.createdAt ? new Date(detail.createdAt).toLocaleDateString('fr-FR') : '—'],
-                ].map(([label, val]) => (
-                  <div key={label}>
-                    <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>{label}</div>
-                    <div style={{ fontSize: 13, fontWeight: 600, marginTop: 2 }}>{val}</div>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* Ambassadeur */}
-            {detail.managedById && (
-              <div style={{ background: 'rgba(124,58,237,.06)', border: '1px solid rgba(124,58,237,.15)', borderRadius: 10, padding: '10px 14px', marginBottom: 16, fontSize: 13 }}>
-                <span style={{ fontWeight: 600 }}>👤 Flotte AM : </span>
-                <span>{detail.managedBy?.name ?? '—'}</span>
-                <span style={{ marginLeft: 8, fontSize: 11, padding: '1px 6px', borderRadius: 8, background: detail.managedBy?.chefDeFlotteStatus === 'ACTIVE' ? 'rgba(124,58,237,.12)' : 'rgba(245,158,11,.12)', color: detail.managedBy?.chefDeFlotteStatus === 'ACTIVE' ? '#7c3aed' : '#b45309', fontWeight: 700 }}>
-                  {detail.managedBy?.chefDeFlotteStatus === 'ACTIVE' ? 'AM ✓' : 'AM ⏳'}
-                </span>
-              </div>
-            )}
-
-            {/* Documents */}
-            <div style={{ marginBottom: 20 }}>
-              <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 10 }}>Documents</div>
-              <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-                <DocThumb url={detail.licenseFront}  label="Permis recto" />
-                <DocThumb url={detail.licenseBack}   label="Permis verso" />
-                <DocThumb url={detail.vehiclePhoto}  label="Véhicule" />
-                <DocThumb url={detail.casquePhoto}   label="Casque" />
-                <DocThumb url={detail.cniRecto}      label="CNI recto" />
-                <DocThumb url={detail.cniVerso}      label="CNI verso" />
-              </div>
-            </div>
-
-            <div style={{ textAlign: 'right' }}>
-              <button onClick={() => setDetail(null)} style={btnOutline}>Fermer</button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Modal créer / modifier driver */}
-      {formTarget !== null && (
-        <DriverFormModal
-          initial={formTarget.id ? formTarget : null}
-          onClose={() => setFormTarget(null)}
-          onSaved={() => { setFormTarget(null); fetch() }}
-        />
-      )}
-
-      {/* Modal stats */}
-      {stats && (
-        <div style={overlay} onClick={() => setStats(null)}>
-          <div style={modalBox} onClick={e => e.stopPropagation()}>
-            <h2 style={{ marginBottom: 20, fontSize: 16 }}>Statistiques paiement</h2>
-            {stats.loading ? (
-              <div style={{ color: 'var(--text-muted)' }}>Chargement…</div>
-            ) : (
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
-                {[
-                  ['Courses payées',   stats.paidOrders,    'var(--success)'],
-                  ['Total gagné',      `${(stats.totalEarned ?? 0).toLocaleString()} F`, 'var(--primary)'],
-                  ['En attente',       stats.pendingOrders, 'var(--warning)'],
-                  ['Litiges',          stats.disputedOrders,'var(--danger)'],
-                ].map(([label, val, color]) => (
-                  <div key={label} style={{
-                    background: 'var(--surface2)',
-                    borderRadius: 'var(--radius-sm)',
-                    padding: '16px',
-                    borderLeft: `3px solid ${color}`,
-                  }}>
-                    <div style={{ color: 'var(--text-muted)', fontSize: 12 }}>{label}</div>
-                    <div style={{ fontSize: 22, fontWeight: 700, color, marginTop: 4 }}>{val}</div>
-                  </div>
-                ))}
-              </div>
-            )}
-            <div style={{ marginTop: 20, textAlign: 'right' }}>
-              <button onClick={() => setStats(null)} style={btnOutline}>Fermer</button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Modal choix suppression : archiver (réversible) vs définitif */}
-      {restoreTarget && (
-        <RestoreDriverModal
-          driver={restoreTarget}
-          onClose={() => setRestoreTarget(null)}
-          onRestored={() => { setRestoreTarget(null); loadDeleted(); fetch() }}
-        />
-      )}
-
-      {deleteTarget && (
+      {selected && modal === 'delete' && (
         <DeleteDriverModal
-          driver={deleteTarget}
-          onClose={() => setDeleteTarget(null)}
-          onArchive={() => archiveDriver(deleteTarget)}
-          onHardDelete={() => hardDeleteDriver(deleteTarget)}
+          driver={selected}
+          onClose={() => setModal(null)}
+          onDone={okText => { setModal(null); setSelected(null); fetch(true); setPageNotice(okText) }}
         />
       )}
-
-      {/* Modal demande suspension (SERVICE_CLIENT) */}
-      {requestTarget && (
+      {selected && modal === 'restore' && (
+        <RestoreDriverModal
+          driver={selected}
+          onClose={() => setModal(null)}
+          onRestored={() => { setModal(null); setSelected(null); fetch(true); setPageNotice(`${label} est désarchivé.`) }}
+        />
+      )}
+      {selected && modal === 'request' && (
         <SubmitRequestModal
           kind="DRIVER_SUSPEND"
-          targetUser={requestTarget}
-          onClose={() => setRequestTarget(null)}
-          onSubmitted={() => { setRequestTarget(null); alert('Demande envoyée pour validation.') }}
+          targetUser={{ id: selected.id, label }}
+          onClose={() => setModal(null)}
+          onSubmitted={() => { setModal(null); setFicheNotice('Demande de suspension envoyée pour validation.') }}
+        />
+      )}
+      {selected && modal === 'edit' && (
+        <DriverFormModal
+          initial={selected}
+          canUploadDocs={rights.docsUpload}
+          onClose={() => setModal(null)}
+          onSaved={() => { setModal(null); afterAction(`${label} : modifications enregistrées.`) }}
+        />
+      )}
+      {createOpen && (
+        <DriverFormModal
+          initial={null}
+          canUploadDocs={rights.docsUpload}
+          onClose={() => setCreateOpen(false)}
+          onSaved={() => { setCreateOpen(false); fetch() }}
         />
       )}
     </div>
   )
 }
 
-const card       = { ...glass, padding: '20px 24px' }
+function pick(obj, keys) {
+  return Object.fromEntries(keys.filter(k => k in obj).map(k => [k, obj[k]]))
+}
+
+function FicheSection({ title, children }) {
+  return (
+    <div style={{ borderTop: '1px solid var(--border)', padding: '12px 0 8px' }}>
+      <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', letterSpacing: 0.5, textTransform: 'uppercase', marginBottom: 8 }}>{title}</div>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>{children}</div>
+    </div>
+  )
+}
+
+function Row({ label, value }) {
+  return (
+    <div style={{ display: 'flex', gap: 8, alignItems: 'flex-start', fontSize: 13 }}>
+      <span style={{ color: 'var(--text-muted)', minWidth: 110 }}>{label}</span>
+      <span style={{ minWidth: 0, overflowWrap: 'anywhere', fontWeight: 600 }}>{value}</span>
+    </div>
+  )
+}
+
+const card       = { ...glass, padding: '12px 16px' }
 const tableStyle = { width: '100%', borderCollapse: 'collapse' }
 const thStyle    = { textAlign: 'left', padding: '8px 10px', color: 'var(--text-muted)', fontSize: 12, fontWeight: 600, borderBottom: '1px solid rgba(0,119,182,0.12)' }
-const tdStyle    = { padding: '10px 10px', verticalAlign: 'middle' }
-const btnOutline = { display: 'flex', alignItems: 'center', gap: 6, padding: '7px 14px', borderRadius: 'var(--radius-sm)', border: '1px solid rgba(0,119,182,0.25)', background: 'rgba(255,255,255,0.5)', color: 'var(--text-muted)', fontSize: 13, cursor: 'pointer' }
+const tdStyle    = { padding: '9px 10px', verticalAlign: 'middle' }
+const btnOutline = { display: 'flex', alignItems: 'center', gap: 6, padding: '7px 14px', borderRadius: 'var(--radius-sm)', border: '1px solid rgba(0,119,182,0.25)', background: 'rgba(255,255,255,0.5)', color: 'var(--text-muted)', fontSize: 13, cursor: 'pointer', textDecoration: 'none' }
 const btnPrimary = { display: 'flex', alignItems: 'center', gap: 6, padding: '7px 14px', borderRadius: 'var(--radius-sm)', border: 'none', background: 'var(--primary)', color: '#fff', fontSize: 13, fontWeight: 600, cursor: 'pointer' }
 const btnSmall   = { display: 'flex', alignItems: 'center', gap: 4, padding: '4px 10px', borderRadius: 'var(--radius-sm)', border: '1px solid rgba(0,119,182,0.25)', background: 'rgba(255,255,255,0.5)', color: 'var(--text-muted)', fontSize: 12, cursor: 'pointer', textDecoration: 'none' }
+const btnIcon    = { background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', display: 'flex', padding: 4, borderRadius: 6 }
+const inputStyle = { width: '100%', padding: '8px 10px', borderRadius: 8, border: '1px solid rgba(0,119,182,.2)', background: 'rgba(255,255,255,.6)', fontSize: 13, outline: 'none', boxSizing: 'border-box' }
+const errorStyle = { fontSize: 12, color: 'var(--danger)', background: 'rgba(239,68,68,.08)', borderRadius: 6, padding: '7px 10px', marginTop: 4 }
 const overlay    = { position: 'fixed', inset: 0, background: 'rgba(0,40,80,0.45)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100 }
-const modalBox   = { ...glass, padding: '28px 32px', width: 440, maxWidth: '90vw' }
+const modalBox   = { ...glass, background: 'rgba(255,255,255,0.97)', padding: '28px 32px', width: 440, maxWidth: '90vw' }
+const ficheBox   = { ...glass, background: 'rgba(255,255,255,0.97)', padding: '20px 24px', width: 900, maxWidth: '94vw', maxHeight: '92vh', overflowY: 'auto' }

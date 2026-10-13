@@ -46,3 +46,7 @@ button { cursor: pointer; font-family: inherit; }
 /* Recherche d'une page dans le menu de gauche (fond dégradé bleu) */
 .nav-page-search::placeholder { color: rgba(255, 255, 255, 0.72); }
 .nav-group-title:hover { background: rgba(255, 255, 255, 0.16) !important; }
+
+/* Fiche d'une course (Courses) : deux colonnes, une seule sur petit écran */
+.fiche-cols { display: grid; grid-template-columns: 1.1fr 1fr; gap: 0 28px; }
+@media (max-width: 760px) { .fiche-cols { grid-template-columns: 1fr; } }

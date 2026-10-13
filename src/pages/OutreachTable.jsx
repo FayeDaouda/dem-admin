@@ -71,6 +71,8 @@ export default function OutreachTable({ embedded = false }) {
   const [flowFilter, setFlowFilter]     = useState('all')
   const [saving, setSaving]     = useState(false)
   const [page, setPage]         = useState(1)
+  const [error, setError]       = useState('')      // erreur affichée dans la page (avant : fenêtre d'alerte)
+  const [confirmDeleteId, setConfirmDeleteId] = useState(null) // suppression confirmée dans la ligne
 
   const fetch = useCallback(async () => {
     setLoading(true)
@@ -95,8 +97,9 @@ export default function OutreachTable({ embedded = false }) {
     setSaving(true)
     try {
       await api.patch(`/admin/outreach/${id}`, { [field]: value })
+      setError('')
     } catch (e) {
-      alert(e.response?.data?.message ?? 'Erreur de sauvegarde.')
+      setError(e.response?.data?.message ?? 'Erreur de sauvegarde.')
       fetch()
     } finally {
       setSaving(false)
@@ -107,18 +110,20 @@ export default function OutreachTable({ embedded = false }) {
     try {
       const res = await api.post('/admin/outreach', { role, companyName: 'Nouvelle entrée' })
       setRows(rs => [...rs, res.data])
+      setError('')
     } catch (e) {
-      alert(e.response?.data?.message ?? 'Erreur.')
+      setError(e.response?.data?.message ?? 'Erreur.')
     }
   }
 
   async function deleteRow(id) {
-    if (!confirm('Supprimer cette ligne ?')) return
     try {
       await api.delete(`/admin/outreach/${id}`)
       setRows(rs => rs.filter(r => r.id !== id))
+      setConfirmDeleteId(null)
+      setError('')
     } catch (e) {
-      alert(e.response?.data?.message ?? 'Erreur.')
+      setError(e.response?.data?.message ?? 'Erreur.')
     }
   }
 
@@ -181,6 +186,13 @@ export default function OutreachTable({ embedded = false }) {
           </button>
         ))}
       </div>
+
+      {error && (
+        <div style={{ fontSize: 12.5, color: 'var(--danger)', background: 'rgba(239,68,68,.08)', borderRadius: 8, padding: '8px 12px', marginBottom: 12, display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
+          {error}
+          <button onClick={() => setError('')} style={{ marginLeft: 'auto', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--danger)', fontSize: 12 }}>Fermer</button>
+        </div>
+      )}
 
       {/* Filtres */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 14, flexWrap: 'wrap', flexShrink: 0 }}>
@@ -326,9 +338,19 @@ export default function OutreachTable({ embedded = false }) {
                       <TextAreaCell value={r.notes ?? ''} onChange={v => setLocal(r.id, 'notes', v)} onSave={v => save(r.id, 'notes', v)} />
                     </td>
                     <td style={{ ...tdStyle, textAlign: 'center' }}>
-                      <button onClick={() => deleteRow(r.id)} style={btnIcon} title="Supprimer la ligne">
-                        <Trash2 size={13} color="var(--danger)" />
-                      </button>
+                      {confirmDeleteId === r.id ? (
+                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
+                          <span style={{ fontSize: 11, fontWeight: 600, whiteSpace: 'nowrap' }}>Supprimer ?</span>
+                          <div style={{ display: 'flex', gap: 4 }}>
+                            <button onClick={() => setConfirmDeleteId(null)} style={{ ...btnIcon, width: 'auto', padding: '2px 6px', fontSize: 11 }}>Non</button>
+                            <button onClick={() => deleteRow(r.id)} style={{ ...btnIcon, width: 'auto', padding: '2px 6px', fontSize: 11, color: '#fff', background: 'var(--danger)' }}>Oui</button>
+                          </div>
+                        </div>
+                      ) : (
+                        <button onClick={() => setConfirmDeleteId(r.id)} style={btnIcon} title="Supprimer la ligne">
+                          <Trash2 size={13} color="var(--danger)" />
+                        </button>
+                      )}
                     </td>
                   </tr>
                 ))}

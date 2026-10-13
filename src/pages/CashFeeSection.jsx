@@ -20,6 +20,7 @@ export default function CashFeeSection() {
   const [busy, setBusy]     = useState(false)
   const [error, setError]   = useState('')
   const [saved, setSaved]   = useState(false)
+  const [confirming, setConfirming] = useState(false) // confirmation dans le bloc
 
   const load = useCallback(async () => {
     try {
@@ -32,13 +33,13 @@ export default function CashFeeSection() {
   useEffect(() => { load() }, [load])
 
   async function save() {
-    if (!window.confirm(`Appliquer ${amountNum.toLocaleString('fr-FR')} F de frais de mise en relation sur chaque nouvelle course ?`)) return
     setBusy(true); setError(''); setSaved(false)
     try {
       const res = await api.put('/admin/connection-fee', { amount: amountNum })
       setData(res.data)
       setAmount(String(res.data.amount))
       setSaved(true)
+      setConfirming(false)
     } catch (e) { setError(e.response?.data?.message ?? 'Erreur.') }
     finally { setBusy(false) }
   }
@@ -87,13 +88,20 @@ export default function CashFeeSection() {
         </label>
 
         {isSuper && dirty && (
-          <button onClick={save} disabled={busy || !amountOk} style={{ ...btn('var(--primary)', busy || !amountOk), marginLeft: 'auto' }}>
-            <Save size={14} /> {busy ? '…' : 'Enregistrer'}
+          <button onClick={() => setConfirming(true)} disabled={busy || !amountOk || confirming} style={{ ...btn('var(--primary)', busy || !amountOk || confirming), marginLeft: 'auto' }}>
+            <Save size={14} /> Enregistrer
           </button>
         )}
         {saved && !dirty && <span style={{ color: 'var(--success, #16a34a)', fontSize: 12, marginLeft: 'auto' }}>Enregistré.</span>}
       </div>
 
+      {confirming && dirty && (
+        <div style={{ marginTop: 12, background: 'var(--surface2)', borderRadius: 10, padding: '10px 14px', display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+          <span style={{ fontSize: 13, fontWeight: 600, flex: 1 }}>Appliquer {amountNum.toLocaleString('fr-FR')} F de frais de mise en relation sur chaque nouvelle course ?</span>
+          <button onClick={() => setConfirming(false)} disabled={busy} style={{ ...btn('transparent', busy), color: 'var(--text-muted)', border: '1px solid rgba(0,119,182,.25)' }}>Retour</button>
+          <button onClick={save} disabled={busy || !amountOk} style={btn('var(--primary)', busy || !amountOk)}>{busy ? '…' : 'Confirmer'}</button>
+        </div>
+      )}
       {!isSuper && (
         <p style={{ color: 'var(--text-muted)', fontSize: 11.5, marginTop: 10 }}>Seul le super admin peut modifier ce montant.</p>
       )}

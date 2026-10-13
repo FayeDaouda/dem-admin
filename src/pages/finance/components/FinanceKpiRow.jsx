@@ -1,16 +1,17 @@
 import { useState, useEffect, useCallback } from 'react'
 import api from '../../../lib/api'
-import { Wallet, Receipt, Ticket, BellRing, FileDown, Handshake, HandCoins } from 'lucide-react'
+import { Wallet, Receipt, Ticket, BellRing, Handshake, HandCoins, ChevronRight } from 'lucide-react'
 import StatCard from '../../../components/StatCard'
 import { RevenueModal, FeesModal, TransactionsModal, PassModal, AlertsModal } from './FinanceKpiModals'
 import { useAutoRefresh } from '../../../lib/useAutoRefresh'
 import { formatF, formatCount } from '../../../lib/format'
 
-const EXPORT_TYPE_LABELS = { pdf: 'PDF', csv: 'CSV' }
-
 // Toutes les cartes "du jour" = jour calendaire en cours ; chaque modal
 // s'ouvre sur ce même jour, donc sur le même chiffre que sa carte.
-export default function FinanceKpiRow({ reloadKey }) {
+// La dernière alerte est un bandeau au-dessus des cartes (avant : une carte
+// dont le long message étirait toute la rangée) ; le dernier export est
+// remonté à la page (onKpis) pour s'afficher à côté des boutons d'export.
+export default function FinanceKpiRow({ reloadKey, onKpis }) {
   const [kpis, setKpis] = useState(null)
   const [loading, setLoading] = useState(true)
   const [openModal, setOpenModal] = useState(null)
@@ -20,9 +21,10 @@ export default function FinanceKpiRow({ reloadKey }) {
     try {
       const res = await api.get('/admin/finance/kpis')
       setKpis(res.data)
+      onKpis?.(res.data)
     } catch (e) { console.error(e) }
     finally { if (!silent) setLoading(false) }
-  }, [])
+  }, [onKpis])
 
   useEffect(() => { load() }, [load, reloadKey])
   useAutoRefresh(() => load(true))
@@ -33,7 +35,9 @@ export default function FinanceKpiRow({ reloadKey }) {
 
   return (
     <>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(190px, 1fr))', gap: 10, marginBottom: 20 }}>
+      <AlertBanner kpis={kpis} loading={loading} onOpen={() => setOpenModal('alerts')} />
+
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 10, marginBottom: 20 }}>
         <StatCard icon={Wallet} label="Revenus DEM facturés (jour)" value={money(kpis?.caToday)}
           sub={loading ? undefined : `Encaissés : ${formatF(kpis?.caCollectedToday)}`}
           color="#22c55e" onClick={() => setOpenModal('revenue')} />
@@ -49,21 +53,6 @@ export default function FinanceKpiRow({ reloadKey }) {
         <StatCard icon={Ticket} label="Pass achetés (jour)" value={count(kpis?.passActivatedToday)}
           sub={loading ? undefined : `+ ${formatCount(kpis?.passGiftedToday)} offert(s)`}
           color="#f59e0b" onClick={() => setOpenModal('pass')} />
-        <StatCard
-          icon={BellRing}
-          label="Dernière alerte financière"
-          value={loading ? '…' : (kpis?.lastAlert ? kpis.lastAlert.message : 'Aucune alerte')}
-          sub={kpis?.lastAlert ? new Date(kpis.lastAlert.triggeredAt).toLocaleString('fr-FR') : (kpis?.alertCount === 0 ? 'Tout est normal' : undefined)}
-          color={kpis?.lastAlert ? (kpis.lastAlert.severity === 'high' ? '#ef4444' : '#f59e0b') : '#22c55e'}
-          onClick={() => setOpenModal('alerts')}
-        />
-        <StatCard
-          icon={FileDown}
-          label="Dernier export"
-          value={loading ? '…' : (kpis?.lastExport ? `${EXPORT_TYPE_LABELS[kpis.lastExport.type] ?? kpis.lastExport.type}` : '—')}
-          sub={kpis?.lastExport ? new Date(kpis.lastExport.at).toLocaleString('fr-FR') : undefined}
-          color="#6366f1"
-        />
       </div>
 
       {openModal === 'revenue'      && <RevenueModal      icon={Wallet}    color="#22c55e" onClose={() => setOpenModal(null)} />}
@@ -72,5 +61,27 @@ export default function FinanceKpiRow({ reloadKey }) {
       {openModal === 'pass'         && <PassModal         icon={Ticket}  color="#f59e0b" onClose={() => setOpenModal(null)} />}
       {openModal === 'alerts'       && <AlertsModal       icon={BellRing} color="#ef4444" onClose={() => setOpenModal(null)} />}
     </>
+  )
+}
+
+// Bandeau fin de la dernière alerte financière — un clic ouvre la liste des
+// alertes (même fenêtre qu'avant).
+function AlertBanner({ kpis, loading, onOpen }) {
+  if (loading && !kpis) return null
+  const alert = kpis?.lastAlert
+  const color = alert ? (alert.severity === 'high' ? '#ef4444' : '#d97706') : '#16a34a'
+  return (
+    <button onClick={onOpen} style={{
+      display: 'flex', alignItems: 'center', gap: 10, width: '100%', textAlign: 'left', cursor: 'pointer',
+      padding: '9px 14px', marginBottom: 12, borderRadius: 10, border: `1px solid ${color}40`, background: color + '12', color: 'var(--text)', fontSize: 13,
+    }}>
+      <BellRing size={15} color={color} style={{ flexShrink: 0 }} />
+      <span style={{ fontWeight: 700, color, flexShrink: 0 }}>{alert ? 'Dernière alerte' : 'Alertes financières'}</span>
+      <span style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+        {alert ? alert.message : (kpis?.alertCount === 0 ? 'Aucune alerte — tout est normal' : 'Aucune alerte')}
+      </span>
+      {alert && <span style={{ fontSize: 11.5, color: 'var(--text-muted)', flexShrink: 0 }}>{new Date(alert.triggeredAt).toLocaleString('fr-FR')}</span>}
+      <ChevronRight size={15} color="var(--text-muted)" style={{ flexShrink: 0 }} />
+    </button>
   )
 }

@@ -66,6 +66,7 @@ export default function ZoneMatrixSection() {
   const [submitting, setSubmitting] = useState(false)
   const [regenerating, setRegenerating] = useState(false)
   const [bumping, setBumping] = useState(false)
+  const [bumpConfirm, setBumpConfirm] = useState(null) // delta à confirmer dans le bloc
   const [togglingFlag, setTogglingFlag] = useState(null)
   const [previewedFromOsrm, setPreviewedFromOsrm] = useState(false)
   const [error, setError] = useState('')
@@ -146,10 +147,10 @@ export default function ZoneMatrixSection() {
   // d'édition) de `delta` FCFA sur chaque cellule, puis recharge. -100 permet
   // d'annuler la compensation une fois l'app coursier mise à jour.
   async function bumpMatrix(delta) {
-    if (!window.confirm(`Ajuster TOUTES les cellules de la matrice enregistrée de ${delta > 0 ? '+' : ''}${delta} FCFA ? Action immédiate, pas de brouillon à valider.`)) return
     setBumping(true); setError('')
     try {
       await api.post('/admin/zone-fares/bump', { delta })
+      setBumpConfirm(null)
       await load()
     } catch (e) { setError(e.response?.data?.message ?? 'Erreur.') }
     finally { setBumping(false) }
@@ -195,8 +196,17 @@ export default function ZoneMatrixSection() {
         {isSuper && (
           <div style={{ fontSize: 11, color: 'var(--text-muted)', background: 'rgba(239,68,68,.06)', borderRadius: 6, padding: '8px 12px', marginBottom: 10 }}>
             Mesure temporaire (bug app coursier en attente de mise à jour) : <strong>+100</strong> compense la commission DEM non demandée au client par les coursiers sur l'app pas encore à jour ; repasser <strong>-100</strong> une fois la mise à jour diffusée.{' '}
-            <button onClick={() => bumpMatrix(100)} disabled={bumping} style={{ ...btnOutline, padding: '3px 10px', marginRight: 6 }}>+100F partout</button>
-            <button onClick={() => bumpMatrix(-100)} disabled={bumping} style={{ ...btnOutline, padding: '3px 10px' }}>-100F partout</button>
+            <button onClick={() => setBumpConfirm(100)} disabled={bumping} style={{ ...btnOutline, padding: '3px 10px', marginRight: 6 }}>+100F partout</button>
+            <button onClick={() => setBumpConfirm(-100)} disabled={bumping} style={{ ...btnOutline, padding: '3px 10px' }}>-100F partout</button>
+            {bumpConfirm != null && (
+              <div style={{ marginTop: 8, display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', color: 'var(--text)' }}>
+                <span style={{ fontWeight: 600, fontSize: 12 }}>
+                  Ajuster TOUTES les cellules de la matrice enregistrée de {bumpConfirm > 0 ? '+' : ''}{bumpConfirm} FCFA ? Action immédiate, pas de brouillon à valider.
+                </span>
+                <button onClick={() => setBumpConfirm(null)} disabled={bumping} style={{ ...btnOutline, padding: '3px 10px' }}>Retour</button>
+                <button onClick={() => bumpMatrix(bumpConfirm)} disabled={bumping} style={{ ...btnOutline, padding: '3px 10px', background: '#dc2626', color: '#fff', borderColor: 'transparent' }}>{bumping ? '…' : 'Confirmer'}</button>
+              </div>
+            )}
           </div>
         )}
 

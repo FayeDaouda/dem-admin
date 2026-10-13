@@ -38,6 +38,7 @@ export default function AccountSecurityPanel({ userId }) {
   const [error, setError] = useState('')
   const [busy, setBusy]   = useState('')
   const [done, setDone]   = useState('')
+  const [confirming, setConfirming] = useState(null) // { kind, url, question, detail, label, color }
 
   const load = useCallback(async () => {
     try {
@@ -52,12 +53,18 @@ export default function AccountSecurityPanel({ userId }) {
 
   useEffect(() => { load() }, [load])
 
-  async function act(kind, url, question) {
-    if (!window.confirm(question)) return
+  // Confirmation dans le bloc (avant : fenêtre du navigateur), mêmes avertissements.
+  function ask(action) {
+    setDone(''); setError('')
+    setConfirming(c => (c?.kind === action.kind ? null : action))
+  }
+
+  async function act({ kind, url }) {
     setBusy(kind); setDone(''); setError('')
     try {
       const { data } = await api.post(url)
       setDone(data.message)
+      setConfirming(null)
       await load()
     } catch (err) {
       setError(err.response?.data?.message ?? 'Action impossible.')
@@ -70,10 +77,10 @@ export default function AccountSecurityPanel({ userId }) {
   const lockedUntil = u.pinLockedUntil && new Date(u.pinLockedUntil) > new Date() ? u.pinLockedUntil : null
 
   return (
-    <div style={{ marginTop: 18, paddingTop: 14, borderTop: '1px solid var(--border)' }}>
-      <h3 style={{ fontSize: 14, fontWeight: 700, margin: '0 0 10px', display: 'flex', alignItems: 'center', gap: 8 }}>
+    <div>
+      <h2 style={{ fontSize: 14, fontWeight: 700, margin: '0 0 12px', display: 'flex', alignItems: 'center', gap: 8 }}>
         {u.frozenAt ? <ShieldAlert size={15} color="#b91c1c" /> : <ShieldCheck size={15} />} Sécurité du compte
-      </h3>
+      </h2>
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))', gap: 8, fontSize: 12.5 }}>
         <Fact label="Code secret" value={u.hasPin ? `créé le ${fmt(u.pinSetAt)}` : 'pas encore créé'} />
@@ -83,27 +90,39 @@ export default function AccountSecurityPanel({ userId }) {
         <Fact label="Compte gelé" value={u.frozenAt ? `depuis le ${fmt(u.frozenAt)}` : 'non'} warn={!!u.frozenAt} />
       </div>
 
-      {done && <div style={{ ...notice, background: 'rgba(34,197,94,.08)', color: '#15803d' }}><CheckCircle2 size={14} /> {done}</div>}
-      {error && <div style={{ ...notice, background: '#ef444412', color: '#b91c1c' }}><AlertTriangle size={14} /> {error}</div>}
-
       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 12 }}>
         {u.frozenAt && (
-          <button disabled={busy !== ''} style={btn('#15803d')} onClick={() => act('unfreeze', `/admin/users/${userId}/unfreeze`,
-            "Dégeler ce compte ?\n\nNe le faites qu'après avoir vérifié l'identité du titulaire (pièce d'identité, historique de commandes).")}>
-            <Snowflake size={13} /> {busy === 'unfreeze' ? '…' : 'Dégeler'}
+          <button disabled={busy !== ''} style={btn('#15803d')} onClick={() => ask({ kind: 'unfreeze', url: `/admin/users/${userId}/unfreeze`, color: '#15803d', label: 'Dégeler',
+            question: 'Dégeler ce compte ?', detail: "Ne le faites qu'après avoir vérifié l'identité du titulaire (pièce d'identité, historique de commandes)." })}>
+            <Snowflake size={13} /> Dégeler
           </button>
         )}
         {u.hasPin && (
-          <button disabled={busy !== ''} style={btn('#b45309')} onClick={() => act('reset', `/admin/users/${userId}/force-pin-reset`,
-            "Réinitialiser le code secret ?\n\nL'utilisateur est déconnecté partout et devra reprouver son numéro par SMS pour choisir un nouveau code.")}>
-            <KeyRound size={13} /> {busy === 'reset' ? '…' : 'Réinitialiser le code'}
+          <button disabled={busy !== ''} style={btn('#b45309')} onClick={() => ask({ kind: 'reset', url: `/admin/users/${userId}/force-pin-reset`, color: '#b45309', label: 'Réinitialiser le code',
+            question: 'Réinitialiser le code secret ?', detail: "L'utilisateur est déconnecté partout et devra reprouver son numéro par SMS pour choisir un nouveau code." })}>
+            <KeyRound size={13} /> Réinitialiser le code
           </button>
         )}
-        <button disabled={busy !== ''} style={btn('#b91c1c')} onClick={() => act('revoke', `/admin/users/${userId}/revoke-sessions`,
-          'Déconnecter tous les appareils de ce compte ?')}>
-          <LogOut size={13} /> {busy === 'revoke' ? '…' : 'Déconnecter tous les appareils'}
+        <button disabled={busy !== ''} style={btn('#b91c1c')} onClick={() => ask({ kind: 'revoke', url: `/admin/users/${userId}/revoke-sessions`, color: '#b91c1c', label: 'Déconnecter',
+          question: 'Déconnecter tous les appareils de ce compte ?' })}>
+          <LogOut size={13} /> Déconnecter tous les appareils
         </button>
       </div>
+
+      {confirming && (
+        <div style={{ marginTop: 10, background: 'var(--surface2)', borderRadius: 10, padding: '10px 14px', display: 'flex', flexDirection: 'column', gap: 8 }}>
+          <div style={{ fontSize: 13, fontWeight: 600 }}>{confirming.question}</div>
+          {confirming.detail && <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>{confirming.detail}</div>}
+          <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+            <button onClick={() => setConfirming(null)} disabled={busy !== ''} style={btn('var(--text-muted)')}>Retour</button>
+            <button onClick={() => act(confirming)} disabled={busy !== ''} style={{ ...btn(confirming.color), background: confirming.color, color: '#fff' }}>
+              {busy ? 'En cours…' : confirming.label}
+            </button>
+          </div>
+        </div>
+      )}
+      {done && <div style={{ ...notice, background: 'rgba(34,197,94,.08)', color: '#15803d' }}><CheckCircle2 size={14} /> {done}</div>}
+      {error && <div style={{ ...notice, background: '#ef444412', color: '#b91c1c' }}><AlertTriangle size={14} /> {error}</div>}
 
       <div style={{ marginTop: 14, fontSize: 12.5 }}>
         <div style={subTitle}>Appareils connectés ({data.sessions.length})</div>

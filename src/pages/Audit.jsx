@@ -3,6 +3,9 @@ import { RefreshCw, Search, Shield } from 'lucide-react'
 import api from '../lib/api'
 import { glass, glassInput, pageWrap, pageScroll, stickyTh, stickyCol, stickyThCol } from '../lib/glassStyles'
 import { useAutoRefresh } from '../lib/useAutoRefresh'
+import { useAuth } from '../contexts/AuthContext'
+import { isSuperRole } from '../lib/droits'
+import PageHeader from '../components/PageHeader'
 
 // ── Couleurs par catégorie d'action ──────────────────────────────────────────
 function actionColor(action = '') {
@@ -38,13 +41,29 @@ export default function Audit() {
   const [search, setSearch]     = useState('')
   const [page, setPage]         = useState(1)
   const [detail, setDetail]     = useState(null)
+  const [adminFilter, setAdminFilter] = useState('')
   const LIMIT = 50
+
+  // Noms des admins : la liste des comptes (GET /admin/admins) est réservée
+  // au Super Admin — pour le Dev, l'identifiant court reste affiché.
+  const { user } = useAuth()
+  const isSuper = isSuperRole(user?.adminRole)
+  const [admins, setAdmins] = useState([])
+  useEffect(() => {
+    if (!isSuper) return
+    api.get('/admin/admins').then(r => setAdmins(r.data?.admins ?? [])).catch(() => {})
+  }, [isSuper])
+  const adminName = id => {
+    const a = admins.find(x => x.id === id)
+    return a ? (a.name ?? a.email ?? a.phone) : null
+  }
 
   const fetch = useCallback(async (silent = false) => {
     if (!silent) setLoading(true)
     try {
       const params = { page, limit: LIMIT }
       if (search.trim()) params.action = search.trim()
+      if (adminFilter)   params.adminId = adminFilter
       const res = await api.get('/admin/audit', { params })
       setLogs(res.data?.logs ?? [])
       setTotal(res.data?.total ?? 0)
@@ -53,7 +72,7 @@ export default function Audit() {
     } finally {
       if (!silent) setLoading(false)
     }
-  }, [page, search])
+  }, [page, search, adminFilter])
 
   useEffect(() => { fetch() }, [fetch])
   useAutoRefresh(() => fetch(true))
@@ -70,29 +89,29 @@ export default function Audit() {
 
   return (
     <div style={pageWrap}>
-      {/* ── Header ── */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24, flexWrap: 'wrap', gap: 12, flexShrink: 0 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <Shield size={20} color="var(--primary)" />
-          <h1 style={{ fontSize: 22, fontWeight: 700 }}>Journal d'audit</h1>
-          <span style={{ fontSize: 13, color: 'var(--text-muted)', fontWeight: 400 }}>
-            {total.toLocaleString()} entrée{total !== 1 ? 's' : ''}
-          </span>
-        </div>
-        <button onClick={fetch} style={btnOutline}>
-          <RefreshCw size={14} /> Actualiser
-        </button>
-      </div>
+      <PageHeader
+        title="Journal d'audit"
+        subtitle={`${total.toLocaleString('fr-FR')} entrée${total !== 1 ? 's' : ''} — actions des administrateurs`}
+        actions={<button onClick={() => fetch()} style={btnOutline}><RefreshCw size={14} /> Actualiser</button>}
+      />
 
       {/* ── Filtres ── */}
-      <div style={{ position: 'relative', marginBottom: 20, maxWidth: 360, flexShrink: 0 }}>
-        <Search size={14} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
-        <input
-          value={search}
-          onChange={e => handleSearch(e.target.value)}
-          placeholder="Filtrer par action (ex: CANCEL, DRIVER…)"
-          style={{ ...glassInput, paddingLeft: 36 }}
-        />
+      <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center', marginBottom: 16, flexShrink: 0 }}>
+        <div style={{ position: 'relative', flex: '0 1 340px', minWidth: 220 }}>
+          <Search size={14} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
+          <input
+            value={search}
+            onChange={e => handleSearch(e.target.value)}
+            placeholder="Filtrer par action (ex : CANCEL, DRIVER…)"
+            style={{ ...glassInput, paddingLeft: 36, width: '100%', boxSizing: 'border-box' }}
+          />
+        </div>
+        {isSuper && admins.length > 0 && (
+          <select value={adminFilter} onChange={e => { setAdminFilter(e.target.value); setPage(1) }} style={{ ...glassInput, width: 230 }}>
+            <option value="">Admin : tous</option>
+            {admins.map(a => <option key={a.id} value={a.id}>{a.name ?? a.email ?? a.phone}</option>)}
+          </select>
+        )}
       </div>
 
       {/* ── Table ── */}
@@ -103,19 +122,19 @@ export default function Audit() {
         ) : logs.length === 0 ? (
           <div style={{ padding: 32, textAlign: 'center', color: 'var(--text-muted)' }}>
             <Shield size={32} style={{ opacity: 0.3, marginBottom: 8 }} /><br />
-            Aucun log{search ? ' pour ce filtre' : ''}
+            Aucune entrée{search || adminFilter ? ' pour ce filtre' : ''}
           </div>
         ) : (
           <table style={{ width: '100%', minWidth: 680, borderCollapse: 'collapse' }}>
             <thead>
               <tr>
-                {['#', 'Date & heure', 'Action', 'Admin', 'Type cible', 'Cible', 'Détails'].map((h, i) => (
+                {['Date et heure', 'Action', 'Admin', 'Type cible', 'Cible', 'Détails'].map((h, i) => (
                   <th key={h} style={{ ...thStyle, ...(i === 0 ? stickyThCol : stickyTh) }}>{h}</th>
                 ))}
               </tr>
             </thead>
             <tbody>
-              {logs.map((log, idx) => {
+              {logs.map(log => {
                 const details = parseDetails(log.details)
                 return (
                   <tr
@@ -123,7 +142,6 @@ export default function Audit() {
                     onClick={() => setDetail(log)}
                     style={{ borderBottom: '1px solid var(--border)', cursor: details ? 'pointer' : 'default' }}
                   >
-                    <td style={{ ...tdStyle, color: 'var(--text-muted)', fontSize: 12, width: 40, textAlign: 'center' }}>{(page - 1) * LIMIT + idx + 1}</td>
                     <td style={{ ...tdStyle, ...stickyCol, whiteSpace: 'nowrap', color: 'var(--text-muted)', fontSize: 12 }}>
                       {new Date(log.createdAt).toLocaleString('fr-FR', {
                         day: '2-digit', month: '2-digit',
@@ -132,7 +150,9 @@ export default function Audit() {
                     </td>
                     <td style={tdStyle}><ActionBadge action={log.action} /></td>
                     <td style={{ ...tdStyle, fontSize: 12 }}>
-                      <code style={{ color: 'var(--text-muted)' }}>{log.adminId?.slice(0, 8) ?? '—'}</code>
+                      {adminName(log.adminId)
+                        ? <span style={{ fontWeight: 600 }}>{adminName(log.adminId)}</span>
+                        : <code style={{ color: 'var(--text-muted)' }}>{log.adminId?.slice(0, 8) ?? '—'}</code>}
                     </td>
                     <td style={{ ...tdStyle, fontSize: 12, color: 'var(--text-muted)' }}>{log.targetType ?? '—'}</td>
                     <td style={{ ...tdStyle, fontSize: 12 }}>
@@ -173,7 +193,7 @@ export default function Audit() {
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10, fontSize: 13 }}>
               <Row label="Action"      value={<ActionBadge action={detail.action} />} />
               <Row label="Date"        value={new Date(detail.createdAt).toLocaleString('fr-FR')} />
-              <Row label="Admin ID"    value={<code style={{ fontSize: 11 }}>{detail.adminId}</code>} />
+              <Row label="Admin"       value={<>{adminName(detail.adminId) && <strong style={{ marginRight: 8 }}>{adminName(detail.adminId)}</strong>}<code style={{ fontSize: 11 }}>{detail.adminId}</code></>} />
               <Row label="Type cible"  value={detail.targetType ?? '—'} />
               <Row label="Cible ID"    value={detail.targetId ? <code style={{ fontSize: 11 }}>{detail.targetId}</code> : '—'} />
               {detail.details && (
