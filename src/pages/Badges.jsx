@@ -134,6 +134,155 @@ function BadgeCard({ v, count, onClick }) {
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
+//  BADGES CLIENTS — À VALIDER (Super Admin)
+// ══════════════════════════════════════════════════════════════════════════════
+// Un palier soumis à validation (DEM Mbokk, voir client-badges.service.js côté
+// serveur) n'est jamais attribué tant qu'un Super Admin n'a pas validé le
+// client. Le serveur liste les clients qui remplissent tous les autres critères
+// (GET /admin/client-badges/pending-validation) ; la validation est réservée
+// au Super Admin (PATCH /admin/clients/:id/badge/validate) et notifie le client.
+// Un client qui a déjà un palier plus haut (Djambar et au-delà ne demandent
+// pas de validation) peut remplir aussi les critères de Mbokk : le valider ne
+// change alors pas son badge, et le serveur n'envoie aucune notification.
+function alreadyHigher(c) {
+  return CLIENT_TIER_ORDER.indexOf(c.clientBadge) > CLIENT_TIER_ORDER.indexOf(c.tierId)
+}
+
+function PendingValidationSection({ onValidated }) {
+  const [pending, setPending] = useState(null) // null = pas encore chargé
+  const [error, setError]     = useState('')
+  const [confirming, setConfirming] = useState(null)
+  const [done, setDone]       = useState('')
+
+  const load = useCallback(() => {
+    api.get('/admin/client-badges/pending-validation')
+      .then(r => { setError(''); setPending(r.data.clients ?? []) })
+      .catch(() => { setPending([]); setError('Impossible de charger les clients à valider.') })
+  }, [])
+
+  useEffect(() => { load() }, [load])
+
+  function handleValidated(client, badgeName) {
+    setConfirming(null)
+    const who = client.name ?? client.phone
+    setDone(alreadyHigher(client)
+      ? `${who} est validé : son badge reste ${badgeName ?? CLIENT_VISUALS[client.clientBadge]?.name}.`
+      : `${who} a reçu le badge ${badgeName ?? client.tierName}.`)
+    load()
+    onValidated()
+  }
+
+  // La fenêtre de confirmation est rendue HORS du bloc vitré : son
+  // backdrop-filter capturerait le position: fixed et la couperait.
+  return (
+    <>
+    <div style={{ ...glass, padding: '16px 18px', marginBottom: 16, border: '1px solid rgba(245,158,11,.35)' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+        <h2 style={{ fontSize: 15, fontWeight: 700, margin: 0 }}>À valider</h2>
+        {pending && (
+          <span style={{ background: pending.length ? 'rgba(245,158,11,.15)' : 'rgba(34,197,94,.12)', color: pending.length ? '#b45309' : '#15803d', fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 20 }}>
+            {pending.length}
+          </span>
+        )}
+      </div>
+      <p style={{ color: 'var(--text-muted)', fontSize: 12, margin: '0 0 12px' }}>
+        Clients qui remplissent tous les critères d'un palier soumis à validation, sauf la validation elle-même.
+      </p>
+
+      {done && <div style={{ fontSize: 12, color: '#15803d', fontWeight: 600, marginBottom: 10 }}>{done}</div>}
+      {error && <div style={{ fontSize: 12, color: '#dc2626', marginBottom: 10 }}>{error}</div>}
+
+      {pending === null ? (
+        <div style={{ color: 'var(--text-muted)', fontSize: 13 }}>Chargement…</div>
+      ) : pending.length === 0 ? (
+        !error && <div style={{ color: 'var(--text-muted)', fontSize: 13 }}>Aucun client en attente de validation.</div>
+      ) : (
+        <div style={{ overflowX: 'auto' }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+            <thead>
+              <tr>{['Client', 'Téléphone', 'Palier visé', 'Badge actuel', 'Courses livrées', 'Parrainages valides', ''].map(h => (
+                <th key={h} style={{ textAlign: 'left', padding: '6px 10px', color: 'var(--text-muted)', fontSize: 11, fontWeight: 600, borderBottom: '1px solid var(--border)' }}>{h}</th>
+              ))}</tr>
+            </thead>
+            <tbody>
+              {pending.map(c => {
+                const target  = CLIENT_VISUALS[c.tierId]
+                const current = c.clientBadge ? CLIENT_VISUALS[c.clientBadge] : null
+                const higher  = alreadyHigher(c)
+                return (
+                  <tr key={c.id} style={{ borderBottom: '1px solid var(--border)' }}>
+                    <td style={{ padding: '8px 10px', fontWeight: 600, fontSize: 13 }}>{c.name ?? '—'}</td>
+                    <td style={{ padding: '8px 10px', fontSize: 13 }}>{c.phone ?? '—'}</td>
+                    <td style={{ padding: '8px 10px', fontSize: 13, fontWeight: 700, color: target?.color }}>{target?.emoji} {c.tierName}</td>
+                    <td style={{ padding: '8px 10px', fontSize: 13, color: 'var(--text-muted)' }}>{current ? `${current.emoji} ${current.name}` : 'Sans badge'}{higher && ' (déjà supérieur)'}</td>
+                    <td style={{ padding: '8px 10px', fontSize: 13 }}>{c.stats?.courses ?? '—'}</td>
+                    <td style={{ padding: '8px 10px', fontSize: 13 }}>{c.stats?.referrals ?? '—'}</td>
+                    <td style={{ padding: '8px 10px', textAlign: 'right' }}>
+                      <button onClick={() => { setDone(''); setConfirming(c) }} style={btnPrimary}>Valider…</button>
+                    </td>
+                  </tr>
+                )
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+    </div>
+    {confirming && (
+      <ConfirmValidateBadgeModal client={confirming} onClose={() => setConfirming(null)} onValidated={handleValidated} />
+    )}
+    </>
+  )
+}
+
+function ConfirmValidateBadgeModal({ client, onClose, onValidated }) {
+  const [saving, setSaving] = useState(false)
+  const [error, setError]   = useState('')
+  const v = CLIENT_VISUALS[client.tierId]
+  const higher = alreadyHigher(client)
+  const current = CLIENT_VISUALS[client.clientBadge]
+
+  async function submit() {
+    setSaving(true)
+    setError('')
+    try {
+      const r = await api.patch(`/admin/clients/${client.id}/badge/validate`)
+      onValidated(client, r.data?.badge?.badgeName)
+    } catch (e) {
+      setError(e.response?.data?.message ?? 'La validation a échoué. Réessayez.')
+      setSaving(false)
+    }
+  }
+
+  return (
+    <div style={overlay} onClick={saving ? undefined : onClose}>
+      <div style={{ ...glass, background: '#fff', width: 440, maxWidth: '92vw', padding: '22px 24px', borderRadius: 16 }} onClick={e => e.stopPropagation()}>
+        <h2 style={{ fontSize: 16, fontWeight: 700, margin: '0 0 12px' }}>Valider le badge de {client.name ?? client.phone} ?</h2>
+        <div style={{ background: 'var(--surface2)', borderRadius: 10, padding: '12px 14px', fontSize: 13, lineHeight: 1.7, marginBottom: 14 }}>
+          <div><span style={{ color: 'var(--text-muted)' }}>Client : </span><strong>{client.name ?? '—'}</strong> · {client.phone ?? '—'}</div>
+          <div><span style={{ color: 'var(--text-muted)' }}>Palier visé : </span><strong style={{ color: v?.color }}>{v?.emoji} {client.tierName}</strong></div>
+          <div><span style={{ color: 'var(--text-muted)' }}>Activité : </span>{client.stats?.courses ?? '—'} courses livrées · {client.stats?.referrals ?? '—'} parrainages valides</div>
+        </div>
+        <p style={{ fontSize: 12, color: 'var(--text-muted)', margin: '0 0 16px' }}>
+          {higher
+            ? `Son badge actuel (${current?.name}) est déjà supérieur : la validation ne change pas son badge et n'envoie pas de notification. Elle lève seulement le blocage pour la suite.`
+            : 'Le client reçoit le badge immédiatement, avec une notification sur son téléphone.'}
+          {' '}Cette validation ne peut pas être annulée depuis l'admin.
+        </p>
+        {error && <div style={{ fontSize: 12, color: '#dc2626', marginBottom: 12 }}>{error}</div>}
+        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
+          <button onClick={onClose} disabled={saving} style={btnOutline}>Annuler</button>
+          <button onClick={submit} disabled={saving} style={{ ...btnPrimary, opacity: saving ? 0.6 : 1 }}>
+            {saving ? 'Validation…' : `Valider ${client.tierName}`}
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
 //  BADGES CLIENTS
 // ══════════════════════════════════════════════════════════════════════════════
 function ClientBadgesTab() {
@@ -146,8 +295,10 @@ function ClientBadgesTab() {
   const [selected, setSelected] = useState(null) // badge id sélectionné (ou 'none') pour la popup
   const [editing,  setEditing]  = useState(false)
 
-  const load = useCallback(async () => {
-    setLoading(true)
+  // silent : rafraîchit les compteurs sans repasser par « Chargement… », qui
+  // démonterait le bloc « À valider » (et son message de confirmation).
+  const load = useCallback(async (silent = false) => {
+    if (!silent) setLoading(true)
     try {
       // Répartition calculée par le serveur sur TOUS les comptes clients (avant :
       // 1000 clients au plus, comptés dans le navigateur)
@@ -189,6 +340,8 @@ function ClientBadgesTab() {
 
   return (
     <>
+      {isSuper && <PendingValidationSection onValidated={() => load(true)} />}
+
       {isSuper && (
         <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 12 }}>
           <button onClick={() => setEditing(true)} style={btnOutline}>
