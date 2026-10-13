@@ -144,11 +144,19 @@ function BadgeCard({ v, count, onClick }) {
 // Un client qui a déjà un palier plus haut (Djambar et au-delà ne demandent
 // pas de validation) peut remplir aussi les critères de Mbokk : le valider ne
 // change alors pas son badge, et le serveur n'envoie aucune notification.
+// Couleurs fixes par palier, mais nom et emoji de la configuration active
+// (un palier peut y avoir été renommé, ex. Djambar affiché « Domou Ndey »).
+function tierVisual(tiers, id) {
+  const t = tiers.find(x => x.id === id)
+  const base = CLIENT_VISUALS[id] ?? {}
+  return { ...base, emoji: t?.emoji ?? base.emoji, name: t?.name ?? base.name }
+}
+
 function alreadyHigher(c) {
   return CLIENT_TIER_ORDER.indexOf(c.clientBadge) > CLIENT_TIER_ORDER.indexOf(c.tierId)
 }
 
-function PendingValidationSection({ onValidated }) {
+function PendingValidationSection({ tiers, onValidated }) {
   const [pending, setPending] = useState(null) // null = pas encore chargé
   const [error, setError]     = useState('')
   const [confirming, setConfirming] = useState(null)
@@ -166,7 +174,7 @@ function PendingValidationSection({ onValidated }) {
     setConfirming(null)
     const who = client.name ?? client.phone
     setDone(alreadyHigher(client)
-      ? `${who} est validé : son badge reste ${badgeName ?? CLIENT_VISUALS[client.clientBadge]?.name}.`
+      ? `${who} est validé : son badge reste ${badgeName ?? tierVisual(tiers, client.clientBadge).name}.`
       : `${who} a reçu le badge ${badgeName ?? client.tierName}.`)
     load()
     onValidated()
@@ -206,8 +214,8 @@ function PendingValidationSection({ onValidated }) {
             </thead>
             <tbody>
               {pending.map(c => {
-                const target  = CLIENT_VISUALS[c.tierId]
-                const current = c.clientBadge ? CLIENT_VISUALS[c.clientBadge] : null
+                const target  = tierVisual(tiers, c.tierId)
+                const current = c.clientBadge ? tierVisual(tiers, c.clientBadge) : null
                 const higher  = alreadyHigher(c)
                 return (
                   <tr key={c.id} style={{ borderBottom: '1px solid var(--border)' }}>
@@ -230,18 +238,18 @@ function PendingValidationSection({ onValidated }) {
 
     </div>
     {confirming && (
-      <ConfirmValidateBadgeModal client={confirming} onClose={() => setConfirming(null)} onValidated={handleValidated} />
+      <ConfirmValidateBadgeModal client={confirming} tiers={tiers} onClose={() => setConfirming(null)} onValidated={handleValidated} />
     )}
     </>
   )
 }
 
-function ConfirmValidateBadgeModal({ client, onClose, onValidated }) {
+function ConfirmValidateBadgeModal({ client, tiers, onClose, onValidated }) {
   const [saving, setSaving] = useState(false)
   const [error, setError]   = useState('')
-  const v = CLIENT_VISUALS[client.tierId]
+  const v = tierVisual(tiers, client.tierId)
   const higher = alreadyHigher(client)
-  const current = CLIENT_VISUALS[client.clientBadge]
+  const current = tierVisual(tiers, client.clientBadge)
 
   async function submit() {
     setSaving(true)
@@ -340,7 +348,7 @@ function ClientBadgesTab() {
 
   return (
     <>
-      {isSuper && <PendingValidationSection onValidated={() => load(true)} />}
+      {isSuper && <PendingValidationSection tiers={tiers} onValidated={() => load(true)} />}
 
       {isSuper && (
         <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 12 }}>
