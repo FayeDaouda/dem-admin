@@ -121,4 +121,6 @@ export const ACTION_ROLES = {
   // heures de pointe, réglage technique) et zone de livraison (PUT
   // /admin/delivery-zone) : Super seul ; le Dev les voit en lecture.
   configEdit: [],
+  // Version de l'app : PUT /admin/app-version, Super seul (le Dev lit).
+  appVersionEdit: [],
 }
