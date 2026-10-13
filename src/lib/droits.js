@@ -117,4 +117,8 @@ export const ACTION_ROLES = {
   fleetDriverActions: ['ASSISTANCE_EXECUTIVE'],
   // signaler un chef : POST /admin/report-user (Super, Dev, SC, Ass. exéc.).
   reportChef: ['DEV', 'SERVICE_CLIENT', 'ASSISTANCE_EXECUTIVE'],
+  // Tarifs et zones : réglages (PUT /admin/config — tarif hors zone, DEM Pro,
+  // heures de pointe, réglage technique) et zone de livraison (PUT
+  // /admin/delivery-zone) : Super seul ; le Dev les voit en lecture.
+  configEdit: [],
 }

@@ -33,12 +33,15 @@ function FitCircle({ center, radiusKm }) {
 
 const round = n => Math.round(n * 1e5) / 1e5
 
-export default function DeliveryZoneTab() {
+// `canEdit` : PUT /admin/delivery-zone est réservé au Super Admin — les autres
+// rôles de la page (Dev) voient la zone sans pouvoir l'enregistrer.
+export default function DeliveryZoneTab({ canEdit = true }) {
   const [saved, setSaved] = useState(undefined) // undefined = chargement, null = aucune zone
   const [form, setForm] = useState(null)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const [notice, setNotice] = useState('')
+  const [confirmRemove, setConfirmRemove] = useState(false)
 
   useEffect(() => {
     api.get('/admin/delivery-zone')
@@ -59,6 +62,7 @@ export default function DeliveryZoneTab() {
     try {
       const { data } = await api.put('/admin/delivery-zone', { zone })
       setSaved(data.zone)
+      setConfirmRemove(false)
       setNotice(data.zone ? 'Zone enregistrée : appliquée aux nouvelles commandes de la boutique.' : 'Limite retirée : toutes les adresses sont acceptées.')
     } catch (e) {
       setError(e.response?.data?.message || 'Enregistrement impossible.')
@@ -74,7 +78,7 @@ export default function DeliveryZoneTab() {
   const field = (key, label, step) => (
     <label style={{ display: 'flex', flexDirection: 'column', gap: 6, fontSize: 12, fontWeight: 600, color: 'var(--text-muted)', flex: '1 1 140px' }}>
       {label}
-      <input type="number" step={step} value={form[key]} onChange={e => setForm(f => ({ ...f, [key]: e.target.value }))} style={glassInput} />
+      <input type="number" step={step} value={form[key]} disabled={!canEdit} onChange={e => setForm(f => ({ ...f, [key]: e.target.value }))} style={glassInput} />
     </label>
   )
 
@@ -98,10 +102,10 @@ export default function DeliveryZoneTab() {
           <MapContainer center={[center.lat, center.lng]} zoom={10} style={{ height: '100%', width: '100%' }}>
             <MapBaseLayer />
             <FitCircle center={center} radiusKm={Number(form.radiusKm)} />
-            <ClickToMove onMove={(lat, lng) => setForm(f => ({ ...f, lat: round(lat), lng: round(lng) }))} />
+            {canEdit && <ClickToMove onMove={(lat, lng) => setForm(f => ({ ...f, lat: round(lat), lng: round(lng) }))} />}
             <Circle center={[center.lat, center.lng]} radius={Number(form.radiusKm) * 1000} pathOptions={{ color: '#0077b6', weight: 2, fillOpacity: 0.12 }} />
             <Marker
-              position={[center.lat, center.lng]} icon={pin} draggable
+              position={[center.lat, center.lng]} icon={pin} draggable={canEdit}
               eventHandlers={{ dragend: e => { const p = e.target.getLatLng(); setForm(f => ({ ...f, lat: round(p.lat), lng: round(p.lng) })) } }}
             />
           </MapContainer>
@@ -111,7 +115,8 @@ export default function DeliveryZoneTab() {
       {error && <div style={{ fontSize: 12, color: 'var(--danger)', background: 'rgba(239,68,68,.08)', borderRadius: 6, padding: '8px 12px', marginBottom: 12 }}>{error}</div>}
       {notice && <div style={{ fontSize: 12, color: '#15803d', background: 'rgba(34,197,94,.10)', borderRadius: 6, padding: '8px 12px', marginBottom: 12 }}>{notice}</div>}
 
-      <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+      {!canEdit && <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>Modification réservée au Super Admin.</div>}
+      {canEdit && <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
         <button
           type="button" disabled={!valid || !dirty || busy}
           onClick={() => save({ type: 'circle', center, radiusKm: Number(form.radiusKm) })}
@@ -120,11 +125,18 @@ export default function DeliveryZoneTab() {
         {saved && (
           <button
             type="button" disabled={busy}
-            onClick={() => { if (window.confirm('Retirer la limite ? Toutes les adresses seront acceptées.')) save(null) }}
+            onClick={() => setConfirmRemove(true)}
             style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 14px', borderRadius: 'var(--radius-sm)', border: '1px solid rgba(239,68,68,.35)', background: 'rgba(255,255,255,.5)', color: 'var(--danger)', fontSize: 13, cursor: 'pointer' }}
           ><Trash2 size={15} /> Retirer la limite</button>
         )}
-      </div>
+      </div>}
+      {canEdit && confirmRemove && (
+        <div style={{ marginTop: 12, background: 'var(--surface2)', borderRadius: 10, padding: '10px 14px', display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+          <span style={{ fontSize: 13, fontWeight: 600, flex: 1 }}>Retirer la limite ? Toutes les adresses seront acceptées.</span>
+          <button type="button" onClick={() => setConfirmRemove(false)} disabled={busy} style={{ padding: '7px 14px', borderRadius: 'var(--radius-sm)', border: '1px solid rgba(0,119,182,.25)', background: 'rgba(255,255,255,.5)', color: 'var(--text-muted)', fontSize: 13, cursor: 'pointer' }}>Retour</button>
+          <button type="button" onClick={() => save(null)} disabled={busy} style={{ padding: '7px 14px', borderRadius: 'var(--radius-sm)', border: 'none', background: 'var(--danger)', color: '#fff', fontWeight: 600, fontSize: 13, cursor: 'pointer' }}>{busy ? '…' : 'Retirer la limite'}</button>
+        </div>
+      )}
     </div>
   )
 }

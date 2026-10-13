@@ -32,6 +32,7 @@ export default function FlatPromoSection() {
   const [endsAt, setEndsAt]   = useState('')
   const [busy, setBusy]       = useState(false)
   const [error, setError]     = useState('')
+  const [confirming, setConfirming] = useState(false) // activation confirmée dans le bloc
 
   const load = useCallback(async () => {
     try {
@@ -53,6 +54,7 @@ export default function FlatPromoSection() {
         endsAt: endsAt ? new Date(endsAt).toISOString() : null,
       })
       setData(res.data)
+      setConfirming(false)
     } catch (e) { setError(e.response?.data?.message ?? 'Erreur.') }
     finally { setBusy(false) }
   }
@@ -139,18 +141,23 @@ export default function FlatPromoSection() {
               </button>
             ) : (
               <button
-                onClick={() => {
-                  if (window.confirm(`Activer la promotion ? Toutes les courses passeront à ${priceNum.toLocaleString('fr-FR')} F.`)) save(true)
-                }}
-                disabled={busy || !priceOk} style={btn('var(--success, #16a34a)', busy || !priceOk)}
+                onClick={() => setConfirming(true)}
+                disabled={busy || !priceOk || confirming} style={btn('var(--success, #16a34a)', busy || !priceOk || confirming)}
               >
-                {busy ? '…' : `Activer à ${priceOk ? priceNum.toLocaleString('fr-FR') : '—'} F`}
+                {`Activer à ${priceOk ? priceNum.toLocaleString('fr-FR') : '—'} F`}
               </button>
             )}
           </div>
         )}
       </div>
 
+      {confirming && !active && (
+        <div style={{ marginTop: 12, background: 'var(--surface2)', borderRadius: 10, padding: '10px 14px', display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+          <span style={{ fontSize: 13, fontWeight: 600, flex: 1 }}>Activer la promotion ? Toutes les courses passeront à {priceNum.toLocaleString('fr-FR')} F.</span>
+          <button onClick={() => setConfirming(false)} disabled={busy} style={{ ...btn('transparent', busy), color: 'var(--text-muted)', border: '1px solid rgba(0,119,182,.25)' }}>Retour</button>
+          <button onClick={() => save(true)} disabled={busy || !priceOk} style={btn('var(--success, #16a34a)', busy || !priceOk)}>{busy ? '…' : 'Confirmer l’activation'}</button>
+        </div>
+      )}
       {!isSuper && (
         <p style={{ color: 'var(--text-muted)', fontSize: 11.5, marginTop: 10 }}>Seul le super admin peut activer ou désactiver la promotion.</p>
       )}
