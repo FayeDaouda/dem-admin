@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import { NavLink, useNavigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import { Gift,
-  LayoutDashboard, Package, Users, LogOut, Bike, Map, Menu, X, TrendingUp, ShieldCheck, AlertTriangle, ScrollText, UserCog, Briefcase, UsersRound, SlidersHorizontal, Award, GitBranch, Bell, Wallet, UserPlus, Table2, KeyRound, Wrench, Search, Headset, Smartphone, ChevronDown, ChevronRight,
+  LayoutDashboard, Package, Users, LogOut, Bike, Map, Menu, X, TrendingUp, ShieldCheck, AlertTriangle, ScrollText, UserCog, Briefcase, UsersRound, SlidersHorizontal, Award, GitBranch, Bell, Wallet, Table2, KeyRound, Wrench, Search, Headset, Smartphone, ChevronDown, ChevronRight,
 } from 'lucide-react'
 import logoSrc from '../assets/logo-dem.svg'
 import { useResponsive } from '../lib/useResponsive'
@@ -42,8 +42,7 @@ const NAV = [
   { group: 'croissance', to: '/parrainage',      icon: GitBranch,       label: 'Parrainage',           roles: ['SUPER','MARKETING'] },
   { group: 'croissance', to: '/badges',          icon: Award,           label: 'Badges',               keywords: 'badge client coursier paliers', roles: ['SUPER','MARKETING','ASSISTANCE_EXECUTIVE'] },
   { group: 'croissance', to: '/broadcast',       icon: Bell,            label: 'Notifications',        keywords: 'push broadcast envoi messages', roles: ['SUPER','MARKETING'] },
-  { group: 'croissance', to: '/tableau',         icon: Table2,          label: 'Relances',             keywords: 'tableau appels prospection', roles: ['SUPER','SERVICE_CLIENT','ASSISTANCE_EXECUTIVE'] },
-  { group: 'croissance', to: '/nouveaux-profils', icon: UserPlus,       label: 'Nouveaux profils',     keywords: 'inscriptions', roles: ['SUPER','SERVICE_CLIENT','ASSISTANCE_EXECUTIVE'] },
+  { group: 'croissance', to: '/relances',        icon: Table2,          label: 'Relances',             keywords: 'tableau appels prospection nouveaux profils inscrits inscriptions', roles: ['SUPER','SERVICE_CLIENT','ASSISTANCE_EXECUTIVE'] },
   { group: 'administration', to: '/equipes',     icon: UsersRound,      label: 'Équipes',              keywords: 'admins comptes rôles', roles: ['SUPER'] },
   { group: 'administration', to: '/audit',       icon: ScrollText,      label: 'Audit',                keywords: 'journal historique', roles: ['SUPER','DEV'] },
   { group: 'administration', to: '/maintenance', icon: Wrench,          label: 'Maintenance',          keywords: 'tâches fournisseur sms réglages code secret interrupteurs', roles: ['SUPER'] },

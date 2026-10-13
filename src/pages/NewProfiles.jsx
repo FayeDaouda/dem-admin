@@ -19,7 +19,7 @@ const CATEGORIES = [
   ['CHEF_DE_FLOTTE', 'newChefsDeFlotte',  'Nouveaux chefs de flotte',  UserCog,  '#B8860B'],
 ]
 
-export default function NewProfiles() {
+export default function NewProfiles({ embedded = false }) {
   const [data, setData]       = useState(null)
   const [loading, setLoading] = useState(true)
   const [period, setPeriod]   = useState('week')
@@ -70,12 +70,15 @@ export default function NewProfiles() {
   return (
     <div style={pageWrap}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12, marginBottom: 20, flexShrink: 0 }}>
-        <div>
+        {/* Intégrée dans la page Relances : le titre est celui de la page */}
+        {!embedded ? (
+          <div>
           <h1 style={{ fontSize: 22, fontWeight: 700 }}>Nouveaux profils</h1>
           <p style={{ color: 'var(--text-muted)', fontSize: 13, marginTop: 4 }}>
             Nouvelles inscriptions par catégorie de compte.
           </p>
-        </div>
+          </div>
+        ) : <div />}
         <button onClick={fetch} style={btnOutline}>
           <RefreshCw size={14} /> Actualiser
         </button>

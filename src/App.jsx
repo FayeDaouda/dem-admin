@@ -12,9 +12,8 @@ import Clients     from './pages/Clients'
 import Config      from './pages/Config'
 import AppVersion from './pages/AppVersion'
 import CodesAcces from './pages/CodesAcces'
+import Relances from './pages/Relances'
 import Rewards from './pages/Rewards'
-import NewProfiles from './pages/NewProfiles'
-import OutreachTable from './pages/OutreachTable'
 import Validation    from './pages/Validation'
 import Incidents    from './pages/Incidents'
 import Audit        from './pages/Audit'
@@ -115,8 +114,9 @@ function AppRoutes() {
       <Route path="/acquisition-overview" element={<Navigate to="/marketing?tab=acquisition" replace />} />
       <Route path="/promotions" element={<Navigate to="/marketing?tab=promotions" replace />} />
       <Route path="/recompenses" element={<ProtectedRoute><Rewards /></ProtectedRoute>} />
-      <Route path="/nouveaux-profils" element={<ProtectedRoute><NewProfiles /></ProtectedRoute>} />
-      <Route path="/tableau" element={<ProtectedRoute><OutreachTable /></ProtectedRoute>} />
+      <Route path="/nouveaux-profils" element={<Navigate to="/relances?tab=inscrits" replace />} />
+      <Route path="/tableau" element={<Navigate to="/relances?tab=appels" replace />} />
+      <Route path="/relances" element={<ProtectedRoute><Relances /></ProtectedRoute>} />
       <Route path="/badges" element={<ProtectedRoute><BadgesPage /></ProtectedRoute>} />
       <Route path="/badges/clients" element={<Navigate to="/badges?tab=clients" replace />} />
       <Route path="/badges/drivers" element={<Navigate to="/badges?tab=coursiers" replace />} />

@@ -62,7 +62,7 @@ const PROFILE_LABELS = Object.fromEntries(PROFILES.map(([key, label]) => [key, l
 
 function triLabel(v) { return v === true ? 'Oui' : v === false ? 'Non' : '—' }
 
-export default function OutreachTable() {
+export default function OutreachTable({ embedded = false }) {
   const [role, setRole]         = useState('DEM_PRO')
   const [rows, setRows]         = useState([])
   const [loading, setLoading]   = useState(true)
@@ -146,12 +146,15 @@ export default function OutreachTable() {
   return (
     <div style={pageWrap}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12, marginBottom: 16, flexShrink: 0 }}>
-        <div>
+        {/* Intégrée dans la page Relances : le titre est celui de la page */}
+        {!embedded ? (
+          <div>
           <h1 style={{ fontSize: 22, fontWeight: 700 }}>Relances</h1>
           <p style={{ color: 'var(--text-muted)', fontSize: 13, marginTop: 4 }}>
             Suivi des appels de prospection et de support.
           </p>
-        </div>
+          </div>
+        ) : <div />}
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
           <button onClick={fetch} style={btnOutline}><RefreshCw size={14} /> Actualiser</button>
           <ExportPdfButton
