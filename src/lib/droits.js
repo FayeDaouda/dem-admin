@@ -36,6 +36,15 @@ export const TAB_ROLES = {
     clients:   ['MARKETING'],                           // /admin/client-badges/*
     coursiers: ['MARKETING', 'ASSISTANCE_EXECUTIVE'],   // /admin/badges/config, driver-distribution
   },
+  // Validation (page visible de Super, Ass. exéc. et Service Client) : chefs
+  // de flotte, coursiers, pièces et DEM Pro ouverts aux trois ; extensions de
+  // flotte (/admin/fleet-extensions) et décisions sur les demandes
+  // (/admin/requests/:id/approve|reject) : Super seul.
+  validation: {
+    fleet:              [],
+    'service-requests': [],
+    'finance-requests': [],
+  },
 }
 
 // Actions réservées, à l'intérieur d'un écran.
@@ -56,4 +65,10 @@ export const ACTION_ROLES = {
   // Parrainage › compteur des parrainages DEM Pro : /admin/dem-pro/referrals ;
   // le rôle Marketing ne voit pas les parrainages DEM Pro aujourd'hui → Super seul.
   proReferralCounter: [],
+  // Validation › chefs de flotte, Suspendre : PATCH /admin/chefs-de-flotte/:id/suspend, Super seul.
+  chefSuspend: [],
+  // Validation › pièces à revoir, Rejeter une pièce et Vérifier :
+  // /admin/drivers/:id/documents/:field/reject et /verify, Super + Ass. exéc.
+  // (le Service Client garde la lecture).
+  kycReview: ['ASSISTANCE_EXECUTIVE'],
 }
