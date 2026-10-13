@@ -56,4 +56,8 @@ export const ACTION_ROLES = {
   // Parrainage › compteur des parrainages DEM Pro : /admin/dem-pro/referrals ;
   // le rôle Marketing ne voit pas les parrainages DEM Pro aujourd'hui → Super seul.
   proReferralCounter: [],
+  // Courses : actions de la fiche (admin.routes.js)
+  orderDispatch: [],                         // choisir / attribuer un coursier, relancer la recherche : Super seul
+  orderCancel:   ['ASSISTANCE_EXECUTIVE'],   // annuler : Super + Ass. exéc.
+  orderMarkPaid: ['FINANCE'],                // marquer payé : Super + Finance
 }
