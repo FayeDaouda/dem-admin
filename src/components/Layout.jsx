@@ -18,7 +18,7 @@ const GROUPS = [
   { key: 'pilotage',       label: 'Pilotage',       icon: Gauge },
   { key: 'operations',     label: 'Opérations',     icon: Activity },
   { key: 'comptes',        label: 'Comptes',        icon: Contact },
-  { key: 'argent',         label: 'Argent',         icon: Banknote },
+  { key: 'argent',         label: 'Finances',       icon: Banknote },
   { key: 'croissance',     label: 'Croissance',     icon: Rocket },
   { key: 'administration', label: 'Administration', icon: Settings },
 ]

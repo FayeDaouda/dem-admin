@@ -1,3 +1,4 @@
+import { Fragment } from 'react'
 import { formatF, formatCount } from '../../../lib/format'
 
 // Décomposition des revenus DEM (réponse de computeRevenue côté backend,
@@ -20,7 +21,10 @@ const ROWS = [
   { label: 'Net après remises', value: r => r.totals.net, total: true },
 ]
 
-export default function RevenueBreakdownTable({ columns }) {
+// `extra` (facultatif) : blocs supplémentaires dans les mêmes colonnes, ex.
+// { title: 'Courses livrées', rows: [{ label, values: [...] }] } — une valeur
+// null s'affiche « — » (période non fournie par le serveur).
+export default function RevenueBreakdownTable({ columns, extra = [] }) {
   return (
     <div style={{ overflowX: 'auto' }}>
       <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 360 + columns.length * 90 }}>
@@ -49,6 +53,23 @@ export default function RevenueBreakdownTable({ columns }) {
               ))}
             </tr>
           ))}
+          {extra.map(block => (<Fragment key={block.title}>
+            <tr>
+              <td colSpan={columns.length + 1} style={{ ...td, paddingTop: 18, fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '.5px', borderBottom: '1px solid rgba(0,119,182,0.12)' }}>
+                {block.title}
+              </td>
+            </tr>
+            {block.rows.map(row => (
+              <tr key={row.label} style={{ borderTop: '1px solid rgba(0,0,0,0.04)' }}>
+                <td style={{ ...td, fontWeight: row.strong ? 600 : 400 }}>{row.label}</td>
+                {row.values.map((v, i) => (
+                  <td key={columns[i].label} style={{ ...td, textAlign: 'right', fontWeight: row.strong ? 600 : 400, whiteSpace: 'nowrap', color: v == null ? 'var(--text-muted)' : 'var(--text)' }}>
+                    {v == null ? '—' : v}
+                  </td>
+                ))}
+              </tr>
+            ))}
+          </Fragment>))}
         </tbody>
       </table>
     </div>

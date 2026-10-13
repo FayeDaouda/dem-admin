@@ -33,8 +33,8 @@ export default function FeesSection() {
         ['Frais de mise en relation', `${fee.toLocaleString('fr-FR')} F par course`, '#0ea5e9'],
         ['Frais moyens réels', `${delivered > 0 ? Math.round(billed / delivered).toLocaleString('fr-FR') : 0} F (${delivered.toLocaleString('fr-FR')} courses livrées)`, '#06b6d4'],
       ].map(([label, value, color]) => (
-        <div key={label} style={{ ...glass, padding: '14px 18px', flex: '1 1 200px', borderLeft: `3px solid ${color}` }}>
-          <div style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 600 }}>{label}</div>
+        <div key={label} style={{ ...glass, padding: '14px 16px', flex: '1 1 200px' }}>
+          <div style={{ fontSize: 10, color: 'var(--text-muted)', fontWeight: 700, letterSpacing: '.5px', textTransform: 'uppercase' }}>{label}</div>
           <div style={{ fontSize: 18, fontWeight: 800, color, marginTop: 4 }}>{value}</div>
         </div>
       ))}
