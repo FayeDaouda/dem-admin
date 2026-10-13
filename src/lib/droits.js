@@ -56,4 +56,6 @@ export const ACTION_ROLES = {
   // Parrainage › compteur des parrainages DEM Pro : /admin/dem-pro/referrals ;
   // le rôle Marketing ne voit pas les parrainages DEM Pro aujourd'hui → Super seul.
   proReferralCounter: [],
+  // Incidents : changer le statut ou les notes (PATCH /admin/incidents/:id) : Super + Ass. exéc.
+  incidentUpdate: ['ASSISTANCE_EXECUTIVE'],
 }
