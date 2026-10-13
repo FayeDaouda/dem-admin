@@ -3,6 +3,7 @@ import { Save, Trash2 } from 'lucide-react'
 import api from '../lib/api'
 import { glass, glassInput } from '../lib/glassStyles'
 import InlineConfirm from '../components/InlineConfirm'
+import InfoTip from '../components/InfoTip'
 
 // Version de l'app (dem-backend : utils/app-version.js). Au lancement, l'app
 // compare sa version à ces réglages :
@@ -81,7 +82,7 @@ export default function AppVersionTab({ canEdit = true }) {
 
   return (
     <div style={{ ...glass, padding: 20, maxWidth: 760 }}>
-      <h2 style={{ fontSize: 16, fontWeight: 700, margin: '0 0 6px' }}>Version de l'app</h2>
+      <h2 style={{ fontSize: 16, fontWeight: 700, margin: '0 0 6px' }}>Version de l'app<InfoTip k="Version de l'app" size={13} /></h2>
       <p style={{ fontSize: 12.5, color: 'var(--text-muted)', margin: '0 0 16px', lineHeight: 1.6 }}>
         Indiquez la dernière version <strong>une fois validée par le store</strong> : les utilisateurs d'une version plus ancienne
         verront « Nouvelle version disponible » à chaque ouverture de l'app. En dessous de la version minimale, la mise à jour est

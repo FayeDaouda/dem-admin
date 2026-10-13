@@ -4,6 +4,7 @@ import api from '../../lib/api'
 import { glass } from '../../lib/glassStyles'
 import ExportPdfButton from '../../components/ExportPdfButton'
 import { useAutoRefresh } from '../../lib/useAutoRefresh'
+import InfoTip from '../../components/InfoTip'
 
 const TOOLTIP_STYLE = { background: '#fff', border: '1px solid var(--border)', borderRadius: 6, color: 'var(--text)', fontSize: 12, boxShadow: '0 2px 8px rgba(0,0,0,0.10)' }
 
@@ -97,7 +98,7 @@ export default function RetentionTab() {
 
       <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0,1fr) minmax(0,1fr)', gap: 16 }}>
         <div style={{ ...glass, padding: '18px 20px' }}>
-          <h2 style={{ fontSize: 14, fontWeight: 600, marginBottom: 14 }}>Clients perdus — 30 derniers jours vs précédents</h2>
+          <h2 style={{ fontSize: 14, fontWeight: 600, marginBottom: 14 }}>Clients perdus — 30 derniers jours vs précédents<InfoTip k="Clients perdus — 30 derniers jours vs précédents" size={13} /></h2>
           <ResponsiveContainer width="100%" height={220}>
             <BarChart data={lostData} margin={{ top: 0, right: 8, left: -20, bottom: 0 }}>
               <XAxis dataKey="label" tick={{ fontSize: 11, fill: 'var(--text-muted)' }} axisLine={false} tickLine={false} />
@@ -109,7 +110,7 @@ export default function RetentionTab() {
         </div>
 
         <div style={{ ...glass, padding: '18px 20px' }}>
-          <h2 style={{ fontSize: 14, fontWeight: 600, marginBottom: 14 }}>Comptes clients — activité sur {ACTIVITY_DAYS} jours ({a.registered})</h2>
+          <h2 style={{ fontSize: 14, fontWeight: 600, marginBottom: 14 }}>Comptes clients — activité sur {ACTIVITY_DAYS} jours ({a.registered})<InfoTip k="Comptes clients — activité" title="Comptes clients — activité" size={13} /></h2>
           <ResponsiveContainer width="100%" height={220}>
             <BarChart data={activityData} margin={{ top: 0, right: 8, left: -20, bottom: 0 }}>
               <XAxis dataKey="label" tick={{ fontSize: 11, fill: 'var(--text-muted)' }} axisLine={false} tickLine={false} />

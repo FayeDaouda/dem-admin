@@ -11,6 +11,7 @@ import { glass, glassInput, pageWrap, pageScroll, stickyTh, stickyCol, stickyThC
 import DocThumb from '../components/DocThumb'
 import { useUrlQuery } from '../lib/useUrlQuery'
 import { cancelReasonLabel } from '../lib/cancelReasons'
+import InfoTip from '../components/InfoTip'
 
 // Montant payé par le client = part coursier (price) + frais DEM − réduction
 // (même calcul que l'app : core/utils/price_format.dart:clientChargeFor).
@@ -674,7 +675,7 @@ function CopyButton({ text }) {
 function FicheSection({ title, children }) {
   return (
     <div style={{ borderTop: '1px solid var(--border)', padding: '12px 0 8px' }}>
-      <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', letterSpacing: 0.5, textTransform: 'uppercase', marginBottom: 8 }}>{title}</div>
+      <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', letterSpacing: 0.5, textTransform: 'uppercase', marginBottom: 8 }}>{title}<InfoTip k={title} size={12} /></div>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>{children}</div>
     </div>
   )

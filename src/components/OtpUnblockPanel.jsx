@@ -4,6 +4,7 @@ import { MessageSquareLock, Search, Unlock, AlertTriangle, CheckCircle2, Clock, 
 import api from '../lib/api'
 import { glass, glassInput } from '../lib/glassStyles'
 import AccountSecurityPanel from './AccountSecurityPanel'
+import InfoTip from './InfoTip'
 
 // ── Codes SMS bloqués (SUPER + Service Client) ────────────────────────────────
 // Un numéro ne peut recevoir que 5 codes par 24 h (et doit patienter entre deux
@@ -117,7 +118,7 @@ export default function OtpUnblockPanel() {
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(380px, 1fr))', gap: 14, alignItems: 'start' }}>
           {/* Colonne gauche : codes SMS */}
           <div style={{ ...glass, padding: '16px 18px' }}>
-            <h2 style={blockTitle}><MessageSquareLock size={15} /> Codes SMS</h2>
+            <h2 style={blockTitle}><MessageSquareLock size={15} /> Codes SMS<InfoTip k="Codes SMS" size={13} /></h2>
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
               <thead>
                 <tr>
@@ -173,7 +174,7 @@ export default function OtpUnblockPanel() {
             {status.account
               ? <AccountSecurityPanel key={status.account.id} userId={status.account.id} />
               : (<>
-                  <h2 style={blockTitle}>Sécurité du compte</h2>
+                  <h2 style={blockTitle}>Sécurité du compte<InfoTip k="Sécurité du compte" size={13} /></h2>
                   <div style={{ fontSize: 13, color: 'var(--text-muted)' }}>Aucun compte pour ce numéro : rien à afficher.</div>
                 </>)}
           </div>

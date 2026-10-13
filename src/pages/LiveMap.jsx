@@ -9,6 +9,8 @@ import Badge from '../components/Badge'
 import { RefreshCw } from 'lucide-react'
 import { pageWrap, pageScroll } from '../lib/glassStyles'
 import { useResponsive } from '../lib/useResponsive'
+import InfoTip from '../components/InfoTip'
+import { PAGES } from '../lib/aide'
 
 // Fix icônes Leaflet avec Vite
 delete L.Icon.Default.prototype._getIconUrl
@@ -109,7 +111,7 @@ export default function LiveMap() {
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12, marginBottom: 16, flexShrink: 0 }}>
         <div>
-          <h1 style={{ fontSize: 22, fontWeight: 700 }}>Carte en temps réel</h1>
+          <h1 style={{ fontSize: 22, fontWeight: 700, display: 'flex', alignItems: 'center' }}>Carte en temps réel<InfoTip title="Carte en temps réel" text={PAGES['/map']} size={16} /></h1>
           <p style={{ color: 'var(--text-muted)', fontSize: 12, marginTop: 2 }}>
             {drivers.length} driver{drivers.length !== 1 ? 's' : ''} en ligne · {orders.length} course{orders.length !== 1 ? 's' : ''} active{orders.length !== 1 ? 's' : ''}
           </p>

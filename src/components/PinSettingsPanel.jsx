@@ -3,6 +3,7 @@ import InlineConfirm from './InlineConfirm'
 import { KeyRound, AlertTriangle, CheckCircle2, Save } from 'lucide-react'
 import api from '../lib/api'
 import { glass, glassInput } from '../lib/glassStyles'
+import InfoTip from './InfoTip'
 
 // ── Interrupteurs du code secret (SUPER) ──────────────────────────────────────
 // Tout est éteint par défaut : l'app garde la connexion par SMS. On active
@@ -68,7 +69,7 @@ export default function PinSettingsPanel() {
   return (
     <div style={{ ...glass, padding: '18px 20px', maxWidth: 760 }}>
       <h2 style={{ fontSize: 15, fontWeight: 700, marginBottom: 4, display: 'flex', alignItems: 'center', gap: 8 }}>
-        <KeyRound size={16} /> Code secret : activation
+        <KeyRound size={16} /> Code secret : activation<InfoTip k="Code secret : activation" size={13} />
       </h2>
       <p style={{ fontSize: 12, color: 'var(--text-muted)', margin: '0 0 14px' }}>
         Connexion par numéro + code à 6 chiffres, sans SMS. Commencez par quelques numéros pilotes, puis activez rôle

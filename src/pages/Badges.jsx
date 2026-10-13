@@ -7,6 +7,7 @@ import { canSee, TAB_ROLES } from '../lib/droits'
 import PageHeader from '../components/PageHeader'
 import TabBar from '../components/TabBar'
 import { useUrlTab } from '../lib/useUrlTab'
+import InfoTip from '../components/InfoTip'
 
 // Chaque badge peut être atteint par plusieurs lignes de critères alternatives
 // (OR entre les lignes, AND entre les critères d'une même ligne).
@@ -187,7 +188,7 @@ function PendingValidationSection({ tiers, onValidated }) {
     <>
     <div style={{ ...glass, padding: '16px 18px', marginBottom: 16, border: '1px solid rgba(245,158,11,.35)' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
-        <h2 style={{ fontSize: 15, fontWeight: 700, margin: 0 }}>À valider</h2>
+        <h2 style={{ fontSize: 15, fontWeight: 700, margin: 0 }}>À valider<InfoTip k="À valider" size={13} /></h2>
         {pending && (
           <span style={{ background: pending.length ? 'rgba(245,158,11,.15)' : 'rgba(34,197,94,.12)', color: pending.length ? '#b45309' : '#15803d', fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 20 }}>
             {pending.length}

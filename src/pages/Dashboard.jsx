@@ -26,6 +26,8 @@ import {
   ActiveOrdersModal, StuckPendingOrdersModal, DriverActivityModal,
   IncidentsModal, LowRatingModal, CancellationRateModal, DemProAccountsModal,
 } from './service-client/components/ServiceClientKpiModals'
+import InfoTip from '../components/InfoTip'
+import { PAGES } from '../lib/aide'
 
 // ============================================================
 //  Dashboard — une page, quatre questions, dans cet ordre :
@@ -78,7 +80,7 @@ function Section({ title, hint, children, right }) {
   return (
     <section style={{ marginBottom: 22 }}>
       <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, flexWrap: 'wrap', marginBottom: 10 }}>
-        <h2 style={{ fontSize: 15, fontWeight: 700, margin: 0 }}>{title}</h2>
+        <h2 style={{ fontSize: 15, fontWeight: 700, margin: 0 }}>{title}<InfoTip k={title} size={12} /></h2>
         {hint && <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>{hint}</span>}
         {right && <div style={{ marginLeft: 'auto' }}>{right}</div>}
       </div>
@@ -395,7 +397,7 @@ function GroupKpi({ icon: Icon, color, label, value, sub, trend, sparkData, spar
           {trend}
         </div>
         <div style={{ fontSize: 22, fontWeight: 800, lineHeight: 1.1, color: 'var(--text)', marginTop: 6 }}>{value}</div>
-        <div style={{ fontSize: 11.5, color: 'var(--text-muted)', marginTop: 2, fontWeight: 600 }}>{label}</div>
+        <div style={{ fontSize: 11.5, color: 'var(--text-muted)', marginTop: 2, fontWeight: 600 }}>{label}<InfoTip k={label} size={12} /></div>
         {sub && <div style={{ fontSize: 10.5, color: 'var(--text-muted)', marginTop: 2, lineHeight: 1.3 }}>{sub}</div>}
       </div>
       {footer}
@@ -455,7 +457,7 @@ function CounterTile({ icon: Icon, color, label, value, sub, onClick, emphasis }
       </div>
       <div style={{ fontSize: 22, fontWeight: 800, color: 'var(--text)', minWidth: 28 }}>{value}</div>
       <div style={{ minWidth: 0 }}>
-        <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text)' }}>{label}</div>
+        <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text)' }}>{label}<InfoTip k={label} size={12} /></div>
         {sub && <div style={{ fontSize: 10.5, color: 'var(--text-muted)' }}>{sub}</div>}
       </div>
     </button>
@@ -788,7 +790,7 @@ export default function Dashboard() {
       {/* ── En-tête ── */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12, marginBottom: isMobile ? 14 : 20 }}>
         <div>
-          <h1 style={{ fontSize: isMobile ? 18 : 22, fontWeight: 700, margin: 0 }}>Dashboard</h1>
+          <h1 style={{ fontSize: isMobile ? 18 : 22, fontWeight: 700, margin: 0, display: 'flex', alignItems: 'center' }}>Dashboard<InfoTip title="Dashboard" text={PAGES['/']} size={16} /></h1>
           <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>
             {updatedAt ? `Mis à jour à ${updatedAt.toLocaleTimeString('fr-FR')}` : 'Chargement…'} · jour calendaire de Dakar
           </div>
@@ -909,7 +911,7 @@ export default function Dashboard() {
                 </div>
 
                 <div style={card}>
-                  <h3 style={cardTitle}>Fil d'activité</h3>
+                  <h3 style={cardTitle}>Fil d'activité<InfoTip k="Fil d'activité" size={13} /></h3>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 6, maxHeight: 320, overflowY: 'auto' }}>
                     {events.length === 0 ? (
                       <div style={{ color: 'var(--text-muted)', fontSize: 12 }}>Les événements apparaissent ici en direct tant que la page est ouverte.</div>
@@ -948,7 +950,7 @@ export default function Dashboard() {
       {/* ── Assistant exécutif : taux d'annulation, 30 jours ── */}
       {isAE && (
         <div style={{ ...card, marginBottom: 20 }}>
-          <h2 style={cardTitle}>Taux d'annulation — 30 derniers jours</h2>
+          <h2 style={cardTitle}>Taux d'annulation — 30 derniers jours<InfoTip k="Taux d'annulation — 30 derniers jours" size={13} /></h2>
           <ResponsiveContainer width="100%" height={200}>
             <LineChart data={cancellationTrend} margin={{ top: 0, right: 8, left: -20, bottom: 0 }}>
               <XAxis dataKey="dateLabel" tick={{ fontSize: 11, fill: 'var(--text-muted)' }} axisLine={false} tickLine={false} />
@@ -970,7 +972,7 @@ export default function Dashboard() {
       }>
         <div style={{ display: 'grid', gridTemplateColumns: chartCols, gap: isMobile ? 10 : 14 }}>
           <div style={{ ...card, gridColumn: isTablet && can.revenue ? 'span 2' : 'auto' }}>
-            <h3 style={cardTitle}>Courses créées et livrées</h3>
+            <h3 style={cardTitle}>Courses créées et livrées<InfoTip k="Courses créées et livrées" size={13} /></h3>
             <ResponsiveContainer width="100%" height={200}>
               <BarChart data={chartData} margin={{ top: 0, right: 0, left: -20, bottom: 0 }}>
                 <XAxis dataKey="dateLabel" tick={{ fontSize: 11, fill: 'var(--text-muted)' }} axisLine={false} tickLine={false} interval={xInterval} />
@@ -988,7 +990,7 @@ export default function Dashboard() {
             ['driverRevenue', 'Gains coursiers', '#10b981'],
           ].map(([key, title, color]) => (
             <div key={key} style={card}>
-              <h3 style={cardTitle}>{title} <span style={{ fontWeight: 400, color: 'var(--text-muted)', fontSize: 11 }}>· date de livraison</span></h3>
+              <h3 style={cardTitle}>{title} <span style={{ fontWeight: 400, color: 'var(--text-muted)', fontSize: 11 }}>· date de livraison</span><InfoTip k={title} size={13} /></h3>
               <ResponsiveContainer width="100%" height={200}>
                 <BarChart data={chartData} margin={{ top: 0, right: 0, left: -10, bottom: 0 }}>
                   <XAxis dataKey="dateLabel" tick={{ fontSize: 11, fill: 'var(--text-muted)' }} axisLine={false} tickLine={false} interval={xInterval} />

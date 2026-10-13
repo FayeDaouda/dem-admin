@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { ShieldCheck, ShieldAlert, Snowflake, KeyRound, LogOut, AlertTriangle, CheckCircle2, Smartphone } from 'lucide-react'
 import api from '../lib/api'
+import InfoTip from './InfoTip'
 
 // ── Sécurité d'un compte (SUPER + Service Client) ─────────────────────────────
 // Code secret, blocages, gel, blocage des retraits, appareils connectés et
@@ -79,7 +80,7 @@ export default function AccountSecurityPanel({ userId }) {
   return (
     <div>
       <h2 style={{ fontSize: 14, fontWeight: 700, margin: '0 0 12px', display: 'flex', alignItems: 'center', gap: 8 }}>
-        {u.frozenAt ? <ShieldAlert size={15} color="#b91c1c" /> : <ShieldCheck size={15} />} Sécurité du compte
+        {u.frozenAt ? <ShieldAlert size={15} color="#b91c1c" /> : <ShieldCheck size={15} />} Sécurité du compte<InfoTip k="Sécurité du compte" size={13} />
       </h2>
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))', gap: 8, fontSize: 12.5 }}>

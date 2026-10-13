@@ -8,6 +8,7 @@ import { useAutoRefresh } from '../lib/useAutoRefresh'
 import PageHeader from '../components/PageHeader'
 import InlineConfirm from '../components/InlineConfirm'
 import TempPassword from '../components/TempPassword'
+import InfoTip from '../components/InfoTip'
 
 const ROLE_COLORS = {
   SUPER: '#f59e0b', DEV: '#6366f1', FINANCE: '#22c55e', MARKETING: '#ec4899', SERVICE_CLIENT: '#06b6d4', ASSISTANCE_EXECUTIVE: '#a855f7',
@@ -211,6 +212,7 @@ export default function Equipes() {
             <KeyRound size={15} color="#f59e0b" />
             <h3 style={{ fontSize: 13.5, fontWeight: 700, margin: 0 }}>
               Demandes de réinitialisation de mot de passe ({resetRequests.length})
+              <InfoTip k="Demandes de réinitialisation de mot de passe" size={13} />
             </h3>
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>

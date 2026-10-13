@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { Send } from 'lucide-react'
 import api from '../lib/api'
 import { glass, glassInput } from '../lib/glassStyles'
+import InfoTip from '../components/InfoTip'
 
 // Section "Pass coursiers" de la page Tarifs (Config) — déplacée depuis
 // Finance > Tarifs (finance/TariffsTab.jsx), qui ne contenait plus rien
@@ -14,7 +15,7 @@ import { glass, glassInput } from '../lib/glassStyles'
 function Section({ title, children }) {
   return (
     <div style={{ ...glass, padding: '18px 20px', marginBottom: 16 }}>
-      <h2 style={{ fontSize: 15, fontWeight: 700, marginBottom: 14 }}>{title}</h2>
+      <h2 style={{ fontSize: 15, fontWeight: 700, marginBottom: 14 }}>{title}<InfoTip k={title} size={12} /></h2>
       {children}
     </div>
   )

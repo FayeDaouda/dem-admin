@@ -6,6 +6,7 @@ import ExportPdfButton from '../../components/ExportPdfButton'
 import { exportCsv } from '../../lib/exportCsv'
 import { useAutoRefresh } from '../../lib/useAutoRefresh'
 import { formatF, formatCount } from '../../lib/format'
+import InfoTip from '../../components/InfoTip'
 
 async function logExport(type) {
   try { await api.post('/admin/finance/export-log', { type }) } catch (e) { console.error(e) }
@@ -81,7 +82,7 @@ export default function PassTab() {
 
       <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0,2fr) minmax(0,1fr)', gap: 16 }}>
         <div style={{ ...glass, padding: '18px 20px' }}>
-          <h2 style={{ fontSize: 14, fontWeight: 600, marginBottom: 14 }}>Pass achetés et offerts — 30 derniers jours</h2>
+          <h2 style={{ fontSize: 14, fontWeight: 600, marginBottom: 14 }}>Pass achetés et offerts — 30 derniers jours<InfoTip k="Pass achetés et offerts — 30 derniers jours" size={13} /></h2>
           <ResponsiveContainer width="100%" height={240}>
             <BarChart data={trend} margin={{ top: 0, right: 8, left: -20, bottom: 0 }}>
               <XAxis dataKey="dateLabel" tick={{ fontSize: 10, fill: 'var(--text-muted)' }} axisLine={false} tickLine={false} />
@@ -95,7 +96,7 @@ export default function PassTab() {
         </div>
 
         <div style={{ ...glass, padding: '18px 20px' }}>
-          <h2 style={{ fontSize: 14, fontWeight: 600, marginBottom: 14 }}>Coursiers — passe valide en ce moment</h2>
+          <h2 style={{ fontSize: 14, fontWeight: 600, marginBottom: 14 }}>Coursiers — passe valide en ce moment<InfoTip k="Coursiers — passe valide en ce moment" size={13} /></h2>
           <ResponsiveContainer width="100%" height={180}>
             <PieChart>
               <Pie data={pieData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={65} label={({ percent }) => `${(percent * 100).toFixed(0)}%`}>

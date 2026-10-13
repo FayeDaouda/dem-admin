@@ -5,6 +5,7 @@ import { glass, glassInput } from '../../lib/glassStyles'
 import StatusBadge from '../../components/StatusBadge'
 import SubmitRequestModal from './components/SubmitRequestModal'
 import { useAutoRefresh } from '../../lib/useAutoRefresh'
+import InfoTip from '../../components/InfoTip'
 
 const KIND_LABELS = { GESTE_FREE_RIDE: 'Course gratuite', GESTE_DISCOUNT: 'Remise' }
 
@@ -46,7 +47,7 @@ export default function GestesTab() {
   return (
     <div>
       <div style={{ ...glass, padding: '18px 20px', marginBottom: 16 }}>
-        <h2 style={{ fontSize: 15, fontWeight: 700, marginBottom: 12 }}>Nouvelle demande de geste commercial</h2>
+        <h2 style={{ fontSize: 15, fontWeight: 700, marginBottom: 12 }}>Nouvelle demande de geste commercial<InfoTip k="Nouvelle demande de geste commercial" size={13} /></h2>
         <div style={{ position: 'relative', maxWidth: 320 }}>
           <Search size={14} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
           <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Chercher un client (nom ou téléphone)…" style={{ ...glassInput, paddingLeft: 36 }} />
@@ -71,7 +72,7 @@ export default function GestesTab() {
       </div>
 
       <div style={{ ...glass, padding: '16px 18px' }}>
-        <h2 style={{ fontSize: 15, fontWeight: 700, marginBottom: 12 }}>Historique</h2>
+        <h2 style={{ fontSize: 15, fontWeight: 700, marginBottom: 12 }}>Historique<InfoTip k="Historique" size={13} /></h2>
         {loading ? (
           <div style={{ color: 'var(--text-muted)', padding: 20 }}>Chargement…</div>
         ) : requests.length === 0 ? (

@@ -3,6 +3,7 @@ import { Save } from 'lucide-react'
 import api from '../lib/api'
 import { useAuth } from '../contexts/AuthContext'
 import { glass, glassInput, stickyTh, stickyCol, stickyThCol } from '../lib/glassStyles'
+import InfoTip from '../components/InfoTip'
 
 // Section "Paliers DEM Pro" de la page Tarifs (Config) — édite ProPlanLimits
 // (voir dem-backend/src/modules/dem_pro/dem_pro.limits.js), le NOUVEAU
@@ -48,7 +49,7 @@ const FIELDS = [
 function Section({ title, children }) {
   return (
     <div style={{ ...glass, padding: '18px 20px', marginBottom: 16 }}>
-      <h2 style={{ fontSize: 15, fontWeight: 700, marginBottom: 14 }}>{title}</h2>
+      <h2 style={{ fontSize: 15, fontWeight: 700, marginBottom: 14 }}>{title}<InfoTip k={title} size={12} /></h2>
       {children}
     </div>
   )

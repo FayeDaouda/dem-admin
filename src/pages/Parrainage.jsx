@@ -8,6 +8,7 @@ import { useAuth } from '../contexts/AuthContext'
 import { canSee, ACTION_ROLES } from '../lib/droits'
 import PageHeader from '../components/PageHeader'
 import ProReferralCounter from './ProReferralCounter'
+import InfoTip from '../components/InfoTip'
 
 // Au-delà de ce nombre de filleuls, un parrain est signalé « à vérifier ».
 const SUSPICIOUS_COUNT = 8
@@ -19,7 +20,7 @@ const SORTS = [
 
 const StatBox = ({ label, value, color }) => (
   <div style={{ ...glass, padding: '14px 16px', flex: '1 1 160px' }}>
-    <div style={{ fontSize: 10, color: 'var(--text-muted)', fontWeight: 700, letterSpacing: '.5px', marginBottom: 4, textTransform: 'uppercase' }}>{label}</div>
+    <div style={{ fontSize: 10, color: 'var(--text-muted)', fontWeight: 700, letterSpacing: '.5px', marginBottom: 4, textTransform: 'uppercase' }}>{label}<InfoTip k={label} size={12} /></div>
     <div style={{ fontSize: 20, fontWeight: 800, color: color ?? 'var(--text)' }}>{value}</div>
   </div>
 )

@@ -11,6 +11,8 @@ import ChefFormModal from './chefs/ChefFormModal'
 import { chefStatusInfo, driverStatusInfo } from './chefs/chefStatus'
 import { canSee, ACTION_ROLES } from '../lib/droits'
 import { useAutoRefresh } from '../lib/useAutoRefresh'
+import InfoTip from '../components/InfoTip'
+import { PAGES } from '../lib/aide'
 
 const DOC_LIST = [
   { key: 'idCardFront',    label: 'CNI recto' },
@@ -256,7 +258,7 @@ export default function ChefDetailPage() {
             {chef.avatar ? <img src={chef.avatar} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : (who || '?')[0].toUpperCase()}
           </div>
           <div style={{ flex: 1, minWidth: 160 }}>
-            <div style={{ fontWeight: 700, fontSize: 18 }}>{who}</div>
+            <div style={{ fontWeight: 700, fontSize: 18, display: 'flex', alignItems: 'center' }}>{who}<InfoTip title="Fiche chef de flotte" text={PAGES['/chefs-de-flotte/']} size={15} /></div>
             <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2 }}>
               {chef.companyName?.trim() && chef.name ? `${chef.name} · ` : ''}{chef.phone}
             </div>
@@ -318,7 +320,7 @@ export default function ChefDetailPage() {
           {/* Colonne gauche : informations, pièces, statistiques */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
             <div style={infoBox}>
-              <div style={sectionLabel}>Informations</div>
+              <div style={sectionLabel}>Informations<InfoTip k="Informations" size={12} /></div>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: '10px 16px' }}>
                 {[
                   ['Société',     chef.companyName ?? '—'],
@@ -344,7 +346,7 @@ export default function ChefDetailPage() {
             </div>
 
             <div style={infoBox}>
-              <div style={sectionLabel}>Pièces du chef de flotte</div>
+              <div style={sectionLabel}>Pièces du chef de flotte<InfoTip k="Pièces du chef de flotte" size={12} /></div>
               <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
                 <DocThumb url={chef.cniRecto} label="CNI recto" />
                 <DocThumb url={chef.cniVerso} label="CNI verso" />
@@ -353,7 +355,7 @@ export default function ChefDetailPage() {
             </div>
 
             <div style={infoBox}>
-              <div style={sectionLabel}>Statistiques de la flotte</div>
+              <div style={sectionLabel}>Statistiques de la flotte<InfoTip k="Statistiques de la flotte" size={12} /></div>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(110px, 1fr))', gap: '10px 16px' }}>
                 {[
                   ['Total coursiers',  totalDrivers],
@@ -374,7 +376,7 @@ export default function ChefDetailPage() {
           {/* Colonne droite : coursiers de la flotte */}
           <div style={infoBox}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
-              <div style={{ ...sectionLabel, marginBottom: 0 }}>Coursiers gérés ({drivers.length})</div>
+              <div style={{ ...sectionLabel, marginBottom: 0 }}>Coursiers gérés ({drivers.length})<InfoTip k="Coursiers gérés" size={12} /></div>
               {rights.drivers && (
                 <button onClick={() => { setShowAddDriver(true); setSearchPhone(''); setSearchResult(null); setAddError('') }} style={{ ...btnSmall, color: 'var(--primary, #0077b6)' }}>
                   <UserPlus size={14} /> Ajouter un coursier
