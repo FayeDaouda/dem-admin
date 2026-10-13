@@ -65,6 +65,9 @@ export default function Broadcast({ embedded = false }) {
   const [scheduledList, setScheduledList] = useState([])
   const [loadingScheduled, setLoadingScheduled] = useState(true)
   const [cancelingId, setCancelingId] = useState(null)
+  const [confirmSend, setConfirmSend] = useState(false)       // envoi confirmé dans la page
+  const [confirmCancelId, setConfirmCancelId] = useState(null) // annulation d'un envoi programmé confirmée dans sa ligne
+  const [cancelError, setCancelError] = useState(null)        // { id, message }
 
   // Test
   const [testPhone, setTestPhone] = useState('+221000000000')
@@ -83,7 +86,8 @@ export default function Broadcast({ embedded = false }) {
 
   useEffect(() => { loadScheduled() }, [loadScheduled])
 
-  async function send() {
+  // Premier clic : vérifie le formulaire et demande la confirmation dans la page.
+  function askSend() {
     if (!title.trim() || !body.trim()) {
       setError('Le titre et le message sont obligatoires.')
       return
@@ -92,8 +96,12 @@ export default function Broadcast({ embedded = false }) {
       setError('Choisissez au moins un profil.')
       return
     }
-    if (!confirm(`Envoyer la notification à : ${targetLabel(target)} ?`)) return
+    setError('')
+    setConfirmSend(true)
+  }
 
+  async function send() {
+    setConfirmSend(false)
     setSending(true)
     setError('')
     setResult(null)
@@ -161,14 +169,14 @@ export default function Broadcast({ embedded = false }) {
   }
 
   async function cancelScheduled(id) {
-    if (!confirm('Annuler cette notification programmée ?')) return
-    setCancelingId(id)
+    setCancelingId(id); setCancelError(null)
     try {
       await api.patch(`/admin/broadcast/scheduled/${id}/cancel`)
       if (editingId === id) cancelEdit()
+      setConfirmCancelId(null)
       loadScheduled()
     } catch (e) {
-      alert(e.response?.data?.message ?? 'Erreur lors de l\'annulation.')
+      setCancelError({ id, message: e.response?.data?.message ?? 'Erreur lors de l\'annulation.' })
     } finally {
       setCancelingId(null)
     }
@@ -218,7 +226,7 @@ export default function Broadcast({ embedded = false }) {
         </div>
       )}
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20, maxWidth: 900 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))', gap: 20, maxWidth: 900 }}>
 
         {/* Colonne gauche : formulaire */}
         <div style={{ ...glass, padding: 24, borderRadius: 16 }}>
@@ -297,8 +305,17 @@ export default function Broadcast({ embedded = false }) {
           />
 
           {/* Bouton envoyer maintenant */}
-          {!editingId && (
-            <button onClick={send} disabled={sending || selected.length === 0} style={{
+          {!editingId && confirmSend && (
+            <div style={{ marginBottom: 14, padding: '10px 14px', borderRadius: 10, background: 'var(--surface2)', display: 'flex', flexDirection: 'column', gap: 8 }}>
+              <span style={{ fontSize: 13, fontWeight: 600 }}>Envoyer la notification à : {targetLabel(target)} ?</span>
+              <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+                <button onClick={() => setConfirmSend(false)} style={{ padding: '7px 14px', borderRadius: 8, border: '1px solid rgba(0,119,182,.25)', background: 'rgba(255,255,255,.6)', color: 'var(--text-muted)', fontSize: 13, cursor: 'pointer' }}>Retour</button>
+                <button onClick={send} style={{ padding: '7px 14px', borderRadius: 8, border: 'none', background: 'var(--primary)', color: '#fff', fontSize: 13, fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}><Send size={14} /> Confirmer l’envoi</button>
+              </div>
+            </div>
+          )}
+          {!editingId && !confirmSend && (
+            <button onClick={askSend} disabled={sending || selected.length === 0} style={{
               width: '100%', padding: '12px 0', borderRadius: 10,
               border: 'none', background: 'var(--primary)', color: '#fff',
               fontSize: 14, fontWeight: 700, cursor: 'pointer',
@@ -437,8 +454,8 @@ export default function Broadcast({ embedded = false }) {
             <div style={{ color: 'var(--text-muted)', fontSize: 13, textAlign: 'center', padding: 12 }}>Aucune notification programmée pour le moment.</div>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-              {scheduledList.map(item => (
-                <div key={item.id} style={{
+              {scheduledList.map(item => (<div key={item.id} style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                <div style={{
                   display: 'flex', alignItems: 'center', gap: 12, padding: '12px 14px', borderRadius: 12,
                   background: 'rgba(255,255,255,.5)', border: '1px solid rgba(0,119,182,.12)',
                 }}>
@@ -452,11 +469,20 @@ export default function Broadcast({ embedded = false }) {
                   <button onClick={() => startEdit(item)} style={iconBtn} title="Modifier">
                     <Pencil size={14} />
                   </button>
-                  <button onClick={() => cancelScheduled(item.id)} disabled={cancelingId === item.id} style={{ ...iconBtn, color: 'var(--danger)' }} title="Annuler">
-                    <X size={14} />
-                  </button>
+                  {confirmCancelId === item.id ? (<>
+                    <span style={{ fontSize: 12, fontWeight: 600 }}>Annuler cet envoi ?</span>
+                    <button onClick={() => setConfirmCancelId(null)} disabled={cancelingId === item.id} style={{ ...iconBtn, width: 'auto', padding: '0 10px', fontSize: 12 }}>Retour</button>
+                    <button onClick={() => cancelScheduled(item.id)} disabled={cancelingId === item.id} style={{ ...iconBtn, width: 'auto', padding: '0 10px', fontSize: 12, background: 'var(--danger)', color: '#fff', border: 'none' }}>
+                      {cancelingId === item.id ? '…' : 'Confirmer'}
+                    </button>
+                  </>) : (
+                    <button onClick={() => { setConfirmCancelId(item.id); setCancelError(null) }} style={{ ...iconBtn, color: 'var(--danger)' }} title="Annuler l'envoi">
+                      <X size={14} />
+                    </button>
+                  )}
                 </div>
-              ))}
+                {cancelError?.id === item.id && <div style={{ fontSize: 12, color: 'var(--danger)' }}>{cancelError.message}</div>}
+              </div>))}
             </div>
           )}
         </div>

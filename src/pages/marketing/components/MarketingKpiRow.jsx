@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import api from '../../../lib/api'
-import { UserPlus, Repeat, XCircle, CheckCircle, UserCheck, UserMinus, Bell } from 'lucide-react'
+import { UserPlus, Repeat, XCircle, CheckCircle, UserCheck, UserMinus, Bell, ChevronRight } from 'lucide-react'
 import StatCard from '../../../components/StatCard'
 import { NewClientsModal, RetentionModal, CancellationModal, CompletedOrdersModal, BroadcastHistoryModal } from './MarketingKpiModals'
 import { useAutoRefresh } from '../../../lib/useAutoRefresh'
@@ -42,15 +42,22 @@ export default function MarketingKpiRow({ reloadKey }) {
           sub="servis sur les 30 derniers jours" color="#22c55e" onClick={() => setOpenModal('active')} />
         <StatCard icon={UserMinus}   label="Clients inactifs"         value={v(kpis?.inactiveClients)}
           sub="déjà servis, pas depuis 30 jours" color="#f59e0b" onClick={() => setOpenModal('inactive')} />
-        <StatCard
-          icon={Bell}
-          label="Dernière notification push"
-          value={loading ? '…' : (lastBroadcast ? new Date(lastBroadcast.sentAt).toLocaleDateString('fr-FR') : '—')}
-          sub={lastBroadcast ? TARGET_LABELS[lastBroadcast.target] ?? lastBroadcast.target : undefined}
-          color="#6366f1"
-          onClick={() => setOpenModal('broadcast')}
-        />
       </div>
+
+      {/* Dernière notification : une date, pas un indicateur — ligne fine sous
+          les cartes, qui ouvre le même historique qu'avant. */}
+      {!loading && (
+        <button onClick={() => setOpenModal('broadcast')} style={{
+          display: 'flex', alignItems: 'center', gap: 8, marginTop: -10, marginBottom: 18, padding: '4px 0',
+          background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', fontSize: 12.5,
+        }}>
+          <Bell size={14} color="#6366f1" />
+          {lastBroadcast
+            ? <>Dernier envoi : <strong style={{ color: 'var(--text)' }}>{new Date(lastBroadcast.sentAt).toLocaleDateString('fr-FR')}</strong> · {TARGET_LABELS[lastBroadcast.target] ?? lastBroadcast.target}</>
+            : 'Aucune notification envoyée'}
+          <span style={{ color: 'var(--primary)', fontWeight: 600, display: 'inline-flex', alignItems: 'center' }}>voir l'historique <ChevronRight size={13} /></span>
+        </button>
+      )}
 
       {openModal === 'newClients'   && <NewClientsModal      icon={UserPlus}    color="#06b6d4" onClose={() => setOpenModal(null)} />}
       {openModal === 'retention'    && <RetentionModal       icon={Repeat}      color="#8b5cf6" onClose={() => setOpenModal(null)} focus="retention" />}

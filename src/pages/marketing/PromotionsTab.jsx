@@ -32,6 +32,8 @@ export default function PromotionsTab() {
   const [userSearch, setUserSearch] = useState('')
   const [userResults, setUserResults] = useState([])
   const [searchingUser, setSearchingUser] = useState(false)
+  const [confirmDelete, setConfirmDelete] = useState(null) // id de la campagne à supprimer (confirmation dans la ligne)
+  const [listError, setListError] = useState('')
 
   const load = useCallback(async () => {
     try {
@@ -101,11 +103,12 @@ export default function PromotionsTab() {
   }
 
   async function remove(c) {
-    if (!window.confirm(`Supprimer la campagne "${c.name}" ?`)) return
+    setListError('')
     try {
       await api.delete(`/admin/promotions/${c.id}`)
+      setConfirmDelete(null)
       load()
-    } catch (e) { console.error(e) }
+    } catch (e) { setListError(e.response?.data?.message ?? 'Suppression impossible.') }
   }
 
   return (
@@ -119,6 +122,8 @@ export default function PromotionsTab() {
           <Plus size={14} /> Nouvelle campagne
         </button>
       </div>
+
+      {listError && <div style={{ fontSize: 12, color: 'var(--danger)', background: 'rgba(239,68,68,.08)', borderRadius: 6, padding: '8px 12px' }}>{listError}</div>}
 
       <div style={{ ...card, padding: 0, overflow: 'hidden' }}>
         <div style={{ overflowX: 'auto' }}>
@@ -168,10 +173,18 @@ export default function PromotionsTab() {
                     </button>
                   </td>
                   <td style={tdStyle}>
-                    <div style={{ display: 'flex', gap: 6 }}>
-                      <button onClick={() => openEdit(c)} style={{ ...btnOutline, padding: '5px 8px' }}><Pencil size={13} /></button>
-                      <button onClick={() => remove(c)} style={{ ...btnOutline, padding: '5px 8px', color: '#e53e3e', borderColor: 'rgba(229,62,62,.3)' }}><Trash2 size={13} /></button>
-                    </div>
+                    {confirmDelete === c.id ? (
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                        <span style={{ fontSize: 12, fontWeight: 600 }}>Supprimer « {c.name} » ?</span>
+                        <button onClick={() => setConfirmDelete(null)} style={{ ...btnOutline, padding: '5px 8px' }}>Retour</button>
+                        <button onClick={() => remove(c)} style={{ ...btnOutline, padding: '5px 8px', color: '#fff', background: '#e53e3e', borderColor: 'transparent' }}>Supprimer</button>
+                      </div>
+                    ) : (
+                      <div style={{ display: 'flex', gap: 6 }}>
+                        <button onClick={() => openEdit(c)} style={{ ...btnOutline, padding: '5px 8px' }} title="Modifier"><Pencil size={13} /></button>
+                        <button onClick={() => { setConfirmDelete(c.id); setListError('') }} style={{ ...btnOutline, padding: '5px 8px', color: '#e53e3e', borderColor: 'rgba(229,62,62,.3)' }} title="Supprimer"><Trash2 size={13} /></button>
+                      </div>
+                    )}
                   </td>
                 </tr>
               ))}

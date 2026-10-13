@@ -1,7 +1,10 @@
 import { useState, useEffect } from 'react'
-import { Gift, Power, CalendarClock, Search, X, History, Sparkles } from 'lucide-react'
+import { Gift, Power, CalendarClock, Search, X, History } from 'lucide-react'
 import api from '../lib/api'
 import { glass, glassInput, pageWrap, pageScroll } from '../lib/glassStyles'
+import PageHeader from '../components/PageHeader'
+import TabBar from '../components/TabBar'
+import { useUrlTab } from '../lib/useUrlTab'
 
 // ── Centre des récompenses ────────────────────────────────────────────────────
 // Décision 06/10 : rien n'est offert automatiquement. Toute récompense passe
@@ -43,7 +46,7 @@ const toLocalInput = d => {
 }
 
 export default function Rewards() {
-  const [tab, setTab] = useState('grant')
+  const [tab, setTab] = useUrlTab(TABS) // onglet gardé dans l'adresse (?tab=…)
   const [meta, setMeta] = useState(null)
   const [metaVersion, setMetaVersion] = useState(0)
   const [historyVersion, setHistoryVersion] = useState(0)
@@ -56,27 +59,11 @@ export default function Rewards() {
 
   return (
     <div style={pageWrap}>
-      <div style={{ marginBottom: 18, flexShrink: 0 }}>
-        <h1 style={{ fontSize: 22, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 8 }}>
-          <Sparkles size={20} color="var(--primary)" /> Récompenses
-        </h1>
-        <p style={{ color: 'var(--text-muted)', fontSize: 13, marginTop: 4 }}>
-          Rien n'est offert automatiquement : vous attribuez chaque récompense, ou vous activez une règle, avec ses dates.
-        </p>
-        <div style={{ display: 'flex', gap: 6, marginTop: 14 }}>
-          {TABS.map(t => {
-            const Icon = t.icon
-            const on = tab === t.key
-            return (
-              <button key={t.key} onClick={() => setTab(t.key)} style={{
-                display: 'flex', alignItems: 'center', gap: 6, padding: '7px 14px', borderRadius: 20, fontSize: 13, cursor: 'pointer',
-                border: on ? 'none' : '1px solid var(--border)', background: on ? 'var(--primary)' : 'transparent',
-                color: on ? '#fff' : 'var(--text-muted)', fontWeight: on ? 700 : 500,
-              }}><Icon size={14} /> {t.label}</button>
-            )
-          })}
-        </div>
-      </div>
+      <PageHeader
+        title="Récompenses"
+        subtitle="Rien n'est offert automatiquement : vous attribuez chaque récompense, ou vous activez une règle, avec ses dates."
+      />
+      <TabBar tabs={TABS} active={tab} onChange={setTab} />
       <div style={pageScroll}>
         {!meta ? (
           <div style={{ color: 'var(--text-muted)', padding: 30 }}>Chargement…</div>
@@ -257,6 +244,9 @@ function HistoryTab() {
   const [data, setData] = useState(null)
   const [version, setVersion] = useState(0)
   const [error, setError] = useState('')
+  const [confirmId, setConfirmId] = useState(null)   // récompense dont l'annulation est demandée
+  const [cancelling, setCancelling] = useState(false)
+  const [rowError, setRowError] = useState(null)     // { id, message }
 
   useEffect(() => {
     let cancelled = false
@@ -267,11 +257,13 @@ function HistoryTab() {
   }, [status, version])
 
   async function cancel(g) {
-    if (!confirm(`Annuler « ${g.label} » pour ${g.user?.name ?? g.user?.phone} ?`)) return
+    setCancelling(true); setRowError(null)
     try {
       await api.post(`/admin/rewards/grants/${g.id}/cancel`)
+      setConfirmId(null)
       setVersion(v => v + 1)
-    } catch (e) { alert(e.response?.data?.message ?? 'Erreur.') }
+    } catch (e) { setRowError({ id: g.id, message: e.response?.data?.message ?? 'Erreur.' }) }
+    finally { setCancelling(false) }
   }
 
   return (
@@ -307,8 +299,19 @@ function HistoryTab() {
                           <td style={td}>{g.grantedBy?.name ?? '—'}<div style={{ fontSize: 11, color: 'var(--text-muted)' }}>{fmt(g.createdAt)}</div></td>
                           <td style={{ ...td, textAlign: 'right' }}>
                             {['SCHEDULED', 'ACTIVE'].includes(g.status) && (g.usedCount == null || g.usedCount < g.uses) && (
-                              <button onClick={() => cancel(g)} style={btnOutline}><X size={13} /> Annuler</button>
+                              confirmId === g.id ? (
+                                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 6 }}>
+                                  <span style={{ fontSize: 12, fontWeight: 600, maxWidth: 220, textAlign: 'right' }}>Annuler « {g.label} » pour {g.user?.name ?? g.user?.phone} ?</span>
+                                  <div style={{ display: 'flex', gap: 6 }}>
+                                    <button onClick={() => setConfirmId(null)} disabled={cancelling} style={btnOutline}>Retour</button>
+                                    <button onClick={() => cancel(g)} disabled={cancelling} style={{ ...btnPrimary, padding: '7px 12px', fontSize: 12, background: 'var(--danger)' }}>{cancelling ? '…' : 'Confirmer'}</button>
+                                  </div>
+                                </div>
+                              ) : (
+                                <button onClick={() => { setConfirmId(g.id); setRowError(null) }} style={btnOutline}><X size={13} /> Annuler</button>
+                              )
                             )}
+                            {rowError?.id === g.id && <div style={{ fontSize: 11, color: 'var(--danger)', marginTop: 4 }}>{rowError.message}</div>}
                           </td>
                         </tr>
                       )
@@ -343,12 +346,12 @@ function RuleCard({ rule, onSaved }) {
   })
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
+  const [confirmActivate, setConfirmActivate] = useState(false) // activation confirmée dans la carte
   const set = (k, v) => setDraft(d => ({ ...d, [k]: v }))
+  const who = isTrial ? 'Les commerçants DEM Pro validés sans offre pourront lancer l\'essai' : 'Les clients concernés recevront la réduction automatiquement'
 
   async function save(patch = {}) {
     const next = { ...draft, ...patch }
-    const who = isTrial ? 'Les commerçants DEM Pro validés sans offre pourront lancer l\'essai' : 'Les clients concernés recevront la réduction automatiquement'
-    if (patch.active === true && !confirm(`Activer « ${rule.label} » ? ${who}${next.endsAt ? ` jusqu'au ${fmt(next.endsAt)}` : ''}.`)) return
     setBusy(true); setError('')
     try {
       const dates = {
@@ -360,6 +363,7 @@ function RuleCard({ rule, onSaved }) {
         ? { ...dates, days: Number(next.days), plan: next.plan }
         : { ...dates, firstClients: Number(next.firstClients), type: next.type, value: next.type === 'FREE_COURSE' ? null : Number(next.value) })
       setDraft(next)
+      setConfirmActivate(false)
       onSaved()
     } catch (e) {
       setError(e.response?.data?.message ?? 'Erreur.')
@@ -378,10 +382,19 @@ function RuleCard({ rule, onSaved }) {
           </div>
         </div>
         <span style={{ fontSize: 12, fontWeight: 700, color: draft.active ? '#16a34a' : '#64748b' }}>{draft.active ? 'Active' : 'Éteinte'}</span>
-        <button onClick={() => save({ active: !draft.active })} disabled={busy} style={draft.active ? btnOutline : btnPrimary}>
+        <button onClick={() => (draft.active ? save({ active: false }) : setConfirmActivate(true))} disabled={busy || confirmActivate} style={draft.active ? btnOutline : btnPrimary}>
           <Power size={13} /> {draft.active ? 'Éteindre' : 'Activer'}
         </button>
       </div>
+      {confirmActivate && !draft.active && (
+        <div style={{ background: 'var(--surface2)', borderRadius: 10, padding: '10px 14px', marginBottom: 12, display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+          <span style={{ fontSize: 13, fontWeight: 600, flex: 1 }}>
+            Activer « {rule.label} » ? {who}{draft.endsAt ? ` jusqu'au ${fmt(draft.endsAt)}` : ''}.
+          </span>
+          <button onClick={() => setConfirmActivate(false)} disabled={busy} style={btnOutline}>Retour</button>
+          <button onClick={() => save({ active: true })} disabled={busy} style={btnPrimary}>{busy ? '…' : 'Confirmer l’activation'}</button>
+        </div>
+      )}
       <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
         {isTrial ? (<>
           <Small label="Durée (jours)">
