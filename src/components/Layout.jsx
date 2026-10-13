@@ -34,6 +34,7 @@ const NAV = [
   { group: 'comptes',    to: '/drivers',         icon: Bike,            label: 'Coursiers',            keywords: 'livreurs motos drivers', roles: ['SUPER','DEV','ASSISTANCE_EXECUTIVE','SERVICE_CLIENT'] },
   { group: 'comptes',    to: '/dem-pro',         icon: Briefcase,       label: 'DEM Pro',              keywords: 'boutiques commerçants offres paliers parrainage', roles: ['SUPER','SERVICE_CLIENT'] },
   { group: 'comptes',    to: '/chefs-de-flotte', icon: UserCog,         label: 'Chefs de flotte',      keywords: 'flottes', roles: ['SUPER','ASSISTANCE_EXECUTIVE','SERVICE_CLIENT'] },
+  { group: 'comptes',    to: '/codes-acces',     icon: KeyRound,        label: 'Codes et accès',       keywords: 'otp sms débloquer code secret gel sessions sécurité', roles: ['SUPER','SERVICE_CLIENT'] },
   { group: 'argent',     to: '/finance',         icon: Wallet,          label: 'Finance',              keywords: 'dashboard revenus commission pass paiements impayés litiges wave orange money retraits', roles: ['SUPER','FINANCE'] },
   { group: 'argent',     to: '/tarifs',          icon: SlidersHorizontal, label: 'Tarifs et zones',    keywords: 'prix zones config promo prix unique heures de pointe', roles: ['SUPER','DEV'] },
   { group: 'croissance', to: '/marketing',       icon: TrendingUp,      label: 'Marketing',            keywords: 'dashboard acquisition rétention promotions codes promo campagnes 100 clients', roles: ['SUPER','MARKETING','ASSISTANCE_EXECUTIVE'] },
@@ -45,7 +46,7 @@ const NAV = [
   { group: 'croissance', to: '/nouveaux-profils', icon: UserPlus,       label: 'Nouveaux profils',     keywords: 'inscriptions', roles: ['SUPER','SERVICE_CLIENT','ASSISTANCE_EXECUTIVE'] },
   { group: 'administration', to: '/equipes',     icon: UsersRound,      label: 'Équipes',              keywords: 'admins comptes rôles', roles: ['SUPER'] },
   { group: 'administration', to: '/audit',       icon: ScrollText,      label: 'Audit',                keywords: 'journal historique', roles: ['SUPER','DEV'] },
-  { group: 'administration', to: '/maintenance', icon: Wrench,          label: 'Maintenance',          keywords: 'code secret sms otp interrupteurs', roles: ['SUPER'] },
+  { group: 'administration', to: '/maintenance', icon: Wrench,          label: 'Maintenance',          keywords: 'tâches fournisseur sms réglages code secret interrupteurs', roles: ['SUPER'] },
   { group: 'administration', to: '/version-app', icon: Smartphone,      label: "Version de l'app",     keywords: 'mise à jour version minimale', roles: ['SUPER','DEV'] },
 ]
 

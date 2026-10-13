@@ -3,7 +3,6 @@ import { Wrench, Eye, Play, CheckCircle2, AlertTriangle, RefreshCw } from 'lucid
 import api from '../lib/api'
 import { glass, pageWrap, pageScroll } from '../lib/glassStyles'
 import { formatF, formatCount } from '../lib/format'
-import OtpUnblockPanel from '../components/OtpUnblockPanel'
 import SmsRoutingPanel from '../components/SmsRoutingPanel'
 import PinSettingsPanel from '../components/PinSettingsPanel'
 
@@ -54,8 +53,6 @@ export default function Maintenance() {
         <div style={{ marginTop: 24 }}><SmsRoutingPanel /></div>
         {/* Code secret : activation (SUPER uniquement) */}
         <div style={{ marginTop: 24 }}><PinSettingsPanel /></div>
-        {/* Outil support aussi accessible au SUPER (le tableau Service Client lui est masqué) */}
-        <div style={{ marginTop: 24 }}><OtpUnblockPanel /></div>
       </div>
     </div>
   )
