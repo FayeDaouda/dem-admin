@@ -60,4 +60,6 @@ export const ACTION_ROLES = {
   orderDispatch: [],                         // choisir / attribuer un coursier, relancer la recherche : Super seul
   orderCancel:   ['ASSISTANCE_EXECUTIVE'],   // annuler : Super + Ass. exéc.
   orderMarkPaid: ['FINANCE'],                // marquer payé : Super + Finance
+  // Incidents : changer le statut ou les notes (PATCH /admin/incidents/:id) : Super + Ass. exéc.
+  incidentUpdate: ['ASSISTANCE_EXECUTIVE'],
 }
