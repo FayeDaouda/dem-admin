@@ -3,7 +3,7 @@ import { useSearchParams } from 'react-router-dom'
 import api from '../lib/api'
 import { useAuth } from '../contexts/AuthContext'
 import { glass, glassInput, pageWrap, pageScroll } from '../lib/glassStyles'
-import { RefreshCw, CheckCircle, XCircle, ChevronDown, ChevronUp, Shield, Truck, Layers, AlertTriangle, Briefcase, ClipboardList, Wallet, FileWarning } from 'lucide-react'
+import { RefreshCw, CheckCircle, XCircle, ChevronDown, ChevronUp, Shield, Motorbike, Layers, AlertTriangle, Briefcase, ClipboardList, Wallet, FileWarning } from 'lucide-react'
 import SuspendModal from '../components/SuspendModal'
 import AmbassadorDetailModal from '../components/AmbassadorDetailModal'
 import DocThumb from '../components/DocThumb'
@@ -165,7 +165,7 @@ function Empty({ children }) {
 // ── Onglets et compteurs ──────────────────────────────────────────────────────
 const TABS = [
   { key: 'ambassadors',      label: 'Chefs de flotte',         icon: Shield },
-  { key: 'drivers',          label: 'Coursiers en attente',    icon: Truck },
+  { key: 'drivers',          label: 'Coursiers en attente',    icon: Motorbike },
   { key: 'kyc-review',       label: 'Pièces à revoir',         icon: FileWarning },
   { key: 'dem-pro',          label: 'DEM Pro',                 icon: Briefcase },
   { key: 'fleet',            label: 'Extensions de flotte',    icon: Layers },
@@ -560,6 +560,9 @@ const KYC_FIELDS = [
   ['avatar',         'Photo profil'],
 ]
 
+const VEHICLE_LABELS = { MOTO: 'Moto', VELO: 'Vélo', VOITURE: 'Voiture' }
+const fmtDate = v => (v ? new Date(v).toLocaleDateString('fr-FR') : '—')
+
 function KycReviewTab({ canReview, highlightId, onChanged }) {
   const [list,     setList]     = useState([])
   const [loading,  setLoading]  = useState(true)
@@ -612,6 +615,9 @@ function KycReviewTab({ canReview, highlightId, onChanged }) {
   return (
     <div style={{ display:'flex', flexDirection:'column', gap:12 }}>
       <Toolbar onRefresh={load} />
+      <div style={{ fontSize:12, color:'var(--text-muted)' }}>
+        Coursiers déjà inscrits dont une ou plusieurs pièces sont à vérifier ou à compléter.
+      </div>
       {!canReview && (
         <div style={{ fontSize:12, color:'var(--text-muted)' }}>
           Lecture seule : le rejet des pièces et la certification sont faits par le Super Admin ou l'Assistance exécutive.
@@ -631,13 +637,20 @@ function KycReviewTab({ canReview, highlightId, onChanged }) {
         return (
           <div key={d.id} ref={el => { rowRefs.current[d.id] = el }} style={{ ...card, ...(d.id === highlightId ? cardHighlight : {}) }}>
             <div style={{ display:'flex', alignItems:'center', gap:12 }}>
-              <div style={{ width:38, height:38, borderRadius:'50%', background:'rgba(99,102,241,.12)', display:'flex', alignItems:'center', justifyContent:'center', fontWeight:800, color:'#6366f1', fontSize:14, flexShrink:0 }}>
-                {(d.name ?? '?')[0].toUpperCase()}
-              </div>
+              {d.avatar
+                ? <img src={d.avatar} alt="" style={{ width:38, height:38, borderRadius:'50%', objectFit:'cover', flexShrink:0 }} />
+                : <div style={{ width:38, height:38, borderRadius:'50%', background:'rgba(99,102,241,.12)', display:'flex', alignItems:'center', justifyContent:'center', fontWeight:800, color:'#6366f1', fontSize:14, flexShrink:0 }}>
+                    {(d.name ?? '?')[0].toUpperCase()}
+                  </div>}
               <div style={{ flex:1, minWidth:0 }}>
                 <div style={{ fontWeight:700, fontSize:14 }}>{d.name ?? '—'}</div>
-                <div style={{ fontSize:12, color:'var(--text-muted)' }}>{d.phone}</div>
+                <div style={{ fontSize:12, color:'var(--text-muted)', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>
+                  {d.phone} · {VEHICLE_LABELS[d.vehicleType] ?? d.vehicleType ?? '—'}
+                  {d.vehiclePlate && <> · {d.vehiclePlate}</>}
+                  {' · '}{d.managedBy ? <>Flotte <strong>{d.managedBy.name ?? d.managedBy.phone}</strong></> : 'Indépendant'}
+                </div>
               </div>
+              <div style={{ fontSize:11, color:'var(--text-muted)', flexShrink:0 }}>Inscrit le {fmtDate(d.createdAt)}</div>
               <span style={{ fontSize:11, fontWeight:700, padding:'2px 10px', borderRadius:20, background: d.driverStatus === 'UNDER_REVIEW' ? 'rgba(99,102,241,.12)' : 'rgba(245,158,11,.12)', color: d.driverStatus === 'UNDER_REVIEW' ? '#6366f1' : '#b45309' }}>
                 {d.driverStatus === 'UNDER_REVIEW' ? 'En révision' : 'Documents manquants'}
               </span>
@@ -649,6 +662,26 @@ function KycReviewTab({ canReview, highlightId, onChanged }) {
 
             {isOpen && (
               <div style={{ marginTop:14, borderTop:'1px solid rgba(0,0,0,.06)', paddingTop:12, display:'flex', flexDirection:'column', gap:12 }}>
+                {/* Profil du coursier */}
+                <div>
+                  <div style={{ fontSize:11, fontWeight:700, color:'var(--text-muted)', letterSpacing:'.4px', marginBottom:8 }}>PROFIL</div>
+                  <div style={{ display:'flex', gap:16, flexWrap:'wrap', fontSize:12 }}>
+                    <span><strong>Inscrit le :</strong> {fmtDate(d.createdAt)}</span>
+                    <span><strong>Courses livrées :</strong> {d.deliveredCourses ?? 0}</span>
+                    <span><strong>Note :</strong> {d.avgRating ? `${d.avgRating} / 5` : '—'}</span>
+                    <span><strong>Chef de flotte :</strong> {d.managedBy ? `${d.managedBy.name ?? '—'} (${d.managedBy.phone ?? '—'})` : 'Indépendant'}</span>
+                    {d.email && <span><strong>Email :</strong> {d.email}</span>}
+                    {d.insuranceExpiry && <span><strong>Assurance jusqu'au :</strong> {fmtDate(d.insuranceExpiry)}</span>}
+                    {d.verificationDeadline && <span><strong>Pièces à fournir avant le :</strong> {fmtDate(d.verificationDeadline)}</span>}
+                  </div>
+                  <div style={{ fontSize:12, color:'var(--text-muted)', marginTop:6 }}>
+                    {d.driverStatus === 'UNDER_REVIEW'
+                      ? 'En révision : le coursier a envoyé ses pièces, elles sont à vérifier.'
+                      : 'Documents manquants : le coursier doit encore fournir ou remplacer des pièces.'}
+                  </div>
+                </div>
+
+                <div style={{ fontSize:11, fontWeight:700, color:'var(--text-muted)', letterSpacing:'.4px' }}>PIÈCES</div>
                 <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(110px, 1fr))', gap:14 }}>
                   {KYC_FIELDS.map(([field, label]) => {
                     const key = `${d.id}:${field}`
