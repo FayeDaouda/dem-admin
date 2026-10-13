@@ -77,4 +77,13 @@ export const ACTION_ROLES = {
   // /admin/drivers/:id/documents/:field/reject et /verify, Super + Ass. exéc.
   // (le Service Client garde la lecture).
   kycReview: ['ASSISTANCE_EXECUTIVE'],
+  // Clients (page visible de Super, Dev et Service Client) :
+  // créer (POST /admin/clients) : Super seul ;
+  clientCreate: [],
+  // modifier (PATCH /admin/clients/:id) : Super + Service Client ;
+  clientEdit: ['SERVICE_CLIENT'],
+  // bannir / débannir, supprimer, décider d'un changement de numéro
+  // (/ban, /unban, DELETE, /phone-change) : Super seul ; la conversion en
+  // DEM Pro reste réservée au Super comme avant.
+  clientManage: [],
 }
