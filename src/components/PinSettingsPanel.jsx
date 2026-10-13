@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import InlineConfirm from './InlineConfirm'
 import { KeyRound, AlertTriangle, CheckCircle2, Save } from 'lucide-react'
 import api from '../lib/api'
 import { glass, glassInput } from '../lib/glassStyles'
@@ -18,6 +19,7 @@ export default function PinSettingsPanel() {
   const [done, setDone]         = useState('')
   const [saving, setSaving]     = useState(false)
   const [unavailable, setUnavailable] = useState(false)
+  const [confirming, setConfirming] = useState(false) // confirmation dans le panneau
 
   useEffect(() => {
     api.get('/admin/auth-settings')
@@ -43,11 +45,12 @@ export default function PinSettingsPanel() {
     setDone('')
   }
 
+  const summary = roles.length
+    ? `Code secret ACTIVÉ pour : ${roles.map(r => ROLE_LABELS[r] ?? r).join(', ')}`
+    : 'Code secret désactivé pour tous les rôles'
+
   async function save() {
-    const summary = roles.length
-      ? `Code secret ACTIVÉ pour : ${roles.map(r => ROLE_LABELS[r] ?? r).join(', ')}`
-      : 'Code secret désactivé pour tous les rôles'
-    if (!window.confirm(`${summary}\nNuméros pilotes : ${pilotList.length}\n\nConfirmer ?`)) return
+    setConfirming(false)
     setSaving(true); setError(''); setDone('')
     try {
       const { data } = await api.put('/admin/auth-settings', { roles, pilotPhones: pilotList })
@@ -97,7 +100,11 @@ export default function PinSettingsPanel() {
             style={{ ...glassInput, fontFamily: 'monospace', resize: 'vertical' }}
           />
 
-          <button onClick={save} disabled={!changed || saving} style={{ ...btnPrimary, marginTop: 12, opacity: !changed || saving ? 0.5 : 1 }}>
+          {confirming && (
+            <InlineConfirm lines={[summary, `Numéros pilotes : ${pilotList.length}`]} confirmLabel="Enregistrer" busy={saving}
+              onCancel={() => setConfirming(false)} onConfirm={save} />
+          )}
+          <button onClick={() => { setDone(''); setError(''); setConfirming(true) }} disabled={!changed || saving || confirming} style={{ ...btnPrimary, marginTop: 12, opacity: !changed || saving || confirming ? 0.5 : 1 }}>
             <Save size={14} /> {saving ? 'Enregistrement…' : 'Enregistrer'}
           </button>
         </>

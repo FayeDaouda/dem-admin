@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
+import InlineConfirm from './InlineConfirm'
 import { MessageSquare, AlertTriangle, CheckCircle2, Save, ChevronDown, ChevronRight, ArrowRightLeft } from 'lucide-react'
 import api from '../lib/api'
 import { glass, glassInput } from '../lib/glassStyles'
@@ -27,6 +28,7 @@ export default function SmsRoutingPanel() {
   const [error, setError]     = useState('')
   const [done, setDone]       = useState('')
   const [saving, setSaving]   = useState(false)
+  const [pending, setPending] = useState(null) // { lines, label, run } — confirmation dans le panneau
 
   const apply = (data) => {
     setRouting(data)
@@ -64,15 +66,15 @@ export default function SmsRoutingPanel() {
       ? [`Basculer vers LAfricaMobile ?`, '', `Tous les codes de connexion et de retrait partiront par LAfricaMobile (expéditeur « ${routing.lamSender} »).`, `${other} restera en secours automatique.`]
       : [`Revenir à Africa's Talking ?`, '', 'Tous les codes partiront de nouveau par Africa\'s Talking.', `${other} restera en secours automatique.`]
     lines.push('', 'Effectif en moins d\'une minute, tracé dans l\'audit. Retour possible à tout moment ici.')
-    if (!window.confirm(lines.join('\n'))) return
-    put({ primaryProvider: provider }, `${name} est maintenant le fournisseur principal (effectif en moins d'une minute).`)
+    setDone(''); setError('')
+    setPending({ lines, label: `Basculer vers ${name}`, run: () => put({ primaryProvider: provider }, `${name} est maintenant le fournisseur principal (effectif en moins d'une minute).`) })
   }
 
   function saveThreshold() {
     const value = Number(threshold)
     if (!Number.isInteger(value) || value < 0) { setError('Le seuil d\'alerte doit être un nombre entier positif.'); return }
-    if (!window.confirm(`Alerte quand le crédit LAfricaMobile passe sous ${formatCount(value)} SMS.\n\nConfirmer ?`)) return
-    put({ creditAlertThreshold: value }, 'Seuil enregistré. Il s\'applique au prochain relevé du crédit.')
+    setDone(''); setError('')
+    setPending({ lines: [`Alerte quand le crédit LAfricaMobile passe sous ${formatCount(value)} SMS.`], label: 'Enregistrer le seuil', run: () => put({ creditAlertThreshold: value }, 'Seuil enregistré. Il s\'applique au prochain relevé du crédit.') })
   }
 
   return (
@@ -108,6 +110,10 @@ export default function SmsRoutingPanel() {
         </>
       )}
 
+      {pending && (
+        <InlineConfirm lines={pending.lines} confirmLabel={pending.label} busy={saving}
+          onCancel={() => setPending(null)} onConfirm={async () => { await pending.run(); setPending(null) }} />
+      )}
       {done && <div style={{ ...notice, background: 'rgba(34,197,94,.08)', color: '#15803d' }}><CheckCircle2 size={14} /> {done}</div>}
       {error && <div style={{ ...notice, background: '#ef444412', color: '#b91c1c' }}><AlertTriangle size={14} /> {error}</div>}
 

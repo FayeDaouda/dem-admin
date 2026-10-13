@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { Save, Trash2 } from 'lucide-react'
 import api from '../lib/api'
 import { glass, glassInput } from '../lib/glassStyles'
+import InlineConfirm from '../components/InlineConfirm'
 
 // Version de l'app (dem-backend : utils/app-version.js). Au lancement, l'app
 // compare sa version à ces réglages :
@@ -22,12 +23,15 @@ function toForm(config) {
   }
 }
 
-export default function AppVersionTab() {
+// `canEdit` : PUT /admin/app-version est réservé au Super Admin — le Dev
+// voit les réglages sans pouvoir les enregistrer.
+export default function AppVersionTab({ canEdit = true }) {
   const [saved, setSaved] = useState(undefined)
   const [form, setForm] = useState(EMPTY)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const [notice, setNotice] = useState('')
+  const [confirmOff, setConfirmOff] = useState(false)
 
   useEffect(() => {
     api.get('/admin/app-version')
@@ -46,6 +50,7 @@ export default function AppVersionTab() {
       const { data } = await api.put('/admin/app-version', { config })
       setSaved(data.config)
       setForm(toForm(data.config))
+      setConfirmOff(false)
       setNotice(data.config ? 'Enregistré : les utilisateurs concernés verront la fenêtre à la prochaine ouverture de l\'app.' : 'Désactivé : plus aucune fenêtre de mise à jour.')
     } catch (e) {
       setError(e.response?.data?.message || 'Enregistrement impossible.')
@@ -60,7 +65,7 @@ export default function AppVersionTab() {
 
   const input = (platform, key, placeholder) => (
     <input
-      value={form[platform][key]} placeholder={placeholder}
+      value={form[platform][key]} placeholder={placeholder} disabled={!canEdit}
       onChange={e => set(platform, key, e.target.value)}
       style={{ ...glassInput, borderColor: badField(form[platform][key]) ? 'var(--danger)' : undefined }}
     />
@@ -92,7 +97,7 @@ export default function AppVersionTab() {
       <label style={{ display: 'flex', flexDirection: 'column', gap: 6, fontSize: 12, fontWeight: 600, color: 'var(--text-muted)', margin: '12px 0 14px' }}>
         Message affiché (facultatif, 200 caractères)
         <textarea
-          rows={2} maxLength={200} value={form.message}
+          rows={2} maxLength={200} value={form.message} disabled={!canEdit}
           onChange={e => setForm(f => ({ ...f, message: e.target.value }))}
           placeholder="Ex. : nouveaux écrans de commande et suivi en direct."
           style={{ ...glassInput, resize: 'vertical' }}
@@ -102,7 +107,8 @@ export default function AppVersionTab() {
       {error && <div style={{ fontSize: 12, color: 'var(--danger)', background: 'rgba(239,68,68,.08)', borderRadius: 6, padding: '8px 12px', marginBottom: 12 }}>{error}</div>}
       {notice && <div style={{ fontSize: 12, color: '#15803d', background: 'rgba(34,197,94,.10)', borderRadius: 6, padding: '8px 12px', marginBottom: 12 }}>{notice}</div>}
 
-      <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+      {!canEdit && <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>Modification réservée au Super Admin.</div>}
+      {canEdit && <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
         <button
           type="button" disabled={invalid || !dirty || busy}
           onClick={() => save({
@@ -115,11 +121,15 @@ export default function AppVersionTab() {
         {saved && (
           <button
             type="button" disabled={busy}
-            onClick={() => { if (window.confirm('Désactiver ? Plus aucune fenêtre de mise à jour ne s\'affichera.')) save(null) }}
+            onClick={() => setConfirmOff(true)}
             style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 14px', borderRadius: 'var(--radius-sm)', border: '1px solid rgba(239,68,68,.35)', background: 'rgba(255,255,255,.5)', color: 'var(--danger)', fontSize: 13, cursor: 'pointer' }}
           ><Trash2 size={15} /> Désactiver</button>
         )}
-      </div>
+      </div>}
+      {canEdit && confirmOff && (
+        <InlineConfirm lines="Désactiver ? Plus aucune fenêtre de mise à jour ne s'affichera." confirmLabel="Désactiver" danger busy={busy}
+          onCancel={() => setConfirmOff(false)} onConfirm={() => save(null)} />
+      )}
     </div>
   )
 }

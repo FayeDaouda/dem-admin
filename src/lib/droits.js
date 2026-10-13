@@ -56,4 +56,6 @@ export const ACTION_ROLES = {
   // Parrainage › compteur des parrainages DEM Pro : /admin/dem-pro/referrals ;
   // le rôle Marketing ne voit pas les parrainages DEM Pro aujourd'hui → Super seul.
   proReferralCounter: [],
+  // Version de l'app : PUT /admin/app-version, Super seul (le Dev lit).
+  appVersionEdit: [],
 }

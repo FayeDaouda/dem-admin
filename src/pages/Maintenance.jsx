@@ -1,19 +1,31 @@
 import { useState, useEffect, useCallback } from 'react'
-import { Wrench, Eye, Play, CheckCircle2, AlertTriangle, RefreshCw } from 'lucide-react'
+import { Eye, Play, CheckCircle2, AlertTriangle, RefreshCw, Database, MessageSquare, KeyRound } from 'lucide-react'
 import api from '../lib/api'
 import { glass, pageWrap, pageScroll } from '../lib/glassStyles'
 import { formatF, formatCount } from '../lib/format'
 import SmsRoutingPanel from '../components/SmsRoutingPanel'
 import PinSettingsPanel from '../components/PinSettingsPanel'
+import PageHeader from '../components/PageHeader'
+import TabBar from '../components/TabBar'
+import InlineConfirm from '../components/InlineConfirm'
+import { useUrlTab } from '../lib/useUrlTab'
 
 // ── Maintenance des données (SUPER) ───────────────────────────────────────────
 // Tâches ponctuelles exécutées CÔTÉ SERVEUR (qui accède à la base par le réseau
 // interne de Render) — liste fermée, voir admin.maintenance.service.js.
 // Parcours imposé : Aperçu (lecture seule) → Exécuter (confirmation).
 
+// Onglets (avant : tâches, fournisseur SMS et code secret empilés sur une page).
+const TABS = [
+  { key: 'taches', label: 'Tâches de données', icon: Database },
+  { key: 'sms',    label: 'Fournisseur SMS',   icon: MessageSquare },
+  { key: 'code',   label: 'Code secret',       icon: KeyRound },
+]
+
 const fmtDateTime = (d) => (d ? new Date(d).toLocaleString('fr-FR', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '—')
 
 export default function Maintenance() {
+  const [tab, setTab] = useUrlTab(TABS)
   const [tasks, setTasks] = useState(null)
   const [error, setError] = useState('')
 
@@ -27,32 +39,34 @@ export default function Maintenance() {
 
   return (
     <div style={pageWrap}>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8, flexShrink: 0 }}>
-        <h1 style={{ fontSize: 22, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 10 }}>
-          <Wrench size={22} /> Maintenance des données
-        </h1>
-        <button onClick={load} style={btnOutline}><RefreshCw size={14} /> Actualiser</button>
-      </div>
-      <p style={{ color: 'var(--text-muted)', fontSize: 13, marginBottom: 20, flexShrink: 0, maxWidth: 860 }}>
-        Corrections ponctuelles exécutées sur le serveur. Chaque tâche se lance en deux temps : un <strong>aperçu</strong> qui
-        n'écrit rien, puis l'<strong>exécution</strong> après confirmation. Toutes sont sans effet si on les relance, s'exécutent
-        entièrement ou pas du tout, et chaque exécution est enregistrée dans l'audit.
-      </p>
+      <PageHeader
+        title="Maintenance"
+        subtitle="Tâches ponctuelles sur les données, fournisseur des SMS et activation du code secret"
+        actions={tab === 'taches' ? <button onClick={load} style={btnOutline}><RefreshCw size={14} /> Actualiser</button> : null}
+      />
+      <TabBar tabs={TABS} active={tab} onChange={setTab} />
 
       <div style={pageScroll}>
-        {error ? (
-          <div style={{ color: 'var(--danger)' }}>{error}</div>
-        ) : !tasks ? (
-          <div style={{ color: 'var(--text-muted)' }}>Chargement…</div>
-        ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 14, maxWidth: 980 }}>
-            {tasks.map((t, i) => <TaskCard key={t.id} index={i + 1} task={t} onDone={load} />)}
-          </div>
-        )}
+        {tab === 'taches' && (<>
+          <p style={{ color: 'var(--text-muted)', fontSize: 13, margin: '0 0 16px', maxWidth: 860 }}>
+            Corrections ponctuelles exécutées sur le serveur. Chaque tâche se lance en deux temps : un <strong>aperçu</strong> qui
+            n'écrit rien, puis l'<strong>exécution</strong> après confirmation. Toutes sont sans effet si on les relance, s'exécutent
+            entièrement ou pas du tout, et chaque exécution est enregistrée dans l'audit.
+          </p>
+          {error ? (
+            <div style={{ color: 'var(--danger)' }}>{error}</div>
+          ) : !tasks ? (
+            <div style={{ color: 'var(--text-muted)' }}>Chargement…</div>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 14, maxWidth: 980 }}>
+              {tasks.map((t, i) => <TaskCard key={t.id} index={i + 1} task={t} onDone={load} />)}
+            </div>
+          )}
+        </>)}
         {/* Fournisseurs SMS des codes OTP (masqué tant que le backend n'a pas le routeur SMS) */}
-        <div style={{ marginTop: 24 }}><SmsRoutingPanel /></div>
+        {tab === 'sms' && <SmsRoutingPanel />}
         {/* Code secret : activation (SUPER uniquement) */}
-        <div style={{ marginTop: 24 }}><PinSettingsPanel /></div>
+        {tab === 'code' && <PinSettingsPanel />}
       </div>
     </div>
   )
@@ -64,22 +78,21 @@ function TaskCard({ index, task, onDone }) {
   const [busy, setBusy]         = useState('') // 'preview' | 'run' | ''
   const [error, setError]       = useState('')
   const [notify, setNotify]     = useState(false)
+  const [confirming, setConfirming] = useState(false) // exécution confirmée dans la carte
 
   async function runPreview() {
     setBusy('preview'); setError(''); setResult(null)
     try {
       const r = await api.post(`/admin/maintenance/tasks/${task.id}/preview`)
       setPreview(r.data)
+      setConfirming(false)
     } catch (e) {
       setError(e.response?.data?.message ?? 'Erreur pendant l\'aperçu.')
     } finally { setBusy('') }
   }
 
   async function runTask() {
-    const label = task.requiresExpectedTotal
-      ? `Verser ${formatF(preview.total)} aux coursiers${notify ? ' et les notifier' : ''} ?`
-      : `Exécuter « ${task.title} » ?\n\n${preview.summary}`
-    if (!confirm(`${label}\n\nCette action modifie les données de production.`)) return
+    setConfirming(false)
     setBusy('run'); setError('')
     try {
       const body = { confirm: true }
@@ -114,7 +127,7 @@ function TaskCard({ index, task, onDone }) {
           <button onClick={runPreview} disabled={busy !== ''} style={btnOutline}>
             <Eye size={14} /> {busy === 'preview' ? 'Aperçu…' : 'Aperçu'}
           </button>
-          <button onClick={runTask} disabled={!canRun} title={!preview ? 'Faites d\'abord un aperçu' : undefined}
+          <button onClick={() => setConfirming(true)} disabled={!canRun || confirming} title={!preview ? 'Faites d\'abord un aperçu' : undefined}
             style={{ ...btnPrimary, opacity: canRun ? 1 : 0.45, cursor: canRun ? 'pointer' : 'not-allowed' }}>
             <Play size={14} /> {busy === 'run' ? 'Exécution…' : task.requiresExpectedTotal ? 'Verser' : 'Exécuter'}
           </button>
@@ -137,6 +150,23 @@ function TaskCard({ index, task, onDone }) {
             <div style={{ marginTop: 6, fontSize: 12, color: 'var(--text-muted)' }}>{preview.accounts.join(' · ')}</div>
           )}
         </div>
+      )}
+
+      {confirming && preview && (
+        <InlineConfirm
+          lines={[
+            task.requiresExpectedTotal
+              ? `Verser ${formatF(preview.total)} aux coursiers${notify ? ' et les notifier' : ''} ?`
+              : `Exécuter « ${task.title} » ?`,
+            ...(task.requiresExpectedTotal ? [] : [preview.summary]),
+            'Cette action modifie les données de production.',
+          ]}
+          confirmLabel={task.requiresExpectedTotal ? 'Confirmer le versement' : 'Confirmer l’exécution'}
+          danger
+          busy={busy === 'run'}
+          onCancel={() => setConfirming(false)}
+          onConfirm={runTask}
+        />
       )}
 
       {result && (
