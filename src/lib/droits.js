@@ -56,4 +56,8 @@ export const ACTION_ROLES = {
   // Parrainage › compteur des parrainages DEM Pro : /admin/dem-pro/referrals ;
   // le rôle Marketing ne voit pas les parrainages DEM Pro aujourd'hui → Super seul.
   proReferralCounter: [],
+  // Tarifs et zones : réglages (PUT /admin/config — tarif hors zone, DEM Pro,
+  // heures de pointe, réglage technique) et zone de livraison (PUT
+  // /admin/delivery-zone) : Super seul ; le Dev les voit en lecture.
+  configEdit: [],
 }
