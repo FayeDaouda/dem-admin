@@ -31,7 +31,6 @@ export const TAB_ROLES = {
     retention:   ['MARKETING'],
     courses:     ['MARKETING'],
     promotions:  ['MARKETING'],
-    campaigns:   ['MARKETING'],
   },
   badges: {
     clients:   ['MARKETING'],                           // /admin/client-badges/*

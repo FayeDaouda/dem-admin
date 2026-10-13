@@ -41,7 +41,7 @@ const NAV = [
   { group: 'croissance', to: '/recompenses',     icon: Gift,            label: 'Récompenses',          keywords: 'cadeaux bonus', roles: ['SUPER','MARKETING'] },
   { group: 'croissance', to: '/parrainage',      icon: GitBranch,       label: 'Parrainage',           roles: ['SUPER','MARKETING'] },
   { group: 'croissance', to: '/badges',          icon: Award,           label: 'Badges',               keywords: 'badge client coursier paliers', roles: ['SUPER','MARKETING','ASSISTANCE_EXECUTIVE'] },
-  { group: 'croissance', to: '/broadcast',       icon: Bell,            label: 'Notifications',        keywords: 'push broadcast envoi messages', roles: ['SUPER','MARKETING'] },
+  { group: 'croissance', to: '/notifications',   icon: Bell,            label: 'Notifications',        keywords: 'push broadcast envoi messages programmées historique alerte campagnes', roles: ['SUPER','MARKETING'] },
   { group: 'croissance', to: '/relances',        icon: Table2,          label: 'Relances',             keywords: 'tableau appels prospection nouveaux profils inscrits inscriptions', roles: ['SUPER','SERVICE_CLIENT','ASSISTANCE_EXECUTIVE'] },
   { group: 'administration', to: '/equipes',     icon: UsersRound,      label: 'Équipes',              keywords: 'admins comptes rôles', roles: ['SUPER'] },
   { group: 'administration', to: '/audit',       icon: ScrollText,      label: 'Audit',                keywords: 'journal historique', roles: ['SUPER','DEV'] },

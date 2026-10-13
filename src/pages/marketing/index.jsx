@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { RefreshCw, TrendingUp, Repeat, Package, Megaphone, Percent } from 'lucide-react'
+import { RefreshCw, TrendingUp, Repeat, Package, Percent } from 'lucide-react'
 import { pageWrap, pageScroll } from '../../lib/glassStyles'
 import { useAuth } from '../../contexts/AuthContext'
 import { canSee, TAB_ROLES, ACTION_ROLES } from '../../lib/droits'
@@ -10,7 +10,7 @@ import MarketingKpiRow from './components/MarketingKpiRow'
 import AcquisitionTab from './AcquisitionTab'
 import RetentionTab from './RetentionTab'
 import CoursesTab from './CoursesTab'
-import CampaignsTab from './CampaignsTab'
+import { Milestones } from './CampaignBlocks'
 import PromotionsTab from './PromotionsTab'
 import FreeCourseSection from './FreeCourseSection'
 
@@ -35,7 +35,6 @@ const ALL_TABS = [
   { key: 'retention',   label: 'Rétention',            icon: Repeat,     Component: RetentionTab },
   { key: 'courses',     label: 'Comportement courses', icon: Package,    Component: CoursesTab },
   { key: 'promotions',  label: 'Promotions',           icon: Percent,    Component: PromotionsTab },
-  { key: 'campaigns',   label: 'Campagnes & alertes',  icon: Megaphone,  Component: CampaignsTab },
 ]
 
 // Espace Marketing — onglet ouvert dans l'adresse (?tab=), onglets et
@@ -55,12 +54,18 @@ export default function Marketing() {
     <div style={pageWrap}>
       <PageHeader
         title="Marketing"
-        subtitle={showKpis ? 'Acquisition, rétention, comportement des courses, promotions et campagnes' : 'Évolution des inscriptions'}
+        subtitle={showKpis ? 'Acquisition, rétention, comportement des courses et promotions' : 'Évolution des inscriptions'}
         actions={<button onClick={() => setReloadKey(k => k + 1)} style={btnOutline}><RefreshCw size={14} /> Actualiser</button>}
       />
 
       <div style={pageScroll}>
         {showKpis && <MarketingKpiRow reloadKey={reloadKey} />}
+        {showKpis && (
+          <details style={{ marginBottom: 20 }}>
+            <summary style={{ cursor: 'pointer', fontSize: 14, fontWeight: 700, marginBottom: 10 }}>Jalons de croissance</summary>
+            <Milestones key={reloadKey} />
+          </details>
+        )}
         <TabBar tabs={tabs} active={tab} onChange={setTab} />
         {Active && <Active key={`${tab}-${reloadKey}`} />}
       </div>

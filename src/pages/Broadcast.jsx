@@ -48,7 +48,7 @@ function toDatetimeLocal(date) {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
 }
 
-export default function Broadcast() {
+export default function Broadcast({ embedded = false }) {
   const [selected, setSelected] = useState([...ALL_PROFILES])
   const target = toTarget(selected)
   const [title, setTitle]     = useState('')
@@ -210,11 +210,13 @@ export default function Broadcast() {
   }
 
   return (
-    <div style={pageWrap}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 24 }}>
-        <Bell size={22} color="var(--primary)" />
-        <h1 style={{ fontSize: 22, fontWeight: 700 }}>Notification broadcast</h1>
-      </div>
+    <div style={embedded ? undefined : pageWrap}>
+      {!embedded && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 24 }}>
+          <Bell size={22} color="var(--primary)" />
+          <h1 style={{ fontSize: 22, fontWeight: 700 }}>Notification broadcast</h1>
+        </div>
+      )}
 
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20, maxWidth: 900 }}>
 

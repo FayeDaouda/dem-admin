@@ -27,7 +27,7 @@ import Equipes from './pages/Equipes'
 import Maintenance from './pages/Maintenance'
 import BadgesPage from './pages/Badges'
 import Parrainage from './pages/Parrainage'
-import Broadcast from './pages/Broadcast'
+import Notifications from './pages/Notifications'
 
 const LiveMap     = lazy(() => import('./pages/LiveMap'))
 const FleetSection = lazy(() => import('./pages/fleet/FleetSection'))
@@ -121,7 +121,8 @@ function AppRoutes() {
       <Route path="/badges/clients" element={<Navigate to="/badges?tab=clients" replace />} />
       <Route path="/badges/drivers" element={<Navigate to="/badges?tab=coursiers" replace />} />
       <Route path="/parrainage" element={<ProtectedRoute><Parrainage /></ProtectedRoute>} />
-      <Route path="/broadcast"  element={<ProtectedRoute><Broadcast /></ProtectedRoute>} />
+      <Route path="/notifications" element={<ProtectedRoute><Notifications /></ProtectedRoute>} />
+      <Route path="/broadcast" element={<Navigate to="/notifications" replace />} />
       <Route path="/incidents"   element={<ProtectedRoute><Incidents /></ProtectedRoute>} />
       <Route path="/audit"       element={<ProtectedRoute><Audit /></ProtectedRoute>} />
       <Route path="/validation"      element={<ProtectedRoute><Validation /></ProtectedRoute>} />
