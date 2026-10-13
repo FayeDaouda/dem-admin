@@ -17,6 +17,8 @@ import { cancelReasonLabel } from '../../lib/cancelReasons'
 // définitions que le reste de l'admin, indépendantes du palier du commerçant.
 // Onglets : Vue d'ensemble, Commandes, Abonnement, Wallet, Boutique, Tournées.
 // `canEdit` (SUPER + Service client) : catalogue modifiable dans l'onglet Boutique.
+// `actions` : barre d'actions de la page DEM Pro, affichée sous l'en-tête ;
+// `refreshKey` : relit la fiche après une action faite depuis cette barre.
 
 const PERIODS = [
   { key: 'today',       label: "Aujourd'hui" },
@@ -44,14 +46,14 @@ const fmtDate = (d, withTime = false) => d
     : { day: '2-digit', month: 'short', year: 'numeric' })
   : '—'
 
-export default function AccountDetailModal({ accountId, onClose, canEdit = false }) {
+export default function AccountDetailModal({ accountId, onClose, canEdit = false, actions = null, refreshKey = 0 }) {
   const [tab, setTab]       = useState('overview')
   const [period, setPeriod] = useState('month')
   const [version, setVersion] = useState(0) // relit la fiche après une modification du catalogue
   // Dernière réponse reçue, étiquetée par sa requête : "chargement" = la
   // réponse affichée ne correspond pas encore à la période demandée.
   const [result, setResult] = useState(null) // { key, data?, error? }
-  const requestKey = `${accountId}|${period}|${version}`
+  const requestKey = `${accountId}|${period}|${version}|${refreshKey}`
 
   useEffect(() => {
     let cancelled = false
@@ -86,6 +88,7 @@ export default function AccountDetailModal({ accountId, onClose, canEdit = false
             </div>
             <button onClick={onClose} style={closeBtn} title="Fermer"><X size={18} /></button>
           </div>
+          {actions && <div style={{ marginTop: 14 }}>{actions}</div>}
           <div style={{ display: 'flex', gap: 4, marginTop: 16 }}>
             {TABS.map(t => (
               <button key={t.key} onClick={() => setTab(t.key)} style={{
