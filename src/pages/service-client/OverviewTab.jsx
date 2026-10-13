@@ -231,7 +231,7 @@ export default function OverviewTab() {
               <table style={tableStyle}>
                 <thead>
                   <tr>
-                    {['#', 'ID', 'Statut', 'Client', 'Livreur', 'Prix', 'Date'].map(h => (
+                    {['#', 'ID', 'Statut', 'Client', 'Coursier', 'Prix', 'Date'].map(h => (
                       <th key={h} style={{ ...thStyle, ...stickyTh }}>{h}</th>
                     ))}
                   </tr>
@@ -292,7 +292,7 @@ export default function OverviewTab() {
                       <Badge status={inc.status === 'OPEN' ? 'PENDING' : 'ACCEPTED'} label={inc.status === 'OPEN' ? 'Nouveau' : 'En cours'} />
                     </div>
                     <div style={{ color: 'var(--text-muted)', fontSize: 11 }}>
-                      {inc.driverName ?? 'Livreur inconnu'} {inc.orderId ? `· ${inc.orderId.slice(0, 8)}` : ''}
+                      {inc.driverName ?? 'Coursier inconnu'} {inc.orderId ? `· ${inc.orderId.slice(0, 8)}` : ''}
                     </div>
                   </div>
                 ))}
@@ -466,7 +466,7 @@ export default function OverviewTab() {
               <Row label="Statut" value={<StatusDot status={orderDetail.status} />} />
               <Row label="Type" value={<Badge status={orderDetail.orderType} />} />
               <Row label="Client" value={orderDetail.client?.name ?? orderDetail.client?.phone ?? '—'} />
-              <Row label="Livreur" value={orderDetail.driver?.name ?? '—'} />
+              <Row label="Coursier" value={orderDetail.driver?.name ?? '—'} />
               <Row label="Prix" value={`${orderDetail.price?.toLocaleString()} F`} />
               <Row label="Paiement" value={orderDetail.status === 'CANCELLED' ? '—' : <Badge status={orderDetail.paymentStatus ?? 'PENDING'} />} />
               <Row label="Départ" value={orderDetail.pickupAddress ?? '—'} />
@@ -492,7 +492,7 @@ export default function OverviewTab() {
               )}
               {orderDetail.driver?.phone && (
                 <a href={`tel:${orderDetail.driver.phone}`} style={{ ...btnAction, color: '#22c55e', borderColor: '#22c55e' }}>
-                  <Phone size={13} /> Livreur
+                  <Phone size={13} /> Coursier
                 </a>
               )}
               {orderDetail.receiverPhone && (

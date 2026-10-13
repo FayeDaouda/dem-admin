@@ -88,7 +88,7 @@ export const SITE_ICON_LABELS = {
 // Tournées groupées (BatchOrder.status)
 export const BATCH_STATUS = {
   SCHEDULED:   { label: 'Programmée',            color: '#0ea5e9' },
-  PENDING:     { label: "En attente d'un livreur", color: '#f59e0b' },
+  PENDING:     { label: "En attente d'un coursier", color: '#f59e0b' },
   ACCEPTED:    { label: 'Acceptée',              color: '#6366f1' },
   IN_PROGRESS: { label: 'En cours',              color: '#6366f1' },
   COMPLETED:   { label: 'Terminée',              color: '#16a34a' },

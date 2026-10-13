@@ -1,8 +1,12 @@
 import { useState, useEffect, useCallback } from 'react'
 import api from '../lib/api'
 import { useAuth } from '../contexts/AuthContext'
-import { Pencil, X } from 'lucide-react'
+import { Pencil, X, Users, Bike } from 'lucide-react'
 import { glass, glassInput, pageWrap, pageScroll } from '../lib/glassStyles'
+import { canSee, TAB_ROLES } from '../lib/droits'
+import PageHeader from '../components/PageHeader'
+import TabBar from '../components/TabBar'
+import { useUrlTab } from '../lib/useUrlTab'
 
 // Chaque badge peut être atteint par plusieurs lignes de critères alternatives
 // (OR entre les lignes, AND entre les critères d'une même ligne).
@@ -27,7 +31,7 @@ const DRIVER_TIER_ORDER = ['xarit', 'mbokk', 'doorWarr', 'domouNdey', 'buur', 'g
 
 // Chaque badge peut être atteint par plusieurs lignes de critères alternatives
 // (OR entre les lignes, AND entre les critères d'une même ligne) — même principe
-// que les badges livreur.
+// que les badges coursier.
 const DEFAULT_CLIENT_TIERS = [
   { id: 'vip', name: 'DEM VIP', emoji: '💎', advantage: '', criteria: [
     { courses: 200, referrals: 12, rating: 4.5 },
@@ -58,7 +62,7 @@ const DEFAULT_CLIENT_TIERS = [
 ]
 
 // Ordre d'affichage imposé côté admin (du plus bas au plus haut palier, comme
-// pour les badges livreur) — indépendant de l'ordre de calcul backend
+// pour les badges coursier) — indépendant de l'ordre de calcul backend
 // (DEFAULT_TIERS y reste du plus haut au plus bas, nécessaire pour trouver le
 // palier le plus haut atteint en premier).
 const CLIENT_TIER_ORDER = ['classic', 'xarit', 'mbokk', 'djambar', 'buur', 'vip']
@@ -83,29 +87,26 @@ const DRIVER_VISUALS = {
 
 const NONE_VISUAL = { emoji: '🆕', color: '#7c849c', bg: 'rgba(124,132,156,.08)', border: 'rgba(124,132,156,.25)', name: 'Sans badge' }
 
-export function ClientBadgesPage() {
-  return (
-    <div style={pageWrap}>
-      <div style={{ marginBottom: 24, flexShrink: 0 }}>
-        <h1 style={{ fontSize: 22, fontWeight: 700 }}>Badge client</h1>
-        <p style={{ color: 'var(--text-muted)', fontSize: 13, marginTop: 4 }}>Consultation des badges clients.</p>
-      </div>
-      <div style={pageScroll}>
-        <ClientBadgesTab />
-      </div>
-    </div>
-  )
-}
+// Page Badges : onglets Clients et Coursiers, ouverts depuis l'adresse
+// (?tab=) et filtrés par rôle (lib/droits.js) — l'Assistance exécutive ne
+// voit que Coursiers. Remplace les anciennes pages Badge client et Badge
+// livreur (/badges/clients, /badges/drivers redirigées).
+const BADGE_TABS = [
+  { key: 'clients',   label: 'Clients',   icon: Users },
+  { key: 'coursiers', label: 'Coursiers', icon: Bike },
+]
 
-export function DriverBadgesPage() {
+export default function BadgesPage() {
+  const { user } = useAuth()
+  const tabs = BADGE_TABS.filter(t => canSee(user?.adminRole, TAB_ROLES.badges[t.key]))
+  const [tab, setTab] = useUrlTab(tabs)
   return (
     <div style={pageWrap}>
-      <div style={{ marginBottom: 24, flexShrink: 0 }}>
-        <h1 style={{ fontSize: 22, fontWeight: 700 }}>Badge livreur</h1>
-        <p style={{ color: 'var(--text-muted)', fontSize: 13, marginTop: 4 }}>Consultation des badges livreurs.</p>
-      </div>
+      <PageHeader title="Badges" subtitle="Paliers des clients et des coursiers, seuils et validations." />
+      <TabBar tabs={tabs} active={tab} onChange={setTab} />
       <div style={pageScroll}>
-        <DriverBadgesTab />
+        {tab === 'clients' && <ClientBadgesTab />}
+        {tab === 'coursiers' && <DriverBadgesTab />}
       </div>
     </div>
   )
@@ -405,7 +406,7 @@ function ClientBadgesTab() {
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
-//  BADGES LIVREURS
+//  BADGES COURSIERS
 // ══════════════════════════════════════════════════════════════════════════════
 function DriverBadgesTab() {
   const { user } = useAuth()
@@ -420,9 +421,9 @@ function DriverBadgesTab() {
   const load = useCallback(async () => {
     setLoading(true)
     try {
-      // Répartition calculée par le serveur sur TOUS les livreurs, avec la même
-      // règle que la page Livreurs (palier de rang le plus élevé). Avant : 1000
-      // livreurs au plus, badge recalculé ici avec le premier palier atteint.
+      // Répartition calculée par le serveur sur TOUS les coursiers, avec la même
+      // règle que la page Coursiers (palier de rang le plus élevé). Avant : 1000
+      // coursiers au plus, badge recalculé ici avec le premier palier atteint.
       const [badgeRes, distRes] = await Promise.all([
         api.get('/admin/badges/config').catch(() => ({ data: { badges: DEFAULT_DRIVER_BADGES } })),
         api.get('/admin/badges/driver-distribution').catch(() => ({ data: null })),
@@ -435,7 +436,7 @@ function DriverBadgesTab() {
 
   useEffect(() => { load() }, [load])
 
-  // Livreurs du badge sélectionné — filtrés par le serveur (même calcul de badge)
+  // Coursiers du badge sélectionné — filtrés par le serveur (même calcul de badge)
   useEffect(() => {
     if (!selected) return
     let cancelled = false
@@ -492,7 +493,7 @@ function DriverBadgesTab() {
           visual={selectedVisual}
           onClose={() => setSelected(null)}
           users={selectedDrivers}
-          columns={['Livreur', 'Téléphone', 'Véhicule', 'Courses', 'Parrainages', 'Note']}
+          columns={['Coursier', 'Téléphone', 'Véhicule', 'Courses', 'Parrainages', 'Note']}
           renderRow={d => (
             <tr key={d.id} style={{ borderBottom: '1px solid var(--border)' }}>
               <td style={{ padding: '8px 10px', fontWeight: 600, fontSize: 13 }}>{d.name ?? '—'}</td>
@@ -511,7 +512,7 @@ function DriverBadgesTab() {
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
-//  MODAL : édition des seuils de badges livreurs (SUPER uniquement)
+//  MODAL : édition des seuils de badges coursiers (SUPER uniquement)
 // ══════════════════════════════════════════════════════════════════════════════
 function EditBadgeTiersModal({ tiers, onClose, onSaved }) {
   const [rows, setRows]         = useState(tiers.map(t => ({ ...t, criteria: (t.criteria ?? []).map(c => ({ ...c })) })))
@@ -578,7 +579,7 @@ function EditBadgeTiersModal({ tiers, onClose, onSaved }) {
       <div style={{ ...glass, width: 880, maxWidth: '95vw', padding: 0, borderRadius: 16, overflow: 'hidden', maxHeight: '90vh', display: 'flex', flexDirection: 'column' }} onClick={e => e.stopPropagation()}>
         <div style={{ padding: '20px 24px 16px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <div>
-            <h2 style={{ fontSize: 16, fontWeight: 700, margin: 0 }}>Modifier les seuils de badges livreurs</h2>
+            <h2 style={{ fontSize: 16, fontWeight: 700, margin: 0 }}>Modifier les seuils de badges coursiers</h2>
             <p style={{ fontSize: 11, color: 'var(--text-muted)', margin: '4px 0 0' }}>Choisissez un badge, ajustez ses seuils, puis passez au suivant. Un badge est validé dès qu'UNE ligne de critères est entièrement remplie.</p>
           </div>
           <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', display: 'flex' }}><X size={18} /></button>

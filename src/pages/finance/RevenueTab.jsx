@@ -38,7 +38,7 @@ const EXPORT_COLUMNS = [
   { header: 'Commission facturée',          key: 'commissionBilled' },
   { header: 'Commission encaissée',         key: 'commissionCollected' },
   { header: 'Commission à recouvrer',       key: 'commissionToRecover' },
-  { header: 'Pass livreurs',                key: 'pass' },
+  { header: 'Pass coursiers',                key: 'pass' },
   { header: 'Abonnements DEM Pro',          key: 'subscriptions' },
   { header: 'Commission ventes DEM Pro',    key: 'proSales' },
   { header: 'Revenus facturés',             key: 'totalBilled' },
@@ -73,7 +73,7 @@ export default function RevenueTab() {
     <div>
       <p style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 0, marginBottom: 14, lineHeight: 1.5 }}>
         Uniquement de l'argent réel. <strong>Commission</strong> = frais DEM réellement facturés sur les courses livrées (date de livraison) :
-        <em> encaissée</em> si la course a été payée en ligne, <em>à recouvrer</em> si elle a été payée en espèces au livreur (la commission est restée chez lui)
+        <em> encaissée</em> si la course a été payée en ligne, <em>à recouvrer</em> si elle a été payée en espèces au coursier (la commission est restée chez lui)
         ou n'est pas encore payée. <strong>Pass</strong> et <strong>abonnements</strong> = montants réellement prélevés. Périodes en jours entiers :
         « 30 jours » = aujourd'hui + les 29 jours précédents, soit exactement la somme de la courbe.
       </p>

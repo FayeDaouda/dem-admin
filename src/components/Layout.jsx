@@ -12,7 +12,7 @@ import GlobalSearch from './GlobalSearch'
 // roles: undefined = tous les rôles. Sinon tableau des rôles autorisés (SUPER bypass toujours).
 // ASSISTANCE_EXECUTIVE (Assistant Exécutif) : périmètre opérationnel restreint — Dashboard (sans
 // finance), Carte live, Coursiers, Courses, Validation, Incidents, Nouveaux profils, Chefs de flotte
-// (lecture), Acquisition (lecture), Tableau, Badge livreur (lecture). Pas de Finance, Paiements,
+// (lecture), Acquisition (lecture), Tableau, Badge coursier (lecture). Pas de Finance, Paiements,
 // Service client, Audit, Marketing, Badge client, Parrainage, Notification, Équipes, Clients (fiche
 // complète), DEM Pro (facturation) ni Tarifs.
 // keywords : autres mots qui retrouvent la page dans la recherche du menu.
@@ -22,25 +22,24 @@ const NAV = [
   { to: '/service-client',  icon: LayoutDashboard,  label: 'Dashboard', roles: ['SUPER','SERVICE_CLIENT'], hideForSuper: true },
   { to: '/map',              icon: Map,             label: 'Carte live',      keywords: 'map positions suivi', roles: ['SUPER','DEV','ASSISTANCE_EXECUTIVE','SERVICE_CLIENT'] },
   { to: '/clients',          icon: Users,           label: 'Clients',         roles: ['SUPER','DEV','SERVICE_CLIENT'] },
-  { to: '/drivers',          icon: Bike,            label: 'Coursiers',       keywords: 'livreurs motos drivers', roles: ['SUPER','DEV','ASSISTANCE_EXECUTIVE','SERVICE_CLIENT'] },
+  { to: '/drivers',          icon: Bike,            label: 'Coursiers',       keywords: 'coursiers motos drivers', roles: ['SUPER','DEV','ASSISTANCE_EXECUTIVE','SERVICE_CLIENT'] },
   { to: '/dem-pro',          icon: Briefcase,       label: 'DEM Pro',         keywords: 'boutiques commerçants offres paliers', roles: ['SUPER','SERVICE_CLIENT'] },
   { to: '/chefs-de-flotte',  icon: UserCog,         label: 'Chefs de flotte', keywords: 'flottes', roles: ['SUPER','ASSISTANCE_EXECUTIVE','SERVICE_CLIENT'] },
   { to: '/validation',       icon: ShieldCheck,     label: 'Validation',      keywords: 'documents vérification inscriptions', roles: ['SUPER','ASSISTANCE_EXECUTIVE','SERVICE_CLIENT'] },
   { to: '/nouveaux-profils', icon: UserPlus,        label: 'Nouveaux profils', roles: ['SUPER','SERVICE_CLIENT','ASSISTANCE_EXECUTIVE'] },
-  { to: '/tableau',          icon: Table2,          label: 'Tableau',          roles: ['SUPER','SERVICE_CLIENT','ASSISTANCE_EXECUTIVE'] },
+  { to: '/tableau',          icon: Table2,          label: 'Relances',         keywords: 'tableau appels prospection', roles: ['SUPER','SERVICE_CLIENT','ASSISTANCE_EXECUTIVE'] },
   { to: '/finance',          icon: Wallet,          label: 'Finance',         roles: ['SUPER','FINANCE'], labelForRole: { FINANCE: 'Dashboard' } },
   { to: '/payments',         icon: CreditCard,      label: 'Paiements',       keywords: 'wave orange money retraits transactions', roles: ['SUPER','FINANCE'] },
   { to: '/orders',           icon: Package,         label: 'Courses',         keywords: 'commandes livraisons orders tournées', roles: ['SUPER','DEV','FINANCE','SERVICE_CLIENT','ASSISTANCE_EXECUTIVE'] },
   { to: '/config',           icon: SlidersHorizontal, label: 'Tarifs',        keywords: 'prix zones config promo prix unique', roles: ['SUPER','DEV'] },
   { to: '/audit',            icon: ScrollText,       label: 'Audit',          keywords: 'journal historique', roles: ['SUPER','DEV'] },
   { to: '/incidents',        icon: AlertTriangle,    label: 'Incidents',      keywords: 'sos alertes litiges', roles: ['SUPER','DEV','SERVICE_CLIENT','ASSISTANCE_EXECUTIVE'] },
-  { to: '/badges/clients',  icon: Award,            label: 'Badge client',   roles: ['SUPER','MARKETING'] },
-  { to: '/badges/drivers',  icon: Award,            label: 'Badge livreur',  keywords: 'coursiers', roles: ['SUPER','MARKETING','ASSISTANCE_EXECUTIVE'] },
+  { to: '/badges',          icon: Award,            label: 'Badges',         keywords: 'badge client coursier paliers', roles: ['SUPER','MARKETING','ASSISTANCE_EXECUTIVE'] },
   { to: '/parrainage',      icon: GitBranch,        label: 'Parrainage',     roles: ['SUPER','MARKETING'] },
   { to: '/acquisition',     icon: TrendingUp,       label: 'Acquisition',    roles: ['SUPER'] },
   { to: '/recompenses',     icon: Gift,             label: 'Récompenses',    keywords: 'cadeaux bonus', roles: ['SUPER','MARKETING'] },
-  { to: '/promotions',      icon: Percent,          label: 'Promotions',     keywords: 'codes promo réductions', roles: ['SUPER','MARKETING'] },
-  { to: '/acquisition-overview', icon: TrendingUp,  label: 'Acquisition',    roles: ['ASSISTANCE_EXECUTIVE'], hideForSuper: true },
+  { to: '/marketing?tab=promotions',  icon: Percent,    label: 'Promotions',  keywords: 'codes promo réductions', roles: ['SUPER','MARKETING'] },
+  { to: '/marketing?tab=acquisition', icon: TrendingUp, label: 'Acquisition', roles: ['ASSISTANCE_EXECUTIVE'], hideForSuper: true },
   { to: '/broadcast',       icon: Bell,             label: 'Notification',   keywords: 'push broadcast envoi messages', roles: ['SUPER','MARKETING'] },
   { to: '/equipes',          icon: UsersRound,       label: 'Equipes',        keywords: 'admins comptes rôles', roles: ['SUPER'] },
   { to: '/maintenance',      icon: Wrench,           label: 'Maintenance',    keywords: 'code secret sms otp interrupteurs version', roles: ['SUPER'] },
@@ -97,6 +96,18 @@ export default function Layout({ children }) {
   const visibleNav = NAV.filter(item => canSeeNav(item, user?.adminRole))
     .map(item => ({ ...item, label: item.labelForRole?.[user?.adminRole] ?? item.label }))
   const terms = normalize(pageQuery).split(/\s+/).filter(Boolean)
+  // Entrée active : une entrée vers un onglet (/marketing?tab=…) n'est active
+  // que sur cet onglet, et masque alors l'entrée de la page elle-même.
+  function tabActive(to) {
+    const [path, query] = to.split('?')
+    if (!query) return false
+    return location.pathname === path && new URLSearchParams(location.search).get('tab') === new URLSearchParams(query).get('tab')
+  }
+  function entryActive(to, navActive) {
+    if (to.includes('?')) return tabActive(to)
+    return navActive && !visibleNav.some(n => n.to.startsWith(`${to}?`) && tabActive(n.to))
+  }
+
   const shownNav = terms.length === 0
     ? visibleNav
     : visibleNav.filter(item => {
@@ -229,7 +240,7 @@ export default function Layout({ children }) {
             end={to === '/'}
             title={collapsed ? resolvedLabel : undefined}
             onClick={() => { setPageQuery(''); setActiveIndex(0) }}
-            style={({ isActive }) => ({
+            style={({ isActive: navActive }) => { const isActive = entryActive(to, navActive); return {
               display: 'flex',
               alignItems: 'center',
               gap: collapsed ? 0 : 10,
@@ -243,7 +254,7 @@ export default function Layout({ children }) {
               fontSize: 13,
               transition: 'all .15s',
               whiteSpace: 'nowrap',
-            })}
+            } }}
           >
             <Icon size={17} />
             {!collapsed && resolvedLabel}

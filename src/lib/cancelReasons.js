@@ -9,17 +9,17 @@ export const CANCEL_REASON_LABELS = {
   WRONG_ADDRESS:     'Adresse ou infos erronées',
   PRICE:             'Prix trop élevé',
   FOUND_ALTERNATIVE: 'Autre solution trouvée',
-  DRIVER_ISSUE:      'Problème avec le livreur',
+  DRIVER_ISSUE:      'Problème avec le coursier',
   OTHER:             'Autre',
   // Commerçant DEM Pro
   CUSTOMER_CANCELLED: 'Annulée par le client du commerçant',
   OUT_OF_STOCK:       'Article indisponible',
   ORDER_MISTAKE:      'Commande créée par erreur',
   // Système
-  NO_DRIVER_FOUND:   'Aucun livreur trouvé (auto)',
+  NO_DRIVER_FOUND:   'Aucun coursier trouvé (auto)',
   WALLET_INSUFFICIENT: 'Solde du wallet insuffisant (auto)',
   // Équipe DEM (admin)
-  NO_DRIVER_AVAILABLE: 'Aucun livreur disponible (équipe)',
+  NO_DRIVER_AVAILABLE: 'Aucun coursier disponible (équipe)',
   ADDRESS_UNREACHABLE: 'Adresse introuvable (équipe)',
   DUPLICATE_ORDER:     'Commande en double (équipe)',
   PAYMENT_ISSUE:       'Problème de paiement (équipe)',

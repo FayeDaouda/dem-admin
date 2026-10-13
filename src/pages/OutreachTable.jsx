@@ -25,7 +25,7 @@ const PDF_COLUMNS = [
 
 const PROFILES = [
   ['CLIENT',         'Client',         Users],
-  ['DRIVER',         'Livreur',        Bike],
+  ['DRIVER',         'Coursier',        Bike],
   ['DEM_PRO',        'DEM Pro',        Briefcase],
   ['CHEF_DE_FLOTTE', 'Chef de flotte', UserCog],
 ]
@@ -147,7 +147,7 @@ export default function OutreachTable() {
     <div style={pageWrap}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12, marginBottom: 16, flexShrink: 0 }}>
         <div>
-          <h1 style={{ fontSize: 22, fontWeight: 700 }}>Tableau</h1>
+          <h1 style={{ fontSize: 22, fontWeight: 700 }}>Relances</h1>
           <p style={{ color: 'var(--text-muted)', fontSize: 13, marginTop: 4 }}>
             Suivi des appels de prospection et de support.
           </p>

@@ -4,7 +4,7 @@ import api from '../lib/api'
 import { glass, glassInput } from '../lib/glassStyles'
 
 /**
- * Numéros de l'équipe DEM prévenus par SMS lors d'une alerte SOS livreur
+ * Numéros de l'équipe DEM prévenus par SMS lors d'une alerte SOS coursier
  * (GET/PUT /admin/sos/config). Par défaut : le numéro du support.
  * Modifiable par le SUPER uniquement.
  */
@@ -43,7 +43,7 @@ export default function SosPhonesCard({ canEdit }) {
       <Siren size={18} color="#dc2626" />
       <div style={{ flex: 1, minWidth: 220 }}>
         <div style={{ fontSize: 12, color: 'var(--text-muted)', fontWeight: 600 }}>
-          ALERTE SOS LIVREUR — NUMÉROS PRÉVENUS PAR SMS
+          ALERTE SOS COURSIER — NUMÉROS PRÉVENUS PAR SMS
         </div>
         {editing ? (
           <>

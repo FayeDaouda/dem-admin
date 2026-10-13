@@ -109,7 +109,7 @@ function NetworkStats({ chefs }) {
     <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginBottom: 20 }}>
       {[
         { label: 'Chefs actifs', value: activeCount, color: '#B8860B' },
-        { label: 'Livreurs gérés', value: totalDrivers, color: 'var(--primary)' },
+        { label: 'Coursiers gérés', value: totalDrivers, color: 'var(--primary)' },
         { label: 'Total chefs', value: chefs.length, color: 'var(--success)' },
       ].map(s => (
         <div key={s.label} style={{ ...glass, padding: '14px 18px', flex: '1 1 160px' }}>

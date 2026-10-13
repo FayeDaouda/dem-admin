@@ -43,7 +43,7 @@ export default function CaCoursesTab() {
     <div>
       <p style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 0, marginBottom: 14, lineHeight: 1.5 }}>
         Commission DEM réellement facturée sur les courses livrées (frais EXPRESS, tournées DEM Pro, tarif par zone…), par date de livraison.
-        <strong> Encaissée</strong> = course payée en ligne, l'argent est chez DEM. <strong>À recouvrer</strong> = course payée en espèces au livreur,
+        <strong> Encaissée</strong> = course payée en ligne, l'argent est chez DEM. <strong>À recouvrer</strong> = course payée en espèces au coursier,
         qui a gardé la commission, ou pas encore payée. Une course sans frais DEM (tarif normal hors zone, phase de lancement) ne génère aucune commission.
       </p>
 

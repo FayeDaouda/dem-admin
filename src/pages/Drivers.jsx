@@ -37,7 +37,7 @@ function formatConnectionTime(seconds) {
   return m === 0 ? `${h} h` : `${h} h ${String(m).padStart(2, '0')}`
 }
 
-// ── Modal Créer / Modifier livreur ────────────────────────────────────────────
+// ── Modal Créer / Modifier coursier ────────────────────────────────────────────
 function DriverFormModal({ initial, onClose, onSaved }) {
   const isEdit = !!initial
   const [form, setForm] = useState({
@@ -105,7 +105,7 @@ function DriverFormModal({ initial, onClose, onSaved }) {
 
         {/* En-tête */}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
-          <h2 style={{ fontSize: 17, fontWeight: 700 }}>{isEdit ? 'Modifier le livreur' : 'Créer un livreur'}</h2>
+          <h2 style={{ fontSize: 17, fontWeight: 700 }}>{isEdit ? 'Modifier le coursier' : 'Créer un coursier'}</h2>
           <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', display: 'flex', padding: 4 }}><XCircle size={16} /></button>
         </div>
 
@@ -142,7 +142,7 @@ function DriverFormModal({ initial, onClose, onSaved }) {
             style={{ width: '100%', background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '4px 0', marginBottom: showDocs ? 14 : 0 }}
           >
             <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--primary)' }}>
-              Documents livreur {hasFiles ? `(${DOC_LIST.filter(d => docs[d.key] instanceof File).length + (docs.insuranceExpiry ? 1 : 0)} sélectionné(s))` : '(optionnel)'}
+              Documents coursier {hasFiles ? `(${DOC_LIST.filter(d => docs[d.key] instanceof File).length + (docs.insuranceExpiry ? 1 : 0)} sélectionné(s))` : '(optionnel)'}
             </span>
             <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>{showDocs ? '▲' : '▼'}</span>
           </button>
@@ -232,7 +232,7 @@ function DeleteDriverModal({ driver, onClose, onArchive, onHardDelete }) {
         {mode === null && (
           <>
             <p style={{ color: 'var(--text-muted)', fontSize: 13, marginBottom: 20 }}>
-              Choisissez comment supprimer ce livreur.
+              Choisissez comment supprimer ce coursier.
             </p>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
               <button onClick={() => setMode('archive')} style={{ ...btnOutline, justifyContent: 'flex-start', padding: '12px 14px' }}>
@@ -304,7 +304,7 @@ function DeleteDriverModal({ driver, onClose, onArchive, onHardDelete }) {
 }
 
 // Badge calculé par le serveur (driver-badges.service:matchBadge — palier de
-// rang le plus élevé), le même que celui que voit le livreur dans l'app.
+// rang le plus élevé), le même que celui que voit le coursier dans l'app.
 function DriverBadgeChip({ driver }) {
   const badge = driver.badge
   if (!badge) return <span style={{ color: 'var(--text-muted)', fontSize: 12 }}>Nouveau</span>
@@ -324,7 +324,7 @@ function RestoreDriverModal({ driver, onClose, onRestored }) {
   const [phone, setPhone] = useState(driver.archivedPhone ? driver.archivedPhone.replace(/^\+221/, '') : '')
   const [busy, setBusy]   = useState(false)
   const [error, setError] = useState('')
-  const label = driver.name?.trim() || 'ce livreur'
+  const label = driver.name?.trim() || 'ce coursier'
 
   async function submit() {
     setBusy(true); setError('')
@@ -343,12 +343,12 @@ function RestoreDriverModal({ driver, onClose, onRestored }) {
         <h2 style={{ marginBottom: 8, fontSize: 16 }}>Désarchiver {label}</h2>
         <p style={{ color: 'var(--text-muted)', fontSize: 13, marginBottom: 14 }}>
           Le compte redevient actif avec tout son historique (courses, wallet, notes, documents).
-          Il revient hors ligne : le livreur se reconnecte avec ce numéro.
+          Il revient hors ligne : le coursier se reconnecte avec ce numéro.
           {' '}Une suspension ou un bannissement d'avant l'archivage n'est pas repris : refaites-le si besoin.
         </p>
         {driver.deletedBySelf && (
           <p style={{ color: 'var(--warning, #b45309)', fontSize: 12, fontWeight: 600, marginBottom: 14 }}>
-            Ce compte a été supprimé par le livreur lui-même depuis l'application. Ne le désarchivez qu'à sa demande.
+            Ce compte a été supprimé par le coursier lui-même depuis l'application. Ne le désarchivez qu'à sa demande.
           </p>
         )}
         <label style={{ display: 'block', fontSize: 12, color: 'var(--text-muted)', marginBottom: 6 }}>
@@ -421,7 +421,7 @@ export default function Drivers() {
   // Tout filtre / tri modifié → retour page 1
   useEffect(() => { setPage(1) }, [fleetFilter, chefFilter, onlineFilter, verifFilter, badgeFilter, sortCourses, debouncedSearch])
 
-  // Filtres et tri appliqués par le serveur sur TOUS les livreurs (avant :
+  // Filtres et tri appliqués par le serveur sur TOUS les coursiers (avant :
   // uniquement sur les 50 de la page chargée).
   const lastRequest = useRef(0)
   const fetch = useCallback(async (silent = false) => {
@@ -489,7 +489,7 @@ export default function Drivers() {
     api.get('/admin/badges/config')
       .then(r => setBadgeTiers(r.data.badges))
       .catch(() => {})
-    // Tous les chefs de flotte (avant : seulement ceux des livreurs de la page)
+    // Tous les chefs de flotte (avant : seulement ceux des coursiers de la page)
     api.get('/admin/chefs-de-flotte', { params: { status: 'all' } })
       .then(r => setChefs(Array.isArray(r.data?.chefs) ? r.data.chefs : []))
       .catch(() => {})
@@ -532,7 +532,7 @@ export default function Drivers() {
   }
 
   async function activateFleetDriver(driver) {
-    if (!confirm(`Activer ${driver.name ?? driver.phone} ? Ce livreur pourra commencer à accepter des courses.`)) return
+    if (!confirm(`Activer ${driver.name ?? driver.phone} ? Ce coursier pourra commencer à accepter des courses.`)) return
     try {
       await api.patch(`/admin/drivers/${driver.id}/validate`, { approve: true })
       fetch()
@@ -608,14 +608,14 @@ export default function Drivers() {
   return (
     <div style={pageWrap}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24, flexShrink: 0 }}>
-        <h1 style={{ fontSize: 22, fontWeight: 700 }}>Livreurs</h1>
+        <h1 style={{ fontSize: 22, fontWeight: 700 }}>Coursiers</h1>
         <div style={{ display: 'flex', gap: 8 }}>
           <button onClick={() => { fetch(); fetchPhoneRequests() }} style={btnOutline}>
             <RefreshCw size={14} /> Actualiser
           </button>
           {!isServiceClient && (
             <button onClick={() => setFormTarget({})} style={btnPrimary}>
-              <Plus size={14} /> Nouveau livreur
+              <Plus size={14} /> Nouveau coursier
             </button>
           )}
         </div>
@@ -648,7 +648,7 @@ export default function Drivers() {
               <table style={tableStyle}>
                 <thead>
                   <tr>
-                    {['Livreur', 'Véhicule', 'Numéro actuel', '', 'Nouveau numéro', 'Actions'].map(h => (
+                    {['Coursier', 'Véhicule', 'Numéro actuel', '', 'Nouveau numéro', 'Actions'].map(h => (
                       <th key={h} style={thStyle}>{h}</th>
                     ))}
                   </tr>
@@ -719,7 +719,7 @@ export default function Drivers() {
               <table style={tableStyle}>
                 <thead>
                   <tr>
-                    {['Livreur', 'Véhicule', 'Supprimé le', 'Historique', ''].map(h => (
+                    {['Coursier', 'Véhicule', 'Supprimé le', 'Historique', ''].map(h => (
                       <th key={h} style={thStyle}>{h}</th>
                     ))}
                   </tr>
@@ -731,7 +731,7 @@ export default function Drivers() {
                         <div style={{ fontWeight: 600 }}>{d.name ?? '—'}</div>
                         <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>
                           {d.archivedPhone ? `Ancien n° ${d.archivedPhone}` : 'Numéro libéré'}
-                          {d.deletedBySelf && ' · supprimé par le livreur'}
+                          {d.deletedBySelf && ' · supprimé par le coursier'}
                         </div>
                       </td>
                       <td style={tdStyle}>
@@ -772,7 +772,7 @@ export default function Drivers() {
 
       {/* ── Liste complète drivers ── */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 12, flexWrap: 'wrap', flexShrink: 0 }}>
-        <h2 style={{ fontSize: 15, fontWeight: 700 }}>Tous les livreurs</h2>
+        <h2 style={{ fontSize: 15, fontWeight: 700 }}>Tous les coursiers</h2>
         <div style={{ display: 'flex', gap: 6, marginLeft: 'auto' }}>
           {[
             ['all',         'Tous'],
@@ -980,7 +980,7 @@ export default function Drivers() {
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 12, marginTop: 16, flexShrink: 0 }}>
             <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page <= 1} style={btnOutline}>← Préc.</button>
             <span style={{ fontSize: 13, color: 'var(--text-muted)' }}>
-              Page {page} / {totalPages} — {total} livreurs
+              Page {page} / {totalPages} — {total} coursiers
             </span>
             <button onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page >= totalPages} style={btnOutline}>Suiv. →</button>
           </div>
@@ -997,7 +997,7 @@ export default function Drivers() {
         />
       )}
 
-      {/* Modal refus driver (nouveau livreur de flotte en attente) */}
+      {/* Modal refus driver (nouveau coursier de flotte en attente) */}
       {rejectTarget && (
         <SuspendModal
           target="driver"

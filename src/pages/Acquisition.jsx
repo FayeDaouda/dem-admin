@@ -158,11 +158,11 @@ function PassTab({ notify }) {
   }
 
   async function processPass() {
-    if (!window.confirm('Déclencher le prélèvement du jour pour tous les livreurs actifs ?')) return
+    if (!window.confirm('Déclencher le prélèvement du jour pour tous les coursiers actifs ?')) return
     setProcessing(true)
     try {
       const res = await api.post('/admin/forfait/process')
-      notify(`${res.data.charged} livreur(s) prélevé(s) ✓`)
+      notify(`${res.data.charged} coursier(s) prélevé(s) ✓`)
       load()
     } catch (e) { notify(e.response?.data?.message ?? 'Erreur', false) }
     setProcessing(false)
@@ -260,14 +260,14 @@ function PassTab({ notify }) {
 
       {/* Résumé */}
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12 }}>
-        {/* Dette = passe impayée d'un jour où le livreur a livré (même règle que le prélèvement) */}
-        <StatBox label="Dû par les livreurs" value={`${totalOwed.toLocaleString()} F`} color={totalOwed > 0 ? '#ef4444' : '#22c55e'} />
+        {/* Dette = passe impayée d'un jour où le coursier a livré (même règle que le prélèvement) */}
+        <StatBox label="Dû par les coursiers" value={`${totalOwed.toLocaleString()} F`} color={totalOwed > 0 ? '#ef4444' : '#22c55e'} />
         <StatBox label="Passes impayées (jours travaillés)" value={records} />
-        <StatBox label="Livreurs concernés" value={drivers} />
+        <StatBox label="Coursiers concernés" value={drivers} />
       </div>
       {data?.abandonedPurchases?.count > 0 && (
         <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>
-          + {data.abandonedPurchases.count} achat{data.abandonedPurchases.count > 1 ? 's' : ''} en ligne abandonné{data.abandonedPurchases.count > 1 ? 's' : ''} ({data.abandonedPurchases.amount.toLocaleString()} F) — pas une dette : le livreur n'a pas livré ce jour-là.
+          + {data.abandonedPurchases.count} achat{data.abandonedPurchases.count > 1 ? 's' : ''} en ligne abandonné{data.abandonedPurchases.count > 1 ? 's' : ''} ({data.abandonedPurchases.amount.toLocaleString()} F) — pas une dette : le coursier n'a pas livré ce jour-là.
         </div>
       )}
 
@@ -507,7 +507,7 @@ function AmbassadeursTab() {
   useEffect(() => { load() }, [load])
 
   const ambassadors = data?.ambassadors ?? []
-  // Totaux serveur dédoublonnés (un livreur peut figurer dans deux réseaux)
+  // Totaux serveur dédoublonnés (un coursier peut figurer dans deux réseaux)
   const summary = data?.summary
 
   if (loading) return <div style={{ color: 'var(--text-muted)' }}>Chargement…</div>
@@ -517,7 +517,7 @@ function AmbassadeursTab() {
       {/* Stats globales */}
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12 }}>
         <StatBox label="Chefs de flotte actifs"    value={summary?.fleetChiefs ?? ambassadors.length} color="#B8860B" />
-        <StatBox label="Livreurs recrutés"        value={summary?.recruitedDrivers ?? 0}                     color="var(--primary)" />
+        <StatBox label="Coursiers recrutés"        value={summary?.recruitedDrivers ?? 0}                     color="var(--primary)" />
         <StatBox label="Courses livrées (réseau)" value={(summary?.networkDelivered ?? 0).toLocaleString()} color="var(--success)" />
       </div>
 
@@ -589,14 +589,14 @@ function AmbassadeursTab() {
             {/* Tableau des drivers filleuls */}
             {isOpen && (
               <div style={{ marginTop: 16, borderTop: '1px solid rgba(0,0,0,.06)', paddingTop: 14 }}>
-                <Label>Livreurs recrutés par {a.name}</Label>
+                <Label>Coursiers recrutés par {a.name}</Label>
                 {drivers.length === 0 ? (
-                  <div style={{ color: 'var(--text-muted)', fontSize: 13 }}>Aucun livreur recruté pour l'instant.</div>
+                  <div style={{ color: 'var(--text-muted)', fontSize: 13 }}>Aucun coursier recruté pour l'instant.</div>
                 ) : (
                   <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
                     <thead>
                       <tr>
-                        {['Livreur', 'Véhicule', 'Statut', 'Courses livrées', 'Rejoint le'].map(h => (
+                        {['Coursier', 'Véhicule', 'Statut', 'Courses livrées', 'Rejoint le'].map(h => (
                           <th key={h} style={{ textAlign: 'left', padding: '6px 8px', color: 'var(--text-muted)', fontSize: 11, fontWeight: 700, borderBottom: '1px solid rgba(0,0,0,.07)' }}>
                             {h}
                           </th>
@@ -660,7 +660,7 @@ function FeesTab() {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16, maxWidth: 600 }}>
       {/* Mêmes définitions que Finance : facturés = demFee réel des courses livrées ;
-          encaissés = payés en ligne / wallet, ou repris sur le wallet du livreur (espèces) */}
+          encaissés = payés en ligne / wallet, ou repris sur le wallet du coursier (espèces) */}
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12 }}>
         <StatBox label="Frais facturés depuis le lancement" value={`${billed.toLocaleString()} FCFA`} color="var(--primary)" />
         <StatBox label="Dont encaissés par DEM" value={`${collected.toLocaleString()} FCFA`} color="var(--success)" />

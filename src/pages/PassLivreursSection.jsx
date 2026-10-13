@@ -3,7 +3,7 @@ import { Send } from 'lucide-react'
 import api from '../lib/api'
 import { glass, glassInput } from '../lib/glassStyles'
 
-// Section "Pass livreurs" de la page Tarifs (Config) — déplacée depuis
+// Section "Pass coursiers" de la page Tarifs (Config) — déplacée depuis
 // Finance > Tarifs (finance/TariffsTab.jsx), qui ne contenait plus rien
 // d'autre. Ne PAS la dupliquer sur une deuxième page : un même toggle
 // (dispatchGatingActive) éditable depuis deux endroits avec chacun son
@@ -81,7 +81,7 @@ function GatingToggle({ active, onToggle, toggling }) {
         <div style={{ fontWeight: 600, fontSize: 13, marginBottom: 2 }}>Bloquer la mise en ligne sans passe payée</div>
         <div style={{ color: 'var(--text-muted)', fontSize: 11.5, maxWidth: 420 }}>
           {active
-            ? 'Actif — un livreur ne peut passer en ligne que s\'il a payé sa passe du jour.'
+            ? 'Actif — un coursier ne peut passer en ligne que s\'il a payé sa passe du jour.'
             : 'Désactivé — accès libre, comme aujourd\'hui (aucun blocage à la mise en ligne).'}
         </div>
       </div>
@@ -146,13 +146,13 @@ export default function PassLivreursSection() {
     } finally { setTogglingGating(false) }
   }
 
-  if (loading || !data) return <Section title="Pass livreurs"><div style={{ color: 'var(--text-muted)', padding: 20 }}>Chargement…</div></Section>
+  if (loading || !data) return <Section title="Pass coursiers"><div style={{ color: 'var(--text-muted)', padding: 20 }}>Chargement…</div></Section>
 
   return (
     <>
       {error && <div style={{ fontSize: 12, color: 'var(--danger)', background: 'rgba(239,68,68,.08)', borderRadius: 6, padding: '8px 12px', marginBottom: 14 }}>{error}</div>}
 
-      <Section title="Pass livreurs">
+      <Section title="Pass coursiers">
         <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', marginBottom: 14 }}>
           <Field label="Statut" value={data.forfait.active ? 'Actif' : 'Inactif'} />
           <Field label="Montant standard" value={data.forfait.amount} unit=" F" />

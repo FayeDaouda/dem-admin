@@ -28,7 +28,7 @@ export default function ServiceClient() {
         <div>
           <h1 style={{ fontSize: 22, fontWeight: 700, marginBottom: 2 }}>Dashboard</h1>
           <p style={{ color: 'var(--text-muted)', fontSize: 12, margin: 0 }}>
-            Support clients/livreurs et gestion des comptes DEM Pro
+            Support clients/coursiers et gestion des comptes DEM Pro
           </p>
         </div>
         <button onClick={() => setReloadKey(k => k + 1)} style={btnOutline}>

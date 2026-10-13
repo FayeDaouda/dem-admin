@@ -17,7 +17,7 @@ const CONFIG_META = {
   dem_pro_commission_rate: { label: 'Commission DEM Pro – Wallet (%)', description: 'Prélevée sur la part "produit" des commandes payées via le paiement intégré DEM Pro (wallet)' },
   dem_pro_price_pro:       { label: 'Abonnement DEM Pro – Pro (F/mois)',      description: 'Prix mensuel facturé pour passer du palier Gratuit à Pro' },
   dem_pro_price_business:  { label: 'Abonnement DEM Pro – Business (F/mois)', description: 'Prix mensuel facturé pour passer au palier Business' },
-  driver_location_interval_sec: { label: 'Position du livreur en course – envoi toutes les (s)', description: 'Rythme auquel l\'app livreur envoie sa position pendant une course (3 à 30 s, 4 s si vide). Plus court = moto plus à jour côté client ; repasser à 10 en cas de charge serveur. Pris en compte au début de la course suivante.', placeholder: '4' },
+  driver_location_interval_sec: { label: 'Position du coursier en course – envoi toutes les (s)', description: 'Rythme auquel l\'app coursier envoie sa position pendant une course (3 à 30 s, 4 s si vide). Plus court = moto plus à jour côté client ; repasser à 10 en cas de charge serveur. Pris en compte au début de la course suivante.', placeholder: '4' },
 }
 
 
@@ -65,7 +65,7 @@ export default function Config() {
 }
 
 // ── Tab Tarifs ────────────────────────────────────────────────────────────────
-// Le contrôle "Pass livreurs — bloquer la mise en ligne" vit uniquement dans
+// Le contrôle "Pass coursiers — bloquer la mise en ligne" vit uniquement dans
 // Finance > Tarifs (finance/TariffsTab.jsx) — il vivait aussi ici avant,
 // deux pages indépendantes éditant le même flag avec chacune leur propre état
 // local pouvait écraser silencieusement le changement fait sur l'autre page
@@ -126,7 +126,7 @@ function TarifsTab() {
       <ZoneMatrixSection />
 
       {/* Le bouton Sauvegarder ci-dessous ne concerne QUE les champs
-          /admin/config en dessous (tarif de base, DEM Pro, position livreur),
+          /admin/config en dessous (tarif de base, DEM Pro, position coursier),
           pas la matrice. */}
       <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 28, marginBottom: 16 }}>
         <button onClick={handleSave} disabled={!hasChanges || saving} style={btnSave(hasChanges)}>
@@ -181,7 +181,7 @@ function TarifsTab() {
                       </div>
                       <div style={{ height: 1, background: 'rgba(0,0,0,.08)', margin: '3px 0' }} />
                       <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                        <span style={{ fontWeight: 700 }}>Part du livreur</span>
+                        <span style={{ fontWeight: 700 }}>Part du coursier</span>
                         <span style={{ fontWeight: 800, fontSize: 15 }}>{(coursePx - demFee).toLocaleString()} F</span>
                       </div>
                     </div>
@@ -196,7 +196,7 @@ function TarifsTab() {
         </div>
       )}
 
-      {/* Pass livreurs — section indépendante (endpoint distinct de
+      {/* Pass coursiers — section indépendante (endpoint distinct de
           /admin/config). Ne pas la dupliquer sur une autre page (voir
           commentaire au-dessus de TarifsTab). */}
       <div style={{ marginTop: 16 }}>

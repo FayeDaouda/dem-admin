@@ -6,9 +6,9 @@ import { glass, glassInput } from '../lib/glassStyles'
 
 // Frais de mise en relation DEM (page Tarifs) — un montant prélevé sur
 // CHAQUE course, quel que soit le paiement (wallet, mobile money, espèces),
-// sans rapport avec les passes livreur ni les abonnements DEM Pro. Pris sur
-// la part du livreur, jamais ajouté au prix client. Payée en ligne ou par
-// wallet : DEM ne verse au livreur que sa part ; en espèces : repris sur
+// sans rapport avec les passes coursier ni les abonnements DEM Pro. Pris sur
+// la part du coursier, jamais ajouté au prix client. Payée en ligne ou par
+// wallet : DEM ne verse au coursier que sa part ; en espèces : repris sur
 // son wallet. Endpoints /admin/connection-fee (lecture SUPER/FINANCE,
 // réglage SUPER), voir dem-backend utils/connection-fee.js.
 export default function CashFeeSection() {
@@ -65,8 +65,8 @@ export default function CashFeeSection() {
 
       <p style={{ color: 'var(--text-muted)', fontSize: 12, marginBottom: 14, maxWidth: 700 }}>
         Prélevés sur <b>chaque course</b>, quel que soit le paiement : wallet, mobile money ou espèces.
-        Sans rapport avec les passes livreur ni les abonnements DEM Pro.
-        Le <b>prix client ne change pas</b> : le livreur reçoit le prix de la course moins ces frais.
+        Sans rapport avec les passes coursier ni les abonnements DEM Pro.
+        Le <b>prix client ne change pas</b> : le coursier reçoit le prix de la course moins ces frais.
         Payée en ligne ou par wallet, DEM ne lui verse que sa part ; payée en espèces, les frais sont repris
         sur son wallet (une seule fois par course, le solde peut passer en négatif).
         Les courses Express gardent leur commission de 10 % (au moins ce montant). Un changement ne touche que les nouvelles courses.

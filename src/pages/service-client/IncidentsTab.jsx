@@ -67,7 +67,7 @@ export default function IncidentsTab() {
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
             <thead>
               <tr>
-                {['Type', 'Sévérité', 'Statut', 'Livreur', 'Ouvert le'].map(h => (
+                {['Type', 'Sévérité', 'Statut', 'Coursier', 'Ouvert le'].map(h => (
                   <th key={h} style={{ ...thStyle, ...stickyTh }}>{h}</th>
                 ))}
               </tr>
@@ -122,7 +122,7 @@ function ReportModal({ onClose }) {
       <div style={{ ...glass, width: 400, maxWidth: '94vw', borderRadius: 16, padding: 24 }} onClick={e => e.stopPropagation()}>
         <h2 style={{ fontSize: 16, fontWeight: 700, marginBottom: 16 }}>Signaler un utilisateur</h2>
         <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
-          {[['CLIENT', 'Client'], ['DRIVER', 'Livreur']].map(([v, l]) => (
+          {[['CLIENT', 'Client'], ['DRIVER', 'Coursier']].map(([v, l]) => (
             <button key={v} onClick={() => setUserRole(v)} style={{
               flex: 1, padding: '6px 0', borderRadius: 8, border: '1px solid rgba(0,119,182,.25)',
               background: userRole === v ? 'var(--primary)' : 'rgba(255,255,255,.5)',

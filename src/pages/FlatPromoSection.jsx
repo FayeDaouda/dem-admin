@@ -85,14 +85,14 @@ export default function FlatPromoSection() {
       <p style={{ color: 'var(--text-muted)', fontSize: 12, marginBottom: 14, maxWidth: 640 }}>
         Quand elle est activée, <b>chaque course coûte le même prix au client</b>, quelle que soit la distance :
         course Normale ou Express (sans majoration heure de pointe) et chaque arrêt d'une tournée groupée.
-        Le livreur touche le montant moins {data.demFee} F, DEM garde {data.demFee} F.
+        Le coursier touche le montant moins {data.demFee} F, DEM garde {data.demFee} F.
         La grille des zones ci-dessous n'est pas modifiée : en désactivant, on revient aux prix normaux.
       </p>
 
       {active && (
         <div style={{ padding: '10px 14px', borderRadius: 10, background: 'rgba(22,163,74,.08)', fontSize: 13, marginBottom: 14 }}>
           Toutes les courses sont actuellement à <b>{data.price.toLocaleString('fr-FR')} F</b>
-          {' '}({(data.price - data.demFee).toLocaleString('fr-FR')} F livreur + {data.demFee} F DEM)
+          {' '}({(data.price - data.demFee).toLocaleString('fr-FR')} F coursier + {data.demFee} F DEM)
           {data.endsAt ? <> — fin automatique le <b>{formatDate(data.endsAt)}</b>.</> : ' — sans date de fin, à désactiver manuellement.'}
         </div>
       )}

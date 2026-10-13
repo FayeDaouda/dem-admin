@@ -197,7 +197,7 @@ function OverviewTab({ data, period, onPeriod, loading }) {
           <Stat label="Commandes créées" value={formatCount(act.created)} />
           <Stat label="Livrées" value={formatCount(act.delivered)} color="var(--success)" />
           <Stat label="Taux d'annulation" value={`${act.cancellationRate}%`} sub={`${formatCount(act.cancelled)} annulée${act.cancelled > 1 ? 's' : ''} / ${formatCount(act.created)}`} color={act.cancellationRate >= 20 ? 'var(--danger)' : undefined} />
-          <Stat label="Montant des livraisons" value={formatF(act.deliveryAmount)} sub="part livreur + commission − promo" />
+          <Stat label="Montant des livraisons" value={formatF(act.deliveryAmount)} sub="part coursier + commission − promo" />
           <Stat label="Commission DEM" value={formatF(act.commission)} color="var(--primary)" />
           <Stat label="Remises promo (payées par DEM)" value={formatF(act.discounts)} />
         </div>
@@ -221,7 +221,7 @@ function OverviewTab({ data, period, onPeriod, loading }) {
       <Section title="En ce moment">
         <div style={grid5}>
           <Stat small label="Programmées" value={formatCount(now.scheduled)} />
-          <Stat small label="En attente d'un livreur" value={formatCount(now.pending)} color={now.pending > 0 ? '#f59e0b' : undefined} />
+          <Stat small label="En attente d'un coursier" value={formatCount(now.pending)} color={now.pending > 0 ? '#f59e0b' : undefined} />
           <Stat small label="En cours" value={formatCount(now.inProgress)} color={now.inProgress > 0 ? '#6366f1' : undefined} />
           <Stat small label="Livrées non réglées" value={formatCount(now.unpaidDeliveries)} color={now.unpaidDeliveries > 0 ? '#f59e0b' : undefined} />
           <Stat small label="Paiements en litige" value={formatCount(now.disputedDeliveries)} color={now.disputedDeliveries > 0 ? 'var(--danger)' : undefined} />
@@ -309,7 +309,7 @@ function OrdersTab({ accountId }) {
         <div style={{ overflowX: 'auto', opacity: loading ? 0.6 : 1 }}>
           <table style={{ width: '100%', minWidth: 760, borderCollapse: 'collapse' }}>
             <thead>
-              <tr>{['Créée le', 'Statut', 'Destination', 'Livreur', 'Montant', 'Livraison payée par', 'Paiement'].map(h => <th key={h} style={th}>{h}</th>)}</tr>
+              <tr>{['Créée le', 'Statut', 'Destination', 'Coursier', 'Montant', 'Livraison payée par', 'Paiement'].map(h => <th key={h} style={th}>{h}</th>)}</tr>
             </thead>
             <tbody>
               {res.orders.map(o => {
@@ -327,7 +327,7 @@ function OrdersTab({ accountId }) {
                       )}
                     </td>
                     <td style={td}>{o.driver?.name ?? '—'}</td>
-                    <td style={{ ...td, fontWeight: 700 }} title={`Part livreur ${formatF(o.price)} · commission ${formatF(o.demFee)} · promo ${formatF(o.discountAmount)}`}>
+                    <td style={{ ...td, fontWeight: 700 }} title={`Part coursier ${formatF(o.price)} · commission ${formatF(o.demFee)} · promo ${formatF(o.discountAmount)}`}>
                       {formatF((o.price ?? 0) + (o.demFee ?? 0) - (o.discountAmount ?? 0))}
                     </td>
                     <td style={{ ...td, fontSize: 12 }}>{o.paymentMode === 'merchant' ? 'Commerçant' : 'Destinataire'}</td>
@@ -874,15 +874,15 @@ function BatchesTab({ accountId }) {
                     {b.scheduledAt && <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>prévue {fmtDate(b.scheduledAt, true)}</div>}
                   </div>
                   <div><Chip color={st.color}>{st.label}</Chip></div>
-                  <div style={{ fontSize: 12 }}>{b.driver?.name ?? <span style={{ color: 'var(--text-muted)' }}>Aucun livreur</span>}</div>
+                  <div style={{ fontSize: 12 }}>{b.driver?.name ?? <span style={{ color: 'var(--text-muted)' }}>Aucun coursier</span>}</div>
                   <div style={{ fontSize: 12 }}>
                     <strong>{b.stops.delivered}</strong> / {b.stops.total} livrés
                     {b.stops.cancelled > 0 && <div style={{ color: 'var(--danger)', fontSize: 11 }}>{b.stops.cancelled} annulé{b.stops.cancelled > 1 ? 's' : ''}</div>}
                   </div>
-                  <div style={{ fontSize: 12 }} title="Montant estimé à la création (part livreur + commission)">
+                  <div style={{ fontSize: 12 }} title="Montant estimé à la création (part coursier + commission)">
                     estimé <strong>{formatF(b.estimatedAmount)}</strong>
                   </div>
-                  <div style={{ fontSize: 12 }} title="Arrêts réellement livrés (part livreur + commission − promo)">
+                  <div style={{ fontSize: 12 }} title="Arrêts réellement livrés (part coursier + commission − promo)">
                     livré <strong style={{ color: 'var(--success)' }}>{formatF(b.deliveredAmount)}</strong>
                   </div>
                 </div>

@@ -102,7 +102,7 @@ function DocPicker({ file, hasExisting, onPick }) {
   )
 }
 
-// ── Modal Nouveau livreur ──────────────────────────────────────────────────────
+// ── Modal Nouveau coursier ──────────────────────────────────────────────────────
 function NewDriverModal({ onClose, onSaved }) {
   const [form, setForm] = useState({ phone: '+221 ', name: '' })
   const [docs, setDocs] = useState({ insuranceExpiry: '' })
@@ -145,7 +145,7 @@ function NewDriverModal({ onClose, onSaved }) {
     <div style={overlay} onClick={onClose}>
       <div style={{ ...glass, width: 460, maxWidth: '94vw', borderRadius: 16, padding: 24, maxHeight: '90vh', overflowY: 'auto' }} onClick={e => e.stopPropagation()}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
-          <h2 style={{ fontSize: 17, fontWeight: 700 }}>Nouveau livreur</h2>
+          <h2 style={{ fontSize: 17, fontWeight: 700 }}>Nouveau coursier</h2>
           <button onClick={onClose} style={btnIcon}><X size={16} /></button>
         </div>
 
@@ -187,7 +187,7 @@ function NewDriverModal({ onClose, onSaved }) {
             style={{ width: '100%', background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '4px 0', marginBottom: showDocs ? 14 : 0 }}
           >
             <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--primary)' }}>
-              Documents livreur {hasFiles ? `(${filesCount + (docs.insuranceExpiry ? 1 : 0)} sélectionné(s))` : '(optionnel)'}
+              Documents coursier {hasFiles ? `(${filesCount + (docs.insuranceExpiry ? 1 : 0)} sélectionné(s))` : '(optionnel)'}
             </span>
             <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>{showDocs ? '▲' : '▼'}</span>
           </button>
@@ -221,7 +221,7 @@ function NewDriverModal({ onClose, onSaved }) {
   )
 }
 
-// ── Modal détail livreur ────────────────────────────────────────────────────────
+// ── Modal détail coursier ────────────────────────────────────────────────────────
 function DriverDetailModal({ driverId, onClose, onUpdated }) {
   const [driver, setDriver]   = useState(null)
   const [loading, setLoading] = useState(true)
@@ -311,7 +311,7 @@ function DriverDetailModal({ driverId, onClose, onUpdated }) {
         setSaveError(e.response?.data?.message ?? 'Erreur.')
       } finally { setStatusActing(false) }
     } else {
-      if (!confirm('Réactiver ce livreur ?')) return
+      if (!confirm('Réactiver ce coursier ?')) return
       setStatusActing(true)
       try {
         await fleetApi.patch(`/chefs-de-flotte/me/drivers/${driverId}/activate`)
@@ -332,7 +332,7 @@ function DriverDetailModal({ driverId, onClose, onUpdated }) {
           <div style={{ color: 'var(--text-muted)', padding: 20, textAlign: 'center' }}>Chargement…</div>
         ) : loadError || !driver ? (
           <>
-            <div style={errorStyle}>{loadError || 'Livreur introuvable.'}</div>
+            <div style={errorStyle}>{loadError || 'Coursier introuvable.'}</div>
             <div style={{ textAlign: 'right', marginTop: 16 }}>
               <button onClick={onClose} style={btnOutline}>Fermer</button>
             </div>
@@ -391,7 +391,7 @@ function DriverDetailModal({ driverId, onClose, onUpdated }) {
 
             {driver.chefDeFlotteStatus === 'ACTIVE' && !driver.isActive && (
               <div style={{ ...errorStyle, marginBottom: 14 }}>
-                ⚠ Ce livreur est suspendu.{driver.suspensionReason && ` Motif : ${driver.suspensionReason}`}
+                ⚠ Ce coursier est suspendu.{driver.suspensionReason && ` Motif : ${driver.suspensionReason}`}
               </div>
             )}
 
@@ -542,10 +542,10 @@ export default function FleetDrivers() {
   return (
     <div style={pageWrap}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12, marginBottom: 24, flexShrink: 0 }}>
-        <h1 style={{ fontSize: 22, fontWeight: 700 }}>Mes livreurs</h1>
+        <h1 style={{ fontSize: 22, fontWeight: 700 }}>Mes coursiers</h1>
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
           <button onClick={fetchDrivers} style={btnOutline}><RefreshCw size={14} /> Actualiser</button>
-          <button onClick={() => setShowNew(true)} style={btnPrimary}><Plus size={14} /> Nouveau livreur</button>
+          <button onClick={() => setShowNew(true)} style={btnPrimary}><Plus size={14} /> Nouveau coursier</button>
         </div>
       </div>
 
@@ -577,12 +577,12 @@ export default function FleetDrivers() {
           {loading ? (
             <div style={{ color: 'var(--text-muted)', padding: 20 }}>Chargement…</div>
           ) : drivers.length === 0 ? (
-            <div style={{ color: 'var(--text-muted)', padding: 20 }}>Aucun livreur pour ce filtre.</div>
+            <div style={{ color: 'var(--text-muted)', padding: 20 }}>Aucun coursier pour ce filtre.</div>
           ) : (
             <table style={tableStyle}>
               <thead>
                 <tr>
-                  {['Livreur', 'Téléphone', 'Véhicule', 'Statut', 'Activité', 'Connexion', 'Note', 'Courses livrées', 'Inscription', ''].map((h, i) => (
+                  {['Coursier', 'Téléphone', 'Véhicule', 'Statut', 'Activité', 'Connexion', 'Note', 'Courses livrées', 'Inscription', ''].map((h, i) => (
                     <th key={h} style={{ ...thStyle, ...(i === 0 ? stickyThCol : stickyTh) }}>{h}</th>
                   ))}
                 </tr>

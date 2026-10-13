@@ -58,7 +58,7 @@ function findPrice(fares, idA, idB, orderType) {
 // Section "Zones (Dakar)" de la page Tarifs (Config) — pas un onglet à part,
 // elle gère son propre chargement/soumission (endpoints /admin/zone-fares/*,
 // distincts de /admin/config) mais s'affiche au fil de l'onglet Tarifs, avec
-// le tarif de base et le pass livreurs (voir PassLivreursSection.jsx).
+// le tarif de base et le pass coursiers (voir PassLivreursSection.jsx).
 export default function ZoneMatrixSection() {
   const [data, setData] = useState(null)
   const [draft, setDraft] = useState(null)
@@ -141,10 +141,10 @@ export default function ZoneMatrixSection() {
     finally { setSubmitting(false) }
   }
 
-  // Mesure temporaire (bug app livreur — voir bumpZoneFaresMatrix côté back) :
+  // Mesure temporaire (bug app coursier — voir bumpZoneFaresMatrix côté back) :
   // ajuste directement la matrice ENREGISTRÉE (pas le brouillon en cours
   // d'édition) de `delta` FCFA sur chaque cellule, puis recharge. -100 permet
-  // d'annuler la compensation une fois l'app livreur mise à jour.
+  // d'annuler la compensation une fois l'app coursier mise à jour.
   async function bumpMatrix(delta) {
     if (!window.confirm(`Ajuster TOUTES les cellules de la matrice enregistrée de ${delta > 0 ? '+' : ''}${delta} FCFA ? Action immédiate, pas de brouillon à valider.`)) return
     setBumping(true); setError('')
@@ -179,7 +179,7 @@ export default function ZoneMatrixSection() {
         </p>
         <p style={{ fontSize: 11.5, color: 'var(--text-muted)', marginBottom: 4 }}>
           Chaque montant est le <strong>prix total payé par le client</strong> — les frais de mise en relation DEM (réglés plus haut, 100F par défaut)
-          sont déjà inclus dedans : le livreur touche le montant saisi moins ces frais.
+          sont déjà inclus dedans : le coursier touche le montant saisi moins ces frais.
         </p>
         {data.isDefault && !previewedFromOsrm && (
           <div style={{ fontSize: 11.5, color: 'var(--primary)', background: 'rgba(0,119,182,.08)', borderRadius: 6, padding: '8px 12px', marginBottom: 10 }}>
@@ -194,7 +194,7 @@ export default function ZoneMatrixSection() {
 
         {isSuper && (
           <div style={{ fontSize: 11, color: 'var(--text-muted)', background: 'rgba(239,68,68,.06)', borderRadius: 6, padding: '8px 12px', marginBottom: 10 }}>
-            Mesure temporaire (bug app livreur en attente de mise à jour) : <strong>+100</strong> compense la commission DEM non demandée au client par les livreurs sur l'app pas encore à jour ; repasser <strong>-100</strong> une fois la mise à jour diffusée.{' '}
+            Mesure temporaire (bug app coursier en attente de mise à jour) : <strong>+100</strong> compense la commission DEM non demandée au client par les coursiers sur l'app pas encore à jour ; repasser <strong>-100</strong> une fois la mise à jour diffusée.{' '}
             <button onClick={() => bumpMatrix(100)} disabled={bumping} style={{ ...btnOutline, padding: '3px 10px', marginRight: 6 }}>+100F partout</button>
             <button onClick={() => bumpMatrix(-100)} disabled={bumping} style={{ ...btnOutline, padding: '3px 10px' }}>-100F partout</button>
           </div>

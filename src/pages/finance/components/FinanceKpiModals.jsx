@@ -106,7 +106,7 @@ export function RevenueModal({ icon, color, onClose }) {
           <Note>
             {formatCount(data.deliveredCount)} course(s) livrée(s) sur la période. Commission = frais DEM réellement facturés
             sur les courses livrées (date de livraison). « Encaissée » = payée en ligne, l'argent est chez DEM.
-            « À recouvrer » = payée en espèces au livreur (la commission est restée chez lui) ou pas encore payée.
+            « À recouvrer » = payée en espèces au coursier (la commission est restée chez lui) ou pas encore payée.
             Pass et abonnements = montants réellement prélevés.
           </Note>
         </>
@@ -138,13 +138,13 @@ export function FeesModal({ icon, color, onClose }) {
             <StatBox label="À RECOUVRER" value={formatF(data.commission.toRecover)} color="#f97316" />
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 12 }}>
-            <StatBox label="CASH — CHEZ LES LIVREURS" value={formatF(data.commission.toRecoverByChannel.cash)} color="#f97316" sub={`${formatCount(data.ordersByChannel.cash)} course(s)`} />
+            <StatBox label="CASH — CHEZ LES COURSIERS" value={formatF(data.commission.toRecoverByChannel.cash)} color="#f97316" sub={`${formatCount(data.ordersByChannel.cash)} course(s)`} />
             <StatBox label="PAS ENCORE PAYÉE" value={formatF(data.commission.toRecoverByChannel.unpaid)} color="#94a3b8" sub={`${formatCount(data.ordersByChannel.unpaid)} course(s)`} />
             <StatBox label="EN LITIGE" value={formatF(data.commission.toRecoverByChannel.disputed)} color="#ef4444" sub={`${formatCount(data.ordersByChannel.disputed)} course(s)`} />
           </div>
           <Note>
             Frais DEM réellement facturés sur les courses livrées (EXPRESS, tournées DEM Pro, tarif par zone…) — plus aucune
-            estimation par la grille de commission. Facturée = encaissée (en ligne + reprise sur le wallet du livreur pour les courses en espèces) + à recouvrer.
+            estimation par la grille de commission. Facturée = encaissée (en ligne + reprise sur le wallet du coursier pour les courses en espèces) + à recouvrer.
           </Note>
         </>
       )}
@@ -181,13 +181,13 @@ export function TransactionsModal({ icon, color, onClose }) {
             <StatBox label="EN LIGNE — ORANGE MONEY" value={line(s.onlineOrangeMoney)} color="#f97316" />
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 12 }}>
-            <StatBox label="CASH (LIVREUR)" value={line(s.cash)} color="#6366f1" />
+            <StatBox label="CASH (COURSIER)" value={line(s.cash)} color="#6366f1" />
             <StatBox label="NON PAYÉES" value={line(s.unpaid)} color="#94a3b8" />
             <StatBox label="LITIGES" value={line(s.disputed)} color="#ef4444" />
           </div>
           <Note>
-            Nombre de courses · montant payé par le client (part livreur + commission − remise). « En ligne » = paiement SamirPay
-            confirmé, avec l'opérateur réellement utilisé. « Cash » = paiement confirmé par le livreur ou un admin hors application.
+            Nombre de courses · montant payé par le client (part coursier + commission − remise). « En ligne » = paiement SamirPay
+            confirmé, avec l'opérateur réellement utilisé. « Cash » = paiement confirmé par le coursier ou un admin hors application.
           </Note>
         </>
       )}
@@ -195,7 +195,7 @@ export function TransactionsModal({ icon, color, onClose }) {
   )
 }
 
-// ── KPI : Pass livreurs ───────────────────────────────────────────────────────
+// ── KPI : Pass coursiers ───────────────────────────────────────────────────────
 const PASS_PERIODS = [
   { key: 'today', label: "Aujourd'hui" },
   { key: 'week',  label: '7 jours' },
@@ -214,7 +214,7 @@ export function PassModal({ icon, color, onClose }) {
   const periodData = data?.[period]
 
   return (
-    <Shell icon={icon} color={color} title="Pass livreurs" onClose={onClose}>
+    <Shell icon={icon} color={color} title="Pass coursiers" onClose={onClose}>
       <PeriodTabs periods={PASS_PERIODS} active={period} onChange={setPeriod} color={color} />
       {loading ? <Loading /> : !data ? <LoadError /> : (
         <>
@@ -224,9 +224,9 @@ export function PassModal({ icon, color, onClose }) {
             <StatBox label="PASS OFFERTS" value={formatCount(periodData?.gifted)} color="#94a3b8" />
           </div>
           <Note>
-            En ce moment : <strong style={{ color: 'var(--text)' }}>{formatCount(data.driversWithActivePass)}</strong> livreur(s) avec
+            En ce moment : <strong style={{ color: 'var(--text)' }}>{formatCount(data.driversWithActivePass)}</strong> coursier(s) avec
             une passe en cours de validité, sur <strong style={{ color: 'var(--text)' }}>{formatCount(data.totalActiveDrivers)}</strong> comptes
-            livreurs actifs ({formatCount(data.driversWithoutActivePass)} sans passe). Revenus = montants réellement prélevés ; les pass offerts ne rapportent rien.
+            coursiers actifs ({formatCount(data.driversWithoutActivePass)} sans passe). Revenus = montants réellement prélevés ; les pass offerts ne rapportent rien.
           </Note>
         </>
       )}

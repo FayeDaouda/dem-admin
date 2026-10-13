@@ -9,14 +9,14 @@ import CoursesTab from './CoursesTab'
 import CaCoursesTab from './CaCoursesTab'
 import SamirpayTab from './SamirpayTab'
 
-// Onglet "Tarifs" retiré — Pass livreurs + pricing par zone ont déménagé sur
+// Onglet "Tarifs" retiré — Pass coursiers + pricing par zone ont déménagé sur
 // la page Tarifs dédiée du menu (Config, voir ZoneMatrixSection.jsx et
 // PassLivreursSection.jsx dans pages/) ; base_fare/price_per_km/grille de
 // commissions s'éditent déjà là-bas aussi. Ne pas les remettre en double ici.
 const TABS = [
   ['revenue',      'Revenus',      Wallet,             RevenueTab],
   ['transactions', 'Paiements des courses', Receipt,    TransactionsTab],
-  ['pass',         'Pass livreurs', Ticket,             PassTab],
+  ['pass',         'Pass coursiers', Ticket,             PassTab],
   ['courses',      'Courses',      Package,            CoursesTab],
   ['ca-courses',   'Commission courses', TrendingUp,    CaCoursesTab],
   ['samirpay',     'Paiement en ligne', ShieldAlert,    SamirpayTab],

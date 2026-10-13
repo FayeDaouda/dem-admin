@@ -41,7 +41,7 @@ export default function FinanceKpiRow({ reloadKey }) {
           sub={loading ? undefined : `En ligne : ${formatF(kpis?.feesCollectedToday)} · À recouvrer : ${formatF(kpis?.feesToRecoverToday)}`}
           color="#0ea5e9" onClick={() => setOpenModal('fees')} />
         <StatCard icon={HandCoins} label="Commission à recouvrer (cumul)" value={money(outstanding?.total)}
-          sub={loading ? undefined : `Cash chez les livreurs : ${formatF(outstanding?.cash)} · Non payée : ${formatF((outstanding?.unpaid ?? 0) + (outstanding?.disputed ?? 0))}`}
+          sub={loading ? undefined : `Cash chez les coursiers : ${formatF(outstanding?.cash)} · Non payée : ${formatF((outstanding?.unpaid ?? 0) + (outstanding?.disputed ?? 0))}`}
           color="#f97316" />
         <StatCard icon={Receipt} label="Livraisons payées (jour)" value={count(kpis?.transactionsToday)}
           sub={loading ? undefined : `sur ${formatCount(kpis?.deliveredToday)} livrée(s) aujourd'hui`}

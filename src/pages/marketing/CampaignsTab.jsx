@@ -6,7 +6,7 @@ import { glass, glassInput } from '../../lib/glassStyles'
 import { useAutoRefresh } from '../../lib/useAutoRefresh'
 import { targetLabel } from '../../lib/broadcastTargets'
 
-const AUDIENCE_OPTIONS = [['all', 'Tous'], ['clients', 'Clients'], ['drivers', 'Livreurs']]
+const AUDIENCE_OPTIONS = [['all', 'Tous'], ['clients', 'Clients'], ['drivers', 'Coursiers']]
 
 function Section({ icon: Icon, title, children, action }) {
   return (

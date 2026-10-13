@@ -8,7 +8,7 @@ import { glass, glassInput, pageWrap, pageScroll } from '../lib/glassStyles'
 // par ici :
 //   - Règles : offres automatiques ÉTEINTES par défaut, que l'admin allume,
 //     programme (dates) et dont il choisit le type de récompense ;
-//   - Attribuer : une récompense à une personne (client, livreur, DEM Pro),
+//   - Attribuer : une récompense à une personne (client, coursier, DEM Pro),
 //     tout de suite ou à une date programmée ;
 //   - Historique : tout ce qui a été attribué, utilisé, annulé.
 // Serveur : modules/rewards (GET /admin/rewards, /admin/rewards/grants…).
@@ -19,7 +19,7 @@ const TABS = [
   { key: 'rules', label: 'Règles automatiques', icon: Power },
 ]
 
-const ROLE_LABELS = { CLIENT: 'Client', DRIVER: 'Livreur', DEM_PRO: 'DEM Pro', CHEF_DE_FLOTTE: 'Chef de flotte' }
+const ROLE_LABELS = { CLIENT: 'Client', DRIVER: 'Coursier', DEM_PRO: 'DEM Pro', CHEF_DE_FLOTTE: 'Chef de flotte' }
 const STATUS = {
   SCHEDULED: { label: 'Programmée', color: '#6366f1' },
   APPLYING: { label: 'En cours', color: '#6366f1' },
@@ -136,7 +136,7 @@ function GrantForm({ meta, onGranted }) {
       COURSE_FREE: `${uses > 1 ? `${uses} courses offertes` : '1 course offerte'}`,
       COURSE_PERCENT: `-${v || '…'} % sur ${uses > 1 ? `${uses} courses` : '1 course'}`,
       COURSE_FIXED: `-${v || '…'} F sur ${uses > 1 ? `${uses} courses` : '1 course'}`,
-      FORFAIT_DAYS: `passe livreur offerte ${v || '…'} jour(s)`,
+      FORFAIT_DAYS: `passe coursier offerte ${v || '…'} jour(s)`,
       PRO_PLAN_DAYS: `${v || '…'} jour(s) d'offre DEM Pro`,
     }[type]
     return `${user.name ?? user.phone} recevra : ${what}${when === 'later' && startsAt ? `, le ${fmt(startsAt)}` : ', tout de suite'}.`
@@ -166,7 +166,7 @@ function GrantForm({ meta, onGranted }) {
       <Field label="1. Bénéficiaire">
         <div style={{ position: 'relative' }}>
           <Search size={14} style={{ position: 'absolute', left: 10, top: 11, color: 'var(--text-muted)' }} />
-          <input value={query} onChange={e => { setQuery(e.target.value); setUser(null) }} placeholder="Nom ou numéro (client, livreur, DEM Pro)"
+          <input value={query} onChange={e => { setQuery(e.target.value); setUser(null) }} placeholder="Nom ou numéro (client, coursier, DEM Pro)"
             style={{ ...glassInput, width: '100%', paddingLeft: 30, boxSizing: 'border-box' }} />
           {results.length > 0 && (
             <div style={{ ...glass, position: 'absolute', zIndex: 5, left: 0, right: 0, top: 40, padding: 4 }}>

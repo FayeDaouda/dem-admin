@@ -9,7 +9,7 @@ import { targetLabel } from '../lib/broadcastTargets'
 // que celui qu'il renvoie pour les notifications programmées).
 const PROFILES = [
   { value: 'clients', label: 'Clients',          icon: Users,     desc: 'Utilisateurs avec le rôle Client' },
-  { value: 'drivers', label: 'Livreurs',         icon: Bike,      desc: 'Utilisateurs avec le rôle Livreur' },
+  { value: 'drivers', label: 'Coursiers',         icon: Bike,      desc: 'Utilisateurs avec le rôle Coursier' },
   { value: 'dem_pro', label: 'DEM Pro',          icon: Briefcase, desc: 'Comptes entreprise DEM Pro' },
   { value: 'chefs',   label: 'Chefs de flotte',  icon: Truck,     desc: 'Gestionnaires de flotte' },
 ]
@@ -30,7 +30,7 @@ const TEMPLATES = [
     body: 'Commandez vos livraisons dès maintenant. Rapide, fiable et au meilleur prix. Bienvenue sur DEM !',
   },
   {
-    label: 'Appel aux livreurs',
+    label: 'Appel aux coursiers',
     title: 'Les commandes arrivent ! 🏍️',
     body: 'Connectez-vous maintenant pour recevoir vos premières courses. Bonne route avec DEM !',
   },

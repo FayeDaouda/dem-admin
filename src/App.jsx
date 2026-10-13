@@ -12,8 +12,6 @@ import Drivers     from './pages/Drivers'
 import Clients     from './pages/Clients'
 import Config      from './pages/Config'
 import Acquisition from './pages/Acquisition'
-import AcquisitionOverview from './pages/AcquisitionOverview'
-import Promotions from './pages/Promotions'
 import Rewards from './pages/Rewards'
 import NewProfiles from './pages/NewProfiles'
 import OutreachTable from './pages/OutreachTable'
@@ -28,7 +26,7 @@ import Marketing from './pages/marketing'
 import Finance from './pages/finance'
 import Equipes from './pages/Equipes'
 import Maintenance from './pages/Maintenance'
-import { ClientBadgesPage, DriverBadgesPage } from './pages/Badges'
+import BadgesPage from './pages/Badges'
 import Parrainage from './pages/Parrainage'
 import Broadcast from './pages/Broadcast'
 
@@ -110,13 +108,15 @@ function AppRoutes() {
       <Route path="/clients"  element={<ProtectedRoute><Clients /></ProtectedRoute>} />
       <Route path="/config"      element={<ProtectedRoute><Config /></ProtectedRoute>} />
       <Route path="/acquisition" element={<ProtectedRoute><Acquisition /></ProtectedRoute>} />
-      <Route path="/acquisition-overview" element={<ProtectedRoute><AcquisitionOverview /></ProtectedRoute>} />
-      <Route path="/promotions" element={<ProtectedRoute><Promotions /></ProtectedRoute>} />
+      {/* Anciennes adresses — redirigées sans échéance (plan de refonte, étape 1) */}
+      <Route path="/acquisition-overview" element={<Navigate to="/marketing?tab=acquisition" replace />} />
+      <Route path="/promotions" element={<Navigate to="/marketing?tab=promotions" replace />} />
       <Route path="/recompenses" element={<ProtectedRoute><Rewards /></ProtectedRoute>} />
       <Route path="/nouveaux-profils" element={<ProtectedRoute><NewProfiles /></ProtectedRoute>} />
       <Route path="/tableau" element={<ProtectedRoute><OutreachTable /></ProtectedRoute>} />
-      <Route path="/badges/clients" element={<ProtectedRoute><ClientBadgesPage /></ProtectedRoute>} />
-      <Route path="/badges/drivers" element={<ProtectedRoute><DriverBadgesPage /></ProtectedRoute>} />
+      <Route path="/badges" element={<ProtectedRoute><BadgesPage /></ProtectedRoute>} />
+      <Route path="/badges/clients" element={<Navigate to="/badges?tab=clients" replace />} />
+      <Route path="/badges/drivers" element={<Navigate to="/badges?tab=coursiers" replace />} />
       <Route path="/parrainage" element={<ProtectedRoute><Parrainage /></ProtectedRoute>} />
       <Route path="/broadcast"  element={<ProtectedRoute><Broadcast /></ProtectedRoute>} />
       <Route path="/incidents"   element={<ProtectedRoute><Incidents /></ProtectedRoute>} />

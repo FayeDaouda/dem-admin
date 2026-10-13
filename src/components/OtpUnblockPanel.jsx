@@ -11,7 +11,7 @@ import AccountSecurityPanel from './AccountSecurityPanel'
 // blocage ici et le lève. Chaque déblocage est tracé dans l'audit.
 
 const PURPOSE_LABELS = { LOGIN: 'Connexion', CASHOUT: 'Retrait', PIN_SETUP: 'Code secret (création / oubli)', PHONE_CHANGE: 'Changement de numéro' }
-const ROLE_LABELS = { CLIENT: 'Client', DRIVER: 'Livreur', DEM_PRO: 'DEM Pro', CHEF_DE_FLOTTE: 'Chef de flotte', ADMIN: 'Admin' }
+const ROLE_LABELS = { CLIENT: 'Client', DRIVER: 'Coursier', DEM_PRO: 'DEM Pro', CHEF_DE_FLOTTE: 'Chef de flotte', ADMIN: 'Admin' }
 
 function formatWait(sec) {
   if (!sec) return '—'

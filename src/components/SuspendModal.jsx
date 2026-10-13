@@ -16,7 +16,7 @@ const DRIVER_REASONS = [
   },
   {
     label: 'Non-respect du code de conduite',
-    fix: 'Relisez les conditions d\'utilisation DEM et le code de conduite livreur.',
+    fix: 'Relisez les conditions d\'utilisation DEM et le code de conduite coursier.',
   },
   {
     label: 'Casque non conforme ou absent',
@@ -34,8 +34,8 @@ const AMBASSADOR_REASONS = [
     fix: 'Mettez à jour vos documents (NINEA, RCCM, CNI) dans votre profil chef de flotte.',
   },
   {
-    label: 'Flotte non opérationnelle (< 3 livreurs actifs)',
-    fix: 'Activez au minimum 3 livreurs dans votre flotte pour être opérationnel.',
+    label: 'Flotte non opérationnelle (< 3 coursiers actifs)',
+    fix: 'Activez au minimum 3 coursiers dans votre flotte pour être opérationnel.',
   },
   {
     label: 'Comportement signalé',

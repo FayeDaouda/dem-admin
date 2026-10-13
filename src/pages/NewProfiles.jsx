@@ -14,7 +14,7 @@ const PERIODS = [
 
 const CATEGORIES = [
   ['CLIENT',         'newClients',        'Nouveaux clients',          UserPlus, '#06b6d4'],
-  ['DRIVER',         'newDrivers',        'Nouveaux livreurs',         Bike,     '#6366f1'],
+  ['DRIVER',         'newDrivers',        'Nouveaux coursiers',         Bike,     '#6366f1'],
   ['DEM_PRO',        'newDemPro',         'Nouveaux DEM Pro',          Briefcase, '#7c3aed'],
   ['CHEF_DE_FLOTTE', 'newChefsDeFlotte',  'Nouveaux chefs de flotte',  UserCog,  '#B8860B'],
 ]

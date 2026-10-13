@@ -44,7 +44,7 @@ function DocThumb({ url, label }) {
   )
 }
 
-// ── Statut d'un livreur géré ─────────────────────────────────────────────────
+// ── Statut d'un coursier géré ─────────────────────────────────────────────────
 function driverStatusInfo(d) {
   if (d.chefDeFlotteStatus === 'PENDING')  return { text: '⏳ En attente', color: '#f59e0b' }
   if (d.chefDeFlotteStatus === 'REJECTED') return { text: '✗ Refusé',     color: '#ef4444' }
@@ -173,7 +173,7 @@ export default function ChefDetailPage() {
     setSearching(true)
     setSearchResult(null)
     try {
-      // Avant : paramètre `phone` ignoré par le serveur → renvoyait le livreur
+      // Avant : paramètre `phone` ignoré par le serveur → renvoyait le coursier
       // inscrit le plus récemment, quel que soit le numéro saisi. Recherche
       // réelle, puis correspondance exacte du numéro (chiffres, indicatif toléré).
       const local = searchPhone.replace(/\D/g, '').slice(-9) // numéro local sénégalais (9 chiffres)
@@ -286,7 +286,7 @@ export default function ChefDetailPage() {
               ['NINEA',       chef.ninea ?? '—'],
               ['RCCM',        chef.rccm ?? '—'],
               ['Flotte max.', chef.fleetMaxSize ?? '—'],
-              ['Livreurs',    chef._count?.managedDrivers ?? 0],
+              ['Coursiers',    chef._count?.managedDrivers ?? 0],
               ['Inscrit le',  chef.createdAt ? new Date(chef.createdAt).toLocaleDateString('fr-FR') : '—'],
               ['Actif',       chef.isActive ? '✓ Oui' : 'Non'],
             ].map(([label, val]) => (
@@ -309,8 +309,8 @@ export default function ChefDetailPage() {
           <div style={sectionLabel}>Statistiques de la flotte</div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '10px 16px' }}>
             {[
-              ['Total livreurs',  totalDrivers],
-              ['Livreurs actifs', activeDrivers],
+              ['Total coursiers',  totalDrivers],
+              ['Coursiers actifs', activeDrivers],
               ['En attente',      pendingDrivers],
               ['Courses livrées', totalCourses],
               ['Note moyenne',    avgFleetRating != null ? `★ ${avgFleetRating}` : '—'],
@@ -323,16 +323,16 @@ export default function ChefDetailPage() {
           </div>
         </div>
 
-        {/* Livreurs gérés */}
+        {/* Coursiers gérés */}
         <div style={{ ...infoBox, marginTop: 14, marginBottom: 14 }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
-            <div style={{ ...sectionLabel, marginBottom: 0 }}>Livreurs gérés ({drivers.length})</div>
+            <div style={{ ...sectionLabel, marginBottom: 0 }}>Coursiers gérés ({drivers.length})</div>
             <button onClick={() => { setShowAddDriver(true); setSearchPhone(''); setSearchResult(null) }} style={{ ...btnSmall, color: 'var(--primary, #0077b6)' }}>
-              <UserPlus size={14} /> Ajouter un livreur
+              <UserPlus size={14} /> Ajouter un coursier
             </button>
           </div>
           {drivers.length === 0 ? (
-            <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>Aucun livreur ajouté pour le moment.</div>
+            <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>Aucun coursier ajouté pour le moment.</div>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
               {drivers.map(dr => {
@@ -427,16 +427,16 @@ export default function ChefDetailPage() {
         />
       )}
 
-      {/* Modal ajout livreur */}
+      {/* Modal ajout coursier */}
       {showAddDriver && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.55)', zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }} onClick={() => setShowAddDriver(false)}>
           <div style={{ ...glass, padding: '20px 24px', borderRadius: 14, width: '100%', maxWidth: 420, position: 'relative' }} onClick={e => e.stopPropagation()}>
             <button onClick={() => setShowAddDriver(false)} style={{ ...btnIcon, position: 'absolute', top: 12, right: 12 }} title="Fermer">
               <X size={18} />
             </button>
-            <div style={{ fontWeight: 700, fontSize: 16, marginBottom: 14 }}>Ajouter un livreur</div>
+            <div style={{ fontWeight: 700, fontSize: 16, marginBottom: 14 }}>Ajouter un coursier</div>
             <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 12 }}>
-              Recherchez un livreur existant par son numero de telephone pour le rattacher a cette flotte.
+              Recherchez un coursier existant par son numero de telephone pour le rattacher a cette flotte.
             </div>
             <div style={{ display: 'flex', gap: 8, marginBottom: 14 }}>
               <input
@@ -454,7 +454,7 @@ export default function ChefDetailPage() {
 
             {searchResult === 'not-found' && (
               <div style={{ fontSize: 12, color: 'var(--danger, #ef4444)', background: 'rgba(239,68,68,.08)', borderRadius: 6, padding: '8px 10px' }}>
-                Aucun livreur trouve avec ce numero.
+                Aucun coursier trouve avec ce numero.
               </div>
             )}
 

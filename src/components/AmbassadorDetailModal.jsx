@@ -116,7 +116,7 @@ export default function AmbassadorDetailModal({ ambassadorId, onClose }) {
             {/* Flotte */}
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
               <div style={{ fontWeight: 700, fontSize: 14 }}>
-                Flotte ({am.managedDrivers?.length ?? 0} / {am.fleetMaxSize ?? 10} livreurs)
+                Flotte ({am.managedDrivers?.length ?? 0} / {am.fleetMaxSize ?? 10} coursiers)
               </div>
               <div style={{ flex: 1, height: 4, borderRadius: 4, background: 'rgba(0,0,0,.06)', overflow: 'hidden' }}>
                 <div style={{ height: '100%', borderRadius: 4, width: `${Math.min(100, ((am.managedDrivers?.length ?? 0) / (am.fleetMaxSize ?? 10)) * 100)}%`, background: 'linear-gradient(90deg,#0CB8DE,#0671BA)' }} />
@@ -125,7 +125,7 @@ export default function AmbassadorDetailModal({ ambassadorId, onClose }) {
 
             {/* Liste drivers */}
             {!am.managedDrivers?.length ? (
-              <div style={{ color: 'var(--text-muted)', fontSize: 13, padding: '16px 0' }}>Aucun livreur dans cette flotte.</div>
+              <div style={{ color: 'var(--text-muted)', fontSize: 13, padding: '16px 0' }}>Aucun coursier dans cette flotte.</div>
             ) : am.managedDrivers.map(d => {
               const scores = d.ratingsReceived?.map(r => r.score) ?? []
               const avg    = scores.length ? (scores.reduce((a, b) => a + b, 0) / scores.length).toFixed(1) : null
