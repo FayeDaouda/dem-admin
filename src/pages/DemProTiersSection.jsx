@@ -40,6 +40,9 @@ const FIELDS = [
   { key: 'crmEnabled',                label: 'Mes clients (CRM)',                type: 'boolean' },
   { key: 'invoiceEnabled',            label: 'Factures avec logo',               type: 'boolean' },
   { key: 'apiAccessEnabled',          label: 'API DEM (brancher son site)',      type: 'boolean' },
+  // Quotas de l'API — affichés seulement si le serveur les connaît déjà
+  { key: 'apiRequestsPerMinute',      label: 'API — appels',                     type: 'number', unit: 'par min', onlyIfPresent: true },
+  { key: 'apiDeliveriesPerDay',       label: 'API — livraisons',                 type: 'number', unit: 'par jour', onlyIfPresent: true },
   { key: 'maxUsers',                  label: 'Téléphones connectés en même temps', type: 'number' },
   { key: 'supportTier',               label: 'Support',                          type: 'select', options: [['standard', 'Standard'], ['priority', 'Prioritaire'], ['premium', 'Premium']] },
   { key: 'maxAddresses',              label: 'Adresses / points de vente',       type: 'nullableNumber' },
@@ -182,7 +185,7 @@ export default function DemProTiersSection({ onSaved } = {}) {
               </tr>
             </thead>
             <tbody>
-              {FIELDS.map(field => (
+              {FIELDS.filter(f => !f.onlyIfPresent || PLAN_ORDER.some(p => data[p]?.[f.key] !== undefined)).map(field => (
                 <tr key={field.key}>
                   <td style={{ ...stickyCol, padding: '5px 10px', fontSize: 12, fontWeight: 600, whiteSpace: 'nowrap' }}>
                     {field.label}{field.unit ? <span style={{ color: 'var(--text-muted)', fontWeight: 400 }}> ({field.unit})</span> : null}

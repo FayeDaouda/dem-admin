@@ -719,6 +719,7 @@ export default function DemPro() {
           accountId={detailId}
           onClose={() => setDetailId(null)}
           canEdit={isSuper || isServiceClient}
+          canManageApi={isSuper}
           refreshKey={ficheVersion}
           actions={detailAccount && (
             <ProActions

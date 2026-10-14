@@ -10,6 +10,7 @@ import {
   REQUEST_STATUS, STOREFRONT_PAYMENT_LABELS, SITE_ICON_LABELS, BATCH_STATUS,
 } from './labels'
 import { ProductFormModal, DeleteProductModal } from './ProductModals'
+import ApiTab from './ApiTab'
 import { cancelReasonLabel } from '../../lib/cancelReasons'
 import InfoTip from '../../components/InfoTip'
 
@@ -38,6 +39,7 @@ const TABS = [
   { key: 'shop',         label: 'Boutique' },
   { key: 'batches',      label: 'Tournées' },
   { key: 'team',         label: 'Équipe' },
+  { key: 'api',          label: 'API' },
 ]
 
 
@@ -47,7 +49,8 @@ const fmtDate = (d, withTime = false) => d
     : { day: '2-digit', month: 'short', year: 'numeric' })
   : '—'
 
-export default function AccountDetailModal({ accountId, onClose, canEdit = false, actions = null, refreshKey = 0 }) {
+// canManageApi : clés API et suspension de l'accès API (SUPER uniquement)
+export default function AccountDetailModal({ accountId, onClose, canEdit = false, canManageApi = false, actions = null, refreshKey = 0 }) {
   const [tab, setTab]       = useState('overview')
   const [period, setPeriod] = useState('month')
   const [version, setVersion] = useState(0) // relit la fiche après une modification du catalogue
@@ -120,6 +123,8 @@ export default function AccountDetailModal({ accountId, onClose, canEdit = false
             <ShopTab accountId={accountId} canEdit={canEdit} onCatalogueChange={() => setVersion(v => v + 1)} />
           ) : tab === 'team' ? (
             <TeamTab accountId={accountId} />
+          ) : tab === 'api' ? (
+            <ApiTab accountId={accountId} canManage={canManageApi} />
           ) : (
             <BatchesTab accountId={accountId} />
           )}
