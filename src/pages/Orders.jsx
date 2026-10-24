@@ -59,6 +59,7 @@ export default function Orders() {
   const canDispatch = canSee(role, ACTION_ROLES.orderDispatch)
   const canCancel   = canSee(role, ACTION_ROLES.orderCancel)
   const canMarkPaid = canSee(role, ACTION_ROLES.orderMarkPaid)
+  const canForce    = canSee(role, ACTION_ROLES.orderForceStatus)
   const LIMIT = 50
 
   // Filtre et recherche gardés dans l'adresse (?statut=…&q=…) : un lien ou un
@@ -77,7 +78,7 @@ export default function Orders() {
   const [notice, setNotice]   = useState(null) // message de la page (après une action)
 
   const [detail, setDetail]   = useState(null)
-  const [confirming, setConfirming] = useState(null) // 'paid' | 'redispatch'
+  const [confirming, setConfirming] = useState(null) // 'paid' | 'redispatch' | 'PICKED_UP' | 'DELIVERED'
   const [busy, setBusy]       = useState(false)
   const [actionError, setActionError] = useState('')
   const [driverPicker, setDriverPicker] = useState(null) // { drivers, loading, error }
@@ -175,6 +176,18 @@ export default function Orders() {
     fetch(true)
   })
 
+  // Coursier bloqué (téléphone qui plante, app figée) : l'admin marque le
+  // colis récupéré ou livré à sa place. Le serveur passe par les mêmes
+  // étapes que l'app coursier : crédit du coursier, badges, client prévenu.
+  const forceStatus = (status) => runAction(async () => {
+    await api.patch(`/admin/orders/${detail.id}/force-status`, { status })
+    setConfirming(null)
+    setNotice({ ok: true, text: status === 'DELIVERED' ? 'Course marquée livrée.' : 'Colis marqué récupéré.' })
+    const res = await api.get(`/admin/orders/${detail.id}`)
+    setDetail(prev => (prev?.id === res.data?.id ? { ...prev, ...res.data } : prev))
+    fetch(true)
+  })
+
   const openDriverPicker = async () => {
     setDriverPicker({ drivers: [], loading: true, error: null })
     try {
@@ -242,9 +255,24 @@ export default function Orders() {
   const actions = detail ? [
     canDispatch && detail.status === 'PENDING' && !detail.driver && { key: 'pick', label: 'Choisir un coursier', color: '#0077b6', onClick: openDriverPicker },
     canDispatch && detail.status === 'ACCEPTED' && { key: 'redispatch', label: 'Relancer la recherche', color: '#f97316', onClick: () => setConfirming('redispatch') },
+    canForce && detail.driver && detail.status === 'ACCEPTED' && { key: 'pickup', label: 'Colis récupéré', color: '#7c3aed', onClick: () => setConfirming('PICKED_UP') },
+    canForce && detail.driver && ['ACCEPTED', 'PICKED_UP', 'IN_TRANSIT'].includes(detail.status) && { key: 'deliver', label: 'Colis livré', color: '#16a34a', onClick: () => setConfirming('DELIVERED') },
     canMarkPaid && detail.status === 'DELIVERED' && detail.paymentStatus === 'PENDING' && { key: 'paid', label: 'Marquer payé', color: '#16a34a', onClick: () => setConfirming('paid') },
     canCancel && !['DELIVERED', 'CANCELLED'].includes(detail.status) && { key: 'cancel', label: 'Annuler la course', color: '#dc2626', onClick: openCancelPicker },
   ].filter(Boolean) : []
+
+  // Texte et action de la confirmation ouverte
+  const driverName = detail?.driver ? firstNonEmpty(detail.driver.name, detail.driver.phone) : 'le coursier'
+  const confirmCopy = !confirming ? null
+    : confirming === 'paid' ? { title: `Marquer le paiement de ${clientCharge(detail).toLocaleString('fr-FR')} F comme reçu ?`, button: 'Confirmer', color: '#16a34a', run: markPaid }
+    : confirming === 'redispatch' ? { title: 'Relancer la recherche ? Le coursier actuel sera retiré et un nouveau coursier sera cherché automatiquement.', button: 'Confirmer', color: '#f97316', run: redispatch }
+    : confirming === 'PICKED_UP' ? { title: `Marquer le colis comme récupéré par ${driverName} ?`, button: 'Colis récupéré', color: '#7c3aed', run: () => forceStatus('PICKED_UP') }
+    : { title: `Marquer la course comme livrée par ${driverName} ?`, button: 'Colis livré', color: '#16a34a', run: () => forceStatus('DELIVERED') }
+  const confirmHint = confirming === 'PICKED_UP'
+    ? 'Le client est prévenu que son colis est en route.'
+    : confirming === 'DELIVERED'
+      ? `${driverName} est crédité de ${(detail?.price ?? 0).toLocaleString('fr-FR')} F et le client est prévenu. La course passe en Livrée : impossible de revenir en arrière.`
+      : null
 
   return (
     <div style={pageWrap}>
@@ -379,15 +407,12 @@ export default function Orders() {
             {/* Confirmation dans la fiche (plus de fenêtre du navigateur) */}
             {confirming && (
               <div style={{ background: 'var(--surface2)', borderRadius: 10, padding: '12px 14px', marginBottom: 14, fontSize: 13 }}>
-                <div style={{ fontWeight: 600, marginBottom: 8 }}>
-                  {confirming === 'paid'
-                    ? `Marquer le paiement de ${clientCharge(detail).toLocaleString('fr-FR')} F comme reçu ?`
-                    : 'Relancer la recherche ? Le coursier actuel sera retiré et un nouveau coursier sera cherché automatiquement.'}
-                </div>
+                <div style={{ fontWeight: 600, marginBottom: confirmHint ? 4 : 8 }}>{confirmCopy.title}</div>
+                {confirmHint && <div style={{ color: 'var(--text-muted)', marginBottom: 8 }}>{confirmHint}</div>}
                 <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
                   <button onClick={() => setConfirming(null)} disabled={busy} style={btnOutline}>Retour</button>
-                  <button onClick={confirming === 'paid' ? markPaid : redispatch} disabled={busy} style={{ ...btnOutline, color: '#fff', background: confirming === 'paid' ? '#16a34a' : '#f97316', borderColor: 'transparent', fontWeight: 600 }}>
-                    {busy ? 'En cours…' : 'Confirmer'}
+                  <button onClick={confirmCopy.run} disabled={busy} style={{ ...btnOutline, color: '#fff', background: confirmCopy.color, borderColor: 'transparent', fontWeight: 600 }}>
+                    {busy ? 'En cours…' : confirmCopy.button}
                   </button>
                 </div>
               </div>
