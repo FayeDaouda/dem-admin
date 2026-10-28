@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { Plus, Copy, Check, RotateCcw, Power, Ban, KeyRound, AlertTriangle } from 'lucide-react'
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts'
 import api from '../../lib/api'
 import InfoTip from '../../components/InfoTip'
 import InlineConfirm from '../../components/InlineConfirm'
@@ -93,6 +94,7 @@ export default function ApiTab({ accountId, canManage }) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
       <AccessSection accountId={accountId} overview={o} activeKeys={activeKeys.length} canManage={canManage} onChanged={reload} />
+      {o.usage && <UsageSection usage={o.usage} />}
       <KeysSection accountId={accountId} overview={o} canManage={canManage} onChanged={reload} />
       <WebhooksSection endpoints={w.endpoints} />
       <MessagesSection accountId={accountId} messages={w.messages} onChanged={reload} />
@@ -137,6 +139,70 @@ function AccessSection({ accountId, overview: o, activeKeys, canManage, onChange
           onConfirm={toggle} onCancel={() => setConfirm(false)} />
       )}
       {error && <ErrorLine>{error}</ErrorLine>}
+    </Section>
+  )
+}
+
+// ── Usage ───────────────────────────────────────────────────────────────────
+const fmtMs = (v) => (v == null ? '—' : v >= 1000 ? `${(v / 1000).toFixed(1)} s` : `${v} ms`)
+const TOOLTIP_STYLE = {
+  background: '#ffffff', border: '1px solid var(--border)', borderRadius: 6,
+  color: 'var(--text)', fontSize: 12, boxShadow: '0 2px 8px rgba(0,0,0,0.10)',
+}
+
+function UsageSection({ usage }) {
+  // Production par défaut ; Test si le compte n'a encore servi qu'en test
+  const hasLive = usage.live.last7d.requests > 0
+  const [env, setEnv] = useState(hasLive || usage.test.last7d.requests === 0 ? 'live' : 'test')
+  const u = usage[env]
+  const t = u.today
+  const failed = t.clientErrors + t.rateLimited + t.serverErrors
+  const wh = usage.webhooks7d
+  const chart = u.daily.map(d => ({
+    label: new Date(`${d.day}T12:00:00Z`).toLocaleDateString('fr-FR', { weekday: 'short', day: '2-digit' }),
+    Réussies: d.success,
+    Erreurs: d.clientErrors + d.rateLimited + d.serverErrors,
+  }))
+
+  return (
+    <Section title="Usage de l'API" hint="Aujourd'hui (heure de Dakar) et 7 derniers jours"
+      action={
+        <div style={{ display: 'flex', gap: 4 }}>
+          {[['live', 'Production'], ['test', 'Test']].map(([k, label]) => (
+            <button key={k} onClick={() => setEnv(k)} style={{
+              padding: '4px 12px', borderRadius: 20, fontSize: 12, fontWeight: 600, cursor: 'pointer',
+              border: env === k ? 'none' : '1px solid var(--border)',
+              background: env === k ? 'var(--primary)' : 'transparent', color: env === k ? '#fff' : 'var(--text-muted)',
+            }}>{label}</button>
+          ))}
+        </div>
+      }>
+      <div style={grid4}>
+        <Stat label="Appels aujourd'hui" value={t.requests}
+          sub={t.requests ? `${t.success} réussis · ${failed} en erreur` : 'Aucun appel'} />
+        <Stat label="Erreurs aujourd'hui" value={failed} color={t.serverErrors > 0 ? 'var(--danger)' : undefined}
+          sub={`${t.clientErrors} requêtes refusées · ${t.rateLimited} limite · ${t.serverErrors} serveur`} />
+        <Stat label="Temps de réponse" value={fmtMs(t.avgLatencyMs)}
+          sub={`p95 ≤ ${fmtMs(t.p95LatencyMs)} · p99 ≤ ${fmtMs(t.p99LatencyMs)}`} />
+        <Stat label="Livraisons créées" value={t.deliveries}
+          sub={`${u.last7d.deliveries} sur 7 jours · ${t.quotes} devis aujourd'hui`} />
+        <Stat label="Webhooks (7 jours)" value={wh.successRate == null ? '—' : `${wh.successRate} %`}
+          color={wh.successRate != null && wh.successRate < 95 ? 'var(--danger)' : undefined}
+          sub={`${wh.succeeded} reçus · ${wh.failed} en échec · ${wh.pending} en attente`} />
+      </div>
+      {u.last7d.requests > 0 && (
+        <div style={{ marginTop: 12, height: 170 }}>
+          <ResponsiveContainer width="100%" height="100%">
+            <BarChart data={chart} margin={{ top: 4, right: 0, left: -20, bottom: 0 }}>
+              <XAxis dataKey="label" tick={{ fontSize: 10, fill: 'var(--text-muted)' }} axisLine={false} tickLine={false} />
+              <YAxis allowDecimals={false} tick={{ fontSize: 10, fill: 'var(--text-muted)' }} axisLine={false} tickLine={false} />
+              <Tooltip contentStyle={TOOLTIP_STYLE} cursor={{ fill: 'rgba(0,119,182,.06)' }} />
+              <Bar dataKey="Réussies" stackId="a" fill="#0077b6" />
+              <Bar dataKey="Erreurs" stackId="a" fill="#dc2626" radius={[3, 3, 0, 0]} />
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+      )}
     </Section>
   )
 }

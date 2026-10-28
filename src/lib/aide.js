@@ -108,6 +108,7 @@ export const TITRES = {
   'Boutique en ligne': 'Catalogue de produits de la boutique du commerçant.',
   'Points de vente': 'Adresses de retrait du commerçant.',
   'Membres': "Personnes de l'équipe du commerçant, avec leur propre numéro et leur rôle.",
+  "Usage de l'API": "Appels du site du commerçant à l'API, erreurs, temps de réponse (p95 : 95 % des appels plus rapides), livraisons créées et webhooks reçus.",
   'Accès API': "API DEM : le site ou l'application du commerçant crée ses livraisons tout seul. Ouverte avec l'offre Premium ; DEM peut la suspendre.",
   'Clés API': 'Codes secrets qui permettent au site du commerçant d\'appeler l\'API. Production = vraies courses ; Test = aucune course réelle.',
   'Adresses webhook': "Adresses du site du commerçant prévenues à chaque étape d'une livraison (créée, coursier trouvé, livrée…).",
