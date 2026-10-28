@@ -16,6 +16,7 @@ import {
 } from './dem-pro/labels'
 import { useAutoRefresh } from '../lib/useAutoRefresh'
 import { useUrlQuery } from '../lib/useUrlQuery'
+import ExportMenu from '../components/ExportMenu'
 
 // Vues de la liste. « Actifs » = validé ET non suspendu (même règle que
 // l'ancienne carte « Actifs ») ; les suspendus ont leur propre vue.
@@ -36,6 +37,17 @@ const PLAN_FILTERS = [
   { key: 'PAID',    label: 'Abonnement payé',        test: a => a.paidPlanActive },
   { key: 'OFFERED', label: 'Accès offert / manuel',  test: a => hasPaidTier(a) && !a.paidPlanActive },
 ]
+
+// Statut sans pictogramme (proStatusInfo en a, absents des polices du PDF)
+const statusText = a => !a.isActive ? 'Suspendu'
+  : a.proStatus === 'PENDING'  ? 'En attente'
+  : a.proStatus === 'ACTIVE'   ? 'Actif'
+  : a.proStatus === 'REJECTED' ? 'Refusé'
+  : (a.proStatus ?? null)
+const STATUS_COLORS = { Suspendu: '#dc2626', 'En attente': '#b45309', Actif: '#15803d', Refusé: '#dc2626' }
+const planOrigin = a => a.paidPlanActive ? 'Payé'
+  : hasPaidTier(a) ? (a.proPlanStatus === 'TRIAL' ? 'Offert' : 'Sans paiement')
+  : null
 
 const PAGE_TABS = [
   { key: 'comptes',    label: 'Comptes' },
@@ -417,6 +429,7 @@ export default function DemPro() {
     manage: isSuper,
     edit:   isSuper || isServiceClient,
     report: canSee(role, ACTION_ROLES.reportUser),
+    export: canSee(role, ACTION_ROLES.listExport),
   }
 
   // Onglet, vue, plan et recherche gardés dans l'adresse.
@@ -565,6 +578,47 @@ export default function DemPro() {
 
   const detailAccount = accounts.find(a => a.id === detailId)
 
+  // Export : les comptes de la vue, comme dans le tableau
+  function exportSpec() {
+    const view = VIEWS.find(v => v.key === status)
+    const plan = PLAN_FILTERS.find(f => f.key === planFilter)
+    const labelOf = k => planSystem?.labels?.[k] ?? planLabel(k)
+    return {
+      title: 'Comptes DEM Pro',
+      fileBase: `dem-pro${status ? '-' + view.label.toLowerCase().replace(/\s+/g, '-') : ''}`,
+      unit: { one: 'compte', plural: 'comptes' },
+      filters: [
+        status && `Vue : ${view.label}`,
+        planFilter && `Plan : ${plan.label}`,
+        q && `Recherche : « ${search.trim()} »`,
+      ].filter(Boolean),
+      columns: [
+        { header: 'Entreprise',  key: 'business',  width: 2 },
+        { header: 'Responsable', key: 'name',      width: 1.5 },
+        { header: 'Téléphone',   key: 'phone',     width: 1.3 },
+        { header: 'Secteur',     key: 'sector',    width: 1.1 },
+        { header: 'Plan',        key: 'plan',      width: 1 },
+        { header: 'Origine',     key: 'origin',    width: 1, color: r => r.origin === 'Payé' ? '#15803d' : r.origin ? '#b45309' : null },
+        { header: "Fin d'accès", key: 'planEnd',   width: 1, type: 'date' },
+        { header: 'Commandes',   key: 'orders',    width: 1, type: 'number', align: 'center' },
+        { header: 'Statut',      key: 'status',    width: 1, color: r => STATUS_COLORS[r.status] },
+        { header: 'Inscription', key: 'createdAt', width: 1, type: 'date' },
+      ],
+      rows: filtered.map(a => ({
+        business: a.proBusinessName?.trim() || null,
+        name: a.name?.trim() || null,
+        phone: a.phone,
+        sector: a.proSector ? (SECTOR_LABELS[a.proSector] ?? a.proSector) : null,
+        plan: labelOf(a.proPlan ?? 'FREE'),
+        origin: planOrigin(a),
+        planEnd: (a.proPlan ?? 'FREE') !== 'FREE' ? a.proPlanExpiresAt : null,
+        orders: a._count?.ordersAsClient ?? 0,
+        status: statusText(a),
+        createdAt: a.createdAt,
+      })),
+    }
+  }
+
   return (
     <div style={pageWrap}>
       <PageHeader
@@ -572,6 +626,7 @@ export default function DemPro() {
         subtitle={view === 'comptes' ? `${accounts.length.toLocaleString('fr-FR')} compte${accounts.length !== 1 ? 's' : ''} · ${totalOrders.toLocaleString('fr-FR')} commande${totalOrders !== 1 ? 's' : ''} au total (historique)` : null}
         actions={view === 'comptes' ? <>
           <button onClick={() => fetch()} style={btnOutline}><RefreshCw size={14} /> Actualiser</button>
+          {rights.export && <ExportMenu getSpec={exportSpec} disabled={loading || filtered.length === 0} />}
           {isSuper && <button onClick={() => setEditTarget({})} style={btnPrimary}><Plus size={14} /> Nouveau compte</button>}
         </> : null}
       />

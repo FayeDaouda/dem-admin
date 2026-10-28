@@ -12,6 +12,8 @@ import { canSee, ACTION_ROLES } from '../lib/droits'
 import { useAutoRefresh } from '../lib/useAutoRefresh'
 import { useUrlQuery } from '../lib/useUrlQuery'
 import InfoTip from '../components/InfoTip'
+import ExportMenu from '../components/ExportMenu'
+import { fetchAllPages } from '../lib/exportList'
 
 
 const DOC_LIST = [
@@ -401,6 +403,14 @@ const VEHICLE_LABELS = { MOTO: 'Moto', TAXI: 'Taxi', VOITURE: 'Voiture' }
 const fmtDate = v => (v ? new Date(v).toLocaleDateString('fr-FR') : '—')
 const fleetName = d => d.managedBy?.companyName || d.managedBy?.name || d.managedBy?.phone || null
 
+const statusText = (d, deleted) => deleted ? 'Supprimé'
+  : d.chefDeFlotteStatus === 'PENDING'  ? 'En attente'
+  : d.chefDeFlotteStatus === 'REJECTED' ? 'Refusé'
+  : d.isActive ? (d.isVerified ? 'Actif' : 'Actif, non vérifié')
+  : 'Suspendu'
+const STATUS_COLORS = { Supprimé: '#475569', 'En attente': '#b45309', Refusé: '#dc2626', Actif: '#15803d', 'Actif, non vérifié': '#b45309', Suspendu: '#dc2626' }
+const FLEET_LABELS = { fleet: 'En flotte', independent: 'Indépendants' }
+
 // Un seul statut par coursier (avant : colonnes Statut et Vérifié séparées).
 function DriverStatus({ driver, deleted }) {
   const s = deleted                                  ? { bg: 'rgba(100,116,139,.14)', color: '#475569', label: 'Supprimé' }
@@ -696,6 +706,7 @@ export default function Drivers() {
     manage:       canSee(role, ACTION_ROLES.driverManage),
     paymentStats: canSee(role, ACTION_ROLES.driverPaymentStats),
     report:       canSee(role, ACTION_ROLES.reportDriver),
+    export:       canSee(role, ACTION_ROLES.listExport),
   }
 
   // Vue, filtres, tri et recherche gardés dans l'adresse : un lien ou un
@@ -863,6 +874,60 @@ export default function Drivers() {
   const totalPages = Math.max(1, Math.ceil(total / LIMIT))
   const hasFilters = !!(fleetFilter || chefFilter || badgeFilter)
 
+  // Export : tous les coursiers de la vue (pas seulement la page affichée)
+  async function exportSpec() {
+    const params = {}
+    if (fleetFilter)     params.fleet  = fleetFilter
+    if (chefFilter)      params.chefId = chefFilter
+    if (badgeFilter)     params.badge  = badgeFilter
+    if (debouncedSearch) params.search = debouncedSearch
+    if (status)          params.status = status
+    if (sortCourses)     params.sort   = `courses_${sortCourses}`
+    const all = await fetchAllPages(api, '/admin/drivers', params, 'drivers')
+    const view = VIEWS.find(v => v.key === status)
+    const periodLabel = CONNECTION_PERIOD_TABS.find(([k]) => k === connectionPeriod)[1]
+    const chef = chefs.find(c => c.id === chefFilter)
+    const badgeName = badgeFilter === 'nouveau' ? 'Nouveau' : (badgeTiers ?? DEFAULT_BADGE_TIERS).find(t => t.tier === badgeFilter)?.name
+    return {
+      title: deletedView ? 'Coursiers supprimés' : 'Liste des coursiers',
+      fileBase: `coursiers${status ? '-' + view.label.toLowerCase().replace(/\s+/g, '-') : ''}`,
+      unit: { one: 'coursier', plural: 'coursiers' },
+      filters: [
+        status && `Vue : ${view.label}`,
+        FLEET_LABELS[fleetFilter],
+        chef && `Chef de flotte : ${chef.companyName || chef.name || chef.phone}`,
+        badgeFilter && `Badge : ${badgeName ?? badgeFilter}`,
+        debouncedSearch && `Recherche : « ${debouncedSearch} »`,
+        sortCourses && `Triés par courses (${sortCourses === 'desc' ? 'décroissant' : 'croissant'})`,
+        `Connexion : ${periodLabel.toLowerCase()}`,
+      ].filter(Boolean),
+      columns: [
+        { header: 'Coursier',    key: 'name',       width: 1.7 },
+        { header: 'Téléphone',   key: 'phone',      width: 1.3 },
+        { header: 'Véhicule',    key: 'vehicle',    width: 1.5 },
+        { header: 'Flotte',      key: 'fleet',      width: 1.6 },
+        { header: 'Badge',       key: 'badge',      width: 1.4 },
+        { header: 'Courses',     key: 'courses',    width: 0.8, type: 'number', align: 'center' },
+        { header: 'Note',        key: 'rating',     width: 0.6, type: 'number', decimals: 1, align: 'center' },
+        { header: 'Connexion',   key: 'connection', width: 1, align: 'center' },
+        { header: 'Statut',      key: 'status',     width: 1.4, color: r => STATUS_COLORS[r.status] },
+        { header: 'Inscription', key: 'createdAt',  width: 1, type: 'date' },
+      ],
+      rows: all.map(d => ({
+        name: d.name?.trim() || null,
+        phone: deletedView ? (d.archivedPhone ? `Ancien n° ${d.archivedPhone}` : 'Numéro libéré') : d.phone,
+        vehicle: [VEHICLE_LABELS[d.vehicleType] ?? d.vehicleType, d.vehiclePlate].filter(Boolean).join(' · ') || null,
+        fleet: d.managedById ? (fleetName(d) ?? 'Flotte') : 'Indépendant',
+        badge: d.badge?.name ?? 'Nouveau',
+        courses: d.deliveredCourses ?? 0,
+        rating: d.avgRating > 0 ? d.avgRating : null,
+        connection: formatConnectionTime(d.connectionSecondsByPeriod?.[connectionPeriod]),
+        status: statusText(d, deletedView),
+        createdAt: d.createdAt,
+      })),
+    }
+  }
+
   return (
     <div style={pageWrap}>
       <PageHeader
@@ -870,6 +935,7 @@ export default function Drivers() {
         subtitle={`${total.toLocaleString('fr-FR')} coursier${total !== 1 ? 's' : ''} dans cette vue`}
         actions={<>
           <button onClick={() => { fetch(); fetchPhoneRequests() }} style={btnOutline}><RefreshCw size={14} /> Actualiser</button>
+          {rights.export && <ExportMenu getSpec={exportSpec} disabled={loading || total === 0} />}
           {rights.create && <button onClick={() => setCreateOpen(true)} style={btnPrimary}><Plus size={14} /> Nouveau coursier</button>}
         </>}
       />

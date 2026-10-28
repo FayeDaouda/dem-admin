@@ -10,6 +10,7 @@ import { chefStatusInfo } from './chefs/chefStatus'
 import { canSee, ACTION_ROLES } from '../lib/droits'
 import { useAutoRefresh } from '../lib/useAutoRefresh'
 import { useUrlQuery } from '../lib/useUrlQuery'
+import ExportMenu from '../components/ExportMenu'
 
 // Vues de la liste. « Actifs » = validé ET non suspendu (même règle que
 // l'ancienne carte « Chefs actifs ») ; les suspendus ont leur propre vue.
@@ -38,6 +39,7 @@ export default function ChefsDeFlotte() {
   const location = useLocation()
   const { user } = useAuth()
   const canCreate = canSee(user?.adminRole, ACTION_ROLES.chefManage)
+  const canExport = canSee(user?.adminRole, ACTION_ROLES.listExport)
 
   // Vue, tri et recherche gardés dans l'adresse.
   const [params, setParams] = useSearchParams()
@@ -118,6 +120,43 @@ export default function ChefsDeFlotte() {
   const activeCount  = chefs.filter(VIEWS[2].test).length
   const totalDrivers = chefs.reduce((s, c) => s + (c._count?.managedDrivers ?? 0), 0)
 
+  // Export : les chefs de la vue, dans l'ordre du tableau
+  function exportSpec() {
+    const view = VIEWS.find(v => v.key === status)
+    return {
+      title: 'Chefs de flotte',
+      fileBase: `chefs-de-flotte${status ? '-' + view.label.toLowerCase().replace(/\s+/g, '-') : ''}`,
+      unit: { one: 'chef de flotte', plural: 'chefs de flotte' },
+      filters: [
+        status && `Vue : ${view.label}`,
+        q && `Recherche : « ${search.trim()} »`,
+        sortDate && `Triés par inscription (${sortDate === 'desc' ? 'plus récents' : 'plus anciens'} d'abord)`,
+      ].filter(Boolean),
+      columns: [
+        { header: 'Société',          key: 'company',   width: 2 },
+        { header: 'Responsable',      key: 'name',      width: 1.6 },
+        { header: 'Téléphone',        key: 'phone',     width: 1.3 },
+        { header: 'Coursiers',        key: 'drivers',   width: 0.9, type: 'number', align: 'center' },
+        { header: 'Taille max.',      key: 'max',       width: 0.9, type: 'number', align: 'center' },
+        { header: 'Statut',           key: 'status',    width: 1, color: r => r.statusColor },
+        { header: 'Inscription',      key: 'createdAt', width: 1, type: 'date' },
+      ],
+      rows: sorted.map(c => {
+        const st = chefStatusInfo(c)
+        return {
+          company: c.companyName?.trim() || null,
+          name: c.name?.trim() || null,
+          phone: c.phone,
+          drivers: c._count?.managedDrivers ?? 0,
+          max: c.fleetMaxSize,
+          status: st.text,
+          statusColor: st.color,
+          createdAt: c.createdAt,
+        }
+      }),
+    }
+  }
+
   return (
     <div style={pageWrap}>
       <PageHeader
@@ -125,6 +164,7 @@ export default function ChefsDeFlotte() {
         subtitle={`${chefs.length} chef${chefs.length !== 1 ? 's' : ''} · ${activeCount} actif${activeCount !== 1 ? 's' : ''} · ${totalDrivers} coursier${totalDrivers !== 1 ? 's' : ''} gérés`}
         actions={<>
           <button onClick={() => fetch()} style={btnOutline}><RefreshCw size={14} /> Actualiser</button>
+          {canExport && <ExportMenu getSpec={exportSpec} disabled={loading || sorted.length === 0} />}
           {canCreate && <button onClick={() => setCreating(true)} style={btnPrimary}><Plus size={14} /> Nouveau</button>}
         </>}
       />

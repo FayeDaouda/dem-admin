@@ -9,6 +9,8 @@ import { useUrlQuery } from '../lib/useUrlQuery'
 import PageHeader from '../components/PageHeader'
 import { canSee, ACTION_ROLES } from '../lib/droits'
 import InfoTip from '../components/InfoTip'
+import ExportMenu from '../components/ExportMenu'
+import { fetchAllPages } from '../lib/exportList'
 
 // Ordre d'affichage : Sans badge en premier, puis progression des tiers.
 const CLIENT_BADGE_OPTIONS = [
@@ -32,6 +34,24 @@ const VIEWS = [
 ]
 
 const fmtDate = v => (v ? new Date(v).toLocaleDateString('fr-FR') : '—')
+
+const PERIOD_LABELS = { today: "Inscrits aujourd'hui", '7d': 'Inscrits sur 7 jours', '30d': 'Inscrits sur 30 jours' }
+const ORDERS_LABELS = { some: 'Avec courses', none: 'Sans course' }
+const badgeText = key => CLIENT_BADGE_OPTIONS.find(([k]) => k === key)?.[1].replace(/^\S+\s/, '') ?? null
+
+const statusText = (c, deleted) => deleted ? 'Supprimé' : c.isBanned ? 'Banni' : c.isActive ? 'Actif' : 'Inactif'
+const STATUS_COLORS = { Supprimé: '#475569', Banni: '#dc2626', Actif: '#15803d', Inactif: '#b45309' }
+
+// Colonnes des exports PDF / Word / Excel
+const EXPORT_COLUMNS = [
+  { header: 'Client',      key: 'name',      width: 2.2 },
+  { header: 'Téléphone',   key: 'phone',     width: 1.4 },
+  { header: 'E-mail',      key: 'email',     width: 2 },
+  { header: 'Badge',       key: 'badge',     width: 1.3 },
+  { header: 'Courses',     key: 'orders',    width: 0.9, type: 'number', align: 'center' },
+  { header: 'Inscription', key: 'createdAt', width: 1.1, type: 'date' },
+  { header: 'Statut',      key: 'status',    width: 1, color: r => STATUS_COLORS[r.status] },
+]
 
 function StatusPill({ client, deleted }) {
   const s = deleted       ? { bg: 'rgba(100,116,139,.14)', color: '#475569', label: 'Supprimé' }
@@ -413,6 +433,7 @@ export default function Clients() {
     edit:   canSee(role, ACTION_ROLES.clientEdit),
     manage: canSee(role, ACTION_ROLES.clientManage),
     report: canSee(role, ACTION_ROLES.reportUser),
+    export: canSee(role, ACTION_ROLES.listExport),
   }
 
   // Vue, filtres et recherche gardés dans l'adresse : un lien ou un
@@ -508,6 +529,42 @@ export default function Clients() {
   const hasFilters = !!(debouncedSearch || status || period || hasOrders || badgeFilter !== 'all')
   const deletedView = status === 'deleted'
 
+  // Export : tous les clients de la vue (pas seulement la page affichée)
+  async function exportSpec() {
+    const params = {}
+    if (debouncedSearch)       params.search = debouncedSearch
+    if (period)                params.period = period
+    if (hasOrders)             params.hasOrders = hasOrders
+    if (badgeFilter !== 'all') params.badge = badgeFilter
+    if (status)                params.status = status
+    if (sortByCourses)         params.sortBy = 'courses'
+    const all = await fetchAllPages(api, '/admin/clients', params, 'clients')
+    const view = VIEWS.find(v => v.key === status)
+    return {
+      title: deletedView ? 'Clients supprimés' : 'Liste des clients',
+      fileBase: `clients${status ? '-' + view.label.toLowerCase() : ''}`,
+      unit: { one: 'client', plural: 'clients' },
+      filters: [
+        status && `Vue : ${view.label}`,
+        PERIOD_LABELS[period],
+        ORDERS_LABELS[hasOrders],
+        badgeFilter !== 'all' && `Badge : ${badgeText(badgeFilter)}`,
+        debouncedSearch && `Recherche : « ${debouncedSearch} »`,
+        sortByCourses && 'Triés par nombre de courses',
+      ].filter(Boolean),
+      columns: EXPORT_COLUMNS,
+      rows: all.map(c => ({
+        name: c.name?.trim() || null,
+        phone: c.phone,
+        email: c.email,
+        badge: badgeText(c.clientBadge),
+        orders: c._count?.ordersAsClient ?? 0,
+        createdAt: c.createdAt,
+        status: statusText(c, deletedView),
+      })),
+    }
+  }
+
   return (
     <div style={pageWrap}>
       <PageHeader
@@ -515,6 +572,7 @@ export default function Clients() {
         subtitle={`${total.toLocaleString('fr-FR')} client${total !== 1 ? 's' : ''} dans cette vue`}
         actions={<>
           <button onClick={() => { fetch(); fetchPhoneRequests() }} style={btnOutline}><RefreshCw size={14} /> Actualiser</button>
+          {rights.export && <ExportMenu getSpec={exportSpec} disabled={loading || total === 0} />}
           {rights.create && <button onClick={() => setFormTarget({})} style={btnPrimary}><Plus size={14} /> Nouveau client</button>}
         </>}
       />

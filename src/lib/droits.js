@@ -69,6 +69,7 @@ export const ACTION_ROLES = {
   orderDispatch: [],                         // choisir / attribuer un coursier, relancer la recherche : Super seul
   orderCancel:   ['ASSISTANCE_EXECUTIVE'],   // annuler : Super + Ass. exéc.
   orderMarkPaid: ['FINANCE'],                // marquer payé : Super + Finance
+  orderForceStatus: [],                      // colis récupéré / livré à la place du coursier (/force-status) : Super seul
   // Incidents : changer le statut ou les notes (PATCH /admin/incidents/:id) : Super + Ass. exéc.
   incidentUpdate: ['ASSISTANCE_EXECUTIVE'],
   // Validation › chefs de flotte, Suspendre : PATCH /admin/chefs-de-flotte/:id/suspend, Super seul.
@@ -123,4 +124,9 @@ export const ACTION_ROLES = {
   configEdit: [],
   // Version de l'app : PUT /admin/app-version, Super seul (le Dev lit).
   appVersionEdit: [],
+  // Exporter les listes Clients, Coursiers, DEM Pro et Chefs de flotte (PDF,
+  // Word, Excel) : fichiers de numéros de téléphone en masse → Super seul.
+  // Export fait dans le navigateur à partir des listes déjà lisibles : aucune
+  // route serveur à recopier ici.
+  listExport: [],
 }
