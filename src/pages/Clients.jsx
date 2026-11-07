@@ -12,6 +12,7 @@ import InfoTip from '../components/InfoTip'
 import ExportMenu from '../components/ExportMenu'
 import { fetchAllPages } from '../lib/exportList'
 import WhatsAppButton from '../components/WhatsAppButton'
+import ConvertToProModal from './clients/ConvertToProModal'
 
 // Ordre d'affichage : Sans badge en premier, puis progression des tiers.
 const CLIENT_BADGE_OPTIONS = [
@@ -178,6 +179,7 @@ function ClientWalletBox({ clientId }) {
 
 // ── Fiche client : informations à gauche, contact et actions à droite ────────
 function ClientFiche({ client, deleted, rights, onClose, onEdit, onChanged }) {
+  const [converting, setConverting] = useState(false) // Passer en Pro (C7)
   const [detail, setDetail]   = useState(null)
   const [loading, setLoading] = useState(true)
   const [reloadKey, setReloadKey] = useState(0)
@@ -220,13 +222,6 @@ function ClientFiche({ client, deleted, rights, onClose, onEdit, onChanged }) {
 
   const who = d.name ?? d.phone
   const actions = {
-    pro: {
-      title: 'Convertir en DEM Pro',
-      placeholder: "Nom de l'entreprise",
-      required: true,
-      confirm: 'Convertir',
-      go: v => run(() => api.patch(`/admin/clients/${d.id}`, { role: 'DEM_PRO', proStatus: 'ACTIVE', proBusinessName: v }), `${who} est maintenant DEM Pro.`),
-    },
     ban: d.isBanned ? {
       title: `Débannir ${who} ?`,
       confirm: 'Débannir',
@@ -261,7 +256,7 @@ function ClientFiche({ client, deleted, rights, onClose, onEdit, onChanged }) {
     current.go(v)
   }
 
-  const canPro = rights.manage && !deleted && (detail?.role ?? 'CLIENT') === 'CLIENT'
+  const canPro = rights.toPro && !deleted && (detail?.role ?? 'CLIENT') === 'CLIENT'
 
   return (
     <div style={overlay} onClick={onClose}>
@@ -330,11 +325,11 @@ function ClientFiche({ client, deleted, rights, onClose, onEdit, onChanged }) {
                 ) : <span style={{ fontSize: 13, color: 'var(--text-muted)' }}>Pas de numéro.</span>}
               </FicheSection>
 
-              {!deleted && (rights.edit || rights.manage || rights.report) && (
+              {!deleted && (rights.edit || rights.manage || rights.report || rights.toPro) && (
                 <FicheSection title="Actions">
                   <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                     {rights.edit && <button onClick={() => onEdit(d)} style={btnOutline}><Pencil size={14} /> Modifier</button>}
-                    {canPro && <button onClick={() => toggle('pro')} style={{ ...btnOutline, color: '#7c3aed', borderColor: 'rgba(124,58,237,.35)' }}><Briefcase size={14} /> Convertir en DEM Pro</button>}
+                    {canPro && <button onClick={() => setConverting(true)} style={{ ...btnOutline, color: '#7c3aed', borderColor: 'rgba(124,58,237,.35)' }}><Briefcase size={14} /> Passer en Pro</button>}
                     {rights.manage && (
                       <button onClick={() => toggle('ban')} style={{ ...btnOutline, color: d.isBanned ? '#15803d' : '#b45309', borderColor: d.isBanned ? 'rgba(34,197,94,.4)' : 'rgba(245,158,11,.45)' }}>
                         <Ban size={14} /> {d.isBanned ? 'Débannir' : 'Bannir'}
@@ -365,6 +360,10 @@ function ClientFiche({ client, deleted, rights, onClose, onEdit, onChanged }) {
           </div>
         )}
       </div>
+      {converting && (
+        <ConvertToProModal client={d} onClose={() => setConverting(false)}
+          onDone={() => { setConverting(false); onChanged(); onClose() }} />
+      )}
     </div>
   )
 }
@@ -435,6 +434,7 @@ export default function Clients() {
     manage: canSee(role, ACTION_ROLES.clientManage),
     report: canSee(role, ACTION_ROLES.reportUser),
     export: canSee(role, ACTION_ROLES.listExport),
+    toPro:  canSee(role, ACTION_ROLES.proCreate), // Passer en Pro : Super + Commercial (C7)
   }
 
   // Vue, filtres et recherche gardés dans l'adresse : un lien ou un
