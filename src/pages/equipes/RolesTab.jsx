@@ -1,6 +1,9 @@
 import { useState } from 'react'
 import api from '../../lib/api'
-import { Pencil, Trash2, XCircle, Lock, Check, Plus } from 'lucide-react'
+import { Pencil, Trash2, XCircle, Lock, Check, Plus, Eye } from 'lucide-react'
+import { useNavigate } from 'react-router-dom'
+import { useAuth } from '../../contexts/AuthContext'
+import { homeRouteForRole } from '../../lib/roleHome'
 import { glass, glassInput } from '../../lib/glassStyles'
 import { ACCESS, pagesFor } from '../../lib/roleAccess'
 import InlineConfirm from '../../components/InlineConfirm'
@@ -15,6 +18,15 @@ const PALETTE = ['#6366f1', '#22c55e', '#ec4899', '#06b6d4', '#a855f7', '#0ea5e9
 const EMPTY_FORM = { label: '', color: PALETTE[5], access: [] }
 
 export default function RolesTab({ roles, countByRole, onChanged, onNotice }) {
+  const { startPreview } = useAuth()
+  const navigate = useNavigate()
+
+  // « Voir en tant que » : l'admin s'affiche comme pour ce rôle (lecture seule)
+  function preview(role) {
+    startPreview({ key: role.key, label: role.label, color: role.color, access: role.access })
+    navigate(homeRouteForRole(role.key))
+  }
+
   const [editing, setEditing] = useState(null) // null | 'new' | rôle
   const [form, setForm]       = useState(EMPTY_FORM)
   const [formError, setFormError] = useState('')
@@ -100,6 +112,7 @@ export default function RolesTab({ roles, countByRole, onChanged, onNotice }) {
                   <span title="Le Super Admin ne se modifie pas" style={{ color: 'var(--text-muted)', display: 'flex' }}><Lock size={14} /></span>
                 ) : (
                   <div style={{ display: 'flex', gap: 6 }}>
+                    <button onClick={() => preview(role)} title="Voir l'admin comme ce rôle (lecture seule)" style={actionBtn('#7c3aed')}><Eye size={12} /> Voir en tant que</button>
                     <button onClick={() => openEdit(role)} style={actionBtn('#0077b6')}><Pencil size={12} /> Modifier</button>
                     {!role.isSystem && (
                       <button onClick={() => askDelete(role)} title="Supprimer le rôle" style={actionBtn('#ef4444')}><Trash2 size={12} /></button>

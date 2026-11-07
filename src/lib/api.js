@@ -1,4 +1,5 @@
 import axios from 'axios'
+import { getPreview } from './preview'
 
 const BASE = import.meta.env.VITE_API_URL ?? ''
 
@@ -10,6 +11,9 @@ const api = axios.create({
 api.interceptors.request.use((config) => {
   const token = localStorage.getItem('dem_admin_token')
   if (token) config.headers.Authorization = `Bearer ${token}`
+  // Aperçu d'un rôle (Super Admin) : le serveur répond comme pour ce rôle
+  const preview = getPreview()
+  if (preview?.key) config.headers['X-Admin-Preview-Role'] = preview.key
   return config
 })
 
