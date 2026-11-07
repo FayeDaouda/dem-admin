@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import api from '../lib/api'
 import { glass, glassInput } from '../lib/glassStyles'
+import WhatsAppButton from './WhatsAppButton'
 
 // ── Proposer, attribuer ou réattribuer une course (Courses, Carte live) ──
 // Coursiers en ligne et libres, le plus proche du point de retrait d'abord
@@ -93,7 +94,8 @@ export default function DispatchPicker({ order, onClose, onDone }) {
                     {d.distanceKm == null ? 'Position inconnue' : `À ${d.distanceKm.toLocaleString('fr-FR')} km du retrait`}
                   </span>
                 </span>
-                <span style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
+                <span style={{ display: 'flex', gap: 6, flexShrink: 0, alignItems: 'center' }}>
+                  <WhatsAppButton phone={d.phone} compact />
                   {canPropose && <button onClick={() => propose(d)} disabled={busy} style={actionBtn('#0077b6')}>Proposer</button>}
                   <button onClick={() => assign(d)} disabled={busy} style={actionBtn('#16a34a')}>{reassigning ? 'Réattribuer' : 'Attribuer'}</button>
                 </span>
