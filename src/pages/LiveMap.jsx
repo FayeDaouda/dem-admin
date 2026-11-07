@@ -14,6 +14,7 @@ import { PAGES } from '../lib/aide'
 import { useAuth } from '../contexts/AuthContext'
 import { canSee, isSuperRole, ACTION_ROLES } from '../lib/droits'
 import DispatchPicker from '../components/DispatchPicker'
+import { clientCharge } from '../lib/orderPrice'
 
 // Fix icônes Leaflet avec Vite
 delete L.Icon.Default.prototype._getIconUrl
@@ -207,7 +208,7 @@ export default function LiveMap() {
                         <span style={{ fontSize: 12 }}>Client : {o.client?.name ?? '—'}</span><br />
                         {o.driver && <><span style={{ fontSize: 12 }}>Coursier : {o.driver.name ?? '—'}</span><br /></>}
                         {o.status === 'PENDING' && <><span style={{ fontSize: 12, color: '#dc2626', fontWeight: 600 }}>En attente depuis {Math.max(0, Math.round((Date.now() - new Date(o.createdAt)) / 60000))} min</span><br /></>}
-                        <span style={{ fontSize: 12, fontWeight: 600 }}>{o.price?.toLocaleString()} F</span>
+                        <span style={{ fontSize: 12, fontWeight: 600 }}>{clientCharge(o).toLocaleString('fr-FR')} F</span>
                         {/* Colis récupéré : seul le Super Admin réattribue */}
                         {canDispatch && (o.status === 'PENDING' || (o.driver && (o.status === 'ACCEPTED' || isSuperRole(user?.adminRole)))) && (
                           <button onClick={() => setDispatchOrder(o)} style={{ display: 'block', marginTop: 8, width: '100%', padding: '6px 10px', borderRadius: 6, border: 'none', cursor: 'pointer', fontSize: 12, fontWeight: 700, color: '#fff', background: o.driver ? '#7c3aed' : '#0077b6' }}>

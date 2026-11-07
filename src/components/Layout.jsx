@@ -66,6 +66,7 @@ export default function Layout({ children }) {
   }, [isMobile])
 
   const visibleNav = NAV.filter(item => canSeeNav(item, user?.adminRole))
+    .map(item => ({ ...item, label: item.labelFor?.(user?.adminRole) ?? item.label }))
   const [closedGroups, setClosedGroups] = useState(loadClosedGroups)
 
   function toggleGroup(key) {

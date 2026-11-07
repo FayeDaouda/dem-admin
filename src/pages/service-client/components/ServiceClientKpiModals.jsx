@@ -3,6 +3,7 @@ import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recha
 import api from '../../../lib/api'
 import Badge from '../../../components/Badge'
 import { glass } from '../../../lib/glassStyles'
+import { clientCharge } from '../../../lib/orderPrice'
 
 const TOOLTIP_STYLE = { background: '#fff', border: '1px solid var(--border)', borderRadius: 6, color: 'var(--text)', fontSize: 12, boxShadow: '0 2px 8px rgba(0,0,0,0.10)' }
 
@@ -152,7 +153,7 @@ export function ActiveOrdersModal({ icon, color, onClose }) {
                 <td style={tdStyle}>{o.driver?.name ?? '—'}</td>
                 <td style={{ ...tdStyle, fontSize: 12 }}>{o.pickupAddress}</td>
                 <td style={{ ...tdStyle, fontSize: 12 }}>{o.deliveryAddress}</td>
-                <td style={tdStyle}>{o.price?.toLocaleString()} F</td>
+                <td style={tdStyle}>{clientCharge(o).toLocaleString('fr-FR')} F</td>
                 <td style={{ ...tdStyle, color: 'var(--text-muted)', fontSize: 12 }}>{o.acceptedAt ? new Date(o.acceptedAt).toLocaleString('fr-FR') : '—'}</td>
               </tr>
             ))}
@@ -213,7 +214,7 @@ export function StuckPendingOrdersModal({ icon, color, onClose }) {
                   <td style={tdStyle}>{o.client?.name ?? '—'}</td>
                   <td style={{ ...tdStyle, fontSize: 12 }}>{o.pickupAddress}</td>
                   <td style={{ ...tdStyle, fontSize: 12 }}>{o.deliveryAddress}</td>
-                  <td style={tdStyle}>{o.price?.toLocaleString()} F</td>
+                  <td style={tdStyle}>{clientCharge(o).toLocaleString('fr-FR')} F</td>
                   <td style={{ ...tdStyle, fontWeight: 700, color: '#f59e0b' }}>{waitingMinutes(o.createdAt)} min</td>
                   <td style={tdStyle}><Badge status={hasOffer ? 'PENDING' : 'CANCELLED'} label={hasOffer ? 'Offre en cours' : 'Aucune offre'} /></td>
                 </tr>

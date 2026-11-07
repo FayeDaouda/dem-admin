@@ -12,7 +12,8 @@
 //  serveur (requireAdminRole).
 //
 //  Les listes ci-dessous nomment des ACCÈS (DEV, FINANCE, MARKETING,
-//  SERVICE_CLIENT, ASSISTANCE_EXECUTIVE, FLOTTE = Responsable de flottes). Un rôle de la page Équipes en ouvre
+//  SERVICE_CLIENT, ASSISTANCE_EXECUTIVE, FLOTTE = Responsable de flottes,
+//  COMMERCIAL = Commercial / CRM Pro). Un rôle de la page Équipes en ouvre
 //  un ou plusieurs : le serveur les renvoie à la connexion (adminAccess) ;
 //  à défaut (session plus ancienne), un rôle d'origine ouvre son propre accès.
 // ============================================================
@@ -70,8 +71,12 @@ export const TAB_ROLES = {
   // flotte (/admin/fleet-extensions) et décisions sur les demandes
   // (/admin/requests/:id/approve|reject) : Super seul.
   validation: {
-    // DEM Pro : pas le Responsable de flottes (travail du Service Client)
-    'dem-pro':          ['SERVICE_CLIENT', 'ASSISTANCE_EXECUTIVE'],
+    // Chefs, coursiers, pièces : pas le Commercial (comptes DEM Pro seulement)
+    ambassadors:        ['SERVICE_CLIENT', 'ASSISTANCE_EXECUTIVE', 'FLOTTE'],
+    drivers:            ['SERVICE_CLIENT', 'ASSISTANCE_EXECUTIVE', 'FLOTTE'],
+    'kyc-review':       ['SERVICE_CLIENT', 'ASSISTANCE_EXECUTIVE', 'FLOTTE'],
+    // DEM Pro : Service Client et Commercial (Valider / Refuser), pas le Resp. flottes
+    'dem-pro':          ['SERVICE_CLIENT', 'ASSISTANCE_EXECUTIVE', 'COMMERCIAL'],
     // Extensions de flotte : Responsable de flottes en lecture (décision : Super)
     fleet:              ['FLOTTE'],
     // Demandes du Responsable de flottes : décision du Super (Demandes Flotte),
@@ -119,6 +124,8 @@ export const ACTION_ROLES = {
   // Créer une course au nom d'un client (commande par téléphone / WhatsApp) :
   // POST /admin/orders, Super + Resp. flottes
   orderCreateForClient: ['FLOTTE'],
+  // Créer un compte DEM Pro (POST /admin/dem-pro) : Super + Commercial
+  proCreate: ['COMMERCIAL'],
   // Fiche coursier : notes internes (GET/POST /admin/drivers/:id/notes), Super + Resp. flottes
   driverNotes: ['FLOTTE'],
   // Shifts de la flotte DEM : planning d'un coursier et créneaux

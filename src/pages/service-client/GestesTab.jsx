@@ -9,7 +9,9 @@ import InfoTip from '../../components/InfoTip'
 
 const KIND_LABELS = { GESTE_FREE_RIDE: 'Course gratuite', GESTE_DISCOUNT: 'Remise' }
 
-export default function GestesTab() {
+// proMode : Poste Commercial — le geste porte sur un compte DEM Pro (recherche
+// par entreprise, contact ou téléphone) au lieu d'un client.
+export default function GestesTab({ proMode = false }) {
   const [requests, setRequests] = useState([])
   const [loading, setLoading]   = useState(true)
   const [search, setSearch]     = useState('')
@@ -28,19 +30,30 @@ export default function GestesTab() {
   useEffect(() => { fetch() }, [fetch])
   useAutoRefresh(() => fetch(true))
 
+  const [pros, setPros] = useState(null) // comptes DEM Pro (filtrés ici : la liste n'a pas de recherche serveur)
+  useEffect(() => {
+    if (!proMode) return
+    api.get('/admin/dem-pro').then(r => setPros(r.data?.accounts ?? [])).catch(() => setPros([]))
+  }, [proMode])
+
   useEffect(() => {
     if (!search.trim()) { setResults([]); return }
     const t = setTimeout(async () => {
+      if (proMode) {
+        const q = search.trim().toLowerCase()
+        setResults((pros ?? []).filter(p => [p.proBusinessName, p.name, p.phone].some(x => (x ?? '').toLowerCase().includes(q))).slice(0, 5))
+        return
+      }
       try {
         const res = await api.get('/admin/clients', { params: { search, limit: 5 } })
         setResults(res.data?.clients ?? [])
       } catch (e) { console.error(e) }
     }, 300)
     return () => clearTimeout(t)
-  }, [search])
+  }, [search, proMode, pros])
 
   function pickClient(client, kind) {
-    setModal({ kind, targetUser: { id: client.id, label: client.name ?? client.phone } })
+    setModal({ kind, targetUser: { id: client.id, label: client.proBusinessName ?? client.name ?? client.phone } })
     setSearch(''); setResults([])
   }
 
@@ -50,13 +63,13 @@ export default function GestesTab() {
         <h2 style={{ fontSize: 15, fontWeight: 700, marginBottom: 12 }}>Nouvelle demande de geste commercial<InfoTip k="Nouvelle demande de geste commercial" size={13} /></h2>
         <div style={{ position: 'relative', maxWidth: 320 }}>
           <Search size={14} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
-          <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Chercher un client (nom ou téléphone)…" style={{ ...glassInput, paddingLeft: 36 }} />
+          <input value={search} onChange={e => setSearch(e.target.value)} placeholder={proMode ? 'Chercher un Pro (entreprise, contact ou téléphone)…' : 'Chercher un client (nom ou téléphone)…'} style={{ ...glassInput, paddingLeft: 36 }} />
         </div>
         {results.length > 0 && (
           <div style={{ marginTop: 10, display: 'flex', flexDirection: 'column', gap: 6 }}>
             {results.map(c => (
               <div key={c.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 12px', borderRadius: 8, background: 'var(--surface2)' }}>
-                <span style={{ fontSize: 13 }}>{c.name ?? 'Sans nom'} · {c.phone}</span>
+                <span style={{ fontSize: 13 }}>{c.proBusinessName ? `${c.proBusinessName} · ` : ''}{c.name ?? 'Sans nom'} · {c.phone}</span>
                 <div style={{ display: 'flex', gap: 6 }}>
                   <button onClick={() => pickClient(c, 'GESTE_FREE_RIDE')} style={{ ...btnSmall, color: '#15803d', borderColor: '#15803d' }}>
                     <Gift size={12} /> Course gratuite

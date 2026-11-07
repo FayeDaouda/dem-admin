@@ -5,6 +5,9 @@ import PageHeader from '../../components/PageHeader'
 import TabBar from '../../components/TabBar'
 import { useUrlTab } from '../../lib/useUrlTab'
 import KpiRow from './components/KpiRow'
+import ProKpiRow from './components/ProKpiRow'
+import { useAuth } from '../../contexts/AuthContext'
+import { roleHas } from '../../lib/droits'
 import OverviewTab from './OverviewTab'
 import GestesTab from './GestesTab'
 import RequestsTab from './RequestsTab'
@@ -19,24 +22,31 @@ const TABS = [
   { key: 'requests',  label: 'Mes demandes',       icon: ClipboardList, Component: RequestsTab },
 ]
 
+// Commercial / CRM Pro (sans Service Client) : « Poste Commercial » — gestes
+// commerciaux sur les Pro et Mes demandes, compteurs Pro (dossier du 07/11/2026).
+const COMMERCIAL_TABS = TABS.filter(t => t.key !== 'overview')
+
 export default function ServiceClient() {
-  const [tab, setTab] = useUrlTab(TABS)
+  const { user } = useAuth()
+  const commercial = roleHas(user?.adminRole, 'COMMERCIAL') && !roleHas(user?.adminRole, 'SERVICE_CLIENT')
+  const tabs = commercial ? COMMERCIAL_TABS : TABS
+  const [tab, setTab] = useUrlTab(tabs)
   const [reloadKey, setReloadKey] = useState(0)
 
-  const Active = TABS.find(t => t.key === tab).Component
+  const Active = tabs.find(t => t.key === tab).Component
 
   return (
     <div style={pageWrap}>
       <PageHeader
-        title="Poste Service Client"
-        subtitle="Support clients et coursiers, gestes commerciaux et demandes"
+        title={commercial ? 'Poste Commercial' : 'Poste Service Client'}
+        subtitle={commercial ? 'Comptes DEM Pro, gestes commerciaux et demandes' : 'Support clients et coursiers, gestes commerciaux et demandes'}
         actions={<button onClick={() => setReloadKey(k => k + 1)} style={btnOutline}><RefreshCw size={14} /> Actualiser</button>}
       />
 
       <div style={pageScroll}>
-        <KpiRow reloadKey={reloadKey} />
-        <TabBar tabs={TABS} active={tab} onChange={setTab} />
-        <Active key={`${tab}-${reloadKey}`} />
+        {commercial ? <ProKpiRow reloadKey={reloadKey} /> : <KpiRow reloadKey={reloadKey} />}
+        <TabBar tabs={tabs} active={tab} onChange={setTab} />
+        <Active key={`${tab}-${reloadKey}`} proMode={commercial} />
       </div>
     </div>
   )

@@ -10,6 +10,7 @@ export const ACCESS = [
   { key: 'SERVICE_CLIENT',       label: 'Service client' },
   { key: 'ASSISTANCE_EXECUTIVE', label: 'Assistance exécutive' },
   { key: 'FLOTTE',               label: 'Responsable de flottes' },
+  { key: 'COMMERCIAL',           label: 'Commercial / CRM Pro' },
 ]
 
 /** Pages du menu ouvertes par ces accès (Super Admin : toutes). */

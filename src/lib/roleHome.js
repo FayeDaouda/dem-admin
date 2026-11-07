@@ -6,6 +6,7 @@ import { canSee } from './droits'
 const DASHBOARD_ACCESS = ['DEV', 'ASSISTANCE_EXECUTIVE', 'FLOTTE']
 const ACCESS_HOME = [
   ['SERVICE_CLIENT', '/service-client'],
+  ['COMMERCIAL', '/service-client'], // Poste Commercial (le Dashboard Pro viendra à l'étape 3)
   ['FINANCE', '/finance'],
   ['MARKETING', '/marketing'],
 ]

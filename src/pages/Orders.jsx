@@ -16,10 +16,8 @@ import DispatchPicker from '../components/DispatchPicker'
 import OrderRequestModal from './orders/OrderRequestModal'
 import ClientOrderModal from './orders/ClientOrderModal'
 import InternalNotes from '../components/InternalNotes'
+import { clientCharge } from '../lib/orderPrice'
 
-// Montant payé par le client = part coursier (price) + frais DEM − réduction
-// (même calcul que l'app : core/utils/price_format.dart:clientChargeFor).
-const clientCharge = o => Math.max(0, (o.price ?? 0) + (o.demFee ?? 0) - (o.discountAmount ?? 0))
 
 const firstNonEmpty = (...values) => values.find(v => typeof v === 'string' && v.trim() !== '') ?? '—'
 
@@ -76,6 +74,7 @@ export default function Orders() {
   // rechargement rouvre la même liste. ?q= vient aussi de la recherche globale.
   const [params, setParams] = useSearchParams()
   const statusFilter = FILTERS.some(f => f.key === params.get('statut')) ? params.get('statut') : 'all'
+  const proOnly = params.get('pro') === '1' // filtre « Commandes DEM Pro » (?pro=1)
   const [search, setSearch] = useState(() => params.get('q') ?? '')
   useUrlQuery(setSearch)
   const [debouncedSearch, setDebouncedSearch] = useState(search.trim())
@@ -94,6 +93,16 @@ export default function Orders() {
   const [driverPicker, setDriverPicker] = useState(null) // true = fenêtre de dispatch ouverte
   const [cancelReasons, setCancelReasons] = useState(null)
   const [cancelPicker, setCancelPicker]   = useState(null) // { orderId, code, note }
+
+  function toggleProOnly() {
+    setParams(prev => {
+      const next = new URLSearchParams(prev)
+      if (proOnly) next.delete('pro')
+      else next.set('pro', '1')
+      return next
+    }, { replace: true })
+    setPage(1)
+  }
 
   function setFilter(key) {
     setParams(prev => {
@@ -126,7 +135,7 @@ export default function Orders() {
   const fetch = useCallback(async (silent = false) => {
     const requestId = ++lastRequest.current
     if (!silent) setLoading(true)
-    const base = debouncedSearch ? { search: debouncedSearch } : {}
+    const base = { ...(debouncedSearch ? { search: debouncedSearch } : {}), ...(proOnly ? { clientType: 'DEM_PRO' } : {}) }
     try {
       const listParams = { ...base, page, limit: LIMIT }
       if (statusFilter !== 'all') listParams.group = statusFilter
@@ -143,7 +152,7 @@ export default function Orders() {
     } finally {
       if (!silent && requestId === lastRequest.current) setLoading(false)
     }
-  }, [page, statusFilter, debouncedSearch])
+  }, [page, statusFilter, debouncedSearch, proOnly])
 
   useEffect(() => { fetch() }, [fetch])
   useAutoRefresh(() => fetch(true))
@@ -289,7 +298,7 @@ export default function Orders() {
           <input
             value={search}
             onChange={e => setSearch(e.target.value)}
-            placeholder="ID, client, coursier, adresse…"
+            placeholder="ID, client, entreprise, coursier, adresse…"
             style={{ ...glassInput, paddingLeft: 36, width: '100%' }}
           />
         </div>
@@ -306,6 +315,10 @@ export default function Orders() {
             )
           })}
         </div>
+        <button onClick={toggleProOnly} title="Seulement les commandes des comptes DEM Pro" style={{
+          padding: '7px 12px', borderRadius: 'var(--radius-sm)', fontSize: 12.5, cursor: 'pointer', fontWeight: proOnly ? 700 : 500,
+          border: `1px solid ${proOnly ? '#f97316' : 'rgba(0,119,182,.25)'}`, background: proOnly ? 'rgba(249,115,22,.12)' : 'rgba(255,255,255,.5)', color: proOnly ? '#c2410c' : 'var(--text-muted)',
+        }}>Commandes DEM Pro</button>
       </div>
 
       <div style={pageScroll}>

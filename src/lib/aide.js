@@ -278,7 +278,7 @@ export const ONGLETS = {
   },
   '/equipes': {
     membres: "Comptes de l'équipe admin. Le rôle d'un membre se change dans sa ligne ou depuis Modifier ; l'effet est immédiat côté serveur, et le menu de ce compte se met à jour au prochain rechargement de la page.",
-    roles:   "« Voir en tant que » affiche l'admin exactement comme pour ce rôle (menu, pages, boutons, données), en lecture seule, jusqu'à « Quitter l'aperçu ». Un rôle ouvre un ou plusieurs accès (Dev, Finance, Marketing, Service client, Assistance exécutive, Responsable de flottes) ; chaque accès ouvre des pages et les actions qui vont avec. Les rôles d'origine se modifient mais ne se suppriment pas ; Super Admin garde l'accès total.",
+    roles:   "« Voir en tant que » affiche l'admin exactement comme pour ce rôle (menu, pages, boutons, données), en lecture seule, jusqu'à « Quitter l'aperçu ». Un rôle ouvre un ou plusieurs accès (Dev, Finance, Marketing, Service client, Assistance exécutive, Responsable de flottes, Commercial / CRM Pro) ; chaque accès ouvre des pages et les actions qui vont avec. Les rôles d'origine se modifient mais ne se suppriment pas ; Super Admin garde l'accès total.",
   },
   '/notifications': {
     envoyer:    "Envoyer une notification push maintenant ou la programmer, par type de compte. Un test sur un numéro est possible avant l'envoi.",

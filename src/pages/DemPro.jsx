@@ -430,6 +430,7 @@ export default function DemPro() {
     edit:   isSuper || isServiceClient,
     report: canSee(role, ACTION_ROLES.reportUser),
     export: canSee(role, ACTION_ROLES.listExport),
+    create: canSee(role, ACTION_ROLES.proCreate), // Super + Commercial
   }
 
   // Onglet, vue, plan et recherche gardés dans l'adresse.
@@ -627,7 +628,7 @@ export default function DemPro() {
         actions={view === 'comptes' ? <>
           <button onClick={() => fetch()} style={btnOutline}><RefreshCw size={14} /> Actualiser</button>
           {rights.export && <ExportMenu getSpec={exportSpec} disabled={loading || filtered.length === 0} />}
-          {isSuper && <button onClick={() => setEditTarget({})} style={btnPrimary}><Plus size={14} /> Nouveau compte</button>}
+          {rights.create && <button onClick={() => setEditTarget({})} style={btnPrimary}><Plus size={14} /> Nouveau compte</button>}
         </> : null}
       />
 
