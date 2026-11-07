@@ -23,6 +23,11 @@ export const REQUEST_KIND_LABELS = {
   PRO_BONUS:           'Bonus DEM Pro',
   PRO_PLAN_CHANGE:     'Changement de plan DEM Pro',
   PRO_REFERRAL_REWARD: 'Bonus de parrainage DEM Pro',
+  // CM / CRM Client (niveau 2)
+  CLIENT_REWARD:       'Récompense client',
+  APP_ALERT:           "Alerte dans l'app",
+  CLIENT_BAN:          'Bannir un client',
+  CLIENT_BADGE:        'Badge client',
 }
 
 export const REQUEST_STATUS_LABELS = {
@@ -48,5 +53,8 @@ export function requestDetails(r) {
     p.uses > 1 && `sur ${p.uses} courses`,
     p.title && `« ${p.title} — ${p.body} »`,
     p.requestedSize && `Taille demandée : ${p.requestedSize} coursiers`,
+    p.message && `Alerte : « ${p.message} »`,
+    p.active === false && "Retirer l'alerte",
+    p.startsAt && `À partir du ${new Date(p.startsAt).toLocaleString('fr-FR')}`,
   ].filter(Boolean)
 }

@@ -6,11 +6,16 @@ import api from '../../lib/api'
 import { glassInput } from '../../lib/glassStyles'
 import { useAutoRefresh } from '../../lib/useAutoRefresh'
 import { targetLabel } from '../../lib/broadcastTargets'
+import RequestModal from '../../components/RequestModal'
 
 const AUDIENCE_OPTIONS = [['all', 'Tous'], ['clients', 'Clients'], ['drivers', 'Coursiers']]
 
-export function AlertForm() {
+// asks : CM / CRM Client — l'alerte (clients) devient une demande au Super
+// Admin (APP_ALERT), appliquée s'il la valide.
+export function AlertForm({ asks = false }) {
   const [banner, setBanner] = useState(null)
+  const [asking, setAsking] = useState(false)
+  const [notice, setNotice] = useState('')
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
   const [error, setError] = useState('')
@@ -51,20 +56,27 @@ export function AlertForm() {
         style={{ ...glassInput, resize: 'vertical', marginBottom: 10 }}
       />
       <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
-        <select value={banner.audience} onChange={e => setBanner(a => ({ ...a, audience: e.target.value }))} style={{ ...glassInput, width: 160 }}>
+        <select value={asks ? 'clients' : banner.audience} disabled={asks} onChange={e => setBanner(a => ({ ...a, audience: e.target.value }))} style={{ ...glassInput, width: 160 }}>
           {AUDIENCE_OPTIONS.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
         </select>
         <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13 }}>
           <input type="checkbox" checked={banner.active} onChange={e => setBanner(a => ({ ...a, active: e.target.checked }))} />
           Alerte active
         </label>
-        <button onClick={save} disabled={saving} style={{
+        <button onClick={asks ? () => setAsking(true) : save} disabled={saving || (asks && banner.active && !banner.message?.trim())} style={{
           marginLeft: 'auto', padding: '7px 16px', borderRadius: 8, border: 'none',
           background: 'var(--primary)', color: '#fff', fontWeight: 600, fontSize: 13, cursor: 'pointer',
         }}>
-          {saving ? 'Enregistrement…' : 'Enregistrer'}
+          {asks ? 'Demander au Super Admin' : saving ? 'Enregistrement…' : 'Enregistrer'}
         </button>
       </div>
+      {asking && (
+        <RequestModal kind="APP_ALERT" title="Demander une alerte dans l'app"
+          intro={banner.active ? 'Alerte affichée aux clients.' : "Retrait de l'alerte."}
+          payload={{ message: banner.message ?? '', active: !!banner.active, audience: 'clients' }}
+          onClose={() => setAsking(false)} onDone={text => { setAsking(false); setNotice(text) }} />
+      )}
+      {notice && <div style={{ marginTop: 8, fontSize: 12, color: '#15803d', fontWeight: 600 }}>{notice}</div>}
       {error && <div style={{ marginTop: 8, fontSize: 12, color: 'var(--danger)' }}>{error}</div>}
       {saved && <div style={{ marginTop: 8, fontSize: 12, color: '#22c55e' }}>Alerte enregistrée.</div>}
       {banner.updatedAt && <div style={{ marginTop: 8, fontSize: 11, color: 'var(--text-muted)' }}>Dernière mise à jour : {new Date(banner.updatedAt).toLocaleString('fr-FR')}</div>}

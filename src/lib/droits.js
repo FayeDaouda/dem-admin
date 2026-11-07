@@ -45,7 +45,7 @@ export function canSee(role, roles) {
  * « Demander » à la place d'une action qui lui est réservée.
  */
 export function asksSuper(role) {
-  return roleHas(role, 'FLOTTE') || roleHas(role, 'COMMERCIAL')
+  return roleHas(role, 'FLOTTE') || roleHas(role, 'COMMERCIAL') || roleHas(role, 'CM')
 }
 
 /** Le rôle (hors Super Admin) ouvre-t-il cet accès ? */
@@ -84,6 +84,7 @@ export const TAB_ROLES = {
     // suivi par le demandeur (Mes demandes, masqué au Super)
     'fleet-requests':   [],
     'commercial-requests': [],
+    'cm-requests':      [],
     'my-requests':      ['FLOTTE'],
     'service-requests': [],
     'finance-requests': [],

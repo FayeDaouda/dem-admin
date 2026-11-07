@@ -32,7 +32,7 @@ export default function Notifications() {
       <div style={pageScroll}>
         {tab === 'envoyer'    && <Broadcast embedded audience={audience} />}
         {tab === 'historique' && <BroadcastHistory />}
-        {tab === 'alerte'     && <AlertForm />}
+        {tab === 'alerte'     && <AlertForm asks={!canSee(role, ACTION_ROLES.appAlertEdit)} />}
       </div>
     </div>
   )

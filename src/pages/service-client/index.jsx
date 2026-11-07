@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { RefreshCw, LayoutGrid, Gift, ClipboardList } from 'lucide-react'
+import { RefreshCw, LayoutGrid, Gift, ClipboardList, ScrollText } from 'lucide-react'
 import { pageWrap, pageScroll } from '../../lib/glassStyles'
 import PageHeader from '../../components/PageHeader'
 import TabBar from '../../components/TabBar'
@@ -11,6 +11,7 @@ import { roleHas } from '../../lib/droits'
 import OverviewTab from './OverviewTab'
 import GestesTab from './GestesTab'
 import RequestsTab from './RequestsTab'
+import JournalTab from './JournalTab'
 
 // Poste Service Client — espace de travail du Service Client (plan de
 // refonte). Onglet ouvert dans l'adresse (?tab=). Le déblocage des codes SMS
@@ -28,7 +29,7 @@ const COMMERCIAL_TABS = TABS.filter(t => t.key !== 'overview')
 // CM / CRM Client (sans Service Client) : gestes commerciaux sur les clients
 // et Mes demandes ; les indicateurs clients sont dans le Dashboard CM (pas de
 // revenus ni de coursiers en ligne, dossier du 07/11/2026).
-const CM_TABS = COMMERCIAL_TABS
+const CM_TABS = [...COMMERCIAL_TABS, { key: 'journal', label: 'Mon journal', icon: ScrollText, Component: JournalTab }]
 
 export default function ServiceClient() {
   const { user } = useAuth()
