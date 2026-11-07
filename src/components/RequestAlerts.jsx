@@ -28,8 +28,8 @@ export default function RequestAlerts() {
 
   const loadUrgent = useCallback(async () => {
     try {
-      const res = await api.get('/admin/requests', { params: { status: 'PENDING', origin: 'FLOTTE' } })
-      const list = (res.data?.requests ?? []).filter(r => r.urgent)
+      const res = await api.get('/admin/requests', { params: { status: 'PENDING' } })
+      const list = (res.data?.requests ?? []).filter(r => r.urgent && ['FLOTTE', 'COMMERCIAL'].includes(r.origin))
       if (list.some(r => !known.current.has(r.id))) beep({ count: 3, frequency: 760 })
       known.current = new Set(list.map(r => r.id))
       setUrgent(list)
@@ -67,12 +67,12 @@ export default function RequestAlerts() {
           <div style={{ flex: 1, minWidth: 200 }}>
             <div style={{ fontWeight: 800, fontSize: 14 }}>Demande urgente — {REQUEST_KIND_LABELS[r.kind] ?? r.kind}</div>
             <div style={{ fontSize: 12, opacity: 0.9 }}>
-              {r.submittedBy?.name ?? 'Responsable de flottes'}
+              {r.submittedBy?.name ?? (r.origin === 'COMMERCIAL' ? 'Commercial' : 'Responsable de flottes')}
               {r.targetUser && ` · ${r.targetUser.name ?? r.targetUser.phone}`}
               {r.reason && ` · ${r.reason}`}
             </div>
           </div>
-          <button onClick={() => navigate(`/validation?tab=fleet-requests&highlight=${r.id}`)} style={{ ...btn, background: '#fff', color: '#dc2626' }}>Décider</button>
+          <button onClick={() => navigate(`/validation?tab=${r.origin === 'COMMERCIAL' ? 'commercial-requests' : 'fleet-requests'}&highlight=${r.id}`)} style={{ ...btn, background: '#fff', color: '#dc2626' }}>Décider</button>
         </div>
       ))}
       {decisions.map(d => {

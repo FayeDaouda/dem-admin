@@ -19,6 +19,10 @@ export const REQUEST_KIND_LABELS = {
   DRIVER_DELETE:    'Suppression coursier',
   DRIVER_GIFT_PASS: 'Pass coursier offert',
   BROADCAST:        'Notification aux clients / DEM Pro / chefs',
+  // Commercial / CRM Pro (niveau 2)
+  PRO_BONUS:           'Bonus DEM Pro',
+  PRO_PLAN_CHANGE:     'Changement de plan DEM Pro',
+  PRO_REFERRAL_REWARD: 'Bonus de parrainage DEM Pro',
 }
 
 export const REQUEST_STATUS_LABELS = {
@@ -39,6 +43,9 @@ export function requestDetails(r) {
     p.orderId && `Course ${String(p.orderId).slice(0, 8).toUpperCase()}`,
     p.reasonLabel && `Motif d'annulation : ${p.reasonLabel}`,
     p.target && `Destinataires : ${p.target}`,
+    p.plan && `Plan : ${p.plan}${p.expiresAt ? ` jusqu'au ${new Date(p.expiresAt).toLocaleDateString('fr-FR')}` : ''}`,
+    p.type && { COURSE_FREE: 'Course offerte', COURSE_PERCENT: `Réduction ${p.value} %`, COURSE_FIXED: `Réduction ${p.value} F`, PRO_PLAN_DAYS: `${p.value} jours d'offre` }[p.type],
+    p.uses > 1 && `sur ${p.uses} courses`,
     p.title && `« ${p.title} — ${p.body} »`,
     p.requestedSize && `Taille demandée : ${p.requestedSize} coursiers`,
   ].filter(Boolean)

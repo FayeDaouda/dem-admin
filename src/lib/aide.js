@@ -251,6 +251,7 @@ export const ONGLETS = {
     'service-requests': 'Demandes envoyées par le Service Client (comptes DEM Pro, gestes commerciaux, suspensions) ; décision du Super Admin.',
     'finance-requests': 'Demandes de changement de tarif envoyées par la Finance ; décision du Super Admin.',
     'fleet-requests':   "Demandes du Responsable de flottes pour les actions réservées au Super Admin (suspension longue, suppression, validation d'un chef, envoi aux clients…). Valider applique l'action ; refuser demande un motif ; « Demander une précision » renvoie une question au demandeur. Les urgentes sonnent et passent en tête.",
+    'commercial-requests': "Demandes du Commercial / CRM Pro pour les actions réservées au Super Admin (bonus au-delà des plafonds, réductions, changement de plan, suspension, annulation ou remboursement d'une commande Pro). Valider applique l'action ; refuser demande un motif.",
     'my-requests':      "Vos demandes au Super Admin et leur décision. Quand une précision est demandée, répondez ici : la demande repart en attente.",
   },
   '/finance': {

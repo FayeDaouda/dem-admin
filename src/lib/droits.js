@@ -82,6 +82,7 @@ export const TAB_ROLES = {
     // Demandes du Responsable de flottes : décision du Super (Demandes Flotte),
     // suivi par le demandeur (Mes demandes, masqué au Super)
     'fleet-requests':   [],
+    'commercial-requests': [],
     'my-requests':      ['FLOTTE'],
     'service-requests': [],
     'finance-requests': [],
