@@ -1,7 +1,8 @@
 import { Fragment, useState, useEffect, useCallback } from 'react'
 import api from '../lib/api'
 import { useAuth } from '../contexts/AuthContext'
-import { RefreshCw, UserPlus, Trash2, Power, XCircle, Pencil, Search, KeyRound, Check, UsersRound, ShieldCheck } from 'lucide-react'
+import { RefreshCw, UserPlus, Trash2, Power, XCircle, Pencil, Search, KeyRound, Check, UsersRound, ShieldCheck, ScrollText } from 'lucide-react'
+import { useNavigate } from 'react-router-dom'
 import { glass, glassInput, pageWrap, pageScroll, stickyTh } from '../lib/glassStyles'
 import { PASSWORD_PATTERN, PASSWORD_HINT } from '../lib/passwordPolicy'
 import { useAutoRefresh } from '../lib/useAutoRefresh'
@@ -34,6 +35,7 @@ const roleOf = a => a?.adminRole ?? 'SUPER' // ancien compte sans rôle = Super 
 
 export default function Equipes() {
   const { user: currentUser } = useAuth()
+  const navigate = useNavigate()
   const isSuper = !currentUser?.adminRole || currentUser.adminRole === 'SUPER'
 
   const [tab, setTab]                     = useUrlTab(TABS)
@@ -454,6 +456,7 @@ export default function Equipes() {
                           {isSuper && !isMe ? (
                             <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
                               <button onClick={() => openEdit(a)} style={actionBtn('#0077b6')}><Pencil size={12} /> Modifier</button>
+                              <button onClick={() => navigate(`/audit?admin=${a.id}`)} title="Journal de ses actions (Audit)" style={actionBtn('#475569')}><ScrollText size={12} /> Journal</button>
                               <button onClick={() => ask(a.id, 'password')} title="Réinitialiser avec un mot de passe provisoire (compte oublié)" style={actionBtn('#d97706')}>
                                 <KeyRound size={12} /> Mot de passe provisoire
                               </button>

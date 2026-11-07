@@ -39,6 +39,14 @@ export function canSee(role, roles) {
   return accessOf(role).some(a => roles.includes(a))
 }
 
+/**
+ * Demandes de niveau 2 au Super Admin (Responsable de flottes) : bouton
+ * « Demander » à la place d'une action qui lui est réservée.
+ */
+export function asksSuper(role) {
+  return roleHas(role, 'FLOTTE')
+}
+
 /** Le rôle (hors Super Admin) ouvre-t-il cet accès ? */
 export function roleHas(role, key) {
   return !isSuperRole(role) && accessOf(role).includes(key)
@@ -66,6 +74,10 @@ export const TAB_ROLES = {
     'dem-pro':          ['SERVICE_CLIENT', 'ASSISTANCE_EXECUTIVE'],
     // Extensions de flotte : Responsable de flottes en lecture (décision : Super)
     fleet:              ['FLOTTE'],
+    // Demandes du Responsable de flottes : décision du Super (Demandes Flotte),
+    // suivi par le demandeur (Mes demandes, masqué au Super)
+    'fleet-requests':   [],
+    'my-requests':      ['FLOTTE'],
     'service-requests': [],
     'finance-requests': [],
   },
@@ -103,7 +115,15 @@ export const ACTION_ROLES = {
   orderCancel:   ['ASSISTANCE_EXECUTIVE', 'FLOTTE'], // annuler : Super + Ass. exéc. ; Resp. flottes : course en attente seulement (orderCancelAny)
   orderCancelAny: ['ASSISTANCE_EXECUTIVE'],  // annuler aussi une course en cours
   orderMarkPaid: ['FINANCE'],                // marquer payé : Super + Finance
-  orderForceStatus: [],                      // colis récupéré / livré à la place du coursier (/force-status) : Super seul
+  orderForceStatus: [],
+  // Créer une course au nom d'un client (commande par téléphone / WhatsApp) :
+  // POST /admin/orders, Super + Resp. flottes
+  orderCreateForClient: ['FLOTTE'],
+  // Fiche coursier : notes internes (GET/POST /admin/drivers/:id/notes), Super + Resp. flottes
+  driverNotes: ['FLOTTE'],
+  // Shifts de la flotte DEM : planning d'un coursier et créneaux
+  // (PUT /admin/drivers/:id/shifts, /admin/shifts/slots), Super + Resp. flottes
+  shiftEdit: ['FLOTTE'],                      // colis récupéré / livré à la place du coursier (/force-status) : Super seul
   // Incidents : changer le statut ou les notes (PATCH /admin/incidents/:id) : Super + Ass. exéc.
   incidentUpdate: ['ASSISTANCE_EXECUTIVE', 'FLOTTE'],
   // Validation › chefs de flotte, Suspendre : PATCH /admin/chefs-de-flotte/:id/suspend, Super seul.
