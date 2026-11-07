@@ -25,11 +25,17 @@ const TABS = [
 // Commercial / CRM Pro (sans Service Client) : « Poste Commercial » — gestes
 // commerciaux sur les Pro et Mes demandes, compteurs Pro (dossier du 07/11/2026).
 const COMMERCIAL_TABS = TABS.filter(t => t.key !== 'overview')
+// CM / CRM Client (sans Service Client) : gestes commerciaux sur les clients
+// et Mes demandes ; les indicateurs clients sont dans le Dashboard CM (pas de
+// revenus ni de coursiers en ligne, dossier du 07/11/2026).
+const CM_TABS = COMMERCIAL_TABS
 
 export default function ServiceClient() {
   const { user } = useAuth()
-  const commercial = roleHas(user?.adminRole, 'COMMERCIAL') && !roleHas(user?.adminRole, 'SERVICE_CLIENT')
-  const tabs = commercial ? COMMERCIAL_TABS : TABS
+  const sc = roleHas(user?.adminRole, 'SERVICE_CLIENT')
+  const commercial = roleHas(user?.adminRole, 'COMMERCIAL') && !sc
+  const cm = roleHas(user?.adminRole, 'CM') && !sc && !commercial
+  const tabs = commercial ? COMMERCIAL_TABS : cm ? CM_TABS : TABS
   const [tab, setTab] = useUrlTab(tabs)
   const [reloadKey, setReloadKey] = useState(0)
 
@@ -39,12 +45,12 @@ export default function ServiceClient() {
     <div style={pageWrap}>
       <PageHeader
         title={commercial ? 'Poste Commercial' : 'Poste Service Client'}
-        subtitle={commercial ? 'Comptes DEM Pro, gestes commerciaux et demandes' : 'Support clients et coursiers, gestes commerciaux et demandes'}
+        subtitle={commercial ? 'Comptes DEM Pro, gestes commerciaux et demandes' : cm ? 'Clients, gestes commerciaux et demandes' : 'Support clients et coursiers, gestes commerciaux et demandes'}
         actions={<button onClick={() => setReloadKey(k => k + 1)} style={btnOutline}><RefreshCw size={14} /> Actualiser</button>}
       />
 
       <div style={pageScroll}>
-        {commercial ? <ProKpiRow reloadKey={reloadKey} /> : <KpiRow reloadKey={reloadKey} />}
+        {commercial ? <ProKpiRow reloadKey={reloadKey} /> : cm ? null : <KpiRow reloadKey={reloadKey} />}
         <TabBar tabs={tabs} active={tab} onChange={setTab} />
         <Active key={`${tab}-${reloadKey}`} proMode={commercial} />
       </div>

@@ -49,14 +49,23 @@ function toDatetimeLocal(date) {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
 }
 
-// driversOnly : rôle limité aux coursiers (Responsable de flottes) — le
-// serveur refuse toute autre cible ; un envoi à d'autres profils devient une
-// demande au Super Admin (niveau 2), appliquée s'il la valide.
-export default function Broadcast({ embedded = false, driversOnly = false }) {
-  const [selected, setSelected] = useState(driversOnly ? ['drivers'] : [...ALL_PROFILES])
+// audience : public d'un rôle sans Marketing (serveur :
+// admin.broadcast.controller.js) —
+//  - 'drivers' (Responsable de flottes) : coursiers ; un envoi à d'autres
+//    profils devient une demande au Super Admin (niveau 2) ;
+//  - 'clients' (CM / CRM Client) : clients seulement ; l'envoi à tous les
+//    clients est une demande au Super Admin (niveau 2).
+// Appliquée s'il la valide.
+const AUDIENCE_TEXT = {
+  drivers: { only: 'Seuls les coursiers sont ouverts à votre rôle', schedule: 'Votre rôle programme des notifications aux coursiers seulement. Pour les autres profils : « Demander l’envoi ».' },
+  clients: { only: 'L’envoi à tous les clients passe par le Super Admin', schedule: 'L’envoi à tous les clients passe par le Super Admin : « Demander l’envoi ».' },
+}
+export default function Broadcast({ embedded = false, audience = null }) {
+  const profiles = audience === 'clients' ? PROFILES.filter(p => p.value === 'clients') : PROFILES
+  const [selected, setSelected] = useState(audience ? [audience] : [...ALL_PROFILES])
   const [asking, setAsking] = useState(false) // demande d'envoi au Super Admin
   const [requestNotice, setRequestNotice] = useState('')
-  const needsRequest = driversOnly && toTarget(selected) !== 'drivers'
+  const needsRequest = audience === 'clients' || (audience === 'drivers' && toTarget(selected) !== 'drivers')
   const target = toTarget(selected)
   const [title, setTitle]     = useState('')
   const [body, setBody]       = useState('')
@@ -139,7 +148,7 @@ export default function Broadcast({ embedded = false, driversOnly = false }) {
       return
     }
     if (needsRequest) {
-      setScheduleError('Votre rôle programme des notifications aux coursiers seulement. Pour les autres profils : « Demander l’envoi ».')
+      setScheduleError(AUDIENCE_TEXT[audience].schedule)
       return
     }
     const iso = new Date(scheduledAt).toISOString()
@@ -252,15 +261,15 @@ export default function Broadcast({ embedded = false, driversOnly = false }) {
           {/* Cible — un ou plusieurs profils */}
           <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between' }}>
             <label style={labelStyle}>Destinataires</label>
-            <button
+            {profiles.length > 1 && <button
               onClick={() => setSelected(selected.length === ALL_PROFILES.length ? [] : [...ALL_PROFILES])}
               style={{ background: 'none', border: 'none', color: 'var(--primary)', fontSize: 12, fontWeight: 600, cursor: 'pointer', padding: 0 }}
             >
               {selected.length === ALL_PROFILES.length ? 'Tout décocher' : 'Tout cocher'}
-            </button>
+            </button>}
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 8 }}>
-            {PROFILES.map(t => {
+            {profiles.map(t => {
               const sel = selected.includes(t.value)
               const Icon = t.icon
               return (
@@ -343,7 +352,7 @@ export default function Broadcast({ embedded = false, driversOnly = false }) {
             <RequestModal
               kind="BROADCAST"
               title="Demander l’envoi d’une notification"
-              intro={`Envoi à : ${targetLabel(target)}. Seuls les coursiers sont ouverts à votre rôle ; le Super Admin envoie s’il valide.`}
+              intro={`Envoi à : ${targetLabel(target)}. ${AUDIENCE_TEXT[audience]?.only ?? ''} ; le Super Admin envoie s’il valide.`}
               payload={{ title: title.trim(), body: body.trim(), target }}
               onClose={() => setAsking(false)}
               onDone={text => { setAsking(false); setResult(null); setError(''); setRequestNotice(text) }}

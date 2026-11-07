@@ -13,7 +13,7 @@
 //
 //  Les listes ci-dessous nomment des ACCÈS (DEV, FINANCE, MARKETING,
 //  SERVICE_CLIENT, ASSISTANCE_EXECUTIVE, FLOTTE = Responsable de flottes,
-//  COMMERCIAL = Commercial / CRM Pro). Un rôle de la page Équipes en ouvre
+//  COMMERCIAL = Commercial / CRM Pro, CM = CM / CRM Client). Un rôle de la page Équipes en ouvre
 //  un ou plusieurs : le serveur les renvoie à la connexion (adminAccess) ;
 //  à défaut (session plus ancienne), un rôle d'origine ouvre son propre accès.
 // ============================================================
@@ -55,15 +55,16 @@ export function roleHas(role, key) {
 
 // Onglets par page — rôles en plus du Super Admin.
 export const TAB_ROLES = {
+  // CM / CRM Client : Marketing complet, Badges clients en lecture
   marketing: {
-    overview:    ['MARKETING'],                         // indicateurs : /admin/marketing/kpis
-    acquisition: ['MARKETING', 'ASSISTANCE_EXECUTIVE'], // /admin/marketing/acquisition
-    retention:   ['MARKETING'],
-    courses:     ['MARKETING'],
-    promotions:  ['MARKETING'],
+    overview:    ['MARKETING', 'CM'],                         // indicateurs : /admin/marketing/kpis
+    acquisition: ['MARKETING', 'ASSISTANCE_EXECUTIVE', 'CM'], // /admin/marketing/acquisition
+    retention:   ['MARKETING', 'CM'],
+    courses:     ['MARKETING', 'CM'],
+    promotions:  ['MARKETING', 'CM'],
   },
   badges: {
-    clients:   ['MARKETING'],                           // /admin/client-badges/*
+    clients:   ['MARKETING', 'CM'],                     // /admin/client-badges/* (seuils et validation : Super)
     coursiers: ['MARKETING', 'ASSISTANCE_EXECUTIVE', 'FLOTTE'], // /admin/badges/config, driver-distribution (lecture ; seuils : Super)
   },
   // Validation (page visible de Super, Ass. exéc. et Service Client) : chefs
@@ -88,11 +89,12 @@ export const TAB_ROLES = {
     'finance-requests': [],
   },
   // Notifications : le Responsable de flottes envoie et programme des push
-  // aux coursiers seulement (serveur : admin.broadcast.controller.js).
+  // aux coursiers seulement, le CM aux clients (serveur :
+  // admin.broadcast.controller.js) ; l'alerte du CM est une demande.
   notifications: {
-    envoyer:    ['MARKETING', 'FLOTTE'],
-    historique: ['MARKETING'],
-    alerte:     ['MARKETING'],
+    envoyer:    ['MARKETING', 'FLOTTE', 'CM'],
+    historique: ['MARKETING', 'CM'],
+    alerte:     ['MARKETING', 'CM'],
   },
 }
 
@@ -111,8 +113,17 @@ export const ACTION_ROLES = {
   // exéc.) mais la recherche du client passe par /admin/clients, refusée à
   // l'Assistance exécutive → Super, Dev et Service Client.
   reportUser: ['DEV', 'SERVICE_CLIENT'],
-  // Notifications à tous les profils (sinon : coursiers seulement, Resp. flottes)
+  // Notifications à tous les profils (sinon : coursiers seulement, Resp.
+  // flottes ; clients seulement, CM)
   broadcastAll: ['MARKETING'],
+  // Alerte dans l'app (PUT /admin/marketing/alert) : Super + Marketing (le CM demande)
+  appAlertEdit: ['MARKETING'],
+  // Marketing › Codes promo : créer, modifier, supprimer (POST/PUT/DELETE
+  // /admin/promotions) : Super + Marketing (le CM lit)
+  promoEdit: ['MARKETING'],
+  // Récompenses : règles automatiques (PUT /admin/rewards/rules) et
+  // récompenses aux coursiers et aux Pro : Super + Marketing (le CM : clients)
+  rewardsAll: ['MARKETING'],
   // Parrainage › compteur des parrainages DEM Pro : /admin/dem-pro/referrals ;
   // le rôle Marketing ne voit pas les parrainages DEM Pro aujourd'hui → Super seul.
   proReferralCounter: [],
@@ -135,8 +146,11 @@ export const ACTION_ROLES = {
   // Shifts de la flotte DEM : planning d'un coursier et créneaux
   // (PUT /admin/drivers/:id/shifts, /admin/shifts/slots), Super + Resp. flottes
   shiftEdit: ['FLOTTE'],                      // colis récupéré / livré à la place du coursier (/force-status) : Super seul
-  // Incidents : changer le statut ou les notes (PATCH /admin/incidents/:id) : Super + Ass. exéc.
-  incidentUpdate: ['ASSISTANCE_EXECUTIVE', 'FLOTTE'],
+  // Incidents : changer le statut ou les notes (PATCH /admin/incidents/:id) :
+  // Super + Ass. exéc. + Resp. flottes ; CM : incidents clients seulement
+  // (incident.side === 'CLIENT', incidentUpdateAll sinon)
+  incidentUpdate: ['ASSISTANCE_EXECUTIVE', 'FLOTTE', 'CM'],
+  incidentUpdateAll: ['ASSISTANCE_EXECUTIVE', 'FLOTTE'],
   // Validation › chefs de flotte, Suspendre : PATCH /admin/chefs-de-flotte/:id/suspend, Super seul.
   chefSuspend: [],
   // Validation › pièces à revoir, Rejeter une pièce et Vérifier :

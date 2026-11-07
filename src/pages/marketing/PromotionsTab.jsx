@@ -25,6 +25,8 @@ const EMPTY_FORM = {
 
 export default function PromotionsTab() {
   const { user } = useAuth()
+  // CM / CRM Client : lecture (serveur : POST/PUT/DELETE /admin/promotions, Super + Marketing)
+  const canEdit = canSee(user?.adminRole, ACTION_ROLES.promoEdit)
   const [campaigns, setCampaigns] = useState(null)
   const [form, setForm] = useState(null) // null = fermé, {} = création, {...} = édition
   const [saving, setSaving] = useState(false)
@@ -118,9 +120,11 @@ export default function PromotionsTab() {
           Le coursier touche toujours 100% du prix de la course — DEM finance la réduction accordée
           au client, jamais le coursier.
         </p>
-        <button onClick={openCreate} style={btnPrimary}>
-          <Plus size={14} /> Nouvelle campagne
-        </button>
+        {canEdit && (
+          <button onClick={openCreate} style={btnPrimary}>
+            <Plus size={14} /> Nouvelle campagne
+          </button>
+        )}
       </div>
 
       {listError && <div style={{ fontSize: 12, color: 'var(--danger)', background: 'rgba(239,68,68,.08)', borderRadius: 6, padding: '8px 12px' }}>{listError}</div>}
@@ -168,12 +172,12 @@ export default function PromotionsTab() {
                     </div>
                   </td>
                   <td style={tdStyle}>
-                    <button onClick={() => toggleActive(c)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: c.active ? 'var(--primary)' : 'var(--text-muted)', display: 'flex', alignItems: 'center' }}>
+                    <button onClick={() => canEdit && toggleActive(c)} disabled={!canEdit} style={{ background: 'none', border: 'none', cursor: canEdit ? 'pointer' : 'default', color: c.active ? 'var(--primary)' : 'var(--text-muted)', display: 'flex', alignItems: 'center' }}>
                       {c.active ? <ToggleRight size={26} /> : <ToggleLeft size={26} />}
                     </button>
                   </td>
                   <td style={tdStyle}>
-                    {confirmDelete === c.id ? (
+                    {!canEdit ? null : confirmDelete === c.id ? (
                       <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
                         <span style={{ fontSize: 12, fontWeight: 600 }}>Supprimer « {c.name} » ?</span>
                         <button onClick={() => setConfirmDelete(null)} style={{ ...btnOutline, padding: '5px 8px' }}>Retour</button>

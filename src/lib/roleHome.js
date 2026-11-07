@@ -8,6 +8,7 @@ const ACCESS_HOME = [
   ['SERVICE_CLIENT', '/service-client'],
   ['FINANCE', '/finance'],
   ['MARKETING', '/marketing'],
+  ['CM', '/marketing'],
 ]
 
 export function homeRouteForRole(adminRole) {

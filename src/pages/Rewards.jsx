@@ -5,6 +5,7 @@ import { glass, glassInput, pageWrap, pageScroll } from '../lib/glassStyles'
 import PageHeader from '../components/PageHeader'
 import TabBar from '../components/TabBar'
 import { useUrlTab } from '../lib/useUrlTab'
+import RequestModal from '../components/RequestModal'
 
 // ── Centre des récompenses ────────────────────────────────────────────────────
 // Décision 06/10 : rien n'est offert automatiquement. Toute récompense passe
@@ -15,6 +16,11 @@ import { useUrlTab } from '../lib/useUrlTab'
 //     tout de suite ou à une date programmée ;
 //   - Historique : tout ce qui a été attribué, utilisé, annulé.
 // Serveur : modules/rewards (GET /admin/rewards, /admin/rewards/grants…).
+//
+// CM / CRM Client (meta.clientsOnly) : clients seulement, sans passe livreur
+// ni jours DEM Pro, sans les règles automatiques. La course offerte se donne
+// directement dans le plafond du mois ; une réduction, ou une course au-delà
+// du plafond, devient une demande au Super Admin (CLIENT_REWARD).
 
 const TABS = [
   { key: 'grant', label: 'Attribuer', icon: Gift },
@@ -63,7 +69,7 @@ export default function Rewards() {
         title="Récompenses"
         subtitle="Rien n'est offert automatiquement : vous attribuez chaque récompense, ou vous activez une règle, avec ses dates."
       />
-      <TabBar tabs={TABS} active={tab} onChange={setTab} />
+      <TabBar tabs={meta?.clientsOnly ? TABS.filter(t => t.key !== 'rules') : TABS} active={tab} onChange={setTab} />
       <div style={pageScroll}>
         {!meta ? (
           <div style={{ color: 'var(--text-muted)', padding: 30 }}>Chargement…</div>
@@ -71,7 +77,7 @@ export default function Rewards() {
           <GrantForm meta={meta} onGranted={() => { setHistoryVersion(v => v + 1); setTab('history') }} />
         ) : tab === 'history' ? (
           <HistoryTab key={historyVersion} />
-        ) : (
+        ) : meta.clientsOnly ? null : (
           <RulesTab rules={meta.rules} onSaved={() => setMetaVersion(v => v + 1)} />
         )}
       </div>
@@ -94,27 +100,36 @@ function GrantForm({ meta, onGranted }) {
   const [note, setNote] = useState('')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
+  const [capped, setCapped] = useState(false) // plafond du CM atteint → demande
+  const [asking, setAsking] = useState(false)
+  const [notice, setNotice] = useState('')
+  const clientsOnly = !!meta.clientsOnly
 
   useEffect(() => {
     const q = query.trim()
     if (q.length < 2 || user) return undefined
     const t = setTimeout(() => {
       api.get('/admin/promotions/users-search', { params: { search: q } })
-        .then(r => setResults(Array.isArray(r.data) ? r.data : (r.data?.users ?? [])))
+        .then(r => {
+          const list = Array.isArray(r.data) ? r.data : (r.data?.users ?? [])
+          setResults(clientsOnly ? list.filter(u => u.role === 'CLIENT') : list)
+        })
         .catch(() => setResults([]))
     }, 300)
     return () => clearTimeout(t)
-  }, [query, user])
+  }, [query, user, clientsOnly])
 
   const types = meta.types.filter(t => !user || t.roles.includes(user.role))
   const typeDef = meta.types.find(t => t.key === type)
   const isDays = type === 'FORFAIT_DAYS' || type === 'PRO_PLAN_DAYS'
   const needsValue = type === 'COURSE_PERCENT' || type === 'COURSE_FIXED' || isDays
   const isCourse = type.startsWith('COURSE_')
+  const asks = clientsOnly && (typeDef?.asks || capped)
+  const oneFree = clientsOnly && type === 'COURSE_FREE' && !asks // 1 course offerte par client
 
   function pick(u) {
     setUser(u); setResults([]); setQuery(u.name ?? u.phone)
-    setType(''); setValue('')
+    setType(''); setValue(''); setCapped(false); setNotice('')
   }
 
   const summary = !user || !type ? null : (() => {
@@ -135,13 +150,14 @@ function GrantForm({ meta, onGranted }) {
       await api.post('/admin/rewards/grants', {
         userId: user.id, type, reason,
         value: needsValue ? Number(value) : undefined,
-        uses: isCourse ? Number(uses) : undefined,
+        uses: isCourse ? (oneFree ? 1 : Number(uses)) : undefined,
         startsAt: when === 'later' && startsAt ? new Date(startsAt).toISOString() : undefined,
         expiresAt: isCourse && expiresAt ? new Date(expiresAt).toISOString() : undefined,
         note: note.trim() || undefined,
       })
       onGranted()
     } catch (e) {
+      if (e.response?.data?.code === 'BONUS_CAP') setCapped(true)
       setError(e.response?.data?.message ?? 'Erreur.')
     } finally { setBusy(false) }
   }
@@ -153,7 +169,7 @@ function GrantForm({ meta, onGranted }) {
       <Field label="1. Bénéficiaire">
         <div style={{ position: 'relative' }}>
           <Search size={14} style={{ position: 'absolute', left: 10, top: 11, color: 'var(--text-muted)' }} />
-          <input value={query} onChange={e => { setQuery(e.target.value); setUser(null) }} placeholder="Nom ou numéro (client, coursier, DEM Pro)"
+          <input value={query} onChange={e => { setQuery(e.target.value); setUser(null) }} placeholder={clientsOnly ? 'Nom ou numéro du client' : 'Nom ou numéro (client, coursier, DEM Pro)'}
             style={{ ...glassInput, width: '100%', paddingLeft: 30, boxSizing: 'border-box' }} />
           {results.length > 0 && (
             <div style={{ ...glass, position: 'absolute', zIndex: 5, left: 0, right: 0, top: 40, padding: 4 }}>
@@ -172,12 +188,12 @@ function GrantForm({ meta, onGranted }) {
       <Field label="2. Type de récompense">
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
           {types.map(t => (
-            <button key={t.key} disabled={!user} onClick={() => setType(t.key)} style={{
+            <button key={t.key} disabled={!user} onClick={() => { setType(t.key); setCapped(false); setError('') }} style={{
               padding: '8px 12px', borderRadius: 10, fontSize: 13, cursor: user ? 'pointer' : 'default',
               border: `1.5px solid ${type === t.key ? 'var(--primary)' : 'rgba(0,119,182,.15)'}`,
               background: type === t.key ? 'rgba(0,180,230,.08)' : 'rgba(255,255,255,.5)',
               color: type === t.key ? 'var(--primary)' : 'var(--text)', fontWeight: 600, opacity: user ? 1 : 0.5,
-            }}>{t.label}</button>
+            }}>{t.label}{t.asks ? ' · sur demande' : ''}</button>
           ))}
         </div>
         {!user && <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 6 }}>Choisissez d'abord le bénéficiaire : les types dépendent de son compte.</div>}
@@ -190,7 +206,7 @@ function GrantForm({ meta, onGranted }) {
             )}
             {isCourse && (
               <Small label="Nombre de courses">
-                <input type="number" min={1} max={20} value={uses} onChange={e => setUses(e.target.value)} style={{ ...glassInput, width: 90 }} />
+                <input type="number" min={1} max={20} value={oneFree ? 1 : uses} disabled={oneFree} onChange={e => setUses(e.target.value)} style={{ ...glassInput, width: 90 }} />
               </Small>
             )}
             {isCourse && (
@@ -229,11 +245,31 @@ function GrantForm({ meta, onGranted }) {
 
       {summary && <div style={{ padding: '10px 12px', borderRadius: 10, background: 'rgba(0,180,230,.07)', fontSize: 13 }}>{summary} Il sera prévenu par notification.</div>}
       {error && <div style={{ color: 'var(--danger)', fontSize: 13 }}>{error}</div>}
+      {notice && <div style={{ color: '#15803d', fontSize: 13, fontWeight: 600 }}>{notice}</div>}
       <div>
-        <button onClick={submit} disabled={!ready || busy} style={{ ...btnPrimary, opacity: !ready || busy ? 0.6 : 1 }}>
-          <Gift size={14} /> {busy ? 'Attribution…' : when === 'later' ? 'Programmer la récompense' : 'Attribuer la récompense'}
-        </button>
+        {asks ? (
+          <button onClick={() => setAsking(true)} disabled={!ready} style={{ ...btnPrimary, opacity: !ready ? 0.6 : 1 }}>
+            <Gift size={14} /> Demander au Super Admin
+          </button>
+        ) : (
+          <button onClick={submit} disabled={!ready || busy} style={{ ...btnPrimary, opacity: !ready || busy ? 0.6 : 1 }}>
+            <Gift size={14} /> {busy ? 'Attribution…' : when === 'later' ? 'Programmer la récompense' : 'Attribuer la récompense'}
+          </button>
+        )}
       </div>
+      {asking && (
+        <RequestModal kind="CLIENT_REWARD" title="Demander une récompense" targetUserId={user.id}
+          intro={capped ? 'Le plafond de votre rôle est atteint pour ce client ou pour le mois.' : 'Une réduction demande la validation du Super Admin.'}
+          payload={{
+            type, reason, note: note.trim() || undefined,
+            value: needsValue ? Number(value) : undefined,
+            uses: isCourse ? Number(uses) : undefined,
+            startsAt: when === 'later' && startsAt ? new Date(startsAt).toISOString() : undefined,
+            expiresAt: isCourse && expiresAt ? new Date(expiresAt).toISOString() : undefined,
+          }}
+          onClose={() => setAsking(false)}
+          onDone={text => { setAsking(false); setError(''); setCapped(false); setNotice(text) }} />
+      )}
     </div>
   )
 }
