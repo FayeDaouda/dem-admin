@@ -11,6 +11,7 @@ import PageHeader from '../components/PageHeader'
 import { canSee, roleHas, asksSuper, ACTION_ROLES } from '../lib/droits'
 import DriverRequestModal from './drivers/DriverRequestModal'
 import { ConnectionHistory, DriverNotes } from './drivers/DriverFollowup'
+import DriverShifts from './drivers/DriverShifts'
 import WhatsAppButton from '../components/WhatsAppButton'
 import { useAutoRefresh } from '../lib/useAutoRefresh'
 import { useUrlQuery } from '../lib/useUrlQuery'
@@ -581,6 +582,7 @@ function DriverFiche({ driver: d, deleted, rights, isServiceClient, notice, erro
 
             {rights.paymentStats && !deleted && <PaymentStats driverId={d.id} />}
             {/* Fiche enrichie (Resp. flottes, C7) */}
+            {!deleted && <DriverShifts driverId={d.id} canEdit={rights.shifts} Section={FicheSection} />}
             {!deleted && <ConnectionHistory driverId={d.id} Section={FicheSection} />}
             {rights.notes && !deleted && <DriverNotes driverId={d.id} Section={FicheSection} />}
           </div>
@@ -723,6 +725,7 @@ export default function Drivers() {
     suspendUnlimited: canSee(role, ACTION_ROLES.driverSuspendUnlimited),
     askSuper:     asksSuper(role), // « Demander » au Super Admin (Resp. flottes, niveau 2)
     notes:        canSee(role, ACTION_ROLES.driverNotes),
+    shifts:       canSee(role, ACTION_ROLES.shiftEdit),
     me:           user?.id,
     manage:       canSee(role, ACTION_ROLES.driverManage),
     paymentStats: canSee(role, ACTION_ROLES.driverPaymentStats),

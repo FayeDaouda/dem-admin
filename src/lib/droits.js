@@ -120,7 +120,10 @@ export const ACTION_ROLES = {
   // POST /admin/orders, Super + Resp. flottes
   orderCreateForClient: ['FLOTTE'],
   // Fiche coursier : notes internes (GET/POST /admin/drivers/:id/notes), Super + Resp. flottes
-  driverNotes: ['FLOTTE'],                      // colis récupéré / livré à la place du coursier (/force-status) : Super seul
+  driverNotes: ['FLOTTE'],
+  // Shifts de la flotte DEM : planning d'un coursier et créneaux
+  // (PUT /admin/drivers/:id/shifts, /admin/shifts/slots), Super + Resp. flottes
+  shiftEdit: ['FLOTTE'],                      // colis récupéré / livré à la place du coursier (/force-status) : Super seul
   // Incidents : changer le statut ou les notes (PATCH /admin/incidents/:id) : Super + Ass. exéc.
   incidentUpdate: ['ASSISTANCE_EXECUTIVE', 'FLOTTE'],
   // Validation › chefs de flotte, Suspendre : PATCH /admin/chefs-de-flotte/:id/suspend, Super seul.

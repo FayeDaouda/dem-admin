@@ -54,6 +54,8 @@ export const TITRES = {
   "Coursiers aujourd'hui": "Coursiers en ligne maintenant (libres ou en course), temps passé en ligne depuis minuit et courses acceptées. « Connectés sans course » : 30 min ou plus en ligne sans aucune course — à vérifier sur la carte ou à appeler.",
   "Motifs d'annulation": "Annulations regroupées : pas de coursier (aucun coursier trouvé, ou trop long sans coursier), client, coursier, adresse fausse, doublon, autre. « Sans motif » : le client a annulé dans l'app sans choisir de motif.",
   'Délais': "Temps moyen entre la création et l'acceptation (courses immédiates), l'acceptation et le retrait du colis, le retrait et la livraison. Entre parenthèses : nombre de courses mesurées.",
+  'Shifts': "Créneaux prévus pour ce coursier, jour par jour. Cochez puis enregistrez ; les créneaux eux-mêmes se règlent sur le Dashboard (Shifts du jour).",
+  'Shifts du jour': "Planning de la flotte DEM comparé à la connexion réelle : présent, en retard, absent, parti avant la fin (15 min de tolérance). Les absents remontent dans « À traiter ».",
   'Historique de connexion': "Temps passé en ligne dans l'app, jour par jour sur 7 ou 30 jours, et courses acceptées ce jour-là. Reconstitué depuis les passages en ligne / hors ligne du coursier.",
   'Notes internes': "Notes datées de l'équipe (retards, appels, avertissements). Visibles du Super Admin et du Responsable de flottes, jamais du coursier.",
   'Heures de pointe': "Par heure de la journée, en moyenne par jour : courses demandées et coursiers en ligne en même temps. La courbe rouge montre les annulations faute de coursier : là où il manque des coursiers.",
