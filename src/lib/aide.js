@@ -234,6 +234,8 @@ export const ONGLETS = {
     fleet:              "Demandes des chefs de flotte pour agrandir leur flotte (Super Admin).",
     'service-requests': 'Demandes envoyées par le Service Client (comptes DEM Pro, gestes commerciaux, suspensions) ; décision du Super Admin.',
     'finance-requests': 'Demandes de changement de tarif envoyées par la Finance ; décision du Super Admin.',
+    'fleet-requests':   "Demandes du Responsable de flottes pour les actions réservées au Super Admin (suspension longue, suppression, validation d'un chef, envoi aux clients…). Valider applique l'action ; refuser demande un motif ; « Demander une précision » renvoie une question au demandeur. Les urgentes sonnent et passent en tête.",
+    'my-requests':      "Vos demandes au Super Admin et leur décision. Quand une précision est demandée, répondez ici : la demande repart en attente.",
   },
   '/finance': {
     revenue:        "Revenus DEM par source (commission sur les courses, pass journaliers, formules DEM Pro, ventes DEM Pro) pour la période choisie, graphique des 30 jours et tableau détaillé.",

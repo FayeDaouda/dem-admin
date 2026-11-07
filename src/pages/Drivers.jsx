@@ -8,7 +8,8 @@ import { glass, glassInput, pageWrap, pageScroll, stickyTh, stickyCol, stickyThC
 import SubmitRequestModal from './service-client/components/SubmitRequestModal'
 import DocThumb from '../components/DocThumb'
 import PageHeader from '../components/PageHeader'
-import { canSee, roleHas, ACTION_ROLES } from '../lib/droits'
+import { canSee, roleHas, asksSuper, ACTION_ROLES } from '../lib/droits'
+import DriverRequestModal from './drivers/DriverRequestModal'
 import { useAutoRefresh } from '../lib/useAutoRefresh'
 import { useUrlQuery } from '../lib/useUrlQuery'
 import InfoTip from '../components/InfoTip'
@@ -604,7 +605,17 @@ function DriverFiche({ driver: d, deleted, rights, isServiceClient, notice, erro
                   </>)}
                   {rights.suspend && !pending && (d.isActive
                     ? <button onClick={() => onAction('suspend')} style={btn('#dc2626', 'rgba(239,68,68,.35)')}><PauseCircle size={14} /> Suspendre</button>
-                    : <button onClick={() => toggle('reactivate')} style={btn('#15803d', 'rgba(34,197,94,.4)')}><PlayCircle size={14} /> Réactiver</button>)}
+                    // Resp. flottes : réactive seul un coursier qu'il a suspendu
+                    : rights.suspendUnlimited || d.suspendedById === rights.me
+                      ? <button onClick={() => toggle('reactivate')} style={btn('#15803d', 'rgba(34,197,94,.4)')}><PlayCircle size={14} /> Réactiver</button>
+                      : rights.askSuper && <button onClick={() => onAction('ask-activate')} style={btn('#b45309', 'rgba(245,158,11,.45)')}><Send size={14} /> Demander la réactivation</button>)}
+                  {rights.askSuper && !pending && d.isActive && (
+                    <button onClick={() => onAction('ask-suspend')} style={btn('#b45309', 'rgba(245,158,11,.45)')}><Send size={14} /> Demander une suspension longue</button>
+                  )}
+                  {rights.askSuper && (<>
+                    <button onClick={() => onAction('ask-pass')} style={btn('#b45309', 'rgba(245,158,11,.45)')}><Send size={14} /> Demander un pass offert</button>
+                    <button onClick={() => onAction('ask-delete')} style={btn('#b45309', 'rgba(245,158,11,.45)')}><Send size={14} /> Demander la suppression</button>
+                  </>)}
                   {isServiceClient && d.isActive && (
                     <button onClick={() => onAction('request')} style={btn('#b45309', 'rgba(245,158,11,.45)')}><Send size={14} /> Demander une suspension</button>
                   )}
@@ -705,6 +716,8 @@ export default function Drivers() {
     validate:     canSee(role, ACTION_ROLES.driverValidate),
     suspend:      canSee(role, ACTION_ROLES.driverSuspend),
     suspendUnlimited: canSee(role, ACTION_ROLES.driverSuspendUnlimited),
+    askSuper:     asksSuper(role), // « Demander » au Super Admin (Resp. flottes, niveau 2)
+    me:           user?.id,
     manage:       canSee(role, ACTION_ROLES.driverManage),
     paymentStats: canSee(role, ACTION_ROLES.driverPaymentStats),
     report:       canSee(role, ACTION_ROLES.reportDriver),
@@ -838,7 +851,7 @@ export default function Drivers() {
       api.get(`/admin/drivers/${selected.id}`)
         .then(r => {
           const f = r.data ?? {}
-          setSelected(s => s && ({ ...s, ...pick(f, ['name', 'phone', 'vehiclePlate', 'managedById', 'managedBy', 'isActive', 'isBanned', 'isVerified', 'chefDeFlotteStatus', 'suspensionReason', 'suspendedUntil', 'deletedAt']) }))
+          setSelected(s => s && ({ ...s, ...pick(f, ['name', 'phone', 'vehiclePlate', 'managedById', 'managedBy', 'isActive', 'isBanned', 'isVerified', 'chefDeFlotteStatus', 'suspensionReason', 'suspendedUntil', 'suspendedById', 'deletedAt']) }))
         })
         .catch(() => {})
     }
@@ -1082,6 +1095,11 @@ export default function Drivers() {
       )}
 
       {/* Fenêtres ouvertes depuis la fiche (au-dessus d'elle) */}
+      {/* Demandes au Super Admin (Resp. flottes) */}
+      {selected && modal?.startsWith?.('ask-') && (
+        <DriverRequestModal mode={modal} driver={selected} onClose={() => setModal(null)}
+          onDone={text => { setModal(null); setFicheNotice(text) }} />
+      )}
       {selected && modal === 'suspend' && (
         <SuspendModal
           target="driver"

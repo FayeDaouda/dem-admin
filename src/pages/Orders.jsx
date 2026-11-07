@@ -3,7 +3,7 @@ import { useSearchParams } from 'react-router-dom'
 import api from '../lib/api'
 import { useAuth } from '../contexts/AuthContext'
 import { useAutoRefresh } from '../lib/useAutoRefresh'
-import { canSee, ACTION_ROLES } from '../lib/droits'
+import { canSee, asksSuper, ACTION_ROLES } from '../lib/droits'
 import Badge from '../components/Badge'
 import PageHeader from '../components/PageHeader'
 import { RefreshCw, Search, X, MapPin, Phone, MessageCircle, Copy, Check } from 'lucide-react'
@@ -13,6 +13,7 @@ import { useUrlQuery } from '../lib/useUrlQuery'
 import { cancelReasonLabel } from '../lib/cancelReasons'
 import InfoTip from '../components/InfoTip'
 import DispatchPicker from '../components/DispatchPicker'
+import OrderRequestModal from './orders/OrderRequestModal'
 
 // Montant payé par le client = part coursier (price) + frais DEM − réduction
 // (même calcul que l'app : core/utils/price_format.dart:clientChargeFor).
@@ -60,6 +61,8 @@ export default function Orders() {
   const canDispatch = canSee(role, ACTION_ROLES.orderDispatch)
   const canCancel   = canSee(role, ACTION_ROLES.orderCancel)
   const canCancelAny = canSee(role, ACTION_ROLES.orderCancelAny) // sinon : course en attente seulement
+  const askSuper    = asksSuper(role) // Resp. flottes : « Demander » au Super Admin (niveau 2)
+  const [orderRequest, setOrderRequest] = useState(null) // 'cancel' | 'geste'
   const canMarkPaid = canSee(role, ACTION_ROLES.orderMarkPaid)
   const canForce    = canSee(role, ACTION_ROLES.orderForceStatus)
   const LIMIT = 50
@@ -237,6 +240,8 @@ export default function Orders() {
     canForce && detail.driver && ['ACCEPTED', 'PICKED_UP', 'IN_TRANSIT'].includes(detail.status) && { key: 'deliver', label: 'Colis livré', color: '#16a34a', onClick: () => setConfirming('DELIVERED') },
     canMarkPaid && detail.status === 'DELIVERED' && detail.paymentStatus === 'PENDING' && { key: 'paid', label: 'Marquer payé', color: '#16a34a', onClick: () => setConfirming('paid') },
     canCancel && !['DELIVERED', 'CANCELLED'].includes(detail.status) && (canCancelAny || ['SCHEDULED', 'PENDING'].includes(detail.status)) && { key: 'cancel', label: 'Annuler la course', color: '#dc2626', onClick: openCancelPicker },
+    askSuper && !canCancelAny && ['ACCEPTED', 'PICKED_UP', 'IN_TRANSIT'].includes(detail.status) && { key: 'ask-cancel', label: "Demander l'annulation", color: '#dc2626', onClick: () => setOrderRequest('cancel') },
+    askSuper && detail.status !== 'CANCELLED' && (detail.client?.id || detail.clientId) && { key: 'ask-geste', label: 'Demander un geste', color: '#7c3aed', onClick: () => setOrderRequest('geste') },
   ].filter(Boolean) : []
 
   // Texte et action de la confirmation ouverte
@@ -496,6 +501,12 @@ export default function Orders() {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Demandes au Super Admin (Resp. flottes) */}
+      {orderRequest && detail && (
+        <OrderRequestModal mode={orderRequest} order={detail} onClose={() => setOrderRequest(null)}
+          onDone={text => { setOrderRequest(null); setNotice({ ok: true, text }) }} />
       )}
 
       {/* Proposer, attribuer ou réattribuer */}

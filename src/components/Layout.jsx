@@ -8,6 +8,7 @@ import logoSrc from '../assets/logo-dem.svg'
 import { useResponsive } from '../lib/useResponsive'
 import SosAlertBanner from './SosAlertBanner'
 import DispatchAlertBanner from './DispatchAlertBanner'
+import RequestAlerts from './RequestAlerts'
 import GlobalSearch from './GlobalSearch'
 import { canSee, isSuperRole } from '../lib/droits'
 import { GROUPS, NAV } from '../lib/menu'
@@ -404,6 +405,7 @@ export default function Layout({ children }) {
 
         <SosAlertBanner />
         <DispatchAlertBanner />
+        <RequestAlerts />
 
         <div style={{ padding: isMobile ? '16px 14px' : isTablet ? '20px 20px' : '28px 32px', flex: 1, minHeight: 0, overflowY: 'auto' }}>
           {!(isMobile || isTablet) && (

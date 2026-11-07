@@ -39,6 +39,14 @@ export function canSee(role, roles) {
   return accessOf(role).some(a => roles.includes(a))
 }
 
+/**
+ * Demandes de niveau 2 au Super Admin (Responsable de flottes) : bouton
+ * « Demander » à la place d'une action qui lui est réservée.
+ */
+export function asksSuper(role) {
+  return roleHas(role, 'FLOTTE')
+}
+
 /** Le rôle (hors Super Admin) ouvre-t-il cet accès ? */
 export function roleHas(role, key) {
   return !isSuperRole(role) && accessOf(role).includes(key)
@@ -66,6 +74,10 @@ export const TAB_ROLES = {
     'dem-pro':          ['SERVICE_CLIENT', 'ASSISTANCE_EXECUTIVE'],
     // Extensions de flotte : Responsable de flottes en lecture (décision : Super)
     fleet:              ['FLOTTE'],
+    // Demandes du Responsable de flottes : décision du Super (Demandes Flotte),
+    // suivi par le demandeur (Mes demandes, masqué au Super)
+    'fleet-requests':   [],
+    'my-requests':      ['FLOTTE'],
     'service-requests': [],
     'finance-requests': [],
   },
