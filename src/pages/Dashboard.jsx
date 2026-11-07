@@ -28,8 +28,9 @@ import {
 } from './service-client/components/ServiceClientKpiModals'
 import InfoTip from '../components/InfoTip'
 import { PAGES } from '../lib/aide'
-import { roleHas } from '../lib/droits'
+import { roleHas, canSee, ACTION_ROLES } from '../lib/droits'
 import FleetSections from './dashboard/FleetSections'
+import ShiftsSection from './dashboard/ShiftsSection'
 import { useFleetAnalytics } from '../lib/useFleetAnalytics'
 
 // ============================================================
@@ -564,6 +565,7 @@ export default function Dashboard() {
     demProActivity: can.accounts     && '/admin/stats/dem-pro-activity?hours=24',
     cancellationTrend: (isAE || isFlotte) && '/admin/stats/timeseries?days=30',
     kycReview:     can.fleetAnalytics && '/admin/drivers?status=kyc-review&limit=1', // pièces coursiers à revoir
+    shiftsToday:   can.fleetAnalytics && '/admin/shifts/today', // shifts de la flotte DEM
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }), [loadSources, role])
 
@@ -673,6 +675,8 @@ export default function Dashboard() {
       count: sc?.openIncidents, onClick: open('incidents') },
     can.fleetAnalytics && { id: 'incidents-24h', icon: ShieldAlert, color: '#dc2626', label: 'Incidents ouverts depuis plus de 24 h',
       count: fleetAnalytics.data?.incidentsOpenOver24h, onClick: () => navigate('/incidents') },
+    can.fleetAnalytics && { id: 'shift-absents', icon: Clock, color: '#dc2626', label: 'Absents du shift (flotte DEM)',
+      count: data.shiftsToday?.absents?.length, onClick: () => document.getElementById('shifts-du-jour')?.scrollIntoView({ behavior: 'smooth' }) },
     can.fleetAnalytics && { id: 'kyc-review', icon: ClipboardCheck, color: '#d97706', label: 'Pièces coursiers à revoir',
       count: data.kycReview?.total, onClick: () => navigate('/validation?tab=kyc-review') },
     can.validations && { id: 'validations', icon: ClipboardCheck, color: '#6366f1', label: 'Validations en attente',
@@ -947,6 +951,13 @@ export default function Dashboard() {
 
       {/* ── Coursiers aujourd'hui (Super, Resp. flottes) ── */}
       {can.fleetAnalytics && <FleetSections part="drivers" analytics={fleetAnalytics} Section={Section} isMobile={isMobile} />}
+
+      {/* ── Shifts du jour : flotte DEM (Super, Resp. flottes) ── */}
+      {can.fleetAnalytics && (
+        <div id="shifts-du-jour">
+          <ShiftsSection data={data.shiftsToday} canEdit={canSee(role, ACTION_ROLES.shiftEdit)} onChanged={loadSlow} Section={Section} isMobile={isMobile} />
+        </div>
+      )}
 
       {/* ── 3. Aujourd'hui ── */}
       <Section title="Aujourd'hui" hint="Depuis minuit · tendance comparée à hier à la même heure">
