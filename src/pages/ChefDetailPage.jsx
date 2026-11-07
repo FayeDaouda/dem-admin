@@ -9,7 +9,7 @@ import DocThumb from '../components/DocThumb'
 import SubmitRequestModal from './service-client/components/SubmitRequestModal'
 import ChefFormModal from './chefs/ChefFormModal'
 import { chefStatusInfo, driverStatusInfo } from './chefs/chefStatus'
-import { canSee, ACTION_ROLES } from '../lib/droits'
+import { canSee, roleHas, ACTION_ROLES } from '../lib/droits'
 import { useAutoRefresh } from '../lib/useAutoRefresh'
 import InfoTip from '../components/InfoTip'
 import { PAGES } from '../lib/aide'
@@ -59,7 +59,7 @@ export default function ChefDetailPage() {
     drivers:  canSee(role, ACTION_ROLES.fleetDriverActions),
     report:   canSee(role, ACTION_ROLES.reportChef),
   }
-  const isServiceClient = role === 'SERVICE_CLIENT'
+  const isServiceClient = roleHas(role, 'SERVICE_CLIENT')
 
   const [chef, setChef] = useState(null)
   const [loading, setLoading] = useState(true)

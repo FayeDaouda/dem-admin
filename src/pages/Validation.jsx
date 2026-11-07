@@ -236,6 +236,8 @@ export default function Validation() {
 
   const canSuspendChef = canSee(role, ACTION_ROLES.chefSuspend)
   const canReviewKyc   = canSee(role, ACTION_ROLES.kycReview)
+  const canDecideChef  = canSee(role, ACTION_ROLES.chefDecision)
+  const canDecideFleet = canSee(role, ACTION_ROLES.fleetDecision)
 
   return (
     <div style={pageWrap}>
@@ -243,11 +245,11 @@ export default function Validation() {
       <TabBar tabs={barTabs} active={tab} onChange={setTab} />
       <div style={pageScroll}>
         {!tab && <Loading />}
-        {tab === 'ambassadors'      && <AmbassadorsTab canSuspend={canSuspendChef} highlightId={highlightId} onChanged={refreshCounts} />}
+        {tab === 'ambassadors'      && <AmbassadorsTab canSuspend={canSuspendChef} canDecide={canDecideChef} highlightId={highlightId} onChanged={refreshCounts} />}
         {tab === 'drivers'          && <DriversTab highlightId={highlightId} onChanged={refreshCounts} />}
         {tab === 'kyc-review'       && <KycReviewTab canReview={canReviewKyc} highlightId={highlightId} onChanged={refreshCounts} />}
         {tab === 'dem-pro'          && <DemProTab highlightId={highlightId} onChanged={refreshCounts} />}
-        {tab === 'fleet'            && <FleetTab highlightId={highlightId} onChanged={refreshCounts} />}
+        {tab === 'fleet'            && <FleetTab canDecide={canDecideFleet} highlightId={highlightId} onChanged={refreshCounts} />}
         {tab === 'service-requests' && <ServiceRequestsTab highlightId={highlightId} onChanged={refreshCounts} />}
         {tab === 'finance-requests' && <FinanceRequestsTab highlightId={highlightId} onChanged={refreshCounts} />}
       </div>
@@ -256,7 +258,7 @@ export default function Validation() {
 }
 
 // ── Tab Chefs de flotte ────────────────────────────────────────────────────────
-function AmbassadorsTab({ canSuspend, highlightId, onChanged }) {
+function AmbassadorsTab({ canSuspend, canDecide, highlightId, onChanged }) {
   const [list,     setList]     = useState([])
   const [loading,       setLoading]       = useState(true)
   const [filter,        setFilter]        = useState('PENDING')
@@ -361,8 +363,8 @@ function AmbassadorsTab({ canSuspend, highlightId, onChanged }) {
                   </div>
                 )}
 
-                {/* Actions PENDING */}
-                {am.chefDeFlotteStatus === 'PENDING' && (
+                {/* Actions PENDING (Resp. flottes : lecture, décision du Super Admin) */}
+                {am.chefDeFlotteStatus === 'PENDING' && canDecide && (
                   <DecisionBar
                     busy={acting===am.id}
                     error={errors[am.id]}
@@ -997,7 +999,7 @@ function AdminRequestsTab({ highlightId, onChanged, kindFilter, emptyText }) {
 }
 
 // ── Tab Extensions flotte ─────────────────────────────────────────────────────
-function FleetTab({ highlightId, onChanged }) {
+function FleetTab({ canDecide, highlightId, onChanged }) {
   const [list,    setList]    = useState([])
   const [loading, setLoading] = useState(true)
   const [notes,   setNotes]   = useState({})
@@ -1058,7 +1060,7 @@ function FleetTab({ highlightId, onChanged }) {
             « {ext.justification} »
           </div>
 
-          <div style={{ marginTop:12, display:'flex', gap:10, alignItems:'center', flexWrap:'wrap' }}>
+          {canDecide && <div style={{ marginTop:12, display:'flex', gap:10, alignItems:'center', flexWrap:'wrap' }}>
             <input
               placeholder="Notes admin (optionnel)"
               value={notes[ext.id] ?? ''}
@@ -1071,7 +1073,7 @@ function FleetTab({ highlightId, onChanged }) {
             <button style={btnRefuse} disabled={acting===ext.id} onClick={() => handleValidate(ext, false)}>
               <XCircle size={13} /> Refuser
             </button>
-          </div>
+          </div>}
           {errors[ext.id] && <div style={{ marginTop:8 }}><ErrorLine>{errors[ext.id]}</ErrorLine></div>}
         </div>
       ))}

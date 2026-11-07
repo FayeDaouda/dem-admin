@@ -1,10 +1,16 @@
-// Route d'atterrissage par rôle admin — certains rôles n'ont pas accès au Dashboard partagé
-const ROLE_HOME = {
-  MARKETING: '/marketing',
-  FINANCE: '/finance',
-  SERVICE_CLIENT: '/service-client',
-}
+import { canSee } from './droits'
+
+// Route d'atterrissage par rôle admin — certains rôles n'ont pas accès au Dashboard partagé.
+// Selon les accès du rôle (page Équipes) : le Dashboard s'il l'ouvre (comme
+// le menu, Layout.jsx), sinon la page du premier accès qui en a une.
+const DASHBOARD_ACCESS = ['DEV', 'ASSISTANCE_EXECUTIVE', 'FLOTTE']
+const ACCESS_HOME = [
+  ['SERVICE_CLIENT', '/service-client'],
+  ['FINANCE', '/finance'],
+  ['MARKETING', '/marketing'],
+]
 
 export function homeRouteForRole(adminRole) {
-  return ROLE_HOME[adminRole] ?? '/'
+  if (canSee(adminRole, DASHBOARD_ACCESS)) return '/'
+  return ACCESS_HOME.find(([key]) => canSee(adminRole, [key]))?.[1] ?? '/'
 }

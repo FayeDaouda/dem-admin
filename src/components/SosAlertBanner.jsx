@@ -4,10 +4,11 @@ import { Siren, MapPin, Phone, ShieldCheck } from 'lucide-react'
 import api from '../lib/api'
 import { connectSocket } from '../lib/socket'
 import { useAuth } from '../contexts/AuthContext'
+import { canSee } from '../lib/droits'
 
 // Rôles qui voient la page Incidents — ce sont eux qu'une alerte SOS doit
 // atteindre, où qu'ils soient dans l'admin.
-const SOS_ROLES = ['SUPER', 'DEV', 'SERVICE_CLIENT', 'ASSISTANCE_EXECUTIVE']
+const SOS_ROLES = ['DEV', 'SERVICE_CLIENT', 'ASSISTANCE_EXECUTIVE', 'FLOTTE']
 
 // 3 bips courts — un SOS ne doit pas passer inaperçu dans un onglet ouvert.
 function beep() {
@@ -41,7 +42,7 @@ export default function SosAlertBanner() {
   const navigate = useNavigate()
   const [alerts, setAlerts] = useState([])
   const [, tick] = useState(0)
-  const allowed = !user?.adminRole || SOS_ROLES.includes(user.adminRole)
+  const allowed = canSee(user?.adminRole, SOS_ROLES)
   const known = useRef(new Set())
 
   const load = useCallback(async () => {

@@ -48,8 +48,11 @@ function toDatetimeLocal(date) {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
 }
 
-export default function Broadcast({ embedded = false }) {
-  const [selected, setSelected] = useState([...ALL_PROFILES])
+// driversOnly : rôle limité aux coursiers (Responsable de flottes) — le
+// serveur refuse toute autre cible.
+export default function Broadcast({ embedded = false, driversOnly = false }) {
+  const profiles = driversOnly ? PROFILES.filter(p => p.value === 'drivers') : PROFILES
+  const [selected, setSelected] = useState(driversOnly ? ['drivers'] : [...ALL_PROFILES])
   const target = toTarget(selected)
   const [title, setTitle]     = useState('')
   const [body, setBody]       = useState('')
@@ -240,15 +243,15 @@ export default function Broadcast({ embedded = false }) {
           {/* Cible — un ou plusieurs profils */}
           <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between' }}>
             <label style={labelStyle}>Destinataires</label>
-            <button
+            {!driversOnly && <button
               onClick={() => setSelected(selected.length === ALL_PROFILES.length ? [] : [...ALL_PROFILES])}
               style={{ background: 'none', border: 'none', color: 'var(--primary)', fontSize: 12, fontWeight: 600, cursor: 'pointer', padding: 0 }}
             >
               {selected.length === ALL_PROFILES.length ? 'Tout décocher' : 'Tout cocher'}
-            </button>
+            </button>}
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 8 }}>
-            {PROFILES.map(t => {
+            {profiles.map(t => {
               const sel = selected.includes(t.value)
               const Icon = t.icon
               return (
@@ -256,7 +259,7 @@ export default function Broadcast({ embedded = false }) {
                   key={t.value}
                   role="checkbox"
                   aria-checked={sel}
-                  onClick={() => setSelected(sel ? selected.filter(v => v !== t.value) : [...selected, t.value])}
+                  onClick={() => !driversOnly && setSelected(sel ? selected.filter(v => v !== t.value) : [...selected, t.value])}
                   style={{
                     padding: '10px 12px', borderRadius: 10, cursor: 'pointer',
                     border: `1.5px solid ${sel ? 'var(--primary)' : 'rgba(0,119,182,.15)'}`,

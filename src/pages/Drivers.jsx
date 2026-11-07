@@ -8,7 +8,7 @@ import { glass, glassInput, pageWrap, pageScroll, stickyTh, stickyCol, stickyThC
 import SubmitRequestModal from './service-client/components/SubmitRequestModal'
 import DocThumb from '../components/DocThumb'
 import PageHeader from '../components/PageHeader'
-import { canSee, ACTION_ROLES } from '../lib/droits'
+import { canSee, roleHas, ACTION_ROLES } from '../lib/droits'
 import { useAutoRefresh } from '../lib/useAutoRefresh'
 import { useUrlQuery } from '../lib/useUrlQuery'
 import InfoTip from '../components/InfoTip'
@@ -550,6 +550,7 @@ function DriverFiche({ driver: d, deleted, rights, isServiceClient, notice, erro
               <Row label="Courses livrées" value={<>{d.deliveredCourses ?? 0}{d.avgRating > 0 && <span style={{ color: '#f59e0b', marginLeft: 8 }}>★ {d.avgRating}</span>}</>} />
               {deleted && <Row label="Supprimé le" value={<>{fmtDate(d.deletedAt)}{d.deletedBySelf ? ' · par le coursier' : ''}</>} />}
               {d.suspensionReason && !d.isActive && <Row label="Motif" value={d.suspensionReason} />}
+              {d.suspendedUntil && !d.isActive && <Row label="Suspendu jusqu'au" value={new Date(d.suspendedUntil).toLocaleString('fr-FR', { day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' })} />}
             </FicheSection>
 
             <FicheSection title="Flotte">
@@ -696,13 +697,14 @@ const LIMIT = 50
 export default function Drivers() {
   const { user } = useAuth()
   const role = user?.adminRole
-  const isServiceClient = role === 'SERVICE_CLIENT'
+  const isServiceClient = roleHas(role, 'SERVICE_CLIENT')
   const rights = {
     create:       canSee(role, ACTION_ROLES.driverCreate),
     docsUpload:   canSee(role, ACTION_ROLES.driverDocsUpload),
     edit:         canSee(role, ACTION_ROLES.driverEdit),
     validate:     canSee(role, ACTION_ROLES.driverValidate),
     suspend:      canSee(role, ACTION_ROLES.driverSuspend),
+    suspendUnlimited: canSee(role, ACTION_ROLES.driverSuspendUnlimited),
     manage:       canSee(role, ACTION_ROLES.driverManage),
     paymentStats: canSee(role, ACTION_ROLES.driverPaymentStats),
     report:       canSee(role, ACTION_ROLES.reportDriver),
@@ -836,7 +838,7 @@ export default function Drivers() {
       api.get(`/admin/drivers/${selected.id}`)
         .then(r => {
           const f = r.data ?? {}
-          setSelected(s => s && ({ ...s, ...pick(f, ['name', 'phone', 'vehiclePlate', 'managedById', 'managedBy', 'isActive', 'isBanned', 'isVerified', 'chefDeFlotteStatus', 'suspensionReason', 'deletedAt']) }))
+          setSelected(s => s && ({ ...s, ...pick(f, ['name', 'phone', 'vehiclePlate', 'managedById', 'managedBy', 'isActive', 'isBanned', 'isVerified', 'chefDeFlotteStatus', 'suspensionReason', 'suspendedUntil', 'deletedAt']) }))
         })
         .catch(() => {})
     }
@@ -1083,7 +1085,8 @@ export default function Drivers() {
       {selected && modal === 'suspend' && (
         <SuspendModal
           target="driver"
-          onConfirm={(reason, fix) => withReason(() => api.patch(`/admin/drivers/${selected.id}/suspend`, { reason: fullReason(reason, fix) }), `${label} est suspendu.`)}
+          durations={rights.suspendUnlimited ? [null, 24, 48, 72] : [72, 48, 24]}
+          onConfirm={(reason, fix, hours) => withReason(() => api.patch(`/admin/drivers/${selected.id}/suspend`, { reason: fullReason(reason, fix), ...(hours && { hours }) }), hours ? `${label} est suspendu ${hours} h.` : `${label} est suspendu.`)}
           onClose={() => setModal(null)}
           loading={modalBusy}
         />

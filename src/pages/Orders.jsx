@@ -58,6 +58,7 @@ export default function Orders() {
   const role = user?.adminRole
   const canDispatch = canSee(role, ACTION_ROLES.orderDispatch)
   const canCancel   = canSee(role, ACTION_ROLES.orderCancel)
+  const canCancelAny = canSee(role, ACTION_ROLES.orderCancelAny) // sinon : course en attente seulement
   const canMarkPaid = canSee(role, ACTION_ROLES.orderMarkPaid)
   const canForce    = canSee(role, ACTION_ROLES.orderForceStatus)
   const LIMIT = 50
@@ -258,7 +259,7 @@ export default function Orders() {
     canForce && detail.driver && detail.status === 'ACCEPTED' && { key: 'pickup', label: 'Colis récupéré', color: '#7c3aed', onClick: () => setConfirming('PICKED_UP') },
     canForce && detail.driver && ['ACCEPTED', 'PICKED_UP', 'IN_TRANSIT'].includes(detail.status) && { key: 'deliver', label: 'Colis livré', color: '#16a34a', onClick: () => setConfirming('DELIVERED') },
     canMarkPaid && detail.status === 'DELIVERED' && detail.paymentStatus === 'PENDING' && { key: 'paid', label: 'Marquer payé', color: '#16a34a', onClick: () => setConfirming('paid') },
-    canCancel && !['DELIVERED', 'CANCELLED'].includes(detail.status) && { key: 'cancel', label: 'Annuler la course', color: '#dc2626', onClick: openCancelPicker },
+    canCancel && !['DELIVERED', 'CANCELLED'].includes(detail.status) && (canCancelAny || ['SCHEDULED', 'PENDING'].includes(detail.status)) && { key: 'cancel', label: 'Annuler la course', color: '#dc2626', onClick: openCancelPicker },
   ].filter(Boolean) : []
 
   // Texte et action de la confirmation ouverte

@@ -31,7 +31,7 @@ export const PAGES = {
   '/badges': 'Paliers de badges des clients et des coursiers, leurs seuils et les badges clients à valider.',
   '/notifications': "Notifications push envoyées tout de suite ou programmées, historique des envois et alerte affichée dans l'application.",
   '/relances': 'Nouveaux inscrits à contacter et journal des appels de prospection et de support.',
-  '/equipes': "Comptes de l'équipe admin et leurs rôles. Le rôle décide des pages et des actions accessibles. Les demandes de réinitialisation de mot de passe arrivent ici.",
+  '/equipes': "Comptes de l'équipe admin et leurs rôles. Le rôle décide des pages et des actions accessibles ; l'onglet Rôles permet d'en créer, d'en modifier et d'en supprimer. Les demandes de réinitialisation de mot de passe arrivent ici.",
   '/audit': "Journal de toutes les actions faites par les admins (qui, quoi, sur quoi, quand). Un clic sur une ligne ouvre son détail.",
   '/maintenance': "Tâches ponctuelles sur les données (aperçu puis exécution), fournisseur des SMS et activation du code secret. Chaque exécution est tracée dans l'audit.",
   '/version-app': "Version minimale de l'application et invitation à mettre à jour, pour Android et iPhone.",
@@ -265,6 +265,10 @@ export const ONGLETS = {
   '/badges': {
     clients:   'Badges des clients selon leurs courses ; un nouveau badge client est validé par le Super Admin.',
     coursiers: 'Badges des coursiers selon leurs courses, parrainages et note. Seuils modifiables par le Super Admin.',
+  },
+  '/equipes': {
+    membres: "Comptes de l'équipe admin. Le rôle d'un membre se change dans sa ligne ou depuis Modifier ; l'effet est immédiat côté serveur, et le menu de ce compte se met à jour au prochain rechargement de la page.",
+    roles:   "Un rôle ouvre un ou plusieurs accès (Dev, Finance, Marketing, Service client, Assistance exécutive, Responsable de flottes) ; chaque accès ouvre des pages et les actions qui vont avec. Les rôles d'origine se modifient mais ne se suppriment pas ; Super Admin garde l'accès total.",
   },
   '/notifications': {
     envoyer:    "Envoyer une notification push maintenant ou la programmer, par type de compte. Un test sur un numéro est possible avant l'envoi.",
