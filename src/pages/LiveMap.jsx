@@ -11,6 +11,9 @@ import { pageWrap, pageScroll } from '../lib/glassStyles'
 import { useResponsive } from '../lib/useResponsive'
 import InfoTip from '../components/InfoTip'
 import { PAGES } from '../lib/aide'
+import { useAuth } from '../contexts/AuthContext'
+import { canSee, ACTION_ROLES } from '../lib/droits'
+import DispatchPicker from '../components/DispatchPicker'
 
 // Fix icônes Leaflet avec Vite
 delete L.Icon.Default.prototype._getIconUrl
@@ -43,6 +46,7 @@ function makeIcon(color, label) {
 
 const DRIVER_ICON  = makeIcon('#6366f1', '🏍')
 const PICKUP_ICON  = makeIcon('#f59e0b', '📦')
+const WAITING_ICON = makeIcon('#dc2626', '⏳') // course en attente d'un coursier
 const DELIVERY_ICON = makeIcon('#22c55e', '🏁')
 
 // Centre auto sur les marqueurs
@@ -58,6 +62,11 @@ function AutoFit({ points }) {
 
 export default function LiveMap() {
   const { isMobile } = useResponsive()
+  const { user } = useAuth()
+  // Proposer / attribuer / réattribuer depuis la carte (Super + Resp. flottes)
+  const canDispatch = canSee(user?.adminRole, ACTION_ROLES.orderDispatch)
+  const [dispatchOrder, setDispatchOrder] = useState(null)
+  const [notice, setNotice] = useState('')
   const [snapshot, setSnapshot] = useState(null)
   const [loading, setLoading]   = useState(true)
   const [showDrivers, setShowDrivers]   = useState(true)
@@ -151,6 +160,9 @@ export default function LiveMap() {
       </div>
 
       <div style={pageScroll}>
+      {notice && (
+        <div style={{ fontSize: 13, fontWeight: 600, color: '#15803d', background: 'rgba(34,197,94,.10)', padding: '8px 12px', borderRadius: 10, marginBottom: 12 }}>{notice}</div>
+      )}
       {/* Map */}
       <div style={{ height: isMobile ? 320 : 480, borderRadius: 'var(--radius)', overflow: 'hidden', border: '1px solid var(--border)', marginBottom: 12 }}>
         {loading ? (
@@ -187,13 +199,20 @@ export default function LiveMap() {
               <span key={o.id}>
                 {/* Point pickup */}
                 {o.pickupLatitude && (
-                  <Marker position={[o.pickupLatitude, o.pickupLongitude]} icon={PICKUP_ICON}>
+                  <Marker position={[o.pickupLatitude, o.pickupLongitude]} icon={o.status === 'PENDING' ? WAITING_ICON : PICKUP_ICON}>
                     <Popup>
                       <div style={{ minWidth: 180 }}>
                         <strong>Pickup</strong> — <Badge status={o.status} /><br />
                         <span style={{ fontSize: 12, color: '#666' }}>{o.pickupAddress}</span><br />
                         <span style={{ fontSize: 12 }}>Client : {o.client?.name ?? '—'}</span><br />
+                        {o.driver && <><span style={{ fontSize: 12 }}>Coursier : {o.driver.name ?? '—'}</span><br /></>}
+                        {o.status === 'PENDING' && <><span style={{ fontSize: 12, color: '#dc2626', fontWeight: 600 }}>En attente depuis {Math.max(0, Math.round((Date.now() - new Date(o.createdAt)) / 60000))} min</span><br /></>}
                         <span style={{ fontSize: 12, fontWeight: 600 }}>{o.price?.toLocaleString()} F</span>
+                        {canDispatch && (o.status === 'PENDING' || o.driver) && (
+                          <button onClick={() => setDispatchOrder(o)} style={{ display: 'block', marginTop: 8, width: '100%', padding: '6px 10px', borderRadius: 6, border: 'none', cursor: 'pointer', fontSize: 12, fontWeight: 700, color: '#fff', background: o.driver ? '#7c3aed' : '#0077b6' }}>
+                            {o.driver ? 'Réattribuer' : 'Proposer / attribuer'}
+                          </button>
+                        )}
                       </div>
                     </Popup>
                   </Marker>
@@ -233,10 +252,19 @@ export default function LiveMap() {
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px 20px', fontSize: 12, color: 'var(--text-muted)' }}>
         <span>🏍 Driver disponible</span>
         <span>📦 Point de pickup</span>
+        <span style={{ color: '#dc2626' }}>⏳ Course en attente d'un coursier</span>
         <span>🏁 Point de livraison</span>
         <span style={{ color: '#38bdf8' }}>— — Trajet estimé</span>
       </div>
       </div>
+
+      {dispatchOrder && (
+        <DispatchPicker
+          order={dispatchOrder}
+          onClose={() => setDispatchOrder(null)}
+          onDone={({ text }) => { setDispatchOrder(null); setNotice(text); fetch() }}
+        />
+      )}
     </div>
   )
 }

@@ -3,15 +3,18 @@ import { useSearchParams } from 'react-router-dom'
 import api from '../lib/api'
 import { useAuth } from '../contexts/AuthContext'
 import { useAutoRefresh } from '../lib/useAutoRefresh'
-import { canSee, ACTION_ROLES } from '../lib/droits'
+import { canSee, asksSuper, ACTION_ROLES } from '../lib/droits'
 import Badge from '../components/Badge'
 import PageHeader from '../components/PageHeader'
-import { RefreshCw, Search, X, MapPin, Phone, MessageCircle, Copy, Check } from 'lucide-react'
+import { RefreshCw, Search, X, MapPin, Phone, MessageCircle, Copy, Check, Plus } from 'lucide-react'
 import { glass, glassInput, pageWrap, pageScroll, stickyTh, stickyCol, stickyThCol } from '../lib/glassStyles'
 import DocThumb from '../components/DocThumb'
 import { useUrlQuery } from '../lib/useUrlQuery'
 import { cancelReasonLabel } from '../lib/cancelReasons'
 import InfoTip from '../components/InfoTip'
+import DispatchPicker from '../components/DispatchPicker'
+import OrderRequestModal from './orders/OrderRequestModal'
+import ClientOrderModal from './orders/ClientOrderModal'
 
 // Montant payé par le client = part coursier (price) + frais DEM − réduction
 // (même calcul que l'app : core/utils/price_format.dart:clientChargeFor).
@@ -59,6 +62,11 @@ export default function Orders() {
   const canDispatch = canSee(role, ACTION_ROLES.orderDispatch)
   const canCancel   = canSee(role, ACTION_ROLES.orderCancel)
   const canCancelAny = canSee(role, ACTION_ROLES.orderCancelAny) // sinon : course en attente seulement
+  const askSuper    = asksSuper(role) // Resp. flottes : « Demander » au Super Admin (niveau 2)
+  const [orderRequest, setOrderRequest] = useState(null) // 'cancel' | 'geste'
+  const canCreateForClient = canSee(role, ACTION_ROLES.orderCreateForClient)
+  const [clientOrder, setClientOrder] = useState(false) // fenêtre « Nouvelle course client »
+  const [dispatchNew, setDispatchNew] = useState(null)   // course juste créée, à proposer / attribuer
   const canMarkPaid = canSee(role, ACTION_ROLES.orderMarkPaid)
   const canForce    = canSee(role, ACTION_ROLES.orderForceStatus)
   const LIMIT = 50
@@ -82,7 +90,7 @@ export default function Orders() {
   const [confirming, setConfirming] = useState(null) // 'paid' | 'redispatch' | 'PICKED_UP' | 'DELIVERED'
   const [busy, setBusy]       = useState(false)
   const [actionError, setActionError] = useState('')
-  const [driverPicker, setDriverPicker] = useState(null) // { drivers, loading, error }
+  const [driverPicker, setDriverPicker] = useState(null) // true = fenêtre de dispatch ouverte
   const [cancelReasons, setCancelReasons] = useState(null)
   const [cancelPicker, setCancelPicker]   = useState(null) // { orderId, code, note }
 
@@ -189,39 +197,14 @@ export default function Orders() {
     fetch(true)
   })
 
-  const openDriverPicker = async () => {
-    setDriverPicker({ drivers: [], loading: true, error: null })
-    try {
-      const res = await api.get(`/admin/orders/${detail.id}/assignable-drivers`)
-      setDriverPicker({ drivers: res.data?.drivers ?? [], loading: false, error: null })
-    } catch (e) {
-      setDriverPicker({ drivers: [], loading: false, error: e.response?.data?.message ?? 'Erreur de chargement des coursiers.' })
-    }
-  }
-
-  const assignDriver = async (driverId) => {
-    setBusy(true)
-    try {
-      const res = await api.patch(`/admin/orders/${detail.id}/reassign`, { driverId })
-      setDetail(res.data?.order ?? null)
-      setDriverPicker(null)
-      fetch(true)
-    } catch (e) {
-      setDriverPicker(p => p ? { ...p, error: e.response?.data?.message ?? 'Erreur lors de l’attribution du coursier' } : p)
-    } finally { setBusy(false) }
-  }
-
-  const suggestDriver = async (driverId) => {
-    setBusy(true)
-    try {
-      const res = await api.patch(`/admin/orders/${detail.id}/suggest`, { driverId })
-      setNotice({ ok: true, text: res.data?.message ?? 'Course suggérée au coursier.' })
-      setDriverPicker(null)
-      setDetail(null)
-      fetch(true)
-    } catch (e) {
-      setDriverPicker(p => p ? { ...p, error: e.response?.data?.message ?? 'Erreur lors de la suggestion au coursier' } : p)
-    } finally { setBusy(false) }
+  // Proposer / attribuer / réattribuer : components/DispatchPicker.jsx
+  const openDriverPicker = () => setDriverPicker(true)
+  const onDispatched = ({ text, order }) => {
+    setDriverPicker(null)
+    setNotice({ ok: true, text })
+    if (order) setDetail(prev => (prev?.id === order.id ? { ...prev, ...order } : prev))
+    else setDetail(null)
+    fetch(true)
   }
 
   // Le motif d'annulation détermine le message envoyé au client/coursier —
@@ -254,12 +237,15 @@ export default function Orders() {
 
   // Actions possibles sur la course ouverte (droits d'affichage = droits serveur)
   const actions = detail ? [
-    canDispatch && detail.status === 'PENDING' && !detail.driver && { key: 'pick', label: 'Choisir un coursier', color: '#0077b6', onClick: openDriverPicker },
+    canDispatch && detail.status === 'PENDING' && !detail.driver && { key: 'pick', label: 'Proposer / attribuer', color: '#0077b6', onClick: openDriverPicker },
+    canDispatch && detail.driver && ['ACCEPTED', 'PICKED_UP', 'IN_TRANSIT'].includes(detail.status) && { key: 'reassign', label: 'Réattribuer', color: '#7c3aed', onClick: openDriverPicker },
     canDispatch && detail.status === 'ACCEPTED' && { key: 'redispatch', label: 'Relancer la recherche', color: '#f97316', onClick: () => setConfirming('redispatch') },
     canForce && detail.driver && detail.status === 'ACCEPTED' && { key: 'pickup', label: 'Colis récupéré', color: '#7c3aed', onClick: () => setConfirming('PICKED_UP') },
     canForce && detail.driver && ['ACCEPTED', 'PICKED_UP', 'IN_TRANSIT'].includes(detail.status) && { key: 'deliver', label: 'Colis livré', color: '#16a34a', onClick: () => setConfirming('DELIVERED') },
     canMarkPaid && detail.status === 'DELIVERED' && detail.paymentStatus === 'PENDING' && { key: 'paid', label: 'Marquer payé', color: '#16a34a', onClick: () => setConfirming('paid') },
     canCancel && !['DELIVERED', 'CANCELLED'].includes(detail.status) && (canCancelAny || ['SCHEDULED', 'PENDING'].includes(detail.status)) && { key: 'cancel', label: 'Annuler la course', color: '#dc2626', onClick: openCancelPicker },
+    askSuper && !canCancelAny && ['ACCEPTED', 'PICKED_UP', 'IN_TRANSIT'].includes(detail.status) && { key: 'ask-cancel', label: "Demander l'annulation", color: '#dc2626', onClick: () => setOrderRequest('cancel') },
+    askSuper && detail.status !== 'CANCELLED' && (detail.client?.id || detail.clientId) && { key: 'ask-geste', label: 'Demander un geste', color: '#7c3aed', onClick: () => setOrderRequest('geste') },
   ].filter(Boolean) : []
 
   // Texte et action de la confirmation ouverte
@@ -280,7 +266,12 @@ export default function Orders() {
       <PageHeader
         title="Courses"
         subtitle="Toutes les commandes, du plus récent au plus ancien"
-        actions={<button onClick={() => fetch()} style={btnOutline}><RefreshCw size={14} /> Actualiser</button>}
+        actions={<>
+          <button onClick={() => fetch()} style={btnOutline}><RefreshCw size={14} /> Actualiser</button>
+          {canCreateForClient && (
+            <button onClick={() => setClientOrder(true)} style={{ ...btnOutline, background: 'var(--primary)', color: '#fff', border: 'none', fontWeight: 600 }}><Plus size={14} /> Nouvelle course client</button>
+          )}
+        </>}
       />
 
       {notice && (
@@ -521,42 +512,28 @@ export default function Orders() {
         </div>
       )}
 
-      {/* Choix d'un coursier */}
-      {driverPicker && (
-        <div style={{ ...overlay, zIndex: 110 }} onClick={() => !busy && setDriverPicker(null)}>
-          <div style={{ ...modalBox, width: 460 }} onClick={e => e.stopPropagation()}>
-            <h2 style={{ marginBottom: 4, fontSize: 16 }}>Choisir un coursier</h2>
-            <p style={{ marginBottom: 16, fontSize: 12, color: 'var(--text-muted)' }}>
-              <strong>Suggérer</strong> envoie une offre que le coursier peut accepter ou refuser.{' '}
-              <strong>Attribuer directement</strong> lui assigne la course sans confirmation de sa part.
-            </p>
-            {driverPicker.error && <div style={{ color: '#dc2626', padding: '0 0 10px', fontSize: 12.5 }}>{driverPicker.error}</div>}
-            {driverPicker.loading ? (
-              <div style={{ color: 'var(--text-muted)', padding: 12 }}>Chargement des coursiers disponibles…</div>
-            ) : driverPicker.drivers.length === 0 ? (
-              !driverPicker.error && <div style={{ color: 'var(--text-muted)', padding: 12 }}>Aucun coursier disponible pour le moment.</div>
-            ) : (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 8, maxHeight: 360, overflowY: 'auto' }}>
-                {driverPicker.drivers.map(d => (
-                  <div key={d.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10, padding: '10px 14px', borderRadius: 'var(--radius-sm)', border: '1px solid rgba(0,119,182,0.2)', background: 'rgba(255,255,255,0.5)', fontSize: 13 }}>
-                    <span style={{ minWidth: 0 }}>
-                      <strong>{d.name ?? 'Sans nom'}</strong>
-                      <span style={{ color: 'var(--text-muted)', marginLeft: 8 }}>{d.phone}</span>
-                      <span style={{ display: 'block', color: 'var(--text-muted)', fontSize: 11 }}>{d.vehicleType ?? '—'}</span>
-                    </span>
-                    <span style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
-                      <button onClick={() => suggestDriver(d.id)} disabled={busy} style={{ ...btnOutline, padding: '6px 10px', fontSize: 12, color: '#0077b6', borderColor: '#0077b6', background: 'rgba(0,119,182,0.08)' }}>Suggérer</button>
-                      <button onClick={() => assignDriver(d.id)} disabled={busy} style={{ ...btnOutline, padding: '6px 10px', fontSize: 12, color: '#16a34a', borderColor: '#16a34a', background: 'rgba(22,163,74,0.08)' }}>Attribuer directement</button>
-                    </span>
-                  </div>
-                ))}
-              </div>
-            )}
-            <div style={{ marginTop: 20, display: 'flex', justifyContent: 'flex-end' }}>
-              <button onClick={() => setDriverPicker(null)} disabled={busy} style={btnOutline}>{busy ? 'Attribution…' : 'Fermer'}</button>
-            </div>
-          </div>
-        </div>
+      {/* Course saisie pour un client (Resp. flottes, C3), puis dispatch */}
+      {clientOrder && (
+        <ClientOrderModal
+          onClose={() => setClientOrder(false)}
+          onCreated={() => fetch(true)}
+          onDispatch={order => { setClientOrder(false); setDispatchNew(order) }}
+        />
+      )}
+      {dispatchNew && (
+        <DispatchPicker order={dispatchNew} onClose={() => setDispatchNew(null)}
+          onDone={({ text }) => { setDispatchNew(null); setNotice({ ok: true, text }); fetch(true) }} />
+      )}
+
+      {/* Demandes au Super Admin (Resp. flottes) */}
+      {orderRequest && detail && (
+        <OrderRequestModal mode={orderRequest} order={detail} onClose={() => setOrderRequest(null)}
+          onDone={text => { setOrderRequest(null); setNotice({ ok: true, text }) }} />
+      )}
+
+      {/* Proposer, attribuer ou réattribuer */}
+      {driverPicker && detail && (
+        <DispatchPicker order={detail} onClose={() => setDriverPicker(null)} onDone={onDispatched} />
       )}
 
       {/* Motif d'annulation — obligatoire, jamais de texte libre envoyé au client/coursier */}

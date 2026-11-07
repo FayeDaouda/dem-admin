@@ -3,6 +3,7 @@ import api from '../lib/api'
 import { Send, Users, Bike, Briefcase, Truck, Bell, FlaskConical, Clock, Pencil, X, Check } from 'lucide-react'
 import { glass, pageWrap } from '../lib/glassStyles'
 import { targetLabel } from '../lib/broadcastTargets'
+import RequestModal from '../components/RequestModal'
 
 // Profils combinables : on en coche un, deux, trois… Tout coché = « Tous ».
 // Envoyé au serveur sous la forme 'all' ou 'clients,drivers' (même format
@@ -49,10 +50,13 @@ function toDatetimeLocal(date) {
 }
 
 // driversOnly : rôle limité aux coursiers (Responsable de flottes) — le
-// serveur refuse toute autre cible.
+// serveur refuse toute autre cible ; un envoi à d'autres profils devient une
+// demande au Super Admin (niveau 2), appliquée s'il la valide.
 export default function Broadcast({ embedded = false, driversOnly = false }) {
-  const profiles = driversOnly ? PROFILES.filter(p => p.value === 'drivers') : PROFILES
   const [selected, setSelected] = useState(driversOnly ? ['drivers'] : [...ALL_PROFILES])
+  const [asking, setAsking] = useState(false) // demande d'envoi au Super Admin
+  const [requestNotice, setRequestNotice] = useState('')
+  const needsRequest = driversOnly && toTarget(selected) !== 'drivers'
   const target = toTarget(selected)
   const [title, setTitle]     = useState('')
   const [body, setBody]       = useState('')
@@ -100,6 +104,7 @@ export default function Broadcast({ embedded = false, driversOnly = false }) {
       return
     }
     setError('')
+    if (needsRequest) { setAsking(true); return }
     setConfirmSend(true)
   }
 
@@ -131,6 +136,10 @@ export default function Broadcast({ embedded = false, driversOnly = false }) {
     }
     if (!scheduledAt) {
       setScheduleError('Choisissez une date et une heure d\'envoi.')
+      return
+    }
+    if (needsRequest) {
+      setScheduleError('Votre rôle programme des notifications aux coursiers seulement. Pour les autres profils : « Demander l’envoi ».')
       return
     }
     const iso = new Date(scheduledAt).toISOString()
@@ -243,15 +252,15 @@ export default function Broadcast({ embedded = false, driversOnly = false }) {
           {/* Cible — un ou plusieurs profils */}
           <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between' }}>
             <label style={labelStyle}>Destinataires</label>
-            {!driversOnly && <button
+            <button
               onClick={() => setSelected(selected.length === ALL_PROFILES.length ? [] : [...ALL_PROFILES])}
               style={{ background: 'none', border: 'none', color: 'var(--primary)', fontSize: 12, fontWeight: 600, cursor: 'pointer', padding: 0 }}
             >
               {selected.length === ALL_PROFILES.length ? 'Tout décocher' : 'Tout cocher'}
-            </button>}
+            </button>
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 8 }}>
-            {profiles.map(t => {
+            {PROFILES.map(t => {
               const sel = selected.includes(t.value)
               const Icon = t.icon
               return (
@@ -259,7 +268,7 @@ export default function Broadcast({ embedded = false, driversOnly = false }) {
                   key={t.value}
                   role="checkbox"
                   aria-checked={sel}
-                  onClick={() => !driversOnly && setSelected(sel ? selected.filter(v => v !== t.value) : [...selected, t.value])}
+                  onClick={() => setSelected(sel ? selected.filter(v => v !== t.value) : [...selected, t.value])}
                   style={{
                     padding: '10px 12px', borderRadius: 10, cursor: 'pointer',
                     border: `1.5px solid ${sel ? 'var(--primary)' : 'rgba(0,119,182,.15)'}`,
@@ -327,8 +336,23 @@ export default function Broadcast({ embedded = false, driversOnly = false }) {
             }}>
               {sending
                 ? 'Envoi en cours…'
-                : <><Send size={16} /> Envoyer maintenant</>}
+                : needsRequest ? <><Send size={16} /> Demander l’envoi au Super Admin</> : <><Send size={16} /> Envoyer maintenant</>}
             </button>
+          )}
+          {asking && (
+            <RequestModal
+              kind="BROADCAST"
+              title="Demander l’envoi d’une notification"
+              intro={`Envoi à : ${targetLabel(target)}. Seuls les coursiers sont ouverts à votre rôle ; le Super Admin envoie s’il valide.`}
+              payload={{ title: title.trim(), body: body.trim(), target }}
+              onClose={() => setAsking(false)}
+              onDone={text => { setAsking(false); setResult(null); setError(''); setRequestNotice(text) }}
+            />
+          )}
+          {requestNotice && (
+            <div style={{ marginBottom: 14, padding: '8px 12px', borderRadius: 8, background: 'rgba(16,185,129,.08)', color: 'var(--success)', fontSize: 13, fontWeight: 600 }}>
+              {requestNotice}
+            </div>
           )}
 
           {error && (

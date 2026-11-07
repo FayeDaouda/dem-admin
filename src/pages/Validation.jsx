@@ -3,15 +3,17 @@ import { useSearchParams } from 'react-router-dom'
 import api from '../lib/api'
 import { useAuth } from '../contexts/AuthContext'
 import { glass, glassInput, pageWrap, pageScroll } from '../lib/glassStyles'
-import { RefreshCw, CheckCircle, XCircle, ChevronDown, ChevronUp, Shield, Motorbike, Layers, AlertTriangle, Briefcase, ClipboardList, Wallet, FileWarning } from 'lucide-react'
+import { RefreshCw, CheckCircle, XCircle, ChevronDown, ChevronUp, Shield, Motorbike, Layers, AlertTriangle, Briefcase, ClipboardList, Wallet, FileWarning, Truck, Send, Paperclip, HelpCircle } from 'lucide-react'
 import SuspendModal from '../components/SuspendModal'
 import AmbassadorDetailModal from '../components/AmbassadorDetailModal'
 import DocThumb from '../components/DocThumb'
 import PageHeader from '../components/PageHeader'
 import TabBar from '../components/TabBar'
 import { useUrlTab } from '../lib/useUrlTab'
-import { canSee, TAB_ROLES, ACTION_ROLES } from '../lib/droits'
+import { canSee, asksSuper, isSuperRole, TAB_ROLES, ACTION_ROLES } from '../lib/droits'
 import { useAutoRefresh } from '../lib/useAutoRefresh'
+import { REQUEST_KIND_LABELS, REQUEST_STATUS_LABELS, requestDetails } from '../lib/requestKinds'
+import RequestModal from '../components/RequestModal'
 
 // ── Styles partagés ───────────────────────────────────────────────────────────
 const card      = { ...glass, padding: '18px 20px' }
@@ -25,6 +27,7 @@ const btnDisabled = { opacity: 0.45, cursor: 'not-allowed' }
 function StatusBadge({ status }) {
   const map = {
     PENDING:  { bg: 'rgba(245,158,11,.12)', color: '#b45309', label: 'En attente' },
+    NEEDS_INFO: { bg: 'rgba(99,102,241,.12)', color: '#4f46e5', label: 'Précision demandée' },
     ACTIVE:   { bg: 'rgba(34,197,94,.12)',  color: '#15803d', label: 'Actif' },
     REJECTED: { bg: 'rgba(239,68,68,.10)',  color: '#dc2626', label: 'Refusé' },
     APPROVED: { bg: 'rgba(34,197,94,.12)',  color: '#15803d', label: 'Approuvé' },
@@ -171,6 +174,8 @@ const TABS = [
   { key: 'fleet',            label: 'Extensions de flotte',    icon: Layers },
   { key: 'service-requests', label: 'Demandes Service Client', icon: ClipboardList },
   { key: 'finance-requests', label: 'Demandes Finance',        icon: Wallet },
+  { key: 'fleet-requests',   label: 'Demandes Flotte',         icon: Truck },
+  { key: 'my-requests',      label: 'Mes demandes',            icon: Send },
 ]
 
 // Même source et même filtre que chaque onglet en « En attente » : le nombre
@@ -184,10 +189,13 @@ const COUNTERS = {
   'service-requests': () => api.get('/admin/requests', { params: { status: 'PENDING' } }).then(r => {
     const list = r.data.requests ?? []
     return {
-      'service-requests': list.filter(x => SC_KIND_FILTER(x.kind)).length,
-      'finance-requests': list.filter(x => FINANCE_KIND_FILTER(x.kind)).length,
+      'service-requests': list.filter(SC_FILTER).length,
+      'finance-requests': list.filter(FINANCE_FILTER).length,
+      'fleet-requests':   list.filter(FLEET_FILTER).length,
     }
   }),
+  // Mes demandes : celles qui attendent ma réponse (précision demandée)
+  'my-requests': () => api.get('/admin/requests', { params: { status: 'NEEDS_INFO' } }).then(r => ({ 'my-requests': (r.data.requests ?? []).length })),
 }
 
 async function fetchCounts(keys) {
@@ -213,7 +221,8 @@ export default function Validation() {
   const [searchParams] = useSearchParams()
   const highlightId = searchParams.get('highlight') || null
 
-  const tabs = useMemo(() => TABS.filter(t => canSee(role, TAB_ROLES.validation[t.key])), [role])
+  // « Mes demandes » : suivi du demandeur, sans objet pour le Super Admin
+  const tabs = useMemo(() => TABS.filter(t => canSee(role, TAB_ROLES.validation[t.key]) && !(t.key === 'my-requests' && isSuperRole(role))), [role])
   const [urlTab, setTab] = useUrlTab(tabs)
   const fromUrl = tabs.some(t => t.key === searchParams.get('tab'))
 
@@ -238,6 +247,7 @@ export default function Validation() {
   const canReviewKyc   = canSee(role, ACTION_ROLES.kycReview)
   const canDecideChef  = canSee(role, ACTION_ROLES.chefDecision)
   const canDecideFleet = canSee(role, ACTION_ROLES.fleetDecision)
+  const askSuper       = asksSuper(role) // Resp. flottes : « Demander la validation »
 
   return (
     <div style={pageWrap}>
@@ -245,20 +255,23 @@ export default function Validation() {
       <TabBar tabs={barTabs} active={tab} onChange={setTab} />
       <div style={pageScroll}>
         {!tab && <Loading />}
-        {tab === 'ambassadors'      && <AmbassadorsTab canSuspend={canSuspendChef} canDecide={canDecideChef} highlightId={highlightId} onChanged={refreshCounts} />}
+        {tab === 'ambassadors'      && <AmbassadorsTab canSuspend={canSuspendChef} canDecide={canDecideChef} askSuper={askSuper} highlightId={highlightId} onChanged={refreshCounts} />}
         {tab === 'drivers'          && <DriversTab highlightId={highlightId} onChanged={refreshCounts} />}
         {tab === 'kyc-review'       && <KycReviewTab canReview={canReviewKyc} highlightId={highlightId} onChanged={refreshCounts} />}
         {tab === 'dem-pro'          && <DemProTab highlightId={highlightId} onChanged={refreshCounts} />}
-        {tab === 'fleet'            && <FleetTab canDecide={canDecideFleet} highlightId={highlightId} onChanged={refreshCounts} />}
+        {tab === 'fleet'            && <FleetTab canDecide={canDecideFleet} askSuper={askSuper} highlightId={highlightId} onChanged={refreshCounts} />}
         {tab === 'service-requests' && <ServiceRequestsTab highlightId={highlightId} onChanged={refreshCounts} />}
         {tab === 'finance-requests' && <FinanceRequestsTab highlightId={highlightId} onChanged={refreshCounts} />}
+        {tab === 'fleet-requests'   && <FleetRequestsTab highlightId={highlightId} onChanged={refreshCounts} />}
+        {tab === 'my-requests'      && <MyRequestsTab highlightId={highlightId} onChanged={refreshCounts} />}
       </div>
     </div>
   )
 }
 
 // ── Tab Chefs de flotte ────────────────────────────────────────────────────────
-function AmbassadorsTab({ canSuspend, canDecide, highlightId, onChanged }) {
+function AmbassadorsTab({ canSuspend, canDecide, askSuper, highlightId, onChanged }) {
+  const [asking, setAsking] = useState(null) // chef dont on demande la validation
   const [list,     setList]     = useState([])
   const [loading,       setLoading]       = useState(true)
   const [filter,        setFilter]        = useState('PENDING')
@@ -364,6 +377,11 @@ function AmbassadorsTab({ canSuspend, canDecide, highlightId, onChanged }) {
                 )}
 
                 {/* Actions PENDING (Resp. flottes : lecture, décision du Super Admin) */}
+                {am.chefDeFlotteStatus === 'PENDING' && !canDecide && askSuper && (
+                  <button style={{ ...btnAccept, alignSelf:'flex-start' }} onClick={() => setAsking(am)}>
+                    <Send size={13} /> Demander la validation
+                  </button>
+                )}
                 {am.chefDeFlotteStatus === 'PENDING' && canDecide && (
                   <DecisionBar
                     busy={acting===am.id}
@@ -405,6 +423,16 @@ function AmbassadorsTab({ canSuspend, canDecide, highlightId, onChanged }) {
       <AmbassadorDetailModal
         ambassadorId={detailAmId}
         onClose={() => setDetailAmId(null)}
+      />
+    )}
+    {asking && (
+      <RequestModal
+        kind="CHEF_VALIDATE"
+        title={`Demander la validation — ${asking.name ?? asking.phone}`}
+        intro="La validation d'un chef de flotte revient au Super Admin. Donnez votre avis dans le détail."
+        targetUserId={asking.id}
+        onClose={() => setAsking(null)}
+        onDone={() => { setAsking(null); load(true) }}
       />
     )}
   </>)
@@ -875,16 +903,6 @@ function DemProTab({ highlightId, onChanged }) {
 }
 
 // ── Tab Demandes Service Client (AdminRequest) ────────────────────────────────
-const REQUEST_KIND_LABELS = {
-  DEM_PRO_CREATE:   'Création compte DEM Pro',
-  DEM_PRO_SUSPEND:  'Suspension compte DEM Pro',
-  DEM_PRO_ACTIVATE: 'Réactivation compte DEM Pro',
-  GESTE_FREE_RIDE:  'Course gratuite',
-  GESTE_DISCOUNT:   'Remise',
-  TARIFF_CHANGE:    'Modification tarifaire',
-  DRIVER_SUSPEND:   'Suspension coursier',
-  CHEF_SUSPEND:     'Suspension chef de flotte',
-}
 
 // kindFilter distingue les demandes soumises par le Service Client (création/
 // suspension DEM Pro, gestes commerciaux, suspensions coursier/chef de flotte)
@@ -892,15 +910,16 @@ const REQUEST_KIND_LABELS = {
 // (/admin/requests), deux onglets pour ne pas les noyer les unes dans les autres.
 // Références stables (pas de fonction inline) pour ne pas invalider le
 // useCallback de chargement à chaque rendu.
-const SC_KIND_FILTER      = kind => kind !== 'TARIFF_CHANGE'
-const FINANCE_KIND_FILTER = kind => kind === 'TARIFF_CHANGE'
+const SC_FILTER      = r => r.kind !== 'TARIFF_CHANGE' && r.origin !== 'FLOTTE'
+const FINANCE_FILTER = r => r.kind === 'TARIFF_CHANGE'
+const FLEET_FILTER   = r => r.origin === 'FLOTTE'
 
 function ServiceRequestsTab({ highlightId, onChanged }) {
-  return <AdminRequestsTab highlightId={highlightId} onChanged={onChanged} kindFilter={SC_KIND_FILTER} emptyText="Aucune demande." />
+  return <AdminRequestsTab highlightId={highlightId} onChanged={onChanged} kindFilter={SC_FILTER} emptyText="Aucune demande." />
 }
 
 function FinanceRequestsTab({ highlightId, onChanged }) {
-  return <AdminRequestsTab highlightId={highlightId} onChanged={onChanged} kindFilter={FINANCE_KIND_FILTER} emptyText="Aucune demande Finance." />
+  return <AdminRequestsTab highlightId={highlightId} onChanged={onChanged} kindFilter={FINANCE_FILTER} emptyText="Aucune demande Finance." />
 }
 
 function AdminRequestsTab({ highlightId, onChanged, kindFilter, emptyText }) {
@@ -914,7 +933,7 @@ function AdminRequestsTab({ highlightId, onChanged, kindFilter, emptyText }) {
     if (!silent) setLoading(true)
     try {
       const res = await api.get('/admin/requests', { params: filter === 'all' ? {} : { status: filter } })
-      setList((res.data.requests ?? []).filter(r => kindFilter(r.kind)))
+      setList((res.data.requests ?? []).filter(kindFilter))
     } catch (e) { console.error(e) }
     finally { if (!silent) setLoading(false) }
   }, [filter, kindFilter])
@@ -999,7 +1018,8 @@ function AdminRequestsTab({ highlightId, onChanged, kindFilter, emptyText }) {
 }
 
 // ── Tab Extensions flotte ─────────────────────────────────────────────────────
-function FleetTab({ canDecide, highlightId, onChanged }) {
+function FleetTab({ canDecide, askSuper, highlightId, onChanged }) {
+  const [asking, setAsking] = useState(null) // extension dont on demande la validation
   const [list,    setList]    = useState([])
   const [loading, setLoading] = useState(true)
   const [notes,   setNotes]   = useState({})
@@ -1060,6 +1080,11 @@ function FleetTab({ canDecide, highlightId, onChanged }) {
             « {ext.justification} »
           </div>
 
+          {!canDecide && askSuper && (
+            <button style={{ ...btnAccept, marginTop:12 }} onClick={() => setAsking(ext)}>
+              <Send size={13} /> Demander la validation (avec votre avis)
+            </button>
+          )}
           {canDecide && <div style={{ marginTop:12, display:'flex', gap:10, alignItems:'center', flexWrap:'wrap' }}>
             <input
               placeholder="Notes admin (optionnel)"
@@ -1076,6 +1101,188 @@ function FleetTab({ canDecide, highlightId, onChanged }) {
           </div>}
           {errors[ext.id] && <div style={{ marginTop:8 }}><ErrorLine>{errors[ext.id]}</ErrorLine></div>}
         </div>
+      ))}
+      {asking && (
+        <RequestModal
+          kind="FLEET_EXTENSION"
+          title={`Extension de flotte — ${asking.ambassador?.name ?? asking.ambassador?.phone ?? 'chef de flotte'}`}
+          intro={`Passer de ${asking.ambassador?.fleetMaxSize ?? '?'} à ${asking.requestedSize} coursiers. Donnez votre avis : le Super Admin décide.`}
+          payload={{ extensionId: asking.id, requestedSize: asking.requestedSize }}
+          onClose={() => setAsking(null)}
+          onDone={() => { setAsking(null); load(true) }}
+        />
+      )}
+    </div>
+  )
+}
+
+// ── Demandes du Responsable de flottes (niveau 2) ─────────────────────────────
+// Super Admin : Valider (l'action s'applique), Refuser (motif obligatoire) ou
+// Demander une précision. Les urgentes d'abord.
+function RequestCard({ r, highlighted, children }) {
+  const details = requestDetails(r)
+  return (
+    <div style={{ ...card, ...(highlighted ? cardHighlight : {}), ...(r.urgent && r.status === 'PENDING' ? { borderLeft: '4px solid #dc2626' } : {}) }}>
+      <div style={{ display:'flex', alignItems:'center', gap:10, flexWrap:'wrap' }}>
+        <div style={{ flex:1, minWidth:200 }}>
+          <div style={{ fontWeight:700, fontSize:14, display:'flex', alignItems:'center', gap:8 }}>
+            {REQUEST_KIND_LABELS[r.kind] ?? r.kind}
+            {r.urgent && <span style={{ fontSize:10, fontWeight:800, color:'#fff', background:'#dc2626', padding:'2px 8px', borderRadius:10 }}>URGENT</span>}
+          </div>
+          <div style={{ fontSize:12, color:'var(--text-muted)' }}>
+            {r.submittedBy?.name ?? r.submittedBy?.email ?? '—'}
+            {r.targetUser && <> · Concerne : {r.targetUser.proBusinessName ?? r.targetUser.name ?? r.targetUser.phone}</>}
+            {' · '}{new Date(r.createdAt).toLocaleString('fr-FR')}
+          </div>
+        </div>
+        <StatusBadge status={r.status} />
+      </div>
+      <div style={{ marginTop:10, fontSize:13 }}><strong>Motif :</strong> {r.reason ?? '—'}</div>
+      {r.detail && <div style={{ marginTop:6, fontSize:13, color:'var(--text-muted)', whiteSpace:'pre-wrap' }}>{r.detail}</div>}
+      {details.length > 0 && (
+        <div style={{ marginTop:8, display:'flex', gap:14, flexWrap:'wrap', fontSize:12, color:'var(--text-muted)' }}>
+          {details.map(d => <span key={d}>{d}</span>)}
+        </div>
+      )}
+      {r.attachmentUrl && (
+        <a href={r.attachmentUrl} target="_blank" rel="noreferrer" style={{ marginTop:8, display:'inline-flex', alignItems:'center', gap:6, fontSize:12, fontWeight:600 }}>
+          <Paperclip size={13} /> Pièce jointe
+        </a>
+      )}
+      {r.infoQuestion && (
+        <div style={{ marginTop:10, padding:'8px 12px', background:'rgba(99,102,241,.07)', borderRadius:8, fontSize:12.5 }}>
+          <div><strong>Question du Super Admin :</strong> {r.infoQuestion}</div>
+          {r.infoReply && <div style={{ marginTop:4 }}><strong>Réponse :</strong> {r.infoReply}</div>}
+        </div>
+      )}
+      {['APPROVED', 'REJECTED'].includes(r.status) && r.reviewNotes && (
+        <div style={{ marginTop:8, fontSize:12.5 }}><strong>{r.status === 'REJECTED' ? 'Motif du refus' : 'Note'} :</strong> {r.reviewNotes}</div>
+      )}
+      {children}
+    </div>
+  )
+}
+
+function FleetRequestsTab({ highlightId, onChanged }) {
+  const [list,    setList]    = useState([])
+  const [loading, setLoading] = useState(true)
+  const [filter,  setFilter]  = useState('OPEN')
+  const [action,  setAction]  = useState(null) // { id, mode: 'approve'|'reject'|'ask', text }
+
+  const load = useCallback(async (silent = false) => {
+    if (!silent) setLoading(true)
+    try {
+      const res = await api.get('/admin/requests', { params: { origin: 'FLOTTE', ...(filter === 'all' ? {} : { status: filter }) } })
+      const rows = res.data.requests ?? []
+      // Urgentes en attente d'abord, puis les plus anciennes
+      setList(rows.sort((a, b) => (b.urgent && b.status === 'PENDING') - (a.urgent && a.status === 'PENDING') || new Date(a.createdAt) - new Date(b.createdAt)))
+    } catch (e) { console.error(e) }
+    finally { if (!silent) setLoading(false) }
+  }, [filter])
+
+  useEffect(() => { load() }, [load])
+  useAutoRefresh(() => load(true))
+  const { acting, errors, notice, run } = useDecisions(load, onChanged)
+
+  const label = r => REQUEST_KIND_LABELS[r.kind] ?? r.kind
+  async function submit(r) {
+    const text = action.text.trim()
+    if (action.mode !== 'approve' && !text) return
+    const done = action.mode === 'approve'
+      ? await run(r.id, () => api.patch(`/admin/requests/${r.id}/approve`, { reviewNotes: text || undefined }), `${label(r)} : validée et appliquée.`)
+      : action.mode === 'reject'
+        ? await run(r.id, () => api.patch(`/admin/requests/${r.id}/reject`, { reviewNotes: text }), `${label(r)} : refusée.`)
+        : await run(r.id, () => api.patch(`/admin/requests/${r.id}/ask-info`, { question: text }), `${label(r)} : précision demandée.`)
+    if (done) setAction(null)
+  }
+
+  const MODES = {
+    approve: { placeholder: 'Note (facultative)', button: 'Valider et appliquer', style: btnAccept },
+    reject:  { placeholder: 'Motif du refus (obligatoire)', button: 'Confirmer le refus', style: btnRefuse },
+    ask:     { placeholder: 'Précision demandée (obligatoire)', button: 'Envoyer la question', style: btnAccept },
+  }
+
+  return (
+    <div style={{ display:'flex', flexDirection:'column', gap:12 }}>
+      <Toolbar filters={[['OPEN','À traiter'],['APPROVED','Validées'],['REJECTED','Refusées'],['all','Toutes']]} value={filter} onChange={setFilter} onRefresh={load} />
+      <Notice text={notice} />
+      {loading ? <Loading />
+      : list.length === 0 ? <Empty>Aucune demande du Responsable de flottes.</Empty>
+      : list.map(r => {
+        const mine = action?.id === r.id ? action : null
+        return (
+          <RequestCard key={r.id} r={r} highlighted={r.id === highlightId}>
+            {['PENDING', 'NEEDS_INFO'].includes(r.status) && (
+              <div style={{ marginTop:12, display:'flex', flexDirection:'column', gap:8 }}>
+                {mine ? (<>
+                  <input autoFocus value={mine.text} onChange={e => setAction({ ...mine, text: e.target.value })} placeholder={MODES[mine.mode].placeholder} style={{ ...glassInput, maxWidth:460 }} />
+                  <div style={{ display:'flex', gap:10 }}>
+                    <button style={MODES[mine.mode].style} disabled={acting === r.id || (mine.mode !== 'approve' && !mine.text.trim())} onClick={() => submit(r)}>{MODES[mine.mode].button}</button>
+                    <button style={btnGhost} disabled={acting === r.id} onClick={() => setAction(null)}>Annuler</button>
+                  </div>
+                </>) : (
+                  <div style={{ display:'flex', gap:10, flexWrap:'wrap' }}>
+                    <button style={btnAccept} onClick={() => setAction({ id: r.id, mode: 'approve', text: '' })}><CheckCircle size={13} /> Valider</button>
+                    <button style={btnRefuse} onClick={() => setAction({ id: r.id, mode: 'reject', text: '' })}><XCircle size={13} /> Refuser</button>
+                    {r.status === 'PENDING' && (
+                      <button style={btnGhost} onClick={() => setAction({ id: r.id, mode: 'ask', text: '' })}><HelpCircle size={13} /> Demander une précision</button>
+                    )}
+                  </div>
+                )}
+                {r.status === 'NEEDS_INFO' && !mine && <div style={{ fontSize:12, color:'var(--text-muted)' }}>En attente de la réponse du demandeur.</div>}
+                {errors[r.id] && <ErrorLine>{errors[r.id]}</ErrorLine>}
+              </div>
+            )}
+          </RequestCard>
+        )
+      })}
+    </div>
+  )
+}
+
+// Responsable de flottes : suivi de ses demandes, réponse aux précisions.
+function MyRequestsTab({ highlightId, onChanged }) {
+  const [list,    setList]    = useState([])
+  const [loading, setLoading] = useState(true)
+  const [filter,  setFilter]  = useState('all')
+  const [replies, setReplies] = useState({})
+
+  const load = useCallback(async (silent = false) => {
+    if (!silent) setLoading(true)
+    try {
+      const res = await api.get('/admin/requests', { params: filter === 'all' ? {} : { status: filter } })
+      setList(res.data.requests ?? [])
+    } catch (e) { console.error(e) }
+    finally { if (!silent) setLoading(false) }
+  }, [filter])
+
+  useEffect(() => { load() }, [load])
+  useAutoRefresh(() => load(true))
+  const { acting, errors, notice, run } = useDecisions(load, onChanged)
+
+  async function reply(r) {
+    const text = (replies[r.id] ?? '').trim()
+    if (!text) return
+    const ok = await run(r.id, () => api.patch(`/admin/requests/${r.id}/reply`, { reply: text }), 'Réponse envoyée au Super Admin.')
+    if (ok) setReplies(x => ({ ...x, [r.id]: '' }))
+  }
+
+  return (
+    <div style={{ display:'flex', flexDirection:'column', gap:12 }}>
+      <Toolbar filters={[['all','Toutes'],['PENDING', REQUEST_STATUS_LABELS.PENDING],['NEEDS_INFO', REQUEST_STATUS_LABELS.NEEDS_INFO],['APPROVED','Validées'],['REJECTED','Refusées']]} value={filter} onChange={setFilter} onRefresh={load} />
+      <Notice text={notice} />
+      {loading ? <Loading />
+      : list.length === 0 ? <Empty>Aucune demande. Les actions réservées au Super Admin se demandent depuis les fiches (coursier, course, chef de flotte).</Empty>
+      : list.map(r => (
+        <RequestCard key={r.id} r={r} highlighted={r.id === highlightId}>
+          {r.status === 'NEEDS_INFO' && (
+            <div style={{ marginTop:12, display:'flex', gap:10, flexWrap:'wrap', alignItems:'center' }}>
+              <input value={replies[r.id] ?? ''} onChange={e => setReplies(x => ({ ...x, [r.id]: e.target.value }))} placeholder="Votre réponse" style={{ ...glassInput, flex:1, maxWidth:460 }} />
+              <button style={btnAccept} disabled={acting === r.id || !(replies[r.id] ?? '').trim()} onClick={() => reply(r)}><Send size={13} /> Répondre</button>
+              {errors[r.id] && <ErrorLine>{errors[r.id]}</ErrorLine>}
+            </div>
+          )}
+        </RequestCard>
       ))}
     </div>
   )

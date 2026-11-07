@@ -1,10 +1,11 @@
 import { useState, useEffect, useCallback } from 'react'
-import { Eye, Play, CheckCircle2, AlertTriangle, RefreshCw, Database, MessageSquare, KeyRound } from 'lucide-react'
+import { Eye, Play, CheckCircle2, AlertTriangle, RefreshCw, Database, MessageSquare, KeyRound, Clock } from 'lucide-react'
 import api from '../lib/api'
 import { glass, pageWrap, pageScroll } from '../lib/glassStyles'
 import { formatF, formatCount } from '../lib/format'
 import SmsRoutingPanel from '../components/SmsRoutingPanel'
 import PinSettingsPanel from '../components/PinSettingsPanel'
+import DispatchAlertPanel from '../components/DispatchAlertPanel'
 import PageHeader from '../components/PageHeader'
 import TabBar from '../components/TabBar'
 import InlineConfirm from '../components/InlineConfirm'
@@ -20,6 +21,7 @@ const TABS = [
   { key: 'taches', label: 'Tâches de données', icon: Database },
   { key: 'sms',    label: 'Fournisseur SMS',   icon: MessageSquare },
   { key: 'code',   label: 'Code secret',       icon: KeyRound },
+  { key: 'alertes', label: 'Alertes',          icon: Clock },
 ]
 
 const fmtDateTime = (d) => (d ? new Date(d).toLocaleString('fr-FR', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '—')
@@ -67,6 +69,8 @@ export default function Maintenance() {
         {tab === 'sms' && <SmsRoutingPanel />}
         {/* Code secret : activation (SUPER uniquement) */}
         {tab === 'code' && <PinSettingsPanel />}
+        {/* Délai de l'alerte « course sans coursier » */}
+        {tab === 'alertes' && <DispatchAlertPanel />}
       </div>
     </div>
   )
