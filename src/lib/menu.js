@@ -23,7 +23,7 @@ export const GROUPS = [
 ]
 
 export const NAV = [
-  { group: 'pilotage',   to: '/',                icon: LayoutDashboard, label: 'Dashboard',            roles: ['SUPER','DEV','ASSISTANCE_EXECUTIVE','FLOTTE'] },
+  { group: 'pilotage',   to: '/',                icon: LayoutDashboard, label: 'Dashboard',            roles: ['SUPER','DEV','ASSISTANCE_EXECUTIVE','FLOTTE','COMMERCIAL'] },
   { group: 'pilotage',   to: '/map',             icon: Map,             label: 'Carte live',           keywords: 'map positions suivi', roles: ['SUPER','DEV','ASSISTANCE_EXECUTIVE','SERVICE_CLIENT','FLOTTE','COMMERCIAL'] },
   { group: 'operations', to: '/orders',          icon: Package,         label: 'Courses',              keywords: 'commandes livraisons orders tournées', roles: ['SUPER','DEV','FINANCE','SERVICE_CLIENT','ASSISTANCE_EXECUTIVE','FLOTTE','COMMERCIAL'] },
   { group: 'operations', to: '/incidents',       icon: AlertTriangle,   label: 'Incidents',            keywords: 'sos alertes litiges', roles: ['SUPER','DEV','SERVICE_CLIENT','ASSISTANCE_EXECUTIVE','FLOTTE'] },

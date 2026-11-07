@@ -40,6 +40,17 @@ const PLAN_FILTERS = [
   { key: 'OFFERED', label: 'Accès offert / manuel',  test: a => hasPaidTier(a) && !a.paidPlanActive },
 ]
 
+// Suivi du Commercial / CRM Pro (C3, C4) : essai qui finit dans 2 jours ou
+// moins, Pro dormants (aucune commande depuis 7 jours), validés sans commande.
+const DAY_MS = 24 * 60 * 60 * 1000
+const validatedPro = a => a.proStatus === 'ACTIVE' && a.isActive
+const FOLLOW_FILTERS = [
+  { key: '',             label: 'Suivi : tous',               test: () => true },
+  { key: 'TRIAL_ENDING', label: "Essai qui finit (≤ 2 j)",    test: a => validatedPro(a) && a.proPlanStatus === 'TRIAL' && a.proPlanExpiresAt && new Date(a.proPlanExpiresAt) - Date.now() <= 2 * DAY_MS && new Date(a.proPlanExpiresAt) > Date.now() },
+  { key: 'DORMANT',      label: 'Dormants (7 j sans commande)', test: a => validatedPro(a) && a.lastOrderAt && Date.now() - new Date(a.lastOrderAt) > 7 * DAY_MS },
+  { key: 'NEVER',        label: 'Jamais commandé',            test: a => validatedPro(a) && !(a._count?.ordersAsClient > 0) },
+]
+
 // Statut sans pictogramme (proStatusInfo en a, absents des polices du PDF)
 const statusText = a => !a.isActive ? 'Suspendu'
   : a.proStatus === 'PENDING'  ? 'En attente'
@@ -455,6 +466,7 @@ export default function DemPro() {
   const view = onglet === 'offres' || onglet === 'parrainage' ? onglet : 'comptes'
   const status     = VIEWS.some(v => v.key === params.get('statut')) ? params.get('statut') : ''
   const planFilter = PLAN_FILTERS.some(f => f.key === params.get('plan')) ? params.get('plan') : ''
+  const followFilter = FOLLOW_FILTERS.some(f => f.key === params.get('suivi')) ? params.get('suivi') : ''
   const [search, setSearch] = useState(() => params.get('q') ?? '')
   useUrlQuery(setSearch)
 
@@ -487,7 +499,7 @@ export default function DemPro() {
   const [loading, setLoading]   = useState(true)
   const [editTarget, setEditTarget] = useState(null)
   const [requestTarget, setRequestTarget] = useState(null)
-  const [detailId, setDetailId] = useState(null) // fiche commerçant ouverte
+  const [detailId, setDetailId] = useState(() => params.get('fiche')) // fiche commerçant ouverte (?fiche= depuis le Dashboard Pro)
   const [ficheVersion, setFicheVersion] = useState(0)
   const [pageNotice, setPageNotice] = useState('')
 
@@ -538,7 +550,9 @@ export default function DemPro() {
     || (a.proBusinessName ?? '').toLowerCase().includes(q))
   const viewTest = VIEWS.find(v => v.key === status).test
   const planTest = PLAN_FILTERS.find(f => f.key === planFilter).test
-  const filtered = bySearch.filter(viewTest).filter(planTest)
+  const followTest = FOLLOW_FILTERS.find(f => f.key === followFilter).test
+  const filtered = bySearch.filter(viewTest).filter(planTest).filter(followTest)
+  const followCounts = Object.fromEntries(FOLLOW_FILTERS.map(f => [f.key, bySearch.filter(f.test).length]))
   const viewCounts = Object.fromEntries(VIEWS.map(v => [v.key, bySearch.filter(planTest).filter(v.test).length]))
   const planCounts = Object.fromEntries(PLAN_FILTERS.map(f => [f.key, bySearch.filter(viewTest).filter(f.test).length]))
   const totalOrders = accounts.reduce((s, a) => s + (a._count?.ordersAsClient ?? 0), 0)
@@ -673,6 +687,9 @@ export default function DemPro() {
           </div>
           <select value={planFilter} onChange={e => setParam({ plan: e.target.value })} style={{ ...glassInput, width: 230 }}>
             {PLAN_FILTERS.map(f => <option key={f.key || 'all'} value={f.key}>{f.label}{f.key ? ` (${planCounts[f.key]})` : ''}</option>)}
+          </select>
+          <select value={followFilter} onChange={e => setParam({ suivi: e.target.value })} style={{ ...glassInput, width: 250 }}>
+            {FOLLOW_FILTERS.map(f => <option key={f.key || 'all'} value={f.key}>{f.label}{f.key ? ` (${followCounts[f.key]})` : ''}</option>)}
           </select>
         </div>
 
