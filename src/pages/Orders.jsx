@@ -6,7 +6,7 @@ import { useAutoRefresh } from '../lib/useAutoRefresh'
 import { canSee, asksSuper, ACTION_ROLES } from '../lib/droits'
 import Badge from '../components/Badge'
 import PageHeader from '../components/PageHeader'
-import { RefreshCw, Search, X, MapPin, Phone, MessageCircle, Copy, Check } from 'lucide-react'
+import { RefreshCw, Search, X, MapPin, Phone, MessageCircle, Copy, Check, Plus } from 'lucide-react'
 import { glass, glassInput, pageWrap, pageScroll, stickyTh, stickyCol, stickyThCol } from '../lib/glassStyles'
 import DocThumb from '../components/DocThumb'
 import { useUrlQuery } from '../lib/useUrlQuery'
@@ -14,6 +14,7 @@ import { cancelReasonLabel } from '../lib/cancelReasons'
 import InfoTip from '../components/InfoTip'
 import DispatchPicker from '../components/DispatchPicker'
 import OrderRequestModal from './orders/OrderRequestModal'
+import ClientOrderModal from './orders/ClientOrderModal'
 
 // Montant payé par le client = part coursier (price) + frais DEM − réduction
 // (même calcul que l'app : core/utils/price_format.dart:clientChargeFor).
@@ -63,6 +64,9 @@ export default function Orders() {
   const canCancelAny = canSee(role, ACTION_ROLES.orderCancelAny) // sinon : course en attente seulement
   const askSuper    = asksSuper(role) // Resp. flottes : « Demander » au Super Admin (niveau 2)
   const [orderRequest, setOrderRequest] = useState(null) // 'cancel' | 'geste'
+  const canCreateForClient = canSee(role, ACTION_ROLES.orderCreateForClient)
+  const [clientOrder, setClientOrder] = useState(false) // fenêtre « Nouvelle course client »
+  const [dispatchNew, setDispatchNew] = useState(null)   // course juste créée, à proposer / attribuer
   const canMarkPaid = canSee(role, ACTION_ROLES.orderMarkPaid)
   const canForce    = canSee(role, ACTION_ROLES.orderForceStatus)
   const LIMIT = 50
@@ -262,7 +266,12 @@ export default function Orders() {
       <PageHeader
         title="Courses"
         subtitle="Toutes les commandes, du plus récent au plus ancien"
-        actions={<button onClick={() => fetch()} style={btnOutline}><RefreshCw size={14} /> Actualiser</button>}
+        actions={<>
+          <button onClick={() => fetch()} style={btnOutline}><RefreshCw size={14} /> Actualiser</button>
+          {canCreateForClient && (
+            <button onClick={() => setClientOrder(true)} style={{ ...btnOutline, background: 'var(--primary)', color: '#fff', border: 'none', fontWeight: 600 }}><Plus size={14} /> Nouvelle course client</button>
+          )}
+        </>}
       />
 
       {notice && (
@@ -501,6 +510,19 @@ export default function Orders() {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Course saisie pour un client (Resp. flottes, C3), puis dispatch */}
+      {clientOrder && (
+        <ClientOrderModal
+          onClose={() => setClientOrder(false)}
+          onCreated={() => fetch(true)}
+          onDispatch={order => { setClientOrder(false); setDispatchNew(order) }}
+        />
+      )}
+      {dispatchNew && (
+        <DispatchPicker order={dispatchNew} onClose={() => setDispatchNew(null)}
+          onDone={({ text }) => { setDispatchNew(null); setNotice({ ok: true, text }); fetch(true) }} />
       )}
 
       {/* Demandes au Super Admin (Resp. flottes) */}
