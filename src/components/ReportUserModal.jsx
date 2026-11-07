@@ -5,10 +5,11 @@ import { glass, glassInput } from '../lib/glassStyles'
 // Signaler un client ou un coursier (POST /admin/report-user) — ouvre un
 // incident « Signalement utilisateur ». Ancien bouton de l'onglet Incidents du
 // Poste Service Client, désormais sur la page Incidents (plan de refonte, 3.7).
-// canReportClient : faux pour un rôle qui ne lit pas les clients (recherche
-// par /admin/clients refusée) — il ne signale alors qu'un coursier.
-export default function ReportUserModal({ onClose, canReportClient = true }) {
-  const [userRole, setUserRole] = useState(canReportClient ? 'CLIENT' : 'DRIVER')
+// canReadClients : faux pour un rôle qui ne lit pas la liste des clients
+// (Responsable de flottes) — le client est alors retrouvé par son numéro
+// (/admin/client-lookup, comme pour une course saisie pour un client).
+export default function ReportUserModal({ onClose, canReadClients = true }) {
+  const [userRole, setUserRole] = useState('CLIENT')
   const [phone, setPhone]       = useState('')
   const [reason, setReason]     = useState('')
   const [saving, setSaving]     = useState(false)
@@ -18,9 +19,14 @@ export default function ReportUserModal({ onClose, canReportClient = true }) {
     if (!phone.trim() || !reason.trim()) { setError('Téléphone et motif requis.'); return }
     setSaving(true); setError('')
     try {
-      const listPath = userRole === 'CLIENT' ? '/admin/clients' : '/admin/drivers'
-      const res = await api.get(listPath, { params: { search: phone.trim(), limit: 1 } })
-      const found = (res.data?.clients ?? res.data?.drivers ?? [])[0]
+      let found
+      if (userRole === 'CLIENT' && !canReadClients) {
+        found = (await api.get('/admin/client-lookup', { params: { phone: phone.trim() } })).data?.client
+      } else {
+        const listPath = userRole === 'CLIENT' ? '/admin/clients' : '/admin/drivers'
+        const res = await api.get(listPath, { params: { search: phone.trim(), limit: 1 } })
+        found = (res.data?.clients ?? res.data?.drivers ?? [])[0]
+      }
       if (!found) { setError('Aucun utilisateur trouvé avec ce numéro.'); setSaving(false); return }
       await api.post('/admin/report-user', { userId: found.id, userRole, reason: reason.trim() })
       onClose()
@@ -34,7 +40,7 @@ export default function ReportUserModal({ onClose, canReportClient = true }) {
       <div style={{ ...glass, width: 400, maxWidth: '94vw', borderRadius: 16, padding: 24 }} onClick={e => e.stopPropagation()}>
         <h2 style={{ fontSize: 16, fontWeight: 700, marginBottom: 16 }}>Signaler un utilisateur</h2>
         <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
-          {(canReportClient ? [['CLIENT', 'Client'], ['DRIVER', 'Coursier']] : [['DRIVER', 'Coursier']]).map(([v, l]) => (
+          {[['CLIENT', 'Client'], ['DRIVER', 'Coursier']].map(([v, l]) => (
             <button key={v} onClick={() => setUserRole(v)} style={{
               flex: 1, padding: '6px 0', borderRadius: 8, border: '1px solid rgba(0,119,182,.25)',
               background: userRole === v ? 'var(--primary)' : 'rgba(255,255,255,.5)',

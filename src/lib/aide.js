@@ -57,7 +57,7 @@ export const TITRES = {
   'Shifts': "Créneaux prévus pour ce coursier, jour par jour. Cochez puis enregistrez ; les créneaux eux-mêmes se règlent sur le Dashboard (Shifts du jour).",
   'Shifts du jour': "Planning de la flotte DEM comparé à la connexion réelle : présent, en retard, absent, parti avant la fin (15 min de tolérance). Les absents remontent dans « À traiter ».",
   'Historique de connexion': "Temps passé en ligne dans l'app, jour par jour sur 7 ou 30 jours, et courses acceptées ce jour-là. Reconstitué depuis les passages en ligne / hors ligne du coursier.",
-  'Notes internes': "Notes datées de l'équipe (retards, appels, avertissements). Visibles du Super Admin et du Responsable de flottes, jamais du coursier.",
+  'Notes internes': "Notes datées de l'équipe (retards, appels, avertissements, échanges avec le client). Jamais visibles du client ni du coursier.",
   'Heures de pointe': "Par heure de la journée, en moyenne par jour : courses demandées et coursiers en ligne en même temps. La courbe rouge montre les annulations faute de coursier : là où il manque des coursiers.",
   "En attente d'un coursier": "Courses créées pour lesquelles aucun coursier n'a encore accepté.",
   'Courses en cours': "Courses acceptées par un coursier et pas encore livrées.",

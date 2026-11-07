@@ -20,6 +20,7 @@ export const CANCEL_REASON_LABELS = {
   WALLET_INSUFFICIENT: 'Solde du wallet insuffisant (auto)',
   // Équipe DEM (admin)
   NO_DRIVER_AVAILABLE: 'Aucun coursier disponible (équipe)',
+  DRIVER_PROBLEM:      'Problème avec le coursier (équipe)',
   ADDRESS_UNREACHABLE: 'Adresse introuvable (équipe)',
   DUPLICATE_ORDER:     'Commande en double (équipe)',
   PAYMENT_ISSUE:       'Problème de paiement (équipe)',
