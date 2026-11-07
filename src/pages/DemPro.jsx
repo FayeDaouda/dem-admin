@@ -19,6 +19,7 @@ import { useUrlQuery } from '../lib/useUrlQuery'
 import ExportMenu from '../components/ExportMenu'
 import { PRO_SOURCE_LABELS } from '../lib/proSources'
 import ProBonusActions from './dem-pro/ProBonusActions'
+import WhatsAppButton from '../components/WhatsAppButton'
 
 // Vues de la liste. « Actifs » = validé ET non suspendu (même règle que
 // l'ancienne carte « Actifs ») ; les suspendus ont leur propre vue.
@@ -782,7 +783,13 @@ export default function DemPro() {
                           </div>
                         </div>
                       </td>
-                      <td style={{ ...tdStyle, fontSize: 13 }}>{a.phone ?? '—'}</td>
+                      <td style={{ ...tdStyle, fontSize: 13 }} onClick={e => e.stopPropagation()}>
+                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                          {a.phone ?? '—'}
+                          {a.phone && <a href={`tel:${a.phone}`} title={`Appeler ${a.phone}`} style={{ color: 'var(--primary)', display: 'flex' }}><Phone size={13} /></a>}
+                          <WhatsAppButton phone={a.phone} compact />
+                        </span>
+                      </td>
                       <td style={tdStyle}><PlanCell account={a} isSuper={isSuper} planSystem={planSystem} onChanged={onPlanChanged} /></td>
                       <td style={{ ...tdStyle, textAlign: 'center', fontWeight: 600 }}>{a._count?.ordersAsClient ?? 0}</td>
                       <td style={tdStyle}><span style={{ fontSize: 12, fontWeight: 600, color: st.color, whiteSpace: 'nowrap' }}>{st.text}</span></td>
@@ -809,6 +816,7 @@ export default function DemPro() {
           onClose={() => setDetailId(null)}
           canEdit={isSuper || isServiceClient}
           canManageApi={isSuper}
+          asks={rights.asks}
           refreshKey={ficheVersion}
           actions={detailAccount && (
             <ProActions

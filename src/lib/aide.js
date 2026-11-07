@@ -11,6 +11,7 @@
 // ============================================================
 
 export const PAGES = {
+  '/base-pro': "Tableau de tri des comptes DEM Pro : viabilité, prochaine action (avec la date d'un rappel) et une ligne de note. Un nouveau Pro y arrive seul, « À appeler ». Le suivi détaillé des appels reste dans TAM.",
   '/': "Vue d'ensemble de l'activité : ce qui demande une action, les opérations en direct, les chiffres du jour, les comptes et les tendances. Les cartes s'ouvrent sur leur détail.",
   '/map': 'Carte en temps réel des coursiers en ligne et des courses en cours. Les positions se mettent à jour toutes seules.',
   '/orders': "Toutes les courses, avec leur statut, le client, le coursier et le trajet. Un clic ouvre la fiche : chronologie, montants, paiement et actions (relancer, annuler, marquer payé selon votre rôle).",

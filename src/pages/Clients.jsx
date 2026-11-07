@@ -11,6 +11,7 @@ import { canSee, ACTION_ROLES } from '../lib/droits'
 import InfoTip from '../components/InfoTip'
 import ExportMenu from '../components/ExportMenu'
 import { fetchAllPages } from '../lib/exportList'
+import WhatsAppButton from '../components/WhatsAppButton'
 
 // Ordre d'affichage : Sans badge en premier, puis progression des tiers.
 const CLIENT_BADGE_OPTIONS = [
@@ -663,7 +664,13 @@ export default function Clients() {
                       <span style={{ fontWeight: 600 }}>{c.name ?? '—'}</span>
                     </div>
                   </td>
-                  <td style={{ ...tdStyle, fontSize: 13 }}>{c.phone ?? '—'}</td>
+                  <td style={{ ...tdStyle, fontSize: 13 }} onClick={e => e.stopPropagation()}>
+                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                          {c.phone ?? '—'}
+                          {c.phone && <a href={`tel:${c.phone}`} title={`Appeler ${c.phone}`} style={{ color: 'var(--primary)', display: 'flex' }}><Phone size={13} /></a>}
+                          <WhatsAppButton phone={c.phone} compact />
+                        </span>
+                      </td>
                   <td style={{ ...tdStyle, textAlign: 'center', fontWeight: 700 }}>{c._count?.ordersAsClient ?? 0}</td>
                   <td style={{ ...tdStyle, color: 'var(--text-muted)', fontSize: 12 }}>{fmtDate(c.createdAt)}</td>
                   <td style={tdStyle}><StatusPill client={c} deleted={deletedView} /></td>
