@@ -172,7 +172,7 @@ export default function CmDashboard() {
               render={b => (
                 <div key={b.id} style={row}>
                   <span style={{ fontWeight: 600, flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{b.title}</span>
-                  <span style={{ color: 'var(--text-muted)' }}>{fmtDate(b.sentAt)} · {targetLabel(b.target)}{b.sent != null ? ` · ${b.sent} envoyée${b.sent > 1 ? 's' : ''}` : ''}</span>
+                  <span style={{ color: 'var(--text-muted)' }}>{fmtDate(b.sentAt)} · {targetLabel(b.target, b.segmentName)}{b.sent != null ? ` · ${b.sent} envoyée${b.sent > 1 ? 's' : ''}` : ''}</span>
                   <strong title="Inscriptions dans les 48 h">+{b.signups48h} insc.</strong>
                   <strong title="Commandes dans les 48 h">{b.orders48h} cmd</strong>
                 </div>

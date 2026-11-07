@@ -92,8 +92,12 @@ export const TAB_ROLES = {
   // Notifications : le Responsable de flottes envoie et programme des push
   // aux coursiers seulement, le CM aux clients (serveur :
   // admin.broadcast.controller.js) ; l'alerte du CM est une demande.
+  // Segments, résultats et codes de campagne (/admin/cm/*) : Super + CM
   notifications: {
     envoyer:    ['MARKETING', 'FLOTTE', 'CM'],
+    segments:   ['CM'],
+    resultats:  ['CM'],
+    codes:      ['CM'],
     historique: ['MARKETING', 'CM'],
     alerte:     ['MARKETING', 'CM'],
   },

@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
-import { RefreshCw, Search, Phone, ChevronLeft, ChevronRight } from 'lucide-react'
+import { RefreshCw, Search, Phone, ChevronLeft, ChevronRight, Users } from 'lucide-react'
 import api from '../lib/api'
 import { useAuth } from '../contexts/AuthContext'
 import { canSee, ACTION_ROLES } from '../lib/droits'
@@ -35,6 +35,17 @@ export default function ClientBase() {
   const [page, setPage] = useState(1)
   const [data, setData] = useState(null)
   const [errors, setErrors] = useState({})
+  const [segment, setSegment] = useState(null) // { name } : « Créer un segment » (C3)
+  const [segmentMsg, setSegmentMsg] = useState('')
+
+  async function createSegment() {
+    setSegmentMsg('')
+    try {
+      const { data: r } = await api.post('/admin/cm/segments', { name: segment.name, filter: { filter, source, q: query } })
+      setSegment(null)
+      setSegmentMsg(`Segment « ${r.segment.name} » créé (${r.segment.size} client${r.segment.size > 1 ? 's' : ''}) : choisissez-le dans Notifications › Envoyer.`)
+    } catch (e) { setSegmentMsg(e.response?.data?.message ?? 'Création impossible.') }
+  }
 
   useEffect(() => { const t = setTimeout(() => { setQuery(search.trim()); setPage(1) }, 300); return () => clearTimeout(t) }, [search])
 
@@ -64,7 +75,19 @@ export default function ClientBase() {
   return (
     <div style={pageWrap}>
       <PageHeader title="Base de données Clients" subtitle="Qui relancer, d'où vient chaque client, où il en est"
-        actions={<button onClick={load} style={btnOutline}><RefreshCw size={14} /> Actualiser</button>} />
+        actions={<>
+          {canEdit && <button onClick={() => { setSegment({ name: '' }); setSegmentMsg('') }} style={btnOutline}><Users size={14} /> Créer un segment</button>}
+          <button onClick={load} style={btnOutline}><RefreshCw size={14} /> Actualiser</button>
+        </>} />
+      {segment && (
+        <div style={{ ...glass, padding: 12, marginBottom: 10, display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center', flexShrink: 0 }}>
+          <span style={{ fontSize: 12.5, color: 'var(--text-muted)' }}>Segment avec les filtres affichés (sans les bannis ni « Ne plus relancer ») :</span>
+          <input autoFocus value={segment.name} maxLength={60} onChange={e => setSegment({ name: e.target.value })} onKeyDown={e => { if (e.key === 'Enter' && segment.name.trim()) createSegment() }} placeholder="Nom du segment" style={{ ...cellInput, width: 240 }} />
+          <button onClick={createSegment} disabled={!segment.name.trim()} style={btnOutline}>Créer</button>
+          <button onClick={() => setSegment(null)} style={btnOutline}>Annuler</button>
+        </div>
+      )}
+      {segmentMsg && <div style={{ fontSize: 12.5, fontWeight: 600, color: segmentMsg.startsWith('Segment') ? '#15803d' : 'var(--danger)', marginBottom: 10 }}>{segmentMsg}</div>}
 
       <div style={{ display: 'flex', gap: 10, marginBottom: 14, flexWrap: 'wrap', alignItems: 'center', flexShrink: 0 }}>
         <div style={{ position: 'relative', flex: '0 1 260px', minWidth: 200 }}>

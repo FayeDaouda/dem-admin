@@ -60,13 +60,24 @@ const AUDIENCE_TEXT = {
   drivers: { only: 'Seuls les coursiers sont ouverts à votre rôle', schedule: 'Votre rôle programme des notifications aux coursiers seulement. Pour les autres profils : « Demander l’envoi ».' },
   clients: { only: 'L’envoi à tous les clients passe par le Super Admin', schedule: 'L’envoi à tous les clients passe par le Super Admin : « Demander l’envoi ».' },
 }
-export default function Broadcast({ embedded = false, audience = null }) {
+// canSegment : envoi à un segment de clients (Super + CM, C3) — niveau 1,
+// sans demande ; segments créés depuis la Base de données Clients.
+export default function Broadcast({ embedded = false, audience = null, canSegment = false }) {
   const profiles = audience === 'clients' ? PROFILES.filter(p => p.value === 'clients') : PROFILES
   const [selected, setSelected] = useState(audience ? [audience] : [...ALL_PROFILES])
+  const [segments, setSegments] = useState([])
+  const [segmentId, setSegmentId] = useState('')
   const [asking, setAsking] = useState(false) // demande d'envoi au Super Admin
   const [requestNotice, setRequestNotice] = useState('')
-  const needsRequest = audience === 'clients' || (audience === 'drivers' && toTarget(selected) !== 'drivers')
-  const target = toTarget(selected)
+  const segment = segments.find(sg => sg.id === segmentId) ?? null
+  const needsRequest = !segment && (audience === 'clients' || (audience === 'drivers' && toTarget(selected) !== 'drivers'))
+  const target = segment ? segment.target : toTarget(selected)
+  const label = segment ? targetLabel(target, segment.name) : targetLabel(target)
+
+  useEffect(() => {
+    if (!canSegment) return
+    api.get('/admin/cm/segments').then(r => setSegments(r.data?.segments ?? [])).catch(() => setSegments([]))
+  }, [canSegment])
   const [title, setTitle]     = useState('')
   const [body, setBody]       = useState('')
   const [sending, setSending] = useState(false)
@@ -108,7 +119,7 @@ export default function Broadcast({ embedded = false, audience = null }) {
       setError('Le titre et le message sont obligatoires.')
       return
     }
-    if (selected.length === 0) {
+    if (!segment && selected.length === 0) {
       setError('Choisissez au moins un profil.')
       return
     }
@@ -139,7 +150,7 @@ export default function Broadcast({ embedded = false, audience = null }) {
       setScheduleError('Le titre et le message sont obligatoires.')
       return
     }
-    if (selected.length === 0) {
+    if (!segment && selected.length === 0) {
       setScheduleError('Choisissez au moins un profil.')
       return
     }
@@ -174,7 +185,8 @@ export default function Broadcast({ embedded = false, audience = null }) {
     setEditingId(item.id)
     setTitle(item.title)
     setBody(item.body)
-    setSelected(fromTarget(item.target))
+    if (String(item.target).startsWith('segment:')) setSegmentId(item.target.slice('segment:'.length))
+    else { setSegmentId(''); setSelected(fromTarget(item.target)) }
     setScheduledAt(toDatetimeLocal(item.scheduledAt))
     setScheduleError('')
     setResult(null)
@@ -258,7 +270,19 @@ export default function Broadcast({ embedded = false, audience = null }) {
             </div>
           )}
 
+          {/* Segment de clients (C3) — à la place des profils */}
+          {canSegment && (
+            <div style={{ marginBottom: 14 }}>
+              <label style={labelStyle}>Segment de clients</label>
+              <select value={segmentId} onChange={e => setSegmentId(e.target.value)} style={inputStyle}>
+                <option value="">{segments.length ? 'Aucun — choisir des profils' : 'Aucun segment : créez-en un dans la Base de données Clients'}</option>
+                {segments.map(sg => <option key={sg.id} value={sg.id}>{sg.name} · {sg.size} client{sg.size > 1 ? 's' : ''}</option>)}
+              </select>
+            </div>
+          )}
+
           {/* Cible — un ou plusieurs profils */}
+          {!segment && <>
           <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between' }}>
             <label style={labelStyle}>Destinataires</label>
             {profiles.length > 1 && <button
@@ -302,8 +326,9 @@ export default function Broadcast({ embedded = false, audience = null }) {
               )
             })}
           </div>
-          <div style={{ fontSize: 12, color: selected.length ? 'var(--text-muted)' : 'var(--danger)', marginBottom: 18 }}>
-            {selected.length ? `Envoi à : ${targetLabel(target)}` : 'Aucun profil sélectionné'}
+          </>}
+          <div style={{ fontSize: 12, color: segment || selected.length ? 'var(--text-muted)' : 'var(--danger)', marginBottom: 18 }}>
+            {segment ? `Envoi à : ${label} (${segment.size} client${segment.size > 1 ? 's' : ''})` : selected.length ? `Envoi à : ${label}` : 'Aucun profil sélectionné'}
           </div>
 
           {/* Titre */}
@@ -328,7 +353,7 @@ export default function Broadcast({ embedded = false, audience = null }) {
           {/* Bouton envoyer maintenant */}
           {!editingId && confirmSend && (
             <div style={{ marginBottom: 14, padding: '10px 14px', borderRadius: 10, background: 'var(--surface2)', display: 'flex', flexDirection: 'column', gap: 8 }}>
-              <span style={{ fontSize: 13, fontWeight: 600 }}>Envoyer la notification à : {targetLabel(target)} ?</span>
+              <span style={{ fontSize: 13, fontWeight: 600 }}>Envoyer la notification à : {label} ?</span>
               <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
                 <button onClick={() => setConfirmSend(false)} style={{ padding: '7px 14px', borderRadius: 8, border: '1px solid rgba(0,119,182,.25)', background: 'rgba(255,255,255,.6)', color: 'var(--text-muted)', fontSize: 13, cursor: 'pointer' }}>Retour</button>
                 <button onClick={send} style={{ padding: '7px 14px', borderRadius: 8, border: 'none', background: 'var(--primary)', color: '#fff', fontSize: 13, fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}><Send size={14} /> Confirmer l’envoi</button>
@@ -336,7 +361,7 @@ export default function Broadcast({ embedded = false, audience = null }) {
             </div>
           )}
           {!editingId && !confirmSend && (
-            <button onClick={askSend} disabled={sending || selected.length === 0} style={{
+            <button onClick={askSend} disabled={sending || (!segment && selected.length === 0)} style={{
               width: '100%', padding: '12px 0', borderRadius: 10,
               border: 'none', background: 'var(--primary)', color: '#fff',
               fontSize: 14, fontWeight: 700, cursor: 'pointer',
@@ -352,7 +377,7 @@ export default function Broadcast({ embedded = false, audience = null }) {
             <RequestModal
               kind="BROADCAST"
               title="Demander l’envoi d’une notification"
-              intro={`Envoi à : ${targetLabel(target)}. ${AUDIENCE_TEXT[audience]?.only ?? ''} ; le Super Admin envoie s’il valide.`}
+              intro={`Envoi à : ${label}. ${AUDIENCE_TEXT[audience]?.only ?? ''} ; le Super Admin envoie s’il valide. Pour envoyer vous-même, choisissez un segment.`}
               payload={{ title: title.trim(), body: body.trim(), target }}
               onClose={() => setAsking(false)}
               onDone={text => { setAsking(false); setResult(null); setError(''); setRequestNotice(text) }}
@@ -499,7 +524,7 @@ export default function Broadcast({ embedded = false, audience = null }) {
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ fontWeight: 700, fontSize: 13 }}>{item.title}</div>
                     <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>
-                      {new Date(item.scheduledAt).toLocaleString('fr-FR')} · {targetLabel(item.target)}
+                      {new Date(item.scheduledAt).toLocaleString('fr-FR')} · {targetLabel(item.target, segments.find(sg => sg.target === item.target)?.name)}
                     </div>
                   </div>
                   <button onClick={() => startEdit(item)} style={iconBtn} title="Modifier">

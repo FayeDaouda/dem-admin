@@ -112,7 +112,7 @@ export function BroadcastHistory() {
             <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>{b.body}</div>
           </div>
           <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--primary)', background: 'rgba(0,119,182,.08)', padding: '2px 8px', borderRadius: 8 }}>
-            {b.data?.target ? targetLabel(b.data.target) : '—'}
+            {b.data?.target ? targetLabel(b.data.target, b.data.segmentName) : '—'}
           </span>
           <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>
             {b.data?.sent ?? 0} envoyée(s){b.data?.totalUsers != null ? ` sur ${b.data.totalUsers}` : ''}
