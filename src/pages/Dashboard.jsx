@@ -546,7 +546,7 @@ export default function Dashboard() {
     stats:      '/admin/stats',
     live:       '/admin/live',
     timeseries: '/admin/stats/timeseries?days=7',
-    stuck:      `/admin/stats/stuck-pending-orders?period=${STUCK_PENDING_MIN}m`,
+    stuck:      '/admin/stats/stuck-pending-orders?period=alert', // délai réglé par le Super (Maintenance)
   }), [loadSources])
 
   // Sources plus lourdes (rétention, notes, alertes) : rechargées moins souvent.
@@ -661,7 +661,7 @@ export default function Dashboard() {
     financeRows.push({ id: 'fin-more', icon: Wallet, color: '#ef4444', label: `${more} autre${more > 1 ? 's' : ''} alerte${more > 1 ? 's' : ''} financière${more > 1 ? 's' : ''}`, count: more, onClick: () => navigate('/finance') })
   }
   const todos = [
-    { id: 'stuck', icon: Clock, color: '#f59e0b', label: `Courses sans coursier depuis plus de ${STUCK_PENDING_MIN} min`,
+    { id: 'stuck', icon: Clock, color: '#dc2626', label: `Courses sans coursier depuis plus de ${stuck?.thresholdMin ?? STUCK_PENDING_MIN} min`,
       count: stuck?.total, onClick: open('pending'),
       detail: stuck?.orders?.[0] ? `La plus ancienne attend depuis ${formatDuration(minutesSince(stuck.orders[0].createdAt))}` : null },
     can.serviceClient && { id: 'incidents', icon: ShieldAlert, color: '#ef4444', label: 'Incidents ouverts (nouveaux + en cours)',
@@ -873,7 +873,7 @@ export default function Dashboard() {
                           <tbody>
                             {activeOrders.map(o => {
                               const since = minutesSince(o.status === 'PENDING' ? o.createdAt : (o.acceptedAt ?? o.createdAt))
-                              const late = o.status === 'PENDING' && since >= STUCK_PENDING_MIN
+                              const late = o.status === 'PENDING' && since >= (stuck?.thresholdMin ?? STUCK_PENDING_MIN)
                               return (
                                 <tr key={o.id} style={{ borderBottom: '1px solid var(--border)' }}>
                                   <td style={tdStyle}><Badge status={o.status} /></td>

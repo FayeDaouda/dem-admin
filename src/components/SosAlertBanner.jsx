@@ -5,27 +5,11 @@ import api from '../lib/api'
 import { connectSocket } from '../lib/socket'
 import { useAuth } from '../contexts/AuthContext'
 import { canSee } from '../lib/droits'
+import { beep } from '../lib/beep'
 
 // Rôles qui voient la page Incidents — ce sont eux qu'une alerte SOS doit
 // atteindre, où qu'ils soient dans l'admin.
 const SOS_ROLES = ['DEV', 'SERVICE_CLIENT', 'ASSISTANCE_EXECUTIVE', 'FLOTTE']
-
-// 3 bips courts — un SOS ne doit pas passer inaperçu dans un onglet ouvert.
-function beep() {
-  try {
-    const ctx = new (window.AudioContext || window.webkitAudioContext)()
-    ;[0, 0.35, 0.7].forEach(t => {
-      const osc = ctx.createOscillator()
-      const gain = ctx.createGain()
-      osc.type = 'square'
-      osc.frequency.value = 880
-      gain.gain.value = 0.08
-      osc.connect(gain).connect(ctx.destination)
-      osc.start(ctx.currentTime + t)
-      osc.stop(ctx.currentTime + t + 0.2)
-    })
-  } catch { /* audio bloqué par le navigateur : le bandeau suffit */ }
-}
 
 function since(iso) {
   const min = Math.max(0, Math.round((Date.now() - new Date(iso).getTime()) / 60000))

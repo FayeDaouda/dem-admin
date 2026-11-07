@@ -283,6 +283,7 @@ export const ONGLETS = {
     taches: "Corrections ponctuelles exécutées sur le serveur : un aperçu qui n'écrit rien, puis l'exécution après confirmation.",
     sms:    'Choix du fournisseur principal des SMS de codes, secours automatique et suivi des envois.',
     code:   'Activation de la connexion par code secret, par rôle, et numéros pilotes.',
+    alertes: "Délai au-delà duquel une course sans coursier déclenche l'alerte rouge et sonore (Super Admin, Responsable de flottes).",
   },
   '/dem-pro': {
     comptes:    'Comptes commerçants : vues par statut, plan, offre groupée et fiche de chaque compte.',
