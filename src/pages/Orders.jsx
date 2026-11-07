@@ -3,7 +3,7 @@ import { useSearchParams } from 'react-router-dom'
 import api from '../lib/api'
 import { useAuth } from '../contexts/AuthContext'
 import { useAutoRefresh } from '../lib/useAutoRefresh'
-import { canSee, asksSuper, ACTION_ROLES } from '../lib/droits'
+import { canSee, asksSuper, isSuperRole, ACTION_ROLES } from '../lib/droits'
 import Badge from '../components/Badge'
 import PageHeader from '../components/PageHeader'
 import { RefreshCw, Search, X, MapPin, Phone, MessageCircle, Copy, Check, Plus } from 'lucide-react'
@@ -15,6 +15,7 @@ import InfoTip from '../components/InfoTip'
 import DispatchPicker from '../components/DispatchPicker'
 import OrderRequestModal from './orders/OrderRequestModal'
 import ClientOrderModal from './orders/ClientOrderModal'
+import InternalNotes from '../components/InternalNotes'
 
 // Montant payé par le client = part coursier (price) + frais DEM − réduction
 // (même calcul que l'app : core/utils/price_format.dart:clientChargeFor).
@@ -238,7 +239,7 @@ export default function Orders() {
   // Actions possibles sur la course ouverte (droits d'affichage = droits serveur)
   const actions = detail ? [
     canDispatch && detail.status === 'PENDING' && !detail.driver && { key: 'pick', label: 'Proposer / attribuer', color: '#0077b6', onClick: openDriverPicker },
-    canDispatch && detail.driver && ['ACCEPTED', 'PICKED_UP', 'IN_TRANSIT'].includes(detail.status) && { key: 'reassign', label: 'Réattribuer', color: '#7c3aed', onClick: openDriverPicker },
+    canDispatch && detail.driver && (isSuperRole(role) ? ['ACCEPTED', 'PICKED_UP', 'IN_TRANSIT'] : ['ACCEPTED']).includes(detail.status) && { key: 'reassign', label: 'Réattribuer', color: '#7c3aed', onClick: openDriverPicker },
     canDispatch && detail.status === 'ACCEPTED' && { key: 'redispatch', label: 'Relancer la recherche', color: '#f97316', onClick: () => setConfirming('redispatch') },
     canForce && detail.driver && detail.status === 'ACCEPTED' && { key: 'pickup', label: 'Colis récupéré', color: '#7c3aed', onClick: () => setConfirming('PICKED_UP') },
     canForce && detail.driver && ['ACCEPTED', 'PICKED_UP', 'IN_TRANSIT'].includes(detail.status) && { key: 'deliver', label: 'Colis livré', color: '#16a34a', onClick: () => setConfirming('DELIVERED') },
@@ -506,6 +507,9 @@ export default function Orders() {
                     {detail.rating.comment && <div style={{ fontSize: 13, fontStyle: 'italic' }}>« {detail.rating.comment} »</div>}
                   </FicheSection>
                 )}
+
+                <InternalNotes key={detail.id} endpoint={`/admin/orders/${detail.id}/notes`} Section={FicheSection}
+                  placeholder="Client rappelé, retard prévenu… (jamais vu du client ni du coursier)" />
               </div>
             </div>
           </div>
