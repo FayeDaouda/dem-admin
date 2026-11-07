@@ -9,6 +9,7 @@ import { useResponsive } from '../lib/useResponsive'
 import SosAlertBanner from './SosAlertBanner'
 import DispatchAlertBanner from './DispatchAlertBanner'
 import RequestAlerts from './RequestAlerts'
+import PreviewBanner from './PreviewBanner'
 import GlobalSearch from './GlobalSearch'
 import { canSee, isSuperRole } from '../lib/droits'
 import { GROUPS, NAV } from '../lib/menu'
@@ -403,6 +404,7 @@ export default function Layout({ children }) {
           </div>
         )}
 
+        <PreviewBanner />
         <SosAlertBanner />
         <DispatchAlertBanner />
         <RequestAlerts />

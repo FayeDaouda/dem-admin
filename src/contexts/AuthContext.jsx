@@ -1,17 +1,53 @@
 import { createContext, useContext, useState, useEffect } from 'react'
 import api from '../lib/api'
 import { setCurrentAccess } from '../lib/droits'
+import { getPreview, savePreview } from '../lib/preview'
+
+const isSuperAccount = admin => !!admin && (!admin.adminRole || admin.adminRole === 'SUPER')
+
+// Compte vu par l'admin : le vrai compte, ou — pendant un aperçu d'un rôle
+// par le Super Admin — le même compte avec le rôle regardé.
+function viewedAs(admin, preview) {
+  if (!preview || !isSuperAccount(admin)) return admin
+  return {
+    ...admin,
+    adminRole: preview.key, adminAccess: preview.access,
+    adminRoleLabel: preview.label, adminRoleColor: preview.color,
+    previewing: true,
+  }
+}
 
 const AuthContext = createContext(null)
 
-export function AuthProvider({ children }) {
-  const [user, setUserState]  = useState(null)
-  const [loading, setLoading] = useState(true)
+// Les droits d'affichage (lib/droits.js) suivent les accès du rôle vu.
+function applyAccess(admin, preview) {
+  const viewed = viewedAs(admin, preview)
+  setCurrentAccess(viewed?.adminRole, viewed?.adminAccess)
+}
 
-  // Les droits d'affichage (lib/droits.js) suivent les accès du rôle connecté.
+export function AuthProvider({ children }) {
+  const [realUser, setUserState] = useState(null)
+  const [preview, setPreview]    = useState(getPreview)
+  const [loading, setLoading]    = useState(true)
+  const user = viewedAs(realUser, preview)
+
   function setUser(admin) {
-    setCurrentAccess(admin?.adminRole, admin?.adminAccess)
+    applyAccess(admin, getPreview()) // même valeur que `preview`, lue du stockage
     setUserState(admin)
+  }
+
+  // Aperçu d'un rôle (Super Admin) : { key, label, color, access }
+  function startPreview(role) {
+    if (!isSuperAccount(realUser)) return
+    savePreview(role)
+    applyAccess(realUser, role)
+    setPreview(role)
+  }
+
+  function stopPreview() {
+    savePreview(null)
+    applyAccess(realUser, null)
+    setPreview(null)
   }
 
   useEffect(() => {
@@ -51,6 +87,8 @@ export function AuthProvider({ children }) {
   function logout() {
     localStorage.removeItem('dem_admin_token')
     localStorage.removeItem('dem_admin_user')
+    savePreview(null)
+    setPreview(null)
     setUser(null)
   }
 
@@ -63,7 +101,7 @@ export function AuthProvider({ children }) {
   }
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, logout, applySession }}>
+    <AuthContext.Provider value={{ user, realUser, preview: user?.previewing ? preview : null, startPreview, stopPreview, loading, login, logout, applySession }}>
       {children}
     </AuthContext.Provider>
   )
