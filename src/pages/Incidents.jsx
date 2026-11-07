@@ -183,13 +183,13 @@ export default function Incidents() {
         title="Incidents"
         subtitle="Alertes SOS, coursiers disparus ou injoignables, litiges et signalements"
         actions={<>
-          {canSee(user?.adminRole, ACTION_ROLES.reportUser) && (
+          {canSee(user?.adminRole, ACTION_ROLES.reportDriver) && (
             <button onClick={() => setShowReport(true)} style={btnOutline}><Flag size={14} /> Signaler un utilisateur</button>
           )}
           <button onClick={fetch} style={btnOutline}><RefreshCw size={14} /> Actualiser</button>
         </>}
       />
-      {showReport && <ReportUserModal onClose={() => { setShowReport(false); fetch() }} />}
+      {showReport && <ReportUserModal canReportClient={canSee(user?.adminRole, ACTION_ROLES.reportUser)} onClose={() => { setShowReport(false); fetch() }} />}
 
       {/* ── Cartes (clic = filtre de la liste à traiter) ── */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))', gap: 10, marginBottom: 16, flexShrink: 0 }}>

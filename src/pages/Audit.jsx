@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { RefreshCw, Search, Shield } from 'lucide-react'
 import api from '../lib/api'
 import { glass, glassInput, pageWrap, pageScroll, stickyTh, stickyCol, stickyThCol } from '../lib/glassStyles'
@@ -41,7 +42,9 @@ export default function Audit() {
   const [search, setSearch]     = useState('')
   const [page, setPage]         = useState(1)
   const [detail, setDetail]     = useState(null)
-  const [adminFilter, setAdminFilter] = useState('')
+  // ?admin=… : journal d'un membre, ouvert depuis la page Équipes
+  const [searchParams] = useSearchParams()
+  const [adminFilter, setAdminFilter] = useState(() => searchParams.get('admin') ?? '')
   const LIMIT = 50
 
   // Noms des admins : la liste des comptes (GET /admin/admins) est réservée

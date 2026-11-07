@@ -3,6 +3,7 @@ import api from '../lib/api'
 import { Send, Users, Bike, Briefcase, Truck, Bell, FlaskConical, Clock, Pencil, X, Check } from 'lucide-react'
 import { glass, pageWrap } from '../lib/glassStyles'
 import { targetLabel } from '../lib/broadcastTargets'
+import RequestModal from '../components/RequestModal'
 
 // Profils combinables : on en coche un, deux, trois… Tout coché = « Tous ».
 // Envoyé au serveur sous la forme 'all' ou 'clients,drivers' (même format
@@ -48,8 +49,14 @@ function toDatetimeLocal(date) {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
 }
 
-export default function Broadcast({ embedded = false }) {
-  const [selected, setSelected] = useState([...ALL_PROFILES])
+// driversOnly : rôle limité aux coursiers (Responsable de flottes) — le
+// serveur refuse toute autre cible ; un envoi à d'autres profils devient une
+// demande au Super Admin (niveau 2), appliquée s'il la valide.
+export default function Broadcast({ embedded = false, driversOnly = false }) {
+  const [selected, setSelected] = useState(driversOnly ? ['drivers'] : [...ALL_PROFILES])
+  const [asking, setAsking] = useState(false) // demande d'envoi au Super Admin
+  const [requestNotice, setRequestNotice] = useState('')
+  const needsRequest = driversOnly && toTarget(selected) !== 'drivers'
   const target = toTarget(selected)
   const [title, setTitle]     = useState('')
   const [body, setBody]       = useState('')
@@ -97,6 +104,7 @@ export default function Broadcast({ embedded = false }) {
       return
     }
     setError('')
+    if (needsRequest) { setAsking(true); return }
     setConfirmSend(true)
   }
 
@@ -128,6 +136,10 @@ export default function Broadcast({ embedded = false }) {
     }
     if (!scheduledAt) {
       setScheduleError('Choisissez une date et une heure d\'envoi.')
+      return
+    }
+    if (needsRequest) {
+      setScheduleError('Votre rôle programme des notifications aux coursiers seulement. Pour les autres profils : « Demander l’envoi ».')
       return
     }
     const iso = new Date(scheduledAt).toISOString()
@@ -324,8 +336,23 @@ export default function Broadcast({ embedded = false }) {
             }}>
               {sending
                 ? 'Envoi en cours…'
-                : <><Send size={16} /> Envoyer maintenant</>}
+                : needsRequest ? <><Send size={16} /> Demander l’envoi au Super Admin</> : <><Send size={16} /> Envoyer maintenant</>}
             </button>
+          )}
+          {asking && (
+            <RequestModal
+              kind="BROADCAST"
+              title="Demander l’envoi d’une notification"
+              intro={`Envoi à : ${targetLabel(target)}. Seuls les coursiers sont ouverts à votre rôle ; le Super Admin envoie s’il valide.`}
+              payload={{ title: title.trim(), body: body.trim(), target }}
+              onClose={() => setAsking(false)}
+              onDone={text => { setAsking(false); setResult(null); setError(''); setRequestNotice(text) }}
+            />
+          )}
+          {requestNotice && (
+            <div style={{ marginBottom: 14, padding: '8px 12px', borderRadius: 8, background: 'rgba(16,185,129,.08)', color: 'var(--success)', fontSize: 13, fontWeight: 600 }}>
+              {requestNotice}
+            </div>
           )}
 
           {error && (

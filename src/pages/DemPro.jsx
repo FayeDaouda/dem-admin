@@ -10,7 +10,7 @@ import OffersTab from './dem-pro/OffersTab'
 import ReferralsTab from './dem-pro/ReferralsTab'
 import PageHeader from '../components/PageHeader'
 import TabBar from '../components/TabBar'
-import { canSee, ACTION_ROLES } from '../lib/droits'
+import { canSee, roleHas, ACTION_ROLES } from '../lib/droits'
 import {
   hasPaidTier, SECTOR_LABELS, SECTOR_COLORS, VOLUME_LABELS, PLAN_COLORS, proStatusInfo, planLabel,
 } from './dem-pro/labels'
@@ -424,7 +424,7 @@ export default function DemPro() {
   // Valider, suspendre, plan, supprimer, créer : Super uniquement ;
   // modifier : Super + Service Client (PATCH /admin/dem-pro/:id).
   const isSuper = !role || role === 'SUPER'
-  const isServiceClient = role === 'SERVICE_CLIENT'
+  const isServiceClient = roleHas(role, 'SERVICE_CLIENT')
   const rights = {
     manage: isSuper,
     edit:   isSuper || isServiceClient,

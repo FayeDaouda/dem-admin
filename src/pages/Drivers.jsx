@@ -8,7 +8,11 @@ import { glass, glassInput, pageWrap, pageScroll, stickyTh, stickyCol, stickyThC
 import SubmitRequestModal from './service-client/components/SubmitRequestModal'
 import DocThumb from '../components/DocThumb'
 import PageHeader from '../components/PageHeader'
-import { canSee, ACTION_ROLES } from '../lib/droits'
+import { canSee, roleHas, asksSuper, ACTION_ROLES } from '../lib/droits'
+import DriverRequestModal from './drivers/DriverRequestModal'
+import { ConnectionHistory, DriverNotes } from './drivers/DriverFollowup'
+import DriverShifts from './drivers/DriverShifts'
+import WhatsAppButton from '../components/WhatsAppButton'
 import { useAutoRefresh } from '../lib/useAutoRefresh'
 import { useUrlQuery } from '../lib/useUrlQuery'
 import InfoTip from '../components/InfoTip'
@@ -550,6 +554,7 @@ function DriverFiche({ driver: d, deleted, rights, isServiceClient, notice, erro
               <Row label="Courses livrées" value={<>{d.deliveredCourses ?? 0}{d.avgRating > 0 && <span style={{ color: '#f59e0b', marginLeft: 8 }}>★ {d.avgRating}</span>}</>} />
               {deleted && <Row label="Supprimé le" value={<>{fmtDate(d.deletedAt)}{d.deletedBySelf ? ' · par le coursier' : ''}</>} />}
               {d.suspensionReason && !d.isActive && <Row label="Motif" value={d.suspensionReason} />}
+              {d.suspendedUntil && !d.isActive && <Row label="Suspendu jusqu'au" value={new Date(d.suspendedUntil).toLocaleString('fr-FR', { day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' })} />}
             </FicheSection>
 
             <FicheSection title="Flotte">
@@ -576,6 +581,10 @@ function DriverFiche({ driver: d, deleted, rights, isServiceClient, notice, erro
             </FicheSection>
 
             {rights.paymentStats && !deleted && <PaymentStats driverId={d.id} />}
+            {/* Fiche enrichie (Resp. flottes, C7) */}
+            {!deleted && <DriverShifts driverId={d.id} canEdit={rights.shifts} Section={FicheSection} />}
+            {!deleted && <ConnectionHistory driverId={d.id} Section={FicheSection} />}
+            {rights.notes && !deleted && <DriverNotes driverId={d.id} Section={FicheSection} />}
           </div>
 
           {/* Colonne droite : contact et actions */}
@@ -603,7 +612,17 @@ function DriverFiche({ driver: d, deleted, rights, isServiceClient, notice, erro
                   </>)}
                   {rights.suspend && !pending && (d.isActive
                     ? <button onClick={() => onAction('suspend')} style={btn('#dc2626', 'rgba(239,68,68,.35)')}><PauseCircle size={14} /> Suspendre</button>
-                    : <button onClick={() => toggle('reactivate')} style={btn('#15803d', 'rgba(34,197,94,.4)')}><PlayCircle size={14} /> Réactiver</button>)}
+                    // Resp. flottes : réactive seul un coursier qu'il a suspendu
+                    : rights.suspendUnlimited || d.suspendedById === rights.me
+                      ? <button onClick={() => toggle('reactivate')} style={btn('#15803d', 'rgba(34,197,94,.4)')}><PlayCircle size={14} /> Réactiver</button>
+                      : rights.askSuper && <button onClick={() => onAction('ask-activate')} style={btn('#b45309', 'rgba(245,158,11,.45)')}><Send size={14} /> Demander la réactivation</button>)}
+                  {rights.askSuper && !pending && d.isActive && (
+                    <button onClick={() => onAction('ask-suspend')} style={btn('#b45309', 'rgba(245,158,11,.45)')}><Send size={14} /> Demander une suspension longue</button>
+                  )}
+                  {rights.askSuper && (<>
+                    <button onClick={() => onAction('ask-pass')} style={btn('#b45309', 'rgba(245,158,11,.45)')}><Send size={14} /> Demander un pass offert</button>
+                    <button onClick={() => onAction('ask-delete')} style={btn('#b45309', 'rgba(245,158,11,.45)')}><Send size={14} /> Demander la suppression</button>
+                  </>)}
                   {isServiceClient && d.isActive && (
                     <button onClick={() => onAction('request')} style={btn('#b45309', 'rgba(245,158,11,.45)')}><Send size={14} /> Demander une suspension</button>
                   )}
@@ -696,13 +715,18 @@ const LIMIT = 50
 export default function Drivers() {
   const { user } = useAuth()
   const role = user?.adminRole
-  const isServiceClient = role === 'SERVICE_CLIENT'
+  const isServiceClient = roleHas(role, 'SERVICE_CLIENT')
   const rights = {
     create:       canSee(role, ACTION_ROLES.driverCreate),
     docsUpload:   canSee(role, ACTION_ROLES.driverDocsUpload),
     edit:         canSee(role, ACTION_ROLES.driverEdit),
     validate:     canSee(role, ACTION_ROLES.driverValidate),
     suspend:      canSee(role, ACTION_ROLES.driverSuspend),
+    suspendUnlimited: canSee(role, ACTION_ROLES.driverSuspendUnlimited),
+    askSuper:     asksSuper(role), // « Demander » au Super Admin (Resp. flottes, niveau 2)
+    notes:        canSee(role, ACTION_ROLES.driverNotes),
+    shifts:       canSee(role, ACTION_ROLES.shiftEdit),
+    me:           user?.id,
     manage:       canSee(role, ACTION_ROLES.driverManage),
     paymentStats: canSee(role, ACTION_ROLES.driverPaymentStats),
     report:       canSee(role, ACTION_ROLES.reportDriver),
@@ -836,7 +860,7 @@ export default function Drivers() {
       api.get(`/admin/drivers/${selected.id}`)
         .then(r => {
           const f = r.data ?? {}
-          setSelected(s => s && ({ ...s, ...pick(f, ['name', 'phone', 'vehiclePlate', 'managedById', 'managedBy', 'isActive', 'isBanned', 'isVerified', 'chefDeFlotteStatus', 'suspensionReason', 'deletedAt']) }))
+          setSelected(s => s && ({ ...s, ...pick(f, ['name', 'phone', 'vehiclePlate', 'managedById', 'managedBy', 'isActive', 'isBanned', 'isVerified', 'chefDeFlotteStatus', 'suspensionReason', 'suspendedUntil', 'suspendedById', 'deletedAt']) }))
         })
         .catch(() => {})
     }
@@ -1046,7 +1070,9 @@ export default function Drivers() {
                     {formatConnectionTime(d.connectionSecondsByPeriod?.[connectionPeriod])}
                   </td>
                   <td style={{ ...tdStyle, fontSize: 13 }}>
-                    {deletedView ? <span style={{ color: 'var(--text-muted)', fontSize: 12 }}>{d.archivedPhone ? `Ancien n° ${d.archivedPhone}` : 'Numéro libéré'}</span> : (d.phone ?? '—')}
+                    {deletedView ? <span style={{ color: 'var(--text-muted)', fontSize: 12 }}>{d.archivedPhone ? `Ancien n° ${d.archivedPhone}` : 'Numéro libéré'}</span> : (
+                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>{d.phone ?? '—'} <WhatsAppButton phone={d.phone} compact /></span>
+                    )}
                   </td>
                   <td style={tdStyle}><DriverStatus driver={d} deleted={deletedView} /></td>
                 </tr>
@@ -1080,10 +1106,16 @@ export default function Drivers() {
       )}
 
       {/* Fenêtres ouvertes depuis la fiche (au-dessus d'elle) */}
+      {/* Demandes au Super Admin (Resp. flottes) */}
+      {selected && modal?.startsWith?.('ask-') && (
+        <DriverRequestModal mode={modal} driver={selected} onClose={() => setModal(null)}
+          onDone={text => { setModal(null); setFicheNotice(text) }} />
+      )}
       {selected && modal === 'suspend' && (
         <SuspendModal
           target="driver"
-          onConfirm={(reason, fix) => withReason(() => api.patch(`/admin/drivers/${selected.id}/suspend`, { reason: fullReason(reason, fix) }), `${label} est suspendu.`)}
+          durations={rights.suspendUnlimited ? [null, 24, 48, 72] : [72, 48, 24]}
+          onConfirm={(reason, fix, hours) => withReason(() => api.patch(`/admin/drivers/${selected.id}/suspend`, { reason: fullReason(reason, fix), ...(hours && { hours }) }), hours ? `${label} est suspendu ${hours} h.` : `${label} est suspendu.`)}
           onClose={() => setModal(null)}
           loading={modalBusy}
         />

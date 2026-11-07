@@ -1,11 +1,18 @@
 import { createContext, useContext, useState, useEffect } from 'react'
 import api from '../lib/api'
+import { setCurrentAccess } from '../lib/droits'
 
 const AuthContext = createContext(null)
 
 export function AuthProvider({ children }) {
-  const [user, setUser]       = useState(null)
+  const [user, setUserState]  = useState(null)
   const [loading, setLoading] = useState(true)
+
+  // Les droits d'affichage (lib/droits.js) suivent les accès du rôle connecté.
+  function setUser(admin) {
+    setCurrentAccess(admin?.adminRole, admin?.adminAccess)
+    setUserState(admin)
+  }
 
   useEffect(() => {
     const token  = localStorage.getItem('dem_admin_token')

@@ -28,6 +28,10 @@ import {
 } from './service-client/components/ServiceClientKpiModals'
 import InfoTip from '../components/InfoTip'
 import { PAGES } from '../lib/aide'
+import { roleHas, canSee, ACTION_ROLES } from '../lib/droits'
+import FleetSections from './dashboard/FleetSections'
+import ShiftsSection from './dashboard/ShiftsSection'
+import { useFleetAnalytics } from '../lib/useFleetAnalytics'
 
 // ============================================================
 //  Dashboard — une page, quatre questions, dans cet ordre :
@@ -483,10 +487,14 @@ export default function Dashboard() {
 
   const role = user?.adminRole
   const isSuper   = !role || role === 'SUPER'
-  const isDev     = role === 'DEV'
-  const isFinance = role === 'FINANCE'
-  const isSC      = role === 'SERVICE_CLIENT'
-  const isAE      = role === 'ASSISTANCE_EXECUTIVE'
+  // Accès ouverts par le rôle (un rôle de la page Équipes peut en cumuler)
+  const isDev     = roleHas(role, 'DEV')
+  const isFinance = roleHas(role, 'FINANCE')
+  const isSC      = roleHas(role, 'SERVICE_CLIENT')
+  const isAE      = roleHas(role, 'ASSISTANCE_EXECUTIVE')
+  const isFlotte  = roleHas(role, 'FLOTTE') // Responsable de flottes : courses et coursiers seulement
+  // Finance sans autre accès opérationnel : ni comptes ni opérations en direct
+  const financeOnly = isFinance && !isDev && !isSC && !isAE
 
   // Ce que chaque rôle peut lire (mêmes droits que les routes du serveur,
   // admin.routes.js) — une section dont la source est interdite n'est ni
@@ -494,18 +502,20 @@ export default function Dashboard() {
   const can = {
     revenue:        isSuper || isDev || isFinance,
     marketing:      isSuper,                           // /admin/marketing/kpis
-    serviceClient:  isSuper || isDev || isSC || isAE,  // /admin/service-client/kpis, incidents, notes
+    serviceClient:  isSuper || isDev || isSC || isAE || isFlotte, // /admin/service-client/kpis, incidents, notes
     financeAlerts:  isSuper || isFinance,              // /admin/finance/alerts
     financeKpis:    isFinance,                         // pass achetés (page Finance pour les autres)
     validations:    isSuper,                           // /admin/validations/summary
-    accounts:       !isFinance,
+    accounts:       isSuper || isDev || isSC || isAE,  // bloc Comptes (ni Finance seule ni Resp. flottes)
     retentionList:  isSuper || isSC || isAE,           // /admin/marketing/retention
     demProList:     isSuper || isSC || isAE,           // /admin/dem-pro
     cancellationDetail: isSuper || isDev || isSC,
     tech:           isSuper || isDev,
+    fleetAnalytics: isSuper || isFlotte, // coursiers du jour, motifs, délais, heures de pointe
   }
 
   const [data, setData] = useState({})
+  const fleetAnalytics = useFleetAnalytics(can.fleetAnalytics)
   const [failed, setFailed] = useState([])
   const [loaded, setLoaded] = useState(false)
   const [updatedAt, setUpdatedAt] = useState(null)
@@ -541,7 +551,7 @@ export default function Dashboard() {
     stats:      '/admin/stats',
     live:       '/admin/live',
     timeseries: '/admin/stats/timeseries?days=7',
-    stuck:      `/admin/stats/stuck-pending-orders?period=${STUCK_PENDING_MIN}m`,
+    stuck:      '/admin/stats/stuck-pending-orders?period=alert', // délai réglé par le Super (Maintenance)
   }), [loadSources])
 
   // Sources plus lourdes (rétention, notes, alertes) : rechargées moins souvent.
@@ -553,7 +563,9 @@ export default function Dashboard() {
     validations:   can.validations   && '/admin/validations/summary?limit=1',
     clientAttempts: can.accounts     && '/admin/stats/client-attempts?hours=24',
     demProActivity: can.accounts     && '/admin/stats/dem-pro-activity?hours=24',
-    cancellationTrend: isAE          && '/admin/stats/timeseries?days=30',
+    cancellationTrend: (isAE || isFlotte) && '/admin/stats/timeseries?days=30',
+    kycReview:     can.fleetAnalytics && '/admin/drivers?status=kyc-review&limit=1', // pièces coursiers à revoir
+    shiftsToday:   can.fleetAnalytics && '/admin/shifts/today', // shifts de la flotte DEM
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }), [loadSources, role])
 
@@ -656,11 +668,17 @@ export default function Dashboard() {
     financeRows.push({ id: 'fin-more', icon: Wallet, color: '#ef4444', label: `${more} autre${more > 1 ? 's' : ''} alerte${more > 1 ? 's' : ''} financière${more > 1 ? 's' : ''}`, count: more, onClick: () => navigate('/finance') })
   }
   const todos = [
-    { id: 'stuck', icon: Clock, color: '#f59e0b', label: `Courses sans coursier depuis plus de ${STUCK_PENDING_MIN} min`,
+    { id: 'stuck', icon: Clock, color: '#dc2626', label: `Courses sans coursier depuis plus de ${stuck?.thresholdMin ?? STUCK_PENDING_MIN} min`,
       count: stuck?.total, onClick: open('pending'),
       detail: stuck?.orders?.[0] ? `La plus ancienne attend depuis ${formatDuration(minutesSince(stuck.orders[0].createdAt))}` : null },
     can.serviceClient && { id: 'incidents', icon: ShieldAlert, color: '#ef4444', label: 'Incidents ouverts (nouveaux + en cours)',
       count: sc?.openIncidents, onClick: open('incidents') },
+    can.fleetAnalytics && { id: 'incidents-24h', icon: ShieldAlert, color: '#dc2626', label: 'Incidents ouverts depuis plus de 24 h',
+      count: fleetAnalytics.data?.incidentsOpenOver24h, onClick: () => navigate('/incidents') },
+    can.fleetAnalytics && { id: 'shift-absents', icon: Clock, color: '#dc2626', label: 'Absents du shift (flotte DEM)',
+      count: data.shiftsToday?.absents?.length, onClick: () => document.getElementById('shifts-du-jour')?.scrollIntoView({ behavior: 'smooth' }) },
+    can.fleetAnalytics && { id: 'kyc-review', icon: ClipboardCheck, color: '#d97706', label: 'Pièces coursiers à revoir',
+      count: data.kycReview?.total, onClick: () => navigate('/validation?tab=kyc-review') },
     can.validations && { id: 'validations', icon: ClipboardCheck, color: '#6366f1', label: 'Validations en attente',
       count: validations?.total, onClick: () => navigate('/validation'),
       detail: validations ? [
@@ -683,11 +701,11 @@ export default function Dashboard() {
   // ── 2. En direct : compteurs + liste dépliable (ancien « Suivi en direct ») ──
   const liveOpen = showLive ?? activeOrders.length > 0
   const liveCards = [
-    !isFinance && { id: 'pending', icon: AlertTriangle, color: '#f59e0b', label: "En attente d'un coursier", value: v(stats?.orders.pending),
+    !financeOnly && { id: 'pending', icon: AlertTriangle, color: '#f59e0b', label: "En attente d'un coursier", value: v(stats?.orders.pending),
       sub: stats ? `+ ${stats.orders.scheduled} programmée(s) à venir` : null, emphasis: (stuck?.total ?? 0) > 0 },
     { id: 'active', icon: TrendingUp, color: '#6366f1', label: 'Courses en cours', value: v(stats?.orders.active),
       sub: 'Coursier engagé, course non terminée' },
-    !isFinance && { id: 'drivers', icon: Bike, color: '#22c55e', label: 'Coursiers en ligne', value: v(stats?.drivers.available),
+    !financeOnly && { id: 'drivers', icon: Bike, color: '#22c55e', label: 'Coursiers en ligne', value: v(stats?.drivers.available),
       sub: stats ? `${stats.drivers.free} libre(s) · ${busyDrivers} en course · ${stats.drivers.total} inscrits` : null },
   ].filter(Boolean)
 
@@ -724,7 +742,7 @@ export default function Dashboard() {
       sparkKey: 'orders', onClick: open('created'),
       rows: [
         { label: 'Livrées (à l’heure de livraison)', value: v(stats?.orders.deliveredToday), onClick: open('delivered') },
-        !isFinance && { label: 'Annulées', value: v(today?.cancelled), onClick: can.cancellationDetail ? open('cancellation') : null },
+        !financeOnly && { label: 'Annulées', value: v(today?.cancelled), onClick: can.cancellationDetail ? open('cancellation') : null },
       ].filter(Boolean),
       footer: today ? <StatusBar breakdown={today} /> : null },
     can.revenue && { key: 'day-revenue', icon: CreditCard, color: '#f59e0b', label: 'Commission DEM facturée',
@@ -733,7 +751,7 @@ export default function Dashboard() {
       trend: <TrendBadge current={stats?.revenue?.dem?.today} previous={stats?.revenue?.dem?.yesterdaySameTime} />,
       sparkKey: 'demRevenue', onClick: open('demFee'),
       rows: [{ label: 'Gains coursiers', value: stats ? formatF(stats.revenue.driver.today) : '…', onClick: open('driverRevenue') }] },
-    !isFinance && { key: 'day-cancel', icon: XCircle, color: smallSample ? '#94a3b8' : '#ef4444', label: "Taux d'annulation",
+    !financeOnly && { key: 'day-cancel', icon: XCircle, color: smallSample ? '#94a3b8' : '#ef4444', label: "Taux d'annulation",
       value: !today ? v(null) : smallSample ? `${today.cancelled} sur ${today.total}` : (cancellationRate == null ? v(null) : `${cancellationRate}%`),
       sub: !today ? null : smallSample
         ? 'Annulées sur créées aujourd’hui · pourcentage affiché à partir de 5 courses'
@@ -834,7 +852,7 @@ export default function Dashboard() {
       </Section>
 
       {/* ── 2. En direct (compteurs + courses et coursiers) ── */}
-      <Section title="En direct" hint="État des opérations à cet instant" right={!isFinance && (
+      <Section title="En direct" hint="État des opérations à cet instant" right={!financeOnly && (
         <button onClick={() => navigate('/map')} style={linkButton}><MapIcon size={13} /> Carte live</button>
       )}>
         <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(auto-fit, minmax(240px, 1fr))', gap: 10 }}>
@@ -843,7 +861,7 @@ export default function Dashboard() {
               emphasis={k.emphasis} onClick={open(k.id)} />
           ))}
         </div>
-        {!isFinance && (
+        {!financeOnly && (
           <>
             <button onClick={() => setShowLive(!liveOpen)} style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 10, background: 'none', border: 'none', padding: '4px 2px', cursor: 'pointer', color: 'var(--primary)', fontSize: 12.5, fontWeight: 600 }}>
               {liveOpen ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
@@ -868,7 +886,7 @@ export default function Dashboard() {
                           <tbody>
                             {activeOrders.map(o => {
                               const since = minutesSince(o.status === 'PENDING' ? o.createdAt : (o.acceptedAt ?? o.createdAt))
-                              const late = o.status === 'PENDING' && since >= STUCK_PENDING_MIN
+                              const late = o.status === 'PENDING' && since >= (stuck?.thresholdMin ?? STUCK_PENDING_MIN)
                               return (
                                 <tr key={o.id} style={{ borderBottom: '1px solid var(--border)' }}>
                                   <td style={tdStyle}><Badge status={o.status} /></td>
@@ -931,12 +949,25 @@ export default function Dashboard() {
         )}
       </Section>
 
+      {/* ── Coursiers aujourd'hui (Super, Resp. flottes) ── */}
+      {can.fleetAnalytics && <FleetSections part="drivers" analytics={fleetAnalytics} Section={Section} isMobile={isMobile} />}
+
+      {/* ── Shifts du jour : flotte DEM (Super, Resp. flottes) ── */}
+      {can.fleetAnalytics && (
+        <div id="shifts-du-jour">
+          <ShiftsSection data={data.shiftsToday} canEdit={canSee(role, ACTION_ROLES.shiftEdit)} onChanged={loadSlow} Section={Section} isMobile={isMobile} />
+        </div>
+      )}
+
       {/* ── 3. Aujourd'hui ── */}
       <Section title="Aujourd'hui" hint="Depuis minuit · tendance comparée à hier à la même heure">
         <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(auto-fit, minmax(220px, 1fr))', gap: 10 }}>
           {dayGroups.map(renderGroup)}
         </div>
       </Section>
+
+      {/* ── Motifs d'annulation, délais, heures de pointe (Super, Resp. flottes) ── */}
+      {can.fleetAnalytics && <FleetSections part="courses" analytics={fleetAnalytics} Section={Section} isMobile={isMobile} />}
 
       {/* ── 4. Comptes ── */}
       {accountGroups.length > 0 && (
@@ -947,8 +978,8 @@ export default function Dashboard() {
         </Section>
       )}
 
-      {/* ── Assistant exécutif : taux d'annulation, 30 jours ── */}
-      {isAE && (
+      {/* ── Assistance exécutive et Resp. flottes : taux d'annulation, 30 jours ── */}
+      {(isAE || isFlotte) && (
         <div style={{ ...card, marginBottom: 20 }}>
           <h2 style={cardTitle}>Taux d'annulation — 30 derniers jours<InfoTip k="Taux d'annulation — 30 derniers jours" size={13} /></h2>
           <ResponsiveContainer width="100%" height={200}>

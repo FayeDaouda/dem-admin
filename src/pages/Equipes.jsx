@@ -1,7 +1,8 @@
 import { Fragment, useState, useEffect, useCallback } from 'react'
 import api from '../lib/api'
 import { useAuth } from '../contexts/AuthContext'
-import { RefreshCw, UserPlus, Trash2, Power, XCircle, Pencil, Search, KeyRound, Check } from 'lucide-react'
+import { RefreshCw, UserPlus, Trash2, Power, XCircle, Pencil, Search, KeyRound, Check, UsersRound, ShieldCheck, ScrollText } from 'lucide-react'
+import { useNavigate } from 'react-router-dom'
 import { glass, glassInput, pageWrap, pageScroll, stickyTh } from '../lib/glassStyles'
 import { PASSWORD_PATTERN, PASSWORD_HINT } from '../lib/passwordPolicy'
 import { useAutoRefresh } from '../lib/useAutoRefresh'
@@ -9,20 +10,37 @@ import PageHeader from '../components/PageHeader'
 import InlineConfirm from '../components/InlineConfirm'
 import TempPassword from '../components/TempPassword'
 import InfoTip from '../components/InfoTip'
+import TabBar from '../components/TabBar'
+import { useUrlTab } from '../lib/useUrlTab'
+import RolesTab from './equipes/RolesTab'
+import { pagesFor } from '../lib/roleAccess'
 
-const ROLE_COLORS = {
-  SUPER: '#f59e0b', DEV: '#6366f1', FINANCE: '#22c55e', MARKETING: '#ec4899', SERVICE_CLIENT: '#06b6d4', ASSISTANCE_EXECUTIVE: '#a855f7',
-}
-const ROLE_LABELS = {
-  SUPER: 'Super Admin', DEV: 'Dev', FINANCE: 'Finance', MARKETING: 'Marketing', SERVICE_CLIENT: 'Service Client', ASSISTANCE_EXECUTIVE: 'Assistance exécutive',
-}
+// Rôles d'origine, affichés tant que la liste du serveur (/admin/roles) n'est pas lue.
+const DEFAULT_ROLES = [
+  { key: 'SUPER', label: 'Super Admin', color: '#f59e0b', access: [], isSystem: true, locked: true },
+  { key: 'DEV', label: 'Dev', color: '#6366f1' },
+  { key: 'FINANCE', label: 'Finance', color: '#22c55e' },
+  { key: 'MARKETING', label: 'Marketing', color: '#ec4899' },
+  { key: 'SERVICE_CLIENT', label: 'Service Client', color: '#06b6d4' },
+  { key: 'ASSISTANCE_EXECUTIVE', label: 'Assistance exécutive', color: '#a855f7' },
+  { key: 'FLOTTE', label: 'Responsable de flottes', color: '#0ea5e9' },
+].map(r => ({ access: [r.key], isSystem: true, ...r }))
+
+const TABS = [
+  { key: 'membres', label: 'Membres', icon: UsersRound },
+  { key: 'roles',   label: 'Rôles',   icon: ShieldCheck },
+]
 const EMPTY_CREATE = { name: '', email: '', phone: '', password: '', adminRole: 'SERVICE_CLIENT' }
+const roleOf = a => a?.adminRole ?? 'SUPER' // ancien compte sans rôle = Super Admin
 
 export default function Equipes() {
   const { user: currentUser } = useAuth()
+  const navigate = useNavigate()
   const isSuper = !currentUser?.adminRole || currentUser.adminRole === 'SUPER'
 
+  const [tab, setTab]                     = useUrlTab(TABS)
   const [admins, setAdmins]               = useState([])
+  const [roles, setRoles]                 = useState(DEFAULT_ROLES)
   const [loading, setLoading]             = useState(true)
   const [search, setSearch]               = useState('')
   const [roleFilter, setRoleFilter]       = useState('all')
@@ -52,8 +70,12 @@ export default function Equipes() {
   const fetch = useCallback(async (silent = false) => {
     if (!silent) setLoading(true)
     try {
-      const res = await api.get('/admin/admins')
+      const [res, rl] = await Promise.all([
+        api.get('/admin/admins'),
+        api.get('/admin/roles').catch(() => null), // serveur pas encore à jour : rôles d'origine
+      ])
       setAdmins(res.data?.admins ?? [])
+      if (rl?.data?.roles?.length) setRoles(rl.data.roles)
       if (isSuper) {
         const rr = await api.get('/admin/password-resets')
         setResetRequests(rr.data?.requests ?? [])
@@ -94,7 +116,7 @@ export default function Equipes() {
 
   function openEdit(admin) {
     setEditTarget(admin)
-    setEditForm({ name: admin.name ?? '', email: admin.email ?? '', phone: admin.phone ?? '', adminRole: admin.adminRole ?? 'SUPER', resetPassword: '' })
+    setEditForm({ name: admin.name ?? '', email: admin.email ?? '', phone: admin.phone ?? '', adminRole: roleOf(admin), resetPassword: '' })
     setEditError('')
   }
 
@@ -146,6 +168,19 @@ export default function Equipes() {
     })
   }
 
+  // Rôle choisi dans la ligne : confirmé juste en dessous avant l'envoi.
+  function pickRole(admin, to) {
+    setRowError(null)
+    setConfirm(to === roleOf(admin) ? null : { id: admin.id, kind: 'role', to })
+  }
+
+  function changeRole(admin, adminRole) {
+    return run(admin.id, async () => {
+      await api.patch(`/admin/admins/${admin.id}`, { adminRole })
+      setNotice(`${whoOf(admin)} est maintenant ${roleMeta(adminRole).label}.`)
+    })
+  }
+
   function remove(admin) {
     return run(admin.id, async () => {
       await api.delete(`/admin/admins/${admin.id}`)
@@ -167,12 +202,15 @@ export default function Equipes() {
     })
   }
 
+  // ── Rôles ──
+  const roleMeta = key => roles.find(r => r.key === key) ?? { key, label: key, color: '#888', access: [] }
+
   // ── Filtrage ──
   const HIDDEN_EMAILS = ['daoudafaye2017@gmail.com']
   const visibleAdmins = admins.filter(a => !HIDDEN_EMAILS.includes(a.email?.toLowerCase()))
 
   const filtered = visibleAdmins
-    .filter(a => roleFilter === 'all' || a.adminRole === roleFilter)
+    .filter(a => roleFilter === 'all' || roleOf(a) === roleFilter)
     .filter(a => {
       const q = search.trim().toLowerCase()
       if (!q) return true
@@ -182,12 +220,23 @@ export default function Equipes() {
     })
 
   const countByRole = {}
-  for (const a of visibleAdmins) countByRole[a.adminRole] = (countByRole[a.adminRole] ?? 0) + 1
+  for (const a of visibleAdmins) countByRole[roleOf(a)] = (countByRole[roleOf(a)] ?? 0) + 1
 
   const confirmTexts = {
     password: a => ({ lines: [`Réinitialiser le mot de passe de ${whoOf(a)} ?`, 'Un mot de passe provisoire sera généré ; il devra le changer à sa première connexion.'], label: 'Générer', danger: false, go: () => resetPassword(a) }),
     disable:  a => ({ lines: [`Désactiver le compte de ${whoOf(a)} ?`, 'Il ne pourra plus se connecter à l’admin tant qu’il n’est pas réactivé.'], label: 'Désactiver', danger: true, go: () => toggle(a) }),
     delete:   a => ({ lines: [`Supprimer définitivement le compte de ${whoOf(a)} ?`], label: 'Supprimer', danger: true, go: () => remove(a) }),
+    role:     (a, { to }) => {
+      const r = roleMeta(to)
+      return {
+        lines: [
+          `Passer ${whoOf(a)} de ${roleMeta(roleOf(a)).label} à ${r.label} ?`,
+          to === 'SUPER' ? 'Accès total à l’admin, y compris Équipes et Maintenance.' : `Pages : ${pagesFor(r.access).join(', ') || 'aucune'}.`,
+          'Effet immédiat ; le menu de ce compte se met à jour au prochain rechargement de la page.',
+        ],
+        label: 'Changer le rôle', danger: to === 'SUPER', go: () => changeRole(a, to),
+      }
+    },
   }
 
   return (
@@ -197,7 +246,7 @@ export default function Equipes() {
         subtitle={`${visibleAdmins.length} compte${visibleAdmins.length > 1 ? 's' : ''} administrateur${visibleAdmins.length > 1 ? 's' : ''}`}
         actions={<>
           <button onClick={() => fetch()} style={btnOutline}><RefreshCw size={14} /> Actualiser</button>
-          {isSuper && (
+          {isSuper && tab === 'membres' && (
             <button onClick={() => setShowCreate(v => !v)} style={showCreate ? btnOutline : btnPrimary}>
               {showCreate ? <><XCircle size={14} /> Annuler</> : <><UserPlus size={14} /> Nouveau compte</>}
             </button>
@@ -259,6 +308,15 @@ export default function Equipes() {
         <div style={{ fontSize: 13, fontWeight: 600, color: '#15803d', background: 'rgba(34,197,94,.10)', padding: '8px 12px', borderRadius: 10, marginBottom: 14, flexShrink: 0 }}>{notice}</div>
       )}
 
+      <TabBar tabs={TABS} active={tab} onChange={setTab} />
+
+      {tab === 'roles' && (
+        <div style={pageScroll}>
+          <RolesTab roles={roles} countByRole={countByRole} onChanged={() => fetch(true)} onNotice={setNotice} />
+        </div>
+      )}
+
+      {tab === 'membres' && <>
       {/* Formulaire de création */}
       {showCreate && (
         <div style={{ ...glass, padding: '20px 24px', marginBottom: 14, flexShrink: 0 }}>
@@ -271,7 +329,7 @@ export default function Equipes() {
             <div>
               <label style={labelStyle}>Rôle *</label>
               <select value={createForm.adminRole} onChange={e => setCreateForm(f => ({ ...f, adminRole: e.target.value }))} style={inputStyle}>
-                {Object.entries(ROLE_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+                {roles.map(r => <option key={r.key} value={r.key}>{r.label}</option>)}
               </select>
             </div>
             <div>
@@ -308,12 +366,12 @@ export default function Equipes() {
           <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Nom, email ou téléphone…" style={{ ...glassInput, paddingLeft: 36, width: '100%', boxSizing: 'border-box' }} />
         </div>
         <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', background: 'rgba(255,255,255,.45)', borderRadius: 'var(--radius)', padding: 4 }}>
-          {[['all', 'Tous', visibleAdmins.length], ...Object.entries(ROLE_LABELS).map(([k, l]) => [k, l, countByRole[k] ?? 0])].map(([key, label, n]) => {
+          {[['all', 'Tous', visibleAdmins.length], ...roles.map(r => [r.key, r.label, countByRole[r.key] ?? 0])].map(([key, label, n]) => {
             const active = roleFilter === key
             return (
               <button key={key} onClick={() => setRoleFilter(key)} style={{
                 padding: '6px 12px', borderRadius: 'var(--radius-sm)', border: 'none', cursor: 'pointer', fontSize: 12.5,
-                background: active ? (key === 'all' ? 'var(--primary)' : ROLE_COLORS[key]) : 'transparent',
+                background: active ? (key === 'all' ? 'var(--primary)' : roleMeta(key).color) : 'transparent',
                 color: active ? '#fff' : 'var(--text-muted)', fontWeight: active ? 700 : 500,
               }}>
                 {label}<span style={{ marginLeft: 5, opacity: 0.8 }}>{n}</span>
@@ -342,8 +400,8 @@ export default function Equipes() {
               <tbody>
                 {filtered.map(a => {
                   const isMe = a.id === currentUser?.id
-                  const roleColor = ROLE_COLORS[a.adminRole] ?? '#888'
-                  const pending = confirm?.id === a.id && confirmTexts[confirm.kind] ? confirmTexts[confirm.kind](a) : null
+                  const roleColor = roleMeta(roleOf(a)).color
+                  const pending = confirm?.id === a.id && confirmTexts[confirm.kind] ? confirmTexts[confirm.kind](a, confirm) : null
                   return (
                     <Fragment key={a.id}>
                       <tr style={{ borderBottom: pending || rowError?.id === a.id ? 'none' : '1px solid var(--border)', opacity: a.isActive ? 1 : 0.55 }}>
@@ -369,9 +427,21 @@ export default function Equipes() {
                           {a.phone && <div style={{ fontSize: 11.5, color: 'var(--text-muted)' }}>{a.phone}</div>}
                         </td>
                         <td style={tdStyle}>
-                          <span style={{ fontSize: 11, fontWeight: 700, padding: '3px 12px', borderRadius: 10, background: roleColor + '18', color: roleColor, whiteSpace: 'nowrap' }}>
-                            {ROLE_LABELS[a.adminRole] ?? a.adminRole}
-                          </span>
+                          {isSuper && !isMe ? (
+                            <select
+                              value={confirm?.id === a.id && confirm.kind === 'role' ? confirm.to : roleOf(a)}
+                              onChange={e => pickRole(a, e.target.value)}
+                              title="Changer le rôle"
+                              style={{ fontSize: 11, fontWeight: 700, padding: '3px 8px', borderRadius: 10, border: `1px solid ${roleColor}55`, background: roleColor + '18', color: roleColor, cursor: 'pointer', maxWidth: 190 }}
+                            >
+                              {!roles.some(r => r.key === roleOf(a)) && <option value={roleOf(a)}>{roleOf(a)}</option>}
+                              {roles.map(r => <option key={r.key} value={r.key}>{r.label}</option>)}
+                            </select>
+                          ) : (
+                            <span style={{ fontSize: 11, fontWeight: 700, padding: '3px 12px', borderRadius: 10, background: roleColor + '18', color: roleColor, whiteSpace: 'nowrap' }}>
+                              {roleMeta(roleOf(a)).label}
+                            </span>
+                          )}
                         </td>
                         <td style={tdStyle}>
                           <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 12, fontWeight: 600, color: a.isActive ? '#16a34a' : '#ef4444' }}>
@@ -386,6 +456,7 @@ export default function Equipes() {
                           {isSuper && !isMe ? (
                             <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
                               <button onClick={() => openEdit(a)} style={actionBtn('#0077b6')}><Pencil size={12} /> Modifier</button>
+                              <button onClick={() => navigate(`/audit?admin=${a.id}`)} title="Journal de ses actions (Audit)" style={actionBtn('#475569')}><ScrollText size={12} /> Journal</button>
                               <button onClick={() => ask(a.id, 'password')} title="Réinitialiser avec un mot de passe provisoire (compte oublié)" style={actionBtn('#d97706')}>
                                 <KeyRound size={12} /> Mot de passe provisoire
                               </button>
@@ -421,6 +492,8 @@ export default function Equipes() {
         </div>
       </div>
 
+      </>}
+
       {/* Fenêtre de modification */}
       {editTarget && (
         <div style={overlay} onClick={() => setEditTarget(null)}>
@@ -447,7 +520,8 @@ export default function Equipes() {
               <div>
                 <label style={labelStyle}>Rôle</label>
                 <select value={editForm.adminRole} onChange={e => setEditForm(f => ({ ...f, adminRole: e.target.value }))} style={inputStyle}>
-                  {Object.entries(ROLE_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+                  {!roles.some(r => r.key === editForm.adminRole) && <option value={editForm.adminRole}>{editForm.adminRole}</option>}
+                  {roles.map(r => <option key={r.key} value={r.key}>{r.label}</option>)}
                 </select>
               </div>
               <div style={{ borderTop: '1px solid var(--border)', paddingTop: 12 }}>

@@ -51,8 +51,12 @@ const AMBASSADOR_REASONS = [
   },
 ]
 
+// Durées proposées quand `durations` est passé (suspension d'un coursier) :
+// null = jusqu'à réactivation par un admin. Envoyées en heures.
+const DURATION_LABELS = { null: "Jusqu'à réactivation", 24: '24 h', 48: '48 h', 72: '72 h' }
+
 export default function SuspendModal({
-  target, onConfirm, onClose, loading,
+  target, onConfirm, onClose, loading, durations = null,
   title = 'Motif de suspension',
   description = 'Cochez les raisons applicables — elles seront envoyées par notification.',
   confirmLabel = 'Confirmer la suspension',
@@ -61,6 +65,7 @@ export default function SuspendModal({
   const reasons = target === 'ambassador' ? AMBASSADOR_REASONS : DRIVER_REASONS
   const [checked, setChecked]   = useState([])
   const [custom, setCustom]     = useState('')
+  const [hours, setHours]       = useState(durations ? durations[0] : null)
 
   function toggle(label) {
     setChecked(prev =>
@@ -145,6 +150,32 @@ export default function SuspendModal({
           />
         </div>
 
+        {/* Durée */}
+        {durations && (
+          <div style={{ marginBottom: 20 }}>
+            <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-muted)', display: 'block', marginBottom: 6 }}>
+              Durée
+            </label>
+            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+              {durations.map(h => (
+                <button key={String(h)} type="button" onClick={() => setHours(h)} style={{
+                  padding: '6px 12px', borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: 'pointer',
+                  border: `1.5px solid ${hours === h ? '#dc2626' : 'rgba(0,0,0,.1)'}`,
+                  background: hours === h ? 'rgba(239,68,68,.08)' : 'transparent',
+                  color: hours === h ? '#dc2626' : 'var(--text)',
+                }}>
+                  {DURATION_LABELS[h] ?? `${h} h`}
+                </button>
+              ))}
+            </div>
+            {hours && (
+              <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 6 }}>
+                Réactivé automatiquement au bout de {hours} h.
+              </div>
+            )}
+          </div>
+        )}
+
         {/* Aperçu */}
         {canSubmit && (
           <div style={{ background: 'rgba(239,68,68,.05)', border: '1px solid rgba(239,68,68,.15)', borderRadius: 10, padding: '10px 14px', marginBottom: 20, fontSize: 12 }}>
@@ -158,7 +189,7 @@ export default function SuspendModal({
         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10 }}>
           <button onClick={onClose} style={btnCancel} disabled={loading}>Annuler</button>
           <button
-            onClick={() => onConfirm(buildReason(), buildFix())}
+            onClick={() => onConfirm(buildReason(), buildFix(), hours)}
             disabled={!canSubmit || loading}
             style={{ ...btnDanger, opacity: (!canSubmit || loading) ? 0.5 : 1 }}
           >

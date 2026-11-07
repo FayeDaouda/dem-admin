@@ -9,7 +9,8 @@ import DocThumb from '../components/DocThumb'
 import SubmitRequestModal from './service-client/components/SubmitRequestModal'
 import ChefFormModal from './chefs/ChefFormModal'
 import { chefStatusInfo, driverStatusInfo } from './chefs/chefStatus'
-import { canSee, ACTION_ROLES } from '../lib/droits'
+import { canSee, roleHas, asksSuper, ACTION_ROLES } from '../lib/droits'
+import RequestModal from '../components/RequestModal'
 import { useAutoRefresh } from '../lib/useAutoRefresh'
 import InfoTip from '../components/InfoTip'
 import { PAGES } from '../lib/aide'
@@ -59,7 +60,8 @@ export default function ChefDetailPage() {
     drivers:  canSee(role, ACTION_ROLES.fleetDriverActions),
     report:   canSee(role, ACTION_ROLES.reportChef),
   }
-  const isServiceClient = role === 'SERVICE_CLIENT'
+  const isServiceClient = roleHas(role, 'SERVICE_CLIENT')
+  const askSuper = asksSuper(role) && !isServiceClient // Resp. flottes : « Demander » au Super Admin
 
   const [chef, setChef] = useState(null)
   const [loading, setLoading] = useState(true)
@@ -287,6 +289,12 @@ export default function ChefDetailPage() {
           {isServiceClient && chef.isActive && (
             <button onClick={() => setModal('request')} style={btn('#b45309', 'rgba(245,158,11,.45)')}><Send size={14} /> Demander une suspension</button>
           )}
+          {askSuper && chef.isActive && chef.chefDeFlotteStatus === 'ACTIVE' && (
+            <button onClick={() => setModal('ask-suspend')} style={btn('#b45309', 'rgba(245,158,11,.45)')}><Send size={14} /> Demander une suspension</button>
+          )}
+          {askSuper && !chef.isActive && chef.chefDeFlotteStatus !== 'PENDING' && (
+            <button onClick={() => setModal('ask-activate')} style={btn('#b45309', 'rgba(245,158,11,.45)')}><Send size={14} /> Demander la réactivation</button>
+          )}
           {rights.report && <button onClick={() => toggle('report')} style={btn('#dc2626', 'rgba(239,68,68,.35)')}><Flag size={14} /> Signaler</button>}
           {rights.manage && <button onClick={() => toggle('delete')} style={btn('#dc2626', 'rgba(239,68,68,.35)')}><Trash2 size={14} /> Supprimer</button>}
         </div>
@@ -496,6 +504,16 @@ export default function ChefDetailPage() {
           initial={chef}
           onClose={() => setModal(null)}
           onSaved={() => { setModal(null); setNotice('Modifications enregistrées.'); refetch() }}
+        />
+      )}
+      {(modal === 'ask-suspend' || modal === 'ask-activate') && (
+        <RequestModal
+          kind={modal === 'ask-suspend' ? 'CHEF_SUSPEND' : 'CHEF_ACTIVATE'}
+          title={`${modal === 'ask-suspend' ? 'Demander la suspension' : 'Demander la réactivation'} — ${who}`}
+          intro={modal === 'ask-suspend' ? 'La suspension du chef suspend aussi tous ses coursiers. Le Super Admin décide.' : 'La réactivation du chef revient au Super Admin.'}
+          targetUserId={chef.id}
+          onClose={() => setModal(null)}
+          onDone={text => { setModal(null); setNotice(text) }}
         />
       )}
       {modal === 'request' && (
