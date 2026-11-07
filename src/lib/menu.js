@@ -24,7 +24,7 @@ export const GROUPS = [
 ]
 
 export const NAV = [
-  { group: 'pilotage',   to: '/',                icon: LayoutDashboard, label: 'Dashboard',            roles: ['SUPER','DEV','ASSISTANCE_EXECUTIVE','FLOTTE','COMMERCIAL'] },
+  { group: 'pilotage',   to: '/',                icon: LayoutDashboard, label: 'Dashboard',            labelFor: role => (roleHas(role, 'CM') && !['DEV','ASSISTANCE_EXECUTIVE','FLOTTE','COMMERCIAL'].some(k => roleHas(role, k)) ? 'Dashboard CM' : null), roles: ['SUPER','DEV','ASSISTANCE_EXECUTIVE','FLOTTE','COMMERCIAL','CM'] },
   { group: 'pilotage',   to: '/map',             icon: Map,             label: 'Carte live',           keywords: 'map positions suivi', roles: ['SUPER','DEV','ASSISTANCE_EXECUTIVE','SERVICE_CLIENT','FLOTTE','COMMERCIAL','CM'] },
   { group: 'operations', to: '/orders',          icon: Package,         label: 'Courses',              keywords: 'commandes livraisons orders tournées', roles: ['SUPER','DEV','FINANCE','SERVICE_CLIENT','ASSISTANCE_EXECUTIVE','FLOTTE','COMMERCIAL','CM'] },
   { group: 'operations', to: '/incidents',       icon: AlertTriangle,   label: 'Incidents',            keywords: 'sos alertes litiges', roles: ['SUPER','DEV','SERVICE_CLIENT','ASSISTANCE_EXECUTIVE','FLOTTE','CM'] },

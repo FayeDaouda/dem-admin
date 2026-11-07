@@ -32,6 +32,7 @@ import { roleHas, canSee, ACTION_ROLES } from '../lib/droits'
 import FleetSections from './dashboard/FleetSections'
 import ShiftsSection from './dashboard/ShiftsSection'
 import ProDashboard from './dashboard/ProDashboard'
+import CmDashboard from './dashboard/CmDashboard'
 import { useFleetAnalytics } from '../lib/useFleetAnalytics'
 
 // ============================================================
@@ -486,7 +487,9 @@ export default function Dashboard() {
   const { user } = useAuth()
   const role = user?.adminRole
   const proOnly = roleHas(role, 'COMMERCIAL') && !['DEV', 'FINANCE', 'SERVICE_CLIENT', 'ASSISTANCE_EXECUTIVE', 'FLOTTE'].some(k => roleHas(role, k))
-  return proOnly ? <ProDashboard /> : <MainDashboard />
+  // CM / CRM Client : Dashboard CM (clients, sans revenus ni coursiers en ligne)
+  const cmOnly = roleHas(role, 'CM') && !['DEV', 'FINANCE', 'SERVICE_CLIENT', 'ASSISTANCE_EXECUTIVE', 'FLOTTE', 'COMMERCIAL'].some(k => roleHas(role, k))
+  return proOnly ? <ProDashboard /> : cmOnly ? <CmDashboard /> : <MainDashboard />
 }
 
 function MainDashboard() {
