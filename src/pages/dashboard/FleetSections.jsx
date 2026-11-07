@@ -1,6 +1,7 @@
 import { ResponsiveContainer, ComposedChart, Bar, Line, XAxis, YAxis, Tooltip, Legend } from 'recharts'
 import { Bike, Clock, Timer, PackageCheck, Phone } from 'lucide-react'
 import { glass } from '../../lib/glassStyles'
+import WhatsAppButton from '../../components/WhatsAppButton'
 
 // ── Dashboard du Responsable de flottes (dossier du 06/11/2026, C9) ─────────
 // Coursiers aujourd'hui, motifs d'annulation, délais, heures de pointe —
@@ -60,6 +61,7 @@ function DriverRow({ d }) {
       <span style={{ color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>{fmtDuration(d.onlineSeconds)}</span>
       <span style={{ width: 70, textAlign: 'right', whiteSpace: 'nowrap', fontWeight: 600, color: d.courses ? 'var(--text)' : '#dc2626' }}>{d.courses} course{d.courses > 1 ? 's' : ''}</span>
       {d.phone && <a href={`tel:${d.phone}`} title={`Appeler ${d.phone}`} style={{ color: 'var(--primary)', display: 'flex' }}><Phone size={13} /></a>}
+      <WhatsAppButton phone={d.phone} compact />
     </div>
   )
 }
@@ -125,6 +127,7 @@ function CoursesPart(props) {
           <ReasonBars rows={c.today} total={sum(c.today)} />
           <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 6 }}>
             {t.cancelledWithoutCourier} sans jamais avoir eu de coursier · {t.manualDispatch} course{t.manualDispatch > 1 ? 's' : ''} attribuée{t.manualDispatch > 1 ? 's' : ''} ou proposée{t.manualDispatch > 1 ? 's' : ''} à la main (dont {t.manualDispatchByViewer} par vous)
+            {t.createdByAdmin != null && <> · {t.createdByAdmin} saisie{t.createdByAdmin > 1 ? 's' : ''} pour un client (dont {t.createdByViewer} par vous)</>}
           </div>
         </div>
         <div style={card}>

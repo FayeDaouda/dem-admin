@@ -10,6 +10,8 @@ import DocThumb from '../components/DocThumb'
 import PageHeader from '../components/PageHeader'
 import { canSee, roleHas, asksSuper, ACTION_ROLES } from '../lib/droits'
 import DriverRequestModal from './drivers/DriverRequestModal'
+import { ConnectionHistory, DriverNotes } from './drivers/DriverFollowup'
+import WhatsAppButton from '../components/WhatsAppButton'
 import { useAutoRefresh } from '../lib/useAutoRefresh'
 import { useUrlQuery } from '../lib/useUrlQuery'
 import InfoTip from '../components/InfoTip'
@@ -578,6 +580,9 @@ function DriverFiche({ driver: d, deleted, rights, isServiceClient, notice, erro
             </FicheSection>
 
             {rights.paymentStats && !deleted && <PaymentStats driverId={d.id} />}
+            {/* Fiche enrichie (Resp. flottes, C7) */}
+            {!deleted && <ConnectionHistory driverId={d.id} Section={FicheSection} />}
+            {rights.notes && !deleted && <DriverNotes driverId={d.id} Section={FicheSection} />}
           </div>
 
           {/* Colonne droite : contact et actions */}
@@ -717,6 +722,7 @@ export default function Drivers() {
     suspend:      canSee(role, ACTION_ROLES.driverSuspend),
     suspendUnlimited: canSee(role, ACTION_ROLES.driverSuspendUnlimited),
     askSuper:     asksSuper(role), // « Demander » au Super Admin (Resp. flottes, niveau 2)
+    notes:        canSee(role, ACTION_ROLES.driverNotes),
     me:           user?.id,
     manage:       canSee(role, ACTION_ROLES.driverManage),
     paymentStats: canSee(role, ACTION_ROLES.driverPaymentStats),
@@ -1061,7 +1067,9 @@ export default function Drivers() {
                     {formatConnectionTime(d.connectionSecondsByPeriod?.[connectionPeriod])}
                   </td>
                   <td style={{ ...tdStyle, fontSize: 13 }}>
-                    {deletedView ? <span style={{ color: 'var(--text-muted)', fontSize: 12 }}>{d.archivedPhone ? `Ancien n° ${d.archivedPhone}` : 'Numéro libéré'}</span> : (d.phone ?? '—')}
+                    {deletedView ? <span style={{ color: 'var(--text-muted)', fontSize: 12 }}>{d.archivedPhone ? `Ancien n° ${d.archivedPhone}` : 'Numéro libéré'}</span> : (
+                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>{d.phone ?? '—'} <WhatsAppButton phone={d.phone} compact /></span>
+                    )}
                   </td>
                   <td style={tdStyle}><DriverStatus driver={d} deleted={deletedView} /></td>
                 </tr>

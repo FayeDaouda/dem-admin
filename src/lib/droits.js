@@ -115,7 +115,12 @@ export const ACTION_ROLES = {
   orderCancel:   ['ASSISTANCE_EXECUTIVE', 'FLOTTE'], // annuler : Super + Ass. exéc. ; Resp. flottes : course en attente seulement (orderCancelAny)
   orderCancelAny: ['ASSISTANCE_EXECUTIVE'],  // annuler aussi une course en cours
   orderMarkPaid: ['FINANCE'],                // marquer payé : Super + Finance
-  orderForceStatus: [],                      // colis récupéré / livré à la place du coursier (/force-status) : Super seul
+  orderForceStatus: [],
+  // Créer une course au nom d'un client (commande par téléphone / WhatsApp) :
+  // POST /admin/orders, Super + Resp. flottes
+  orderCreateForClient: ['FLOTTE'],
+  // Fiche coursier : notes internes (GET/POST /admin/drivers/:id/notes), Super + Resp. flottes
+  driverNotes: ['FLOTTE'],                      // colis récupéré / livré à la place du coursier (/force-status) : Super seul
   // Incidents : changer le statut ou les notes (PATCH /admin/incidents/:id) : Super + Ass. exéc.
   incidentUpdate: ['ASSISTANCE_EXECUTIVE', 'FLOTTE'],
   // Validation › chefs de flotte, Suspendre : PATCH /admin/chefs-de-flotte/:id/suspend, Super seul.
