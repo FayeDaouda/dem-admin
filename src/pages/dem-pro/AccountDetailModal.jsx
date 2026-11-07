@@ -13,6 +13,7 @@ import { ProductFormModal, DeleteProductModal } from './ProductModals'
 import ApiTab from './ApiTab'
 import { cancelReasonLabel } from '../../lib/cancelReasons'
 import InfoTip from '../../components/InfoTip'
+import ProFileTab from './ProFileTab'
 
 // ── Fiche commerçant DEM Pro (admin) ──────────────────────────────────────────
 // Données : GET /admin/dem-pro/:id (admin.dem-pro-accounts.service.js) — mêmes
@@ -20,6 +21,7 @@ import InfoTip from '../../components/InfoTip'
 // Onglets : Vue d'ensemble, Commandes, Abonnement, Wallet, Boutique, Tournées.
 // `canEdit` (SUPER + Service client) : catalogue modifiable dans l'onglet Boutique.
 // `actions` : barre d'actions de la page DEM Pro, affichée sous l'en-tête ;
+// `bonus` : semaine gratuite et bonus du Commercial, sous les actions ;
 // `refreshKey` : relit la fiche après une action faite depuis cette barre.
 
 const PERIODS = [
@@ -33,6 +35,7 @@ const PERIODS = [
 
 const TABS = [
   { key: 'overview', label: "Vue d'ensemble" },
+  { key: 'crm',      label: 'Suivi commercial' }, // Commercial / CRM Pro (C5)
   { key: 'orders',   label: 'Commandes' },
   { key: 'subscription', label: 'Abonnement' },
   { key: 'wallet',       label: 'Wallet' },
@@ -50,7 +53,7 @@ const fmtDate = (d, withTime = false) => d
   : '—'
 
 // canManageApi : clés API et suspension de l'accès API (SUPER uniquement)
-export default function AccountDetailModal({ accountId, onClose, canEdit = false, canManageApi = false, actions = null, refreshKey = 0 }) {
+export default function AccountDetailModal({ accountId, onClose, canEdit = false, canManageApi = false, actions = null, bonus = null, asks = false, refreshKey = 0 }) {
   const [tab, setTab]       = useState('overview')
   const [period, setPeriod] = useState('month')
   const [version, setVersion] = useState(0) // relit la fiche après une modification du catalogue
@@ -93,6 +96,8 @@ export default function AccountDetailModal({ accountId, onClose, canEdit = false
             <button onClick={onClose} style={closeBtn} title="Fermer"><X size={18} /></button>
           </div>
           {actions && <div style={{ marginTop: 14 }}>{actions}</div>}
+          {/* Semaine gratuite et bonus (Commercial / CRM Pro) */}
+          {bonus && <div style={{ marginTop: 12, paddingTop: 12, borderTop: '1px solid var(--border)' }}>{bonus}</div>}
           <div style={{ display: 'flex', gap: 4, marginTop: 16 }}>
             {TABS.map(t => (
               <button key={t.key} onClick={() => setTab(t.key)} style={{
@@ -113,6 +118,8 @@ export default function AccountDetailModal({ accountId, onClose, canEdit = false
             <div style={{ color: 'var(--text-muted)', textAlign: 'center', padding: 40 }}>Chargement…</div>
           ) : tab === 'overview' ? (
             <OverviewTab data={data} period={period} onPeriod={setPeriod} loading={loading} />
+          ) : tab === 'crm' ? (
+            <ProFileTab accountId={accountId} asks={asks} />
           ) : tab === 'orders' ? (
             <OrdersTab accountId={accountId} />
           ) : tab === 'subscription' ? (

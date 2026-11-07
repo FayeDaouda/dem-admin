@@ -43,7 +43,7 @@ export default function RequestModal({ kind, title, intro, targetUserId, payload
         kind, targetUserId: targetUserId ?? undefined, payload: payload ?? {},
         reason: reason.trim(), detail: detail.trim() || undefined, attachmentUrl: file?.url, urgent,
       })
-      onDone(`Demande envoyée au Super Admin${urgent ? ' (urgente)' : ''}. Suivez-la dans Validation › Mes demandes.`)
+      onDone(`Demande envoyée au Super Admin${urgent ? ' (urgente)' : ''}. Suivez-la dans « Mes demandes ».`)
     } catch (err) {
       setError(err.response?.data?.message ?? 'Envoi impossible.')
     } finally { setSaving(false) }

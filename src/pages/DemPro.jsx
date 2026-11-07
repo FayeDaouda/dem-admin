@@ -10,13 +10,16 @@ import OffersTab from './dem-pro/OffersTab'
 import ReferralsTab from './dem-pro/ReferralsTab'
 import PageHeader from '../components/PageHeader'
 import TabBar from '../components/TabBar'
-import { canSee, roleHas, ACTION_ROLES } from '../lib/droits'
+import { canSee, roleHas, ACTION_ROLES, asksSuper } from '../lib/droits'
 import {
   hasPaidTier, SECTOR_LABELS, SECTOR_COLORS, VOLUME_LABELS, PLAN_COLORS, proStatusInfo, planLabel,
 } from './dem-pro/labels'
 import { useAutoRefresh } from '../lib/useAutoRefresh'
 import { useUrlQuery } from '../lib/useUrlQuery'
 import ExportMenu from '../components/ExportMenu'
+import { PRO_SOURCE_LABELS } from '../lib/proSources'
+import ProBonusActions from './dem-pro/ProBonusActions'
+import WhatsAppButton from '../components/WhatsAppButton'
 
 // Vues de la liste. « Actifs » = validé ET non suspendu (même règle que
 // l'ancienne carte « Actifs ») ; les suspendus ont leur propre vue.
@@ -36,6 +39,17 @@ const PLAN_FILTERS = [
   { key: 'FREE',    label: 'Gratuit',                test: a => !hasPaidTier(a) },
   { key: 'PAID',    label: 'Abonnement payé',        test: a => a.paidPlanActive },
   { key: 'OFFERED', label: 'Accès offert / manuel',  test: a => hasPaidTier(a) && !a.paidPlanActive },
+]
+
+// Suivi du Commercial / CRM Pro (C3, C4) : essai qui finit dans 2 jours ou
+// moins, Pro dormants (aucune commande depuis 7 jours), validés sans commande.
+const DAY_MS = 24 * 60 * 60 * 1000
+const validatedPro = a => a.proStatus === 'ACTIVE' && a.isActive
+const FOLLOW_FILTERS = [
+  { key: '',             label: 'Suivi : tous',               test: () => true },
+  { key: 'TRIAL_ENDING', label: "Essai qui finit (≤ 2 j)",    test: a => validatedPro(a) && a.proPlanStatus === 'TRIAL' && a.proPlanExpiresAt && new Date(a.proPlanExpiresAt) - Date.now() <= 2 * DAY_MS && new Date(a.proPlanExpiresAt) > Date.now() },
+  { key: 'DORMANT',      label: 'Dormants (7 j sans commande)', test: a => validatedPro(a) && a.lastOrderAt && Date.now() - new Date(a.lastOrderAt) > 7 * DAY_MS },
+  { key: 'NEVER',        label: 'Jamais commandé',            test: a => validatedPro(a) && !(a._count?.ordersAsClient > 0) },
 ]
 
 // Statut sans pictogramme (proStatusInfo en a, absents des polices du PDF)
@@ -65,6 +79,7 @@ function EditModal({ initial, onClose, onSaved }) {
     proBusinessName: initial?.proBusinessName ?? '',
     proSector:       initial?.proSector       ?? '',
     proWeeklyVolume: initial?.proWeeklyVolume ?? '',
+    ...(isEdit ? {} : { proSource: initial?.proSource ?? '' }), // source obligatoire à la création (C11)
   })
   const [saving, setSaving] = useState(false)
   const [error, setError]   = useState('')
@@ -73,6 +88,7 @@ function EditModal({ initial, onClose, onSaved }) {
 
   async function save() {
     if (!isEdit && !form.phone.trim()) { setError('Le numéro de téléphone est requis.'); return }
+    if (!isEdit && !form.proSource) { setError('Indiquez la source du compte.'); return }
     setSaving(true); setError('')
     try {
       if (isEdit) await api.patch(`/admin/dem-pro/${initial.id}`, form)
@@ -118,6 +134,16 @@ function EditModal({ initial, onClose, onSaved }) {
             ))}
           </select>
         </div>
+
+        {!isEdit && (
+          <div style={{ marginBottom: 14 }}>
+            <label style={labelStyle}>Source du compte *</label>
+            <select value={form.proSource} onChange={e => set('proSource', e.target.value)} style={inputStyle}>
+              <option value="">— Choisir —</option>
+              {Object.entries(PRO_SOURCE_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+            </select>
+          </div>
+        )}
 
         <div style={{ marginBottom: 14 }}>
           <label style={labelStyle}>Volume hebdomadaire</label>
@@ -430,6 +456,9 @@ export default function DemPro() {
     edit:   isSuper || isServiceClient,
     report: canSee(role, ACTION_ROLES.reportUser),
     export: canSee(role, ACTION_ROLES.listExport),
+    create: canSee(role, ACTION_ROLES.proCreate), // Super + Commercial
+    bonus:  canSee(role, ACTION_ROLES.proBonus),  // semaine gratuite, bonus (C9, C10)
+    asks:   !isSuper && asksSuper(role),          // Commercial : « Demander » au-delà des plafonds
   }
 
   // Onglet, vue, plan et recherche gardés dans l'adresse.
@@ -438,6 +467,7 @@ export default function DemPro() {
   const view = onglet === 'offres' || onglet === 'parrainage' ? onglet : 'comptes'
   const status     = VIEWS.some(v => v.key === params.get('statut')) ? params.get('statut') : ''
   const planFilter = PLAN_FILTERS.some(f => f.key === params.get('plan')) ? params.get('plan') : ''
+  const followFilter = FOLLOW_FILTERS.some(f => f.key === params.get('suivi')) ? params.get('suivi') : ''
   const [search, setSearch] = useState(() => params.get('q') ?? '')
   useUrlQuery(setSearch)
 
@@ -470,7 +500,7 @@ export default function DemPro() {
   const [loading, setLoading]   = useState(true)
   const [editTarget, setEditTarget] = useState(null)
   const [requestTarget, setRequestTarget] = useState(null)
-  const [detailId, setDetailId] = useState(null) // fiche commerçant ouverte
+  const [detailId, setDetailId] = useState(() => params.get('fiche')) // fiche commerçant ouverte (?fiche= depuis le Dashboard Pro)
   const [ficheVersion, setFicheVersion] = useState(0)
   const [pageNotice, setPageNotice] = useState('')
 
@@ -521,7 +551,9 @@ export default function DemPro() {
     || (a.proBusinessName ?? '').toLowerCase().includes(q))
   const viewTest = VIEWS.find(v => v.key === status).test
   const planTest = PLAN_FILTERS.find(f => f.key === planFilter).test
-  const filtered = bySearch.filter(viewTest).filter(planTest)
+  const followTest = FOLLOW_FILTERS.find(f => f.key === followFilter).test
+  const filtered = bySearch.filter(viewTest).filter(planTest).filter(followTest)
+  const followCounts = Object.fromEntries(FOLLOW_FILTERS.map(f => [f.key, bySearch.filter(f.test).length]))
   const viewCounts = Object.fromEntries(VIEWS.map(v => [v.key, bySearch.filter(planTest).filter(v.test).length]))
   const planCounts = Object.fromEntries(PLAN_FILTERS.map(f => [f.key, bySearch.filter(viewTest).filter(f.test).length]))
   const totalOrders = accounts.reduce((s, a) => s + (a._count?.ordersAsClient ?? 0), 0)
@@ -627,7 +659,7 @@ export default function DemPro() {
         actions={view === 'comptes' ? <>
           <button onClick={() => fetch()} style={btnOutline}><RefreshCw size={14} /> Actualiser</button>
           {rights.export && <ExportMenu getSpec={exportSpec} disabled={loading || filtered.length === 0} />}
-          {isSuper && <button onClick={() => setEditTarget({})} style={btnPrimary}><Plus size={14} /> Nouveau compte</button>}
+          {rights.create && <button onClick={() => setEditTarget({})} style={btnPrimary}><Plus size={14} /> Nouveau compte</button>}
         </> : null}
       />
 
@@ -656,6 +688,9 @@ export default function DemPro() {
           </div>
           <select value={planFilter} onChange={e => setParam({ plan: e.target.value })} style={{ ...glassInput, width: 230 }}>
             {PLAN_FILTERS.map(f => <option key={f.key || 'all'} value={f.key}>{f.label}{f.key ? ` (${planCounts[f.key]})` : ''}</option>)}
+          </select>
+          <select value={followFilter} onChange={e => setParam({ suivi: e.target.value })} style={{ ...glassInput, width: 250 }}>
+            {FOLLOW_FILTERS.map(f => <option key={f.key || 'all'} value={f.key}>{f.label}{f.key ? ` (${followCounts[f.key]})` : ''}</option>)}
           </select>
         </div>
 
@@ -748,7 +783,13 @@ export default function DemPro() {
                           </div>
                         </div>
                       </td>
-                      <td style={{ ...tdStyle, fontSize: 13 }}>{a.phone ?? '—'}</td>
+                      <td style={{ ...tdStyle, fontSize: 13 }} onClick={e => e.stopPropagation()}>
+                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                          {a.phone ?? '—'}
+                          {a.phone && <a href={`tel:${a.phone}`} title={`Appeler ${a.phone}`} style={{ color: 'var(--primary)', display: 'flex' }}><Phone size={13} /></a>}
+                          <WhatsAppButton phone={a.phone} compact />
+                        </span>
+                      </td>
                       <td style={tdStyle}><PlanCell account={a} isSuper={isSuper} planSystem={planSystem} onChanged={onPlanChanged} /></td>
                       <td style={{ ...tdStyle, textAlign: 'center', fontWeight: 600 }}>{a._count?.ordersAsClient ?? 0}</td>
                       <td style={tdStyle}><span style={{ fontSize: 12, fontWeight: 600, color: st.color, whiteSpace: 'nowrap' }}>{st.text}</span></td>
@@ -775,6 +816,7 @@ export default function DemPro() {
           onClose={() => setDetailId(null)}
           canEdit={isSuper || isServiceClient}
           canManageApi={isSuper}
+          asks={rights.asks}
           refreshKey={ficheVersion}
           actions={detailAccount && (
             <ProActions
@@ -787,6 +829,10 @@ export default function DemPro() {
               onRequest={(kind, targetUser) => setRequestTarget({ kind, targetUser })}
               onDeleted={okText => { setDetailId(null); fetch(true); setPageNotice(okText) }}
             />
+          )}
+          bonus={detailAccount && rights.bonus && detailAccount.proStatus === 'ACTIVE' && (
+            <ProBonusActions key={`b-${detailId}`} account={detailAccount} asks={rights.asks}
+              onChanged={() => { fetch(true); setFicheVersion(v => v + 1) }} />
           )}
         />
       )}

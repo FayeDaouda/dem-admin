@@ -10,6 +10,7 @@ import StatusDot from './components/StatusDot'
 import { useAutoRefresh } from '../../lib/useAutoRefresh'
 import { cancelReasonLabel } from '../../lib/cancelReasons'
 import InfoTip from '../../components/InfoTip'
+import { clientCharge } from '../../lib/orderPrice'
 
 export default function OverviewTab() {
   // Recherche client
@@ -249,7 +250,7 @@ export default function OverviewTab() {
                       <td style={tdStyle}><StatusDot status={o.status} /></td>
                       <td style={tdStyle}>{o.client?.name ?? o.client?.phone ?? '—'}</td>
                       <td style={tdStyle}>{o.driver?.name ?? <span style={{ color: 'var(--text-muted)' }}>—</span>}</td>
-                      <td style={{ ...tdStyle, fontWeight: 600 }}>{o.price?.toLocaleString()} F</td>
+                      <td style={{ ...tdStyle, fontWeight: 600 }}>{clientCharge(o).toLocaleString('fr-FR')} F</td>
                       <td style={{ ...tdStyle, fontSize: 11, color: 'var(--text-muted)' }}>
                         {o.createdAt ? new Date(o.createdAt).toLocaleString('fr-FR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : '—'}
                       </td>
@@ -412,7 +413,7 @@ export default function OverviewTab() {
                           {clientDetail.ordersAsClient.map(o => (
                             <tr key={o.id} style={{ borderBottom: '1px solid rgba(0,0,0,.04)' }}>
                               <td style={{ ...tdStyle, padding: '6px 8px' }}><StatusDot status={o.status} /></td>
-                              <td style={{ ...tdStyle, padding: '6px 8px', fontWeight: 600 }}>{o.price?.toLocaleString()} F</td>
+                              <td style={{ ...tdStyle, padding: '6px 8px', fontWeight: 600 }}>{clientCharge(o).toLocaleString('fr-FR')} F</td>
                               <td style={{ ...tdStyle, padding: '6px 8px' }}>{o.status === 'CANCELLED' ? '—' : <Badge status={o.paymentStatus ?? 'PENDING'} />}</td>
                               <td style={{ ...tdStyle, padding: '6px 8px', fontSize: 11, color: 'var(--text-muted)' }}>
                                 {o.createdAt ? new Date(o.createdAt).toLocaleDateString('fr-FR') : '—'}
@@ -468,7 +469,7 @@ export default function OverviewTab() {
               <Row label="Type" value={<Badge status={orderDetail.orderType} />} />
               <Row label="Client" value={orderDetail.client?.name ?? orderDetail.client?.phone ?? '—'} />
               <Row label="Coursier" value={orderDetail.driver?.name ?? '—'} />
-              <Row label="Prix" value={`${orderDetail.price?.toLocaleString()} F`} />
+              <Row label="Prix client" value={`${clientCharge(orderDetail).toLocaleString('fr-FR')} F`} />
               <Row label="Paiement" value={orderDetail.status === 'CANCELLED' ? '—' : <Badge status={orderDetail.paymentStatus ?? 'PENDING'} />} />
               <Row label="Départ" value={orderDetail.pickupAddress ?? '—'} />
               <Row label="Arrivée" value={orderDetail.deliveryAddress ?? '—'} />

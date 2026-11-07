@@ -4,7 +4,7 @@ import { Send, X } from 'lucide-react'
 import api from '../lib/api'
 import { connectSocket } from '../lib/socket'
 import { useAuth } from '../contexts/AuthContext'
-import { isSuperRole, asksSuper } from '../lib/droits'
+import { isSuperRole, asksSuper, roleHas } from '../lib/droits'
 import { beep } from '../lib/beep'
 import { REQUEST_KIND_LABELS, REQUEST_STATUS_LABELS } from '../lib/requestKinds'
 
@@ -23,11 +23,13 @@ export default function RequestAlerts() {
   const [urgent, setUrgent] = useState([])
   const [decisions, setDecisions] = useState([]) // { id, kind, status }
   const known = useRef(new Set())
+  // « Mes demandes » : Validation (Resp. flottes) ou Poste Commercial
+  const myRequestsPath = roleHas(user?.adminRole, 'FLOTTE') ? '/validation?tab=my-requests' : '/service-client?tab=requests'
 
   const loadUrgent = useCallback(async () => {
     try {
-      const res = await api.get('/admin/requests', { params: { status: 'PENDING', origin: 'FLOTTE' } })
-      const list = (res.data?.requests ?? []).filter(r => r.urgent)
+      const res = await api.get('/admin/requests', { params: { status: 'PENDING' } })
+      const list = (res.data?.requests ?? []).filter(r => r.urgent && ['FLOTTE', 'COMMERCIAL'].includes(r.origin))
       if (list.some(r => !known.current.has(r.id))) beep({ count: 3, frequency: 760 })
       known.current = new Set(list.map(r => r.id))
       setUrgent(list)
@@ -65,12 +67,12 @@ export default function RequestAlerts() {
           <div style={{ flex: 1, minWidth: 200 }}>
             <div style={{ fontWeight: 800, fontSize: 14 }}>Demande urgente — {REQUEST_KIND_LABELS[r.kind] ?? r.kind}</div>
             <div style={{ fontSize: 12, opacity: 0.9 }}>
-              {r.submittedBy?.name ?? 'Responsable de flottes'}
+              {r.submittedBy?.name ?? (r.origin === 'COMMERCIAL' ? 'Commercial' : 'Responsable de flottes')}
               {r.targetUser && ` · ${r.targetUser.name ?? r.targetUser.phone}`}
               {r.reason && ` · ${r.reason}`}
             </div>
           </div>
-          <button onClick={() => navigate(`/validation?tab=fleet-requests&highlight=${r.id}`)} style={{ ...btn, background: '#fff', color: '#dc2626' }}>Décider</button>
+          <button onClick={() => navigate(`/validation?tab=${r.origin === 'COMMERCIAL' ? 'commercial-requests' : 'fleet-requests'}&highlight=${r.id}`)} style={{ ...btn, background: '#fff', color: '#dc2626' }}>Décider</button>
         </div>
       ))}
       {decisions.map(d => {
@@ -81,7 +83,7 @@ export default function RequestAlerts() {
             <div style={{ flex: 1, minWidth: 200, fontWeight: 700, fontSize: 13.5 }}>
               Votre demande « {REQUEST_KIND_LABELS[d.kind] ?? d.kind} » : {(REQUEST_STATUS_LABELS[d.status] ?? d.status).toLowerCase()}
             </div>
-            <button onClick={() => { navigate(`/validation?tab=my-requests&highlight=${d.id}`); setDecisions(l => l.filter(x => x.id !== d.id)) }} style={btn}>Voir</button>
+            <button onClick={() => { navigate(myRequestsPath); setDecisions(l => l.filter(x => x.id !== d.id)) }} style={btn}>Voir</button>
             <button onClick={() => setDecisions(l => l.filter(x => x.id !== d.id))} style={{ ...btn, padding: '6px 8px' }} title="Fermer"><X size={14} /></button>
           </div>
         )

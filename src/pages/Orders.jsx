@@ -16,10 +16,8 @@ import DispatchPicker from '../components/DispatchPicker'
 import OrderRequestModal from './orders/OrderRequestModal'
 import ClientOrderModal from './orders/ClientOrderModal'
 import InternalNotes from '../components/InternalNotes'
+import { clientCharge } from '../lib/orderPrice'
 
-// Montant payé par le client = part coursier (price) + frais DEM − réduction
-// (même calcul que l'app : core/utils/price_format.dart:clientChargeFor).
-const clientCharge = o => Math.max(0, (o.price ?? 0) + (o.demFee ?? 0) - (o.discountAmount ?? 0))
 
 const firstNonEmpty = (...values) => values.find(v => typeof v === 'string' && v.trim() !== '') ?? '—'
 
@@ -60,7 +58,8 @@ function formatDuration(min) {
 export default function Orders() {
   const { user } = useAuth()
   const role = user?.adminRole
-  const canDispatch = canSee(role, ACTION_ROLES.orderDispatch)
+  const canDispatchRole = canSee(role, ACTION_ROLES.orderDispatch)
+  const dispatchAll = canSee(role, ACTION_ROLES.orderDispatchAll) // sinon (Commercial) : courses DEM Pro seulement
   const canCancel   = canSee(role, ACTION_ROLES.orderCancel)
   const canCancelAny = canSee(role, ACTION_ROLES.orderCancelAny) // sinon : course en attente seulement
   const askSuper    = asksSuper(role) // Resp. flottes : « Demander » au Super Admin (niveau 2)
@@ -76,6 +75,7 @@ export default function Orders() {
   // rechargement rouvre la même liste. ?q= vient aussi de la recherche globale.
   const [params, setParams] = useSearchParams()
   const statusFilter = FILTERS.some(f => f.key === params.get('statut')) ? params.get('statut') : 'all'
+  const proOnly = params.get('pro') === '1' // filtre « Commandes DEM Pro » (?pro=1)
   const [search, setSearch] = useState(() => params.get('q') ?? '')
   useUrlQuery(setSearch)
   const [debouncedSearch, setDebouncedSearch] = useState(search.trim())
@@ -94,6 +94,16 @@ export default function Orders() {
   const [driverPicker, setDriverPicker] = useState(null) // true = fenêtre de dispatch ouverte
   const [cancelReasons, setCancelReasons] = useState(null)
   const [cancelPicker, setCancelPicker]   = useState(null) // { orderId, code, note }
+
+  function toggleProOnly() {
+    setParams(prev => {
+      const next = new URLSearchParams(prev)
+      if (proOnly) next.delete('pro')
+      else next.set('pro', '1')
+      return next
+    }, { replace: true })
+    setPage(1)
+  }
 
   function setFilter(key) {
     setParams(prev => {
@@ -126,7 +136,7 @@ export default function Orders() {
   const fetch = useCallback(async (silent = false) => {
     const requestId = ++lastRequest.current
     if (!silent) setLoading(true)
-    const base = debouncedSearch ? { search: debouncedSearch } : {}
+    const base = { ...(debouncedSearch ? { search: debouncedSearch } : {}), ...(proOnly ? { clientType: 'DEM_PRO' } : {}) }
     try {
       const listParams = { ...base, page, limit: LIMIT }
       if (statusFilter !== 'all') listParams.group = statusFilter
@@ -143,7 +153,7 @@ export default function Orders() {
     } finally {
       if (!silent && requestId === lastRequest.current) setLoading(false)
     }
-  }, [page, statusFilter, debouncedSearch])
+  }, [page, statusFilter, debouncedSearch, proOnly])
 
   useEffect(() => { fetch() }, [fetch])
   useAutoRefresh(() => fetch(true))
@@ -237,6 +247,14 @@ export default function Orders() {
   }
 
   // Actions possibles sur la course ouverte (droits d'affichage = droits serveur)
+  const proOrder = detail?.client?.role === 'DEM_PRO'
+  const canDispatch = canDispatchRole && (dispatchAll || proOrder)
+  // Commercial : demandes sur les commandes Pro ; sans droit d'annuler, toute
+  // course non terminée s'annule par une demande
+  const askHere = askSuper && (dispatchAll || proOrder)
+  const askCancel = askHere && (canCancel
+    ? !canCancelAny && ['ACCEPTED', 'PICKED_UP', 'IN_TRANSIT'].includes(detail?.status)
+    : !['DELIVERED', 'CANCELLED'].includes(detail?.status))
   const actions = detail ? [
     canDispatch && detail.status === 'PENDING' && !detail.driver && { key: 'pick', label: 'Proposer / attribuer', color: '#0077b6', onClick: openDriverPicker },
     canDispatch && detail.driver && (isSuperRole(role) ? ['ACCEPTED', 'PICKED_UP', 'IN_TRANSIT'] : ['ACCEPTED']).includes(detail.status) && { key: 'reassign', label: 'Réattribuer', color: '#7c3aed', onClick: openDriverPicker },
@@ -245,8 +263,8 @@ export default function Orders() {
     canForce && detail.driver && ['ACCEPTED', 'PICKED_UP', 'IN_TRANSIT'].includes(detail.status) && { key: 'deliver', label: 'Colis livré', color: '#16a34a', onClick: () => setConfirming('DELIVERED') },
     canMarkPaid && detail.status === 'DELIVERED' && detail.paymentStatus === 'PENDING' && { key: 'paid', label: 'Marquer payé', color: '#16a34a', onClick: () => setConfirming('paid') },
     canCancel && !['DELIVERED', 'CANCELLED'].includes(detail.status) && (canCancelAny || ['SCHEDULED', 'PENDING'].includes(detail.status)) && { key: 'cancel', label: 'Annuler la course', color: '#dc2626', onClick: openCancelPicker },
-    askSuper && !canCancelAny && ['ACCEPTED', 'PICKED_UP', 'IN_TRANSIT'].includes(detail.status) && { key: 'ask-cancel', label: "Demander l'annulation", color: '#dc2626', onClick: () => setOrderRequest('cancel') },
-    askSuper && detail.status !== 'CANCELLED' && (detail.client?.id || detail.clientId) && { key: 'ask-geste', label: 'Demander un geste', color: '#7c3aed', onClick: () => setOrderRequest('geste') },
+    askCancel && { key: 'ask-cancel', label: "Demander l'annulation", color: '#dc2626', onClick: () => setOrderRequest('cancel') },
+    askHere && detail.status !== 'CANCELLED' && (detail.client?.id || detail.clientId) && { key: 'ask-geste', label: 'Demander un geste', color: '#7c3aed', onClick: () => setOrderRequest('geste') },
   ].filter(Boolean) : []
 
   // Texte et action de la confirmation ouverte
@@ -289,7 +307,7 @@ export default function Orders() {
           <input
             value={search}
             onChange={e => setSearch(e.target.value)}
-            placeholder="ID, client, coursier, adresse…"
+            placeholder="ID, client, entreprise, coursier, adresse…"
             style={{ ...glassInput, paddingLeft: 36, width: '100%' }}
           />
         </div>
@@ -306,6 +324,10 @@ export default function Orders() {
             )
           })}
         </div>
+        <button onClick={toggleProOnly} title="Seulement les commandes des comptes DEM Pro" style={{
+          padding: '7px 12px', borderRadius: 'var(--radius-sm)', fontSize: 12.5, cursor: 'pointer', fontWeight: proOnly ? 700 : 500,
+          border: `1px solid ${proOnly ? '#f97316' : 'rgba(0,119,182,.25)'}`, background: proOnly ? 'rgba(249,115,22,.12)' : 'rgba(255,255,255,.5)', color: proOnly ? '#c2410c' : 'var(--text-muted)',
+        }}>Commandes DEM Pro</button>
       </div>
 
       <div style={pageScroll}>
@@ -388,6 +410,13 @@ export default function Orders() {
               </div>
             </div>
 
+            {/* Attribution en cours par un autre admin (C13) */}
+            {detail.dispatchLock && (
+              <div style={{ fontSize: 12.5, fontWeight: 600, color: '#b45309', background: 'rgba(245,158,11,.10)', padding: '6px 10px', borderRadius: 8, marginBottom: 10 }}>
+                En cours d'attribution par {detail.dispatchLock.byName ?? 'un autre admin'}
+              </div>
+            )}
+
             {/* Actions, en haut */}
             {actions.length > 0 && !confirming && (
               <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 14 }}>
@@ -460,7 +489,10 @@ export default function Orders() {
                   <PersonCard role="Coursier"
                     name={firstNonEmpty(detail.driver?.name, detail.driver?.phone)}
                     phone={detail.driver?.phone}
-                    extra={detail.driver ? [detail.driver.vehicleType, detail.driver.vehiclePlate].filter(Boolean).join(' · ') : (['DELIVERED', 'CANCELLED'].includes(detail.status) ? 'Aucun coursier' : 'Pas encore de coursier')} />
+                    extra={[
+                      detail.driver ? [detail.driver.vehicleType, detail.driver.vehiclePlate].filter(Boolean).join(' · ') : (['DELIVERED', 'CANCELLED'].includes(detail.status) ? 'Aucun coursier' : 'Pas encore de coursier'),
+                      detail.dispatchedByName && `${detail.dispatchedAction === 'SUGGEST' ? 'Proposée' : 'Attribuée'} par ${detail.dispatchedByName}`,
+                    ].filter(Boolean).join(' · ')} />
                   {(detail.receiverName || detail.receiverPhone || detail.senderName || detail.senderPhone) && (
                     <PersonCard role="Destinataire"
                       name={firstNonEmpty(detail.receiverName, detail.receiverPhone)}

@@ -175,6 +175,7 @@ const TABS = [
   { key: 'service-requests', label: 'Demandes Service Client', icon: ClipboardList },
   { key: 'finance-requests', label: 'Demandes Finance',        icon: Wallet },
   { key: 'fleet-requests',   label: 'Demandes Flotte',         icon: Truck },
+  { key: 'commercial-requests', label: 'Demandes Commercial',   icon: Briefcase },
   { key: 'my-requests',      label: 'Mes demandes',            icon: Send },
 ]
 
@@ -192,6 +193,7 @@ const COUNTERS = {
       'service-requests': list.filter(SC_FILTER).length,
       'finance-requests': list.filter(FINANCE_FILTER).length,
       'fleet-requests':   list.filter(FLEET_FILTER).length,
+      'commercial-requests': list.filter(r => r.origin === 'COMMERCIAL').length,
     }
   }),
   // Mes demandes : celles qui attendent ma réponse (précision demandée)
@@ -263,6 +265,7 @@ export default function Validation() {
         {tab === 'service-requests' && <ServiceRequestsTab highlightId={highlightId} onChanged={refreshCounts} />}
         {tab === 'finance-requests' && <FinanceRequestsTab highlightId={highlightId} onChanged={refreshCounts} />}
         {tab === 'fleet-requests'   && <FleetRequestsTab highlightId={highlightId} onChanged={refreshCounts} />}
+        {tab === 'commercial-requests' && <FleetRequestsTab origin="COMMERCIAL" emptyText="Aucune demande du Commercial / CRM Pro." highlightId={highlightId} onChanged={refreshCounts} />}
         {tab === 'my-requests'      && <MyRequestsTab highlightId={highlightId} onChanged={refreshCounts} />}
       </div>
     </div>
@@ -910,7 +913,7 @@ function DemProTab({ highlightId, onChanged }) {
 // (/admin/requests), deux onglets pour ne pas les noyer les unes dans les autres.
 // Références stables (pas de fonction inline) pour ne pas invalider le
 // useCallback de chargement à chaque rendu.
-const SC_FILTER      = r => r.kind !== 'TARIFF_CHANGE' && r.origin !== 'FLOTTE'
+const SC_FILTER      = r => r.kind !== 'TARIFF_CHANGE' && !['FLOTTE', 'COMMERCIAL'].includes(r.origin)
 const FINANCE_FILTER = r => r.kind === 'TARIFF_CHANGE'
 const FLEET_FILTER   = r => r.origin === 'FLOTTE'
 
@@ -1163,7 +1166,8 @@ function RequestCard({ r, highlighted, children }) {
   )
 }
 
-function FleetRequestsTab({ highlightId, onChanged }) {
+// origin : FLOTTE (Responsable de flottes) ou COMMERCIAL (Commercial / CRM Pro)
+function FleetRequestsTab({ highlightId, onChanged, origin = 'FLOTTE', emptyText = 'Aucune demande du Responsable de flottes.' }) {
   const [list,    setList]    = useState([])
   const [loading, setLoading] = useState(true)
   const [filter,  setFilter]  = useState('OPEN')
@@ -1172,13 +1176,13 @@ function FleetRequestsTab({ highlightId, onChanged }) {
   const load = useCallback(async (silent = false) => {
     if (!silent) setLoading(true)
     try {
-      const res = await api.get('/admin/requests', { params: { origin: 'FLOTTE', ...(filter === 'all' ? {} : { status: filter }) } })
+      const res = await api.get('/admin/requests', { params: { origin, ...(filter === 'all' ? {} : { status: filter }) } })
       const rows = res.data.requests ?? []
       // Urgentes en attente d'abord, puis les plus anciennes
       setList(rows.sort((a, b) => (b.urgent && b.status === 'PENDING') - (a.urgent && a.status === 'PENDING') || new Date(a.createdAt) - new Date(b.createdAt)))
     } catch (e) { console.error(e) }
     finally { if (!silent) setLoading(false) }
-  }, [filter])
+  }, [filter, origin])
 
   useEffect(() => { load() }, [load])
   useAutoRefresh(() => load(true))
@@ -1207,7 +1211,7 @@ function FleetRequestsTab({ highlightId, onChanged }) {
       <Toolbar filters={[['OPEN','À traiter'],['APPROVED','Validées'],['REJECTED','Refusées'],['all','Toutes']]} value={filter} onChange={setFilter} onRefresh={load} />
       <Notice text={notice} />
       {loading ? <Loading />
-      : list.length === 0 ? <Empty>Aucune demande du Responsable de flottes.</Empty>
+      : list.length === 0 ? <Empty>{emptyText}</Empty>
       : list.map(r => {
         const mine = action?.id === r.id ? action : null
         return (

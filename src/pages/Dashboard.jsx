@@ -31,6 +31,7 @@ import { PAGES } from '../lib/aide'
 import { roleHas, canSee, ACTION_ROLES } from '../lib/droits'
 import FleetSections from './dashboard/FleetSections'
 import ShiftsSection from './dashboard/ShiftsSection'
+import ProDashboard from './dashboard/ProDashboard'
 import { useFleetAnalytics } from '../lib/useFleetAnalytics'
 
 // ============================================================
@@ -480,7 +481,15 @@ const ALERT_TARGETS = {
 
 const SEVERITY_COLOR = { high: '#ef4444', medium: '#f59e0b' }
 
+// Commercial / CRM Pro seul (sans autre accès du Dashboard) : Dashboard Pro
 export default function Dashboard() {
+  const { user } = useAuth()
+  const role = user?.adminRole
+  const proOnly = roleHas(role, 'COMMERCIAL') && !['DEV', 'FINANCE', 'SERVICE_CLIENT', 'ASSISTANCE_EXECUTIVE', 'FLOTTE'].some(k => roleHas(role, k))
+  return proOnly ? <ProDashboard /> : <MainDashboard />
+}
+
+function MainDashboard() {
   const { user } = useAuth()
   const navigate = useNavigate()
   const { isMobile, isTablet } = useResponsive()
