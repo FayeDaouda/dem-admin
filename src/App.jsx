@@ -29,6 +29,7 @@ import BadgesPage from './pages/Badges'
 import Parrainage from './pages/Parrainage'
 import Notifications from './pages/Notifications'
 import ProBase from './pages/ProBase'
+import ClientBase from './pages/ClientBase'
 
 const LiveMap     = lazy(() => import('./pages/LiveMap'))
 const FleetSection = lazy(() => import('./pages/fleet/FleetSection'))
@@ -118,6 +119,7 @@ function AppRoutes() {
       <Route path="/nouveaux-profils" element={<Navigate to="/relances?tab=inscrits" replace />} />
       <Route path="/tableau" element={<Navigate to="/relances?tab=appels" replace />} />
       <Route path="/base-pro" element={<ProtectedRoute><ProBase /></ProtectedRoute>} />
+      <Route path="/base-clients" element={<ProtectedRoute><ClientBase /></ProtectedRoute>} />
       <Route path="/relances" element={<ProtectedRoute><Relances /></ProtectedRoute>} />
       <Route path="/badges" element={<ProtectedRoute><BadgesPage /></ProtectedRoute>} />
       <Route path="/badges/clients" element={<Navigate to="/badges?tab=clients" replace />} />

@@ -44,6 +44,7 @@ export const NAV = [
   { group: 'croissance', to: '/notifications',   icon: Bell,            label: 'Notifications',        keywords: 'push broadcast envoi messages programmées historique alerte campagnes', roles: ['SUPER','MARKETING','FLOTTE','CM'] },
   { group: 'croissance', to: '/relances',        icon: Table2,          label: 'Relances',             keywords: 'tableau appels prospection nouveaux profils inscrits inscriptions', roles: ['SUPER','SERVICE_CLIENT','ASSISTANCE_EXECUTIVE'] },
   { group: 'croissance', to: '/base-pro',        icon: Table2,          label: 'Base de données Pro',  keywords: 'relances prospects pro viabilité rappels tam', roles: ['SUPER','COMMERCIAL'] },
+  { group: 'croissance', to: '/base-clients',    icon: Table2,          label: 'Base de données Clients', keywords: 'relances clients inactifs jamais servis fidèles source segment', roles: ['SUPER','CM'] },
   { group: 'administration', to: '/equipes',     icon: UsersRound,      label: 'Équipes',              keywords: 'admins comptes rôles', roles: ['SUPER'] },
   { group: 'administration', to: '/audit',       icon: ScrollText,      label: 'Audit',                keywords: 'journal historique', roles: ['SUPER','DEV'] },
   { group: 'administration', to: '/maintenance', icon: Wrench,          label: 'Maintenance',          keywords: 'tâches fournisseur sms réglages code secret interrupteurs', roles: ['SUPER'] },

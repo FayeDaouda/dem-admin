@@ -7,11 +7,12 @@ import { glass, glassInput, pageWrap, pageScroll, stickyTh, stickyCol, stickyThC
 import { useAutoRefresh } from '../lib/useAutoRefresh'
 import { useUrlQuery } from '../lib/useUrlQuery'
 import PageHeader from '../components/PageHeader'
-import { canSee, ACTION_ROLES } from '../lib/droits'
+import { canSee, roleHas, ACTION_ROLES } from '../lib/droits'
 import InfoTip from '../components/InfoTip'
 import ExportMenu from '../components/ExportMenu'
 import { fetchAllPages } from '../lib/exportList'
 import WhatsAppButton from '../components/WhatsAppButton'
+import ClientCrmSection from './clients/ClientCrmSection'
 import ConvertToProModal from './clients/ConvertToProModal'
 
 // Ordre d'affichage : Sans badge en premier, puis progression des tiers.
@@ -359,6 +360,12 @@ function ClientFiche({ client, deleted, rights, onClose, onEdit, onChanged }) {
             </div>
           </div>
         )}
+        {/* CM / CRM Client : fiche complète (C5) */}
+        {rights.crm && !deleted && (detail?.role ?? 'CLIENT') === 'CLIENT' && (
+          <div style={{ borderTop: '1px solid var(--border)', paddingTop: 12, marginTop: 4 }}>
+            <ClientCrmSection clientId={client.id} asks={rights.crmAsks} banned={!!d.isBanned} />
+          </div>
+        )}
       </div>
       {converting && (
         <ConvertToProModal client={d} onClose={() => setConverting(false)}
@@ -435,6 +442,8 @@ export default function Clients() {
     report: canSee(role, ACTION_ROLES.reportUser),
     export: canSee(role, ACTION_ROLES.listExport),
     toPro:  canSee(role, ACTION_ROLES.proCreate), // Passer en Pro : Super + Commercial (C7)
+    crm:    canSee(role, ACTION_ROLES.clientFollowup), // Suivi CM : Super + CM (C5)
+    crmAsks: roleHas(role, 'CM'),                      // le CM demande au Super Admin (niveau 2)
   }
 
   // Vue, filtres et recherche gardés dans l'adresse : un lien ou un

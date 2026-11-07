@@ -11,6 +11,7 @@
 // ============================================================
 
 export const PAGES = {
+  '/base-clients': "Base des clients particuliers : inscription et source, courses livrées et dernière commande, statut calculé (Jamais servi, Actif, Inactif, Fidèle), parrainage, prochaine action (À relancer, Relancé le…, Converti, Ne plus relancer) et une ligne de note.",
   '/base-pro': "Tableau de tri des comptes DEM Pro : viabilité, prochaine action (avec la date d'un rappel) et une ligne de note. Un nouveau Pro y arrive seul, « À appeler ». Le suivi détaillé des appels reste dans TAM.",
   '/': "Vue d'ensemble de l'activité : ce qui demande une action, les opérations en direct, les chiffres du jour, les comptes et les tendances. Les cartes s'ouvrent sur leur détail.",
   '/map': 'Carte en temps réel des coursiers en ligne et des courses en cours. Les positions se mettent à jour toutes seules.',

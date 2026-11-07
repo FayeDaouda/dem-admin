@@ -218,4 +218,7 @@ export const ACTION_ROLES = {
   // Export fait dans le navigateur à partir des listes déjà lisibles : aucune
   // route serveur à recopier ici.
   listExport: [],
+  // CM / CRM Client : Base de données Clients (PATCH /admin/client-base/:id)
+  // et fiche client › Suivi CM (GET /admin/cm/clients/:id/crm) : Super + CM
+  clientFollowup: ['CM'],
 }
