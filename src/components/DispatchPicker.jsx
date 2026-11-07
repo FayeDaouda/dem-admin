@@ -14,7 +14,7 @@ import WhatsAppButton from './WhatsAppButton'
 export default function DispatchPicker({ order, onClose, onDone }) {
   const reassigning = !!order.driver
   const canPropose = order.status === 'PENDING' && !order.driver
-  const [state, setState] = useState({ drivers: [], reasons: [], loading: true, error: null })
+  const [state, setState] = useState({ drivers: [], reasons: [], lock: null, loading: true, error: null })
   const [reasonCode, setReasonCode] = useState('')
   const [note, setNote] = useState('')
   const [busy, setBusy] = useState(false)
@@ -22,9 +22,10 @@ export default function DispatchPicker({ order, onClose, onDone }) {
   useEffect(() => {
     let alive = true
     api.get(`/admin/orders/${order.id}/assignable-drivers`)
-      .then(res => alive && setState({ drivers: res.data?.drivers ?? [], reasons: res.data?.reassignReasons ?? [], loading: false, error: null }))
+      .then(res => alive && setState({ drivers: res.data?.drivers ?? [], reasons: res.data?.reassignReasons ?? [], lock: res.data?.lock ?? null, loading: false, error: null }))
       .catch(e => alive && setState(s => ({ ...s, loading: false, error: e.response?.data?.message ?? 'Erreur de chargement des coursiers.' })))
-    return () => { alive = false }
+    // Fenêtre fermée : le verrou d'attribution est rendu (C13)
+    return () => { alive = false; api.delete(`/admin/orders/${order.id}/dispatch-lock`).catch(() => {}) }
   }, [order.id])
 
   const setError = error => setState(s => ({ ...s, error }))
@@ -63,6 +64,12 @@ export default function DispatchPicker({ order, onClose, onDone }) {
           )}
           {order.pickupAddress && <span style={{ display: 'block', marginTop: 4 }}>Retrait : {order.pickupAddress}</span>}
         </p>
+
+        {state.lock && !state.lock.mine && (
+          <div style={{ fontSize: 12.5, fontWeight: 600, color: '#b45309', background: 'rgba(245,158,11,.10)', padding: '8px 10px', borderRadius: 8, marginBottom: 12 }}>
+            En cours d'attribution par {state.lock.byName ?? 'un autre admin'} : vérifiez avant d'agir.
+          </div>
+        )}
 
         {reassigning && (
           <div style={{ marginBottom: 14 }}>

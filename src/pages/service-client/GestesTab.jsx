@@ -4,10 +4,11 @@ import { Search, Gift, Percent } from 'lucide-react'
 import { glass, glassInput } from '../../lib/glassStyles'
 import StatusBadge from '../../components/StatusBadge'
 import SubmitRequestModal from './components/SubmitRequestModal'
+import ProBonusActions from '../dem-pro/ProBonusActions'
 import { useAutoRefresh } from '../../lib/useAutoRefresh'
 import InfoTip from '../../components/InfoTip'
 
-const KIND_LABELS = { GESTE_FREE_RIDE: 'Course gratuite', GESTE_DISCOUNT: 'Remise' }
+const KIND_LABELS = { GESTE_FREE_RIDE: 'Course gratuite', GESTE_DISCOUNT: 'Remise', PRO_BONUS: 'Bonus DEM Pro' }
 
 // proMode : Poste Commercial — le geste porte sur un compte DEM Pro (recherche
 // par entreprise, contact ou téléphone) au lieu d'un client.
@@ -17,12 +18,13 @@ export default function GestesTab({ proMode = false }) {
   const [search, setSearch]     = useState('')
   const [results, setResults]   = useState([])
   const [modal, setModal]       = useState(null) // { kind, targetUser }
+  const [pro, setPro]           = useState(null) // Poste Commercial : Pro choisi (bonus)
 
   const fetch = useCallback(async (silent = false) => {
     if (!silent) setLoading(true)
     try {
       const res = await api.get('/admin/requests')
-      setRequests((res.data?.requests ?? []).filter(r => r.kind === 'GESTE_FREE_RIDE' || r.kind === 'GESTE_DISCOUNT'))
+      setRequests((res.data?.requests ?? []).filter(r => ['GESTE_FREE_RIDE', 'GESTE_DISCOUNT', 'PRO_BONUS'].includes(r.kind)))
     } catch (e) { console.error(e) }
     finally { if (!silent) setLoading(false) }
   }, [])
@@ -71,18 +73,35 @@ export default function GestesTab({ proMode = false }) {
               <div key={c.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 12px', borderRadius: 8, background: 'var(--surface2)' }}>
                 <span style={{ fontSize: 13 }}>{c.proBusinessName ? `${c.proBusinessName} · ` : ''}{c.name ?? 'Sans nom'} · {c.phone}</span>
                 <div style={{ display: 'flex', gap: 6 }}>
+                  {proMode && (
+                    <button onClick={() => { setPro(c); setSearch(''); setResults([]) }} style={{ ...btnSmall, color: '#16a34a', borderColor: '#16a34a' }}>
+                      <Gift size={12} /> Bonus
+                    </button>
+                  )}
+                  {!proMode && <>
                   <button onClick={() => pickClient(c, 'GESTE_FREE_RIDE')} style={{ ...btnSmall, color: '#15803d', borderColor: '#15803d' }}>
                     <Gift size={12} /> Course gratuite
                   </button>
                   <button onClick={() => pickClient(c, 'GESTE_DISCOUNT')} style={{ ...btnSmall, color: '#6366f1', borderColor: '#6366f1' }}>
                     <Percent size={12} /> Remise
                   </button>
+                  </>}
                 </div>
               </div>
             ))}
           </div>
         )}
       </div>
+
+      {pro && (
+        <div style={{ ...glass, padding: '16px 18px', marginBottom: 16 }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+            <h2 style={{ fontSize: 15, fontWeight: 700, margin: 0 }}>{pro.proBusinessName ?? pro.name ?? pro.phone}</h2>
+            <button onClick={() => setPro(null)} style={btnSmall}>Fermer</button>
+          </div>
+          <ProBonusActions key={pro.id} account={pro} asks onChanged={() => fetch(true)} />
+        </div>
+      )}
 
       <div style={{ ...glass, padding: '16px 18px' }}>
         <h2 style={{ fontSize: 15, fontWeight: 700, marginBottom: 12 }}>Historique<InfoTip k="Historique" size={13} /></h2>

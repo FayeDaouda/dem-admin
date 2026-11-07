@@ -10,13 +10,15 @@ import OffersTab from './dem-pro/OffersTab'
 import ReferralsTab from './dem-pro/ReferralsTab'
 import PageHeader from '../components/PageHeader'
 import TabBar from '../components/TabBar'
-import { canSee, roleHas, ACTION_ROLES } from '../lib/droits'
+import { canSee, roleHas, ACTION_ROLES, asksSuper } from '../lib/droits'
 import {
   hasPaidTier, SECTOR_LABELS, SECTOR_COLORS, VOLUME_LABELS, PLAN_COLORS, proStatusInfo, planLabel,
 } from './dem-pro/labels'
 import { useAutoRefresh } from '../lib/useAutoRefresh'
 import { useUrlQuery } from '../lib/useUrlQuery'
 import ExportMenu from '../components/ExportMenu'
+import { PRO_SOURCE_LABELS } from '../lib/proSources'
+import ProBonusActions from './dem-pro/ProBonusActions'
 
 // Vues de la liste. « Actifs » = validé ET non suspendu (même règle que
 // l'ancienne carte « Actifs ») ; les suspendus ont leur propre vue.
@@ -65,6 +67,7 @@ function EditModal({ initial, onClose, onSaved }) {
     proBusinessName: initial?.proBusinessName ?? '',
     proSector:       initial?.proSector       ?? '',
     proWeeklyVolume: initial?.proWeeklyVolume ?? '',
+    ...(isEdit ? {} : { proSource: initial?.proSource ?? '' }), // source obligatoire à la création (C11)
   })
   const [saving, setSaving] = useState(false)
   const [error, setError]   = useState('')
@@ -73,6 +76,7 @@ function EditModal({ initial, onClose, onSaved }) {
 
   async function save() {
     if (!isEdit && !form.phone.trim()) { setError('Le numéro de téléphone est requis.'); return }
+    if (!isEdit && !form.proSource) { setError('Indiquez la source du compte.'); return }
     setSaving(true); setError('')
     try {
       if (isEdit) await api.patch(`/admin/dem-pro/${initial.id}`, form)
@@ -118,6 +122,16 @@ function EditModal({ initial, onClose, onSaved }) {
             ))}
           </select>
         </div>
+
+        {!isEdit && (
+          <div style={{ marginBottom: 14 }}>
+            <label style={labelStyle}>Source du compte *</label>
+            <select value={form.proSource} onChange={e => set('proSource', e.target.value)} style={inputStyle}>
+              <option value="">— Choisir —</option>
+              {Object.entries(PRO_SOURCE_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+            </select>
+          </div>
+        )}
 
         <div style={{ marginBottom: 14 }}>
           <label style={labelStyle}>Volume hebdomadaire</label>
@@ -431,6 +445,8 @@ export default function DemPro() {
     report: canSee(role, ACTION_ROLES.reportUser),
     export: canSee(role, ACTION_ROLES.listExport),
     create: canSee(role, ACTION_ROLES.proCreate), // Super + Commercial
+    bonus:  canSee(role, ACTION_ROLES.proBonus),  // semaine gratuite, bonus (C9, C10)
+    asks:   !isSuper && asksSuper(role),          // Commercial : « Demander » au-delà des plafonds
   }
 
   // Onglet, vue, plan et recherche gardés dans l'adresse.
@@ -788,6 +804,10 @@ export default function DemPro() {
               onRequest={(kind, targetUser) => setRequestTarget({ kind, targetUser })}
               onDeleted={okText => { setDetailId(null); fetch(true); setPageNotice(okText) }}
             />
+          )}
+          bonus={detailAccount && rights.bonus && detailAccount.proStatus === 'ACTIVE' && (
+            <ProBonusActions key={`b-${detailId}`} account={detailAccount} asks={rights.asks}
+              onChanged={() => { fetch(true); setFicheVersion(v => v + 1) }} />
           )}
         />
       )}

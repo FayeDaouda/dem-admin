@@ -66,6 +66,7 @@ export default function LiveMap() {
   const { user } = useAuth()
   // Proposer / attribuer / réattribuer depuis la carte (Super + Resp. flottes)
   const canDispatch = canSee(user?.adminRole, ACTION_ROLES.orderDispatch)
+  const dispatchAll = canSee(user?.adminRole, ACTION_ROLES.orderDispatchAll) // sinon (Commercial) : courses DEM Pro
   const [dispatchOrder, setDispatchOrder] = useState(null)
   const [notice, setNotice] = useState('')
   const [snapshot, setSnapshot] = useState(null)
@@ -210,7 +211,7 @@ export default function LiveMap() {
                         {o.status === 'PENDING' && <><span style={{ fontSize: 12, color: '#dc2626', fontWeight: 600 }}>En attente depuis {Math.max(0, Math.round((Date.now() - new Date(o.createdAt)) / 60000))} min</span><br /></>}
                         <span style={{ fontSize: 12, fontWeight: 600 }}>{clientCharge(o).toLocaleString('fr-FR')} F</span>
                         {/* Colis récupéré : seul le Super Admin réattribue */}
-                        {canDispatch && (o.status === 'PENDING' || (o.driver && (o.status === 'ACCEPTED' || isSuperRole(user?.adminRole)))) && (
+                        {canDispatch && (dispatchAll || o.client?.role === 'DEM_PRO') && (o.status === 'PENDING' || (o.driver && (o.status === 'ACCEPTED' || isSuperRole(user?.adminRole)))) && (
                           <button onClick={() => setDispatchOrder(o)} style={{ display: 'block', marginTop: 8, width: '100%', padding: '6px 10px', borderRadius: 6, border: 'none', cursor: 'pointer', fontSize: 12, fontWeight: 700, color: '#fff', background: o.driver ? '#7c3aed' : '#0077b6' }}>
                             {o.driver ? 'Réattribuer' : 'Proposer / attribuer'}
                           </button>

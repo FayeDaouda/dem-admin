@@ -45,7 +45,7 @@ export function canSee(role, roles) {
  * « Demander » à la place d'une action qui lui est réservée.
  */
 export function asksSuper(role) {
-  return roleHas(role, 'FLOTTE')
+  return roleHas(role, 'FLOTTE') || roleHas(role, 'COMMERCIAL')
 }
 
 /** Le rôle (hors Super Admin) ouvre-t-il cet accès ? */
@@ -116,7 +116,8 @@ export const ACTION_ROLES = {
   // le rôle Marketing ne voit pas les parrainages DEM Pro aujourd'hui → Super seul.
   proReferralCounter: [],
   // Courses : actions de la fiche (admin.routes.js)
-  orderDispatch: ['FLOTTE'],                 // choisir / attribuer / suggérer un coursier, relancer la recherche : Super + Resp. flottes
+  orderDispatch: ['FLOTTE', 'COMMERCIAL'],   // choisir / attribuer / suggérer un coursier, relancer la recherche : Super + Resp. flottes + Commercial (courses DEM Pro seulement)
+  orderDispatchAll: ['FLOTTE'],              // dispatch sur toutes les courses (sinon : courses DEM Pro)
   orderCancel:   ['ASSISTANCE_EXECUTIVE', 'FLOTTE'], // annuler : Super + Ass. exéc. ; Resp. flottes : course en attente seulement (orderCancelAny)
   orderCancelAny: ['ASSISTANCE_EXECUTIVE'],  // annuler aussi une course en cours
   orderMarkPaid: ['FINANCE'],                // marquer payé : Super + Finance
@@ -126,6 +127,8 @@ export const ACTION_ROLES = {
   orderCreateForClient: ['FLOTTE'],
   // Créer un compte DEM Pro (POST /admin/dem-pro) : Super + Commercial
   proCreate: ['COMMERCIAL'],
+  // Semaine gratuite et bonus d'un Pro (/admin/dem-pro/:id/trial, /bonus) : Super + Commercial
+  proBonus: ['COMMERCIAL'],
   // Fiche coursier : notes internes (GET/POST /admin/drivers/:id/notes), Super + Resp. flottes
   driverNotes: ['FLOTTE'],
   // Shifts de la flotte DEM : planning d'un coursier et créneaux

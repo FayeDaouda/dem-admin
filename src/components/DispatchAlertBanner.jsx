@@ -24,6 +24,7 @@ export default function DispatchAlertBanner() {
   const { user } = useAuth()
   const navigate = useNavigate()
   const allowed = canSee(user?.adminRole, ACTION_ROLES.orderDispatch)
+  const proOnly = !canSee(user?.adminRole, ACTION_ROLES.orderDispatchAll) // Commercial : courses DEM Pro
   const [data, setData] = useState(null) // { thresholdMin, total, orders }
   const [sound, setSound] = useState(loadSound)
   const soundRef = useRef(sound)
@@ -31,7 +32,7 @@ export default function DispatchAlertBanner() {
 
   const load = useCallback(async () => {
     try {
-      const res = await api.get('/admin/stats/stuck-pending-orders', { params: { period: 'alert' } })
+      const res = await api.get('/admin/stats/stuck-pending-orders', { params: { period: 'alert', ...(proOnly ? { clientType: 'DEM_PRO' } : {}) } })
       const orders = res.data?.orders ?? []
       // Son pour toute course qui vient de dépasser le délai
       const fresh = orders.filter(o => !known.current.has(o.id))
@@ -39,7 +40,7 @@ export default function DispatchAlertBanner() {
       if (fresh.length > 0 && soundRef.current) beep({ count: 2, frequency: 660 })
       setData({ ...res.data, checkedAt: Date.now() }) // heure de la lecture : attente affichée
     } catch { /* pas de bandeau plutôt qu'une erreur */ }
-  }, [])
+  }, [proOnly])
 
   useEffect(() => {
     if (!allowed) return
@@ -77,7 +78,7 @@ export default function DispatchAlertBanner() {
         <Clock size={20} />
         <div style={{ flex: 1, minWidth: 220 }}>
           <div style={{ fontWeight: 800, fontSize: 14 }}>
-            {data.total} course{data.total > 1 ? 's attendent' : ' attend'} un coursier depuis plus de {data.thresholdMin} min
+            {data.total} course{data.total > 1 ? 's' : ''}{proOnly ? ' Pro' : ''} {data.total > 1 ? 'attendent' : 'attend'} un coursier depuis plus de {data.thresholdMin} min
           </div>
           {oldest && (
             <div style={{ fontSize: 12, opacity: 0.9 }}>
@@ -88,7 +89,7 @@ export default function DispatchAlertBanner() {
         <button onClick={toggleSound} title={sound ? 'Couper le son' : 'Remettre le son'} style={bannerBtn}>
           {sound ? <Volume2 size={14} /> : <VolumeX size={14} />}
         </button>
-        <button onClick={() => navigate('/orders?statut=pending')} style={bannerBtn}>Courses en attente</button>
+        <button onClick={() => navigate(proOnly ? '/orders?statut=pending&pro=1' : '/orders?statut=pending')} style={bannerBtn}>Courses en attente</button>
         <button onClick={() => navigate('/map')} style={{ ...bannerBtn, background: '#fff', color: '#dc2626' }}>
           <MapIcon size={14} /> Carte live
         </button>

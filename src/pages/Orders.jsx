@@ -58,7 +58,8 @@ function formatDuration(min) {
 export default function Orders() {
   const { user } = useAuth()
   const role = user?.adminRole
-  const canDispatch = canSee(role, ACTION_ROLES.orderDispatch)
+  const canDispatchRole = canSee(role, ACTION_ROLES.orderDispatch)
+  const dispatchAll = canSee(role, ACTION_ROLES.orderDispatchAll) // sinon (Commercial) : courses DEM Pro seulement
   const canCancel   = canSee(role, ACTION_ROLES.orderCancel)
   const canCancelAny = canSee(role, ACTION_ROLES.orderCancelAny) // sinon : course en attente seulement
   const askSuper    = asksSuper(role) // Resp. flottes : « Demander » au Super Admin (niveau 2)
@@ -246,6 +247,14 @@ export default function Orders() {
   }
 
   // Actions possibles sur la course ouverte (droits d'affichage = droits serveur)
+  const proOrder = detail?.client?.role === 'DEM_PRO'
+  const canDispatch = canDispatchRole && (dispatchAll || proOrder)
+  // Commercial : demandes sur les commandes Pro ; sans droit d'annuler, toute
+  // course non terminée s'annule par une demande
+  const askHere = askSuper && (dispatchAll || proOrder)
+  const askCancel = askHere && (canCancel
+    ? !canCancelAny && ['ACCEPTED', 'PICKED_UP', 'IN_TRANSIT'].includes(detail?.status)
+    : !['DELIVERED', 'CANCELLED'].includes(detail?.status))
   const actions = detail ? [
     canDispatch && detail.status === 'PENDING' && !detail.driver && { key: 'pick', label: 'Proposer / attribuer', color: '#0077b6', onClick: openDriverPicker },
     canDispatch && detail.driver && (isSuperRole(role) ? ['ACCEPTED', 'PICKED_UP', 'IN_TRANSIT'] : ['ACCEPTED']).includes(detail.status) && { key: 'reassign', label: 'Réattribuer', color: '#7c3aed', onClick: openDriverPicker },
@@ -254,8 +263,8 @@ export default function Orders() {
     canForce && detail.driver && ['ACCEPTED', 'PICKED_UP', 'IN_TRANSIT'].includes(detail.status) && { key: 'deliver', label: 'Colis livré', color: '#16a34a', onClick: () => setConfirming('DELIVERED') },
     canMarkPaid && detail.status === 'DELIVERED' && detail.paymentStatus === 'PENDING' && { key: 'paid', label: 'Marquer payé', color: '#16a34a', onClick: () => setConfirming('paid') },
     canCancel && !['DELIVERED', 'CANCELLED'].includes(detail.status) && (canCancelAny || ['SCHEDULED', 'PENDING'].includes(detail.status)) && { key: 'cancel', label: 'Annuler la course', color: '#dc2626', onClick: openCancelPicker },
-    askSuper && !canCancelAny && ['ACCEPTED', 'PICKED_UP', 'IN_TRANSIT'].includes(detail.status) && { key: 'ask-cancel', label: "Demander l'annulation", color: '#dc2626', onClick: () => setOrderRequest('cancel') },
-    askSuper && detail.status !== 'CANCELLED' && (detail.client?.id || detail.clientId) && { key: 'ask-geste', label: 'Demander un geste', color: '#7c3aed', onClick: () => setOrderRequest('geste') },
+    askCancel && { key: 'ask-cancel', label: "Demander l'annulation", color: '#dc2626', onClick: () => setOrderRequest('cancel') },
+    askHere && detail.status !== 'CANCELLED' && (detail.client?.id || detail.clientId) && { key: 'ask-geste', label: 'Demander un geste', color: '#7c3aed', onClick: () => setOrderRequest('geste') },
   ].filter(Boolean) : []
 
   // Texte et action de la confirmation ouverte
@@ -401,6 +410,13 @@ export default function Orders() {
               </div>
             </div>
 
+            {/* Attribution en cours par un autre admin (C13) */}
+            {detail.dispatchLock && (
+              <div style={{ fontSize: 12.5, fontWeight: 600, color: '#b45309', background: 'rgba(245,158,11,.10)', padding: '6px 10px', borderRadius: 8, marginBottom: 10 }}>
+                En cours d'attribution par {detail.dispatchLock.byName ?? 'un autre admin'}
+              </div>
+            )}
+
             {/* Actions, en haut */}
             {actions.length > 0 && !confirming && (
               <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 14 }}>
@@ -473,7 +489,10 @@ export default function Orders() {
                   <PersonCard role="Coursier"
                     name={firstNonEmpty(detail.driver?.name, detail.driver?.phone)}
                     phone={detail.driver?.phone}
-                    extra={detail.driver ? [detail.driver.vehicleType, detail.driver.vehiclePlate].filter(Boolean).join(' · ') : (['DELIVERED', 'CANCELLED'].includes(detail.status) ? 'Aucun coursier' : 'Pas encore de coursier')} />
+                    extra={[
+                      detail.driver ? [detail.driver.vehicleType, detail.driver.vehiclePlate].filter(Boolean).join(' · ') : (['DELIVERED', 'CANCELLED'].includes(detail.status) ? 'Aucun coursier' : 'Pas encore de coursier'),
+                      detail.dispatchedByName && `${detail.dispatchedAction === 'SUGGEST' ? 'Proposée' : 'Attribuée'} par ${detail.dispatchedByName}`,
+                    ].filter(Boolean).join(' · ')} />
                   {(detail.receiverName || detail.receiverPhone || detail.senderName || detail.senderPhone) && (
                     <PersonCard role="Destinataire"
                       name={firstNonEmpty(detail.receiverName, detail.receiverPhone)}
