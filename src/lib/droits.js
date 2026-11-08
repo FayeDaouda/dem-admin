@@ -175,6 +175,12 @@ export const ACTION_ROLES = {
   proCreate: ['COMMERCIAL'],
   // Semaine gratuite et bonus d'un Pro (/admin/dem-pro/:id/trial, /bonus) : Super + Commercial
   proBonus: ['COMMERCIAL'],
+  // Changer le plan d'un Pro (PATCH /admin/dem-pro/:id/plan, liste, sélection
+  // groupée, fiche › Suivi commercial) : Super + Commercial (08/11/2026)
+  proPlan: ['COMMERCIAL'],
+  // Modifier le nom et les infos d'un DEM Pro (PATCH /admin/dem-pro/:id) :
+  // Super + Service Client + Commercial (08/11/2026)
+  proEdit: ['SERVICE_CLIENT', 'COMMERCIAL'],
   // Fiche coursier : notes internes (GET/POST /admin/drivers/:id/notes), Super + Resp. flottes
   driverNotes: ['FLOTTE'],
   // Shifts de la flotte DEM : planning d'un coursier et créneaux
@@ -200,8 +206,8 @@ export const ACTION_ROLES = {
   // Clients (page visible de Super, Dev et Service Client) :
   // créer (POST /admin/clients) : Super seul ;
   clientCreate: [],
-  // modifier (PATCH /admin/clients/:id) : Super + Service Client ;
-  clientEdit: ['SERVICE_CLIENT'],
+  // modifier (PATCH /admin/clients/:id) : Super + Service Client + Commercial ;
+  clientEdit: ['SERVICE_CLIENT', 'COMMERCIAL'], // Commercial : nom et coordonnées (le type de compte reste au Super et au SC)
   // bannir / débannir, supprimer, décider d'un changement de numéro
   // (/ban, /unban, DELETE, /phone-change) : Super seul ; la conversion en
   // DEM Pro reste réservée au Super comme avant.

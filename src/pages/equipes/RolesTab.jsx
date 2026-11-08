@@ -148,9 +148,7 @@ export default function RolesTab({ roles, countByRole, onChanged, onNotice }) {
                   <div style={{ display: 'flex', gap: 6 }}>
                     <button onClick={() => preview(role)} title="Voir l'admin comme ce rôle (lecture seule)" style={actionBtn('#7c3aed')}><Eye size={12} /> Voir en tant que</button>
                     <button onClick={() => openEdit(role)} style={actionBtn('#0077b6')}><Pencil size={12} /> Modifier</button>
-                    {!role.isSystem && (
-                      <button onClick={() => askDelete(role)} title="Supprimer le rôle" style={actionBtn('#ef4444')}><Trash2 size={12} /></button>
-                    )}
+                    <button onClick={() => askDelete(role)} title="Supprimer le rôle" style={actionBtn('#ef4444')}><Trash2 size={12} /></button>
                   </div>
                 )}
               </div>
@@ -180,7 +178,11 @@ export default function RolesTab({ roles, countByRole, onChanged, onNotice }) {
                     </>
                   )}
                   <InlineConfirm
-                    lines={[`Supprimer le rôle ${role.label} ?`, members > 0 ? 'Leur accès change tout de suite.' : 'Aucun membre n’a ce rôle.']}
+                    lines={[
+                      `Supprimer le rôle ${role.label} ?`,
+                      members > 0 ? 'Leur accès change tout de suite.' : 'Aucun membre n’a ce rôle.',
+                      ...(role.isSystem ? ['C’est un rôle d’origine : il ne reviendra pas. Ses accès restent disponibles pour les autres rôles.'] : []),
+                    ]}
                     confirmLabel="Supprimer" danger busy={busy}
                     onCancel={() => setDeleting(null)} onConfirm={() => remove(role)}
                   />

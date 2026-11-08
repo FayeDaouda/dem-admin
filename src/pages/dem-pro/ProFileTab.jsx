@@ -8,20 +8,36 @@ import { REQUEST_KIND_LABELS, REQUEST_STATUS_LABELS } from '../../lib/requestKin
 
 // ── Fiche Pro › Suivi commercial (Commercial / CRM Pro, C5) ─────────────────
 // Source du compte, essai, commandes (dont la 1re), bonus reçus, demandes en
-// cours, incidents liés (GET /admin/dem-pro/:id/crm). `asks` : le Commercial
-// demande au Super Admin les actions de niveau 2 (plan, sans paiement,
-// suspension) ; le Super Admin les fait depuis les autres onglets.
+// cours, incidents liés (GET /admin/dem-pro/:id/crm). `canPlan` : changer le
+// plan directement (Super + Commercial, 08/11/2026). `asks` : le Commercial
+// demande au Super Admin la suspension ou la réactivation du compte.
 const GRANT_LABELS = { COURSE_FREE: 'Course offerte', COURSE_PERCENT: 'Réduction %', COURSE_FIXED: 'Réduction F', PRO_PLAN_DAYS: "Jours d'offre" }
 const PLAN_OPTIONS = [['STARTER', 'Starter'], ['BUSINESS', 'Business'], ['PREMIUM', 'Premium'], ['FREE', 'Gratuit']]
 const fmt = d => (d ? new Date(d).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' }) : '—')
 
-export default function ProFileTab({ accountId, asks }) {
+export default function ProFileTab({ accountId, asks, canPlan = false }) {
   const navigate = useNavigate()
   const [file, setFile] = useState(null)
   const [error, setError] = useState('')
   const [notice, setNotice] = useState('')
   const [request, setRequest] = useState(null) // 'plan' | 'suspend' | 'activate'
   const [plan, setPlan] = useState({ plan: 'BUSINESS', until: '' })
+  const [savingPlan, setSavingPlan] = useState(false)
+  const [planError, setPlanError] = useState('')
+
+  // Plan donné sans abonnement payé (« sans paiement ») jusqu'à la date
+  // choisie, ou sans fin ; Gratuit retire le plan.
+  const planPayload = () => ({ plan: plan.plan, status: 'ACTIVE', expiresAt: plan.plan === 'FREE' || !plan.until ? null : new Date(`${plan.until}T23:59:00`).toISOString() })
+  async function savePlan() {
+    setSavingPlan(true); setPlanError(''); setNotice('')
+    try {
+      await api.patch(`/admin/dem-pro/${accountId}/plan`, planPayload())
+      setNotice(`Plan ${PLAN_OPTIONS.find(([k]) => k === plan.plan)?.[1] ?? plan.plan} enregistré.`)
+      load()
+    } catch (e) {
+      setPlanError(e.response?.data?.message ?? 'Erreur.')
+    } finally { setSavingPlan(false) }
+  }
 
   const load = useCallback(() => api.get(`/admin/dem-pro/${accountId}/crm`)
     .then(r => setFile(r.data)).catch(e => setError(e.response?.data?.message ?? 'Suivi indisponible.')), [accountId])
@@ -58,10 +74,30 @@ export default function ProFileTab({ accountId, asks }) {
         ))}
       </Block>
 
+      {canPlan && (
+        <Block title="Changer le plan">
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+            <select value={plan.plan} onChange={e => setPlan(p => ({ ...p, plan: e.target.value }))} style={{ ...glassInput, width: 'auto', padding: '7px 10px', fontSize: 13 }}>
+              {PLAN_OPTIONS.map(([k, l]) => <option key={k} value={k}>{l}</option>)}
+            </select>
+            {plan.plan !== 'FREE' && <>
+              <span style={{ fontSize: 12 }}>jusqu'au</span>
+              <input type="date" value={plan.until} onChange={e => setPlan(p => ({ ...p, until: e.target.value }))} style={{ ...glassInput, width: 'auto', padding: '6px 8px', fontSize: 13 }} />
+            </>}
+            <button onClick={savePlan} disabled={savingPlan} style={btnPrimary}>{savingPlan ? 'Enregistrement…' : 'Enregistrer'}</button>
+          </div>
+          <div style={{ fontSize: 11.5, color: 'var(--text-muted)' }}>
+            Donné sans abonnement payé (« sans paiement »){plan.plan !== 'FREE' ? ' jusqu’à la date choisie, ou sans fin si aucune date' : ''}. Journalisé.
+          </div>
+          {planError && <div style={{ fontSize: 12.5, color: 'var(--danger)' }}>{planError}</div>}
+          {!asks && notice && <div style={{ fontSize: 12.5, color: '#15803d', fontWeight: 600 }}>{notice}</div>}
+        </Block>
+      )}
+
       {asks && (
         <Block title="Demander au Super Admin">
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-            <button onClick={() => setRequest('plan')} style={btn}><Send size={13} /> Changer le plan / sans paiement</button>
+            {!canPlan && <button onClick={() => setRequest('plan')} style={btn}><Send size={13} /> Changer le plan / sans paiement</button>}
             {a.isActive
               ? <button onClick={() => setRequest('suspend')} style={btn}><Send size={13} /> Suspendre le compte</button>
               : <button onClick={() => setRequest('activate')} style={btn}><Send size={13} /> Réactiver le compte</button>}
@@ -112,4 +148,5 @@ function Line({ label, value }) {
 }
 const Empty = ({ children }) => <div style={{ fontSize: 12.5, color: 'var(--text-muted)' }}>{children}</div>
 const btn = { display: 'inline-flex', alignItems: 'center', gap: 6, padding: '7px 12px', borderRadius: 8, fontSize: 12.5, fontWeight: 600, cursor: 'pointer', border: '1px solid rgba(180,83,9,.45)', background: 'rgba(245,158,11,.08)', color: '#b45309' }
+const btnPrimary = { display: 'inline-flex', alignItems: 'center', gap: 6, padding: '7px 14px', borderRadius: 8, fontSize: 12.5, fontWeight: 600, cursor: 'pointer', border: 'none', background: 'var(--primary)', color: '#fff' }
 const linkBtn = { background: 'none', border: 'none', padding: 0, cursor: 'pointer', color: 'var(--primary)', fontWeight: 600, fontSize: 13 }

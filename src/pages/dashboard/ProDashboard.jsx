@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Phone, Target, Map as MapIcon, Gift, AlertTriangle, Clock } from 'lucide-react'
+import { Phone, Map as MapIcon, Gift, AlertTriangle, Clock } from 'lucide-react'
 import api from '../../lib/api'
 import { glass, pageWrap, pageScroll } from '../../lib/glassStyles'
 import { useAutoRefresh } from '../../lib/useAutoRefresh'
@@ -44,6 +44,138 @@ function ProRow({ p, extra, onOpen }) {
   )
 }
 
+// Jauge en demi-cercle : part de `value` sur `total`, en pourcentage au centre.
+function Gauge({ title, hint, value, total, color }) {
+  const pct = total ? Math.round(value / total * 1000) / 10 : 0
+  const arc = 'M 14 96 A 82 82 0 0 1 178 96'
+  return (
+    <div style={{ ...card, display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', gap: 4 }}>
+      <h3 style={{ ...cardTitle, marginBottom: 2 }}>{title}</h3>
+      <div style={{ fontSize: 11.5, color: 'var(--text-muted)', marginBottom: 6 }}>{hint}</div>
+      <svg viewBox="0 0 192 104" width="100%" style={{ maxWidth: 240 }} role="img" aria-label={`${title} : ${value} sur ${total}`}>
+        <path d={arc} pathLength="100" fill="none" stroke="rgba(0,0,0,.08)" strokeWidth="14" strokeLinecap="round" />
+        {pct > 0 && <path d={arc} pathLength="100" fill="none" stroke={color} strokeWidth="14" strokeLinecap="round" strokeDasharray={`${Math.min(100, pct)} 100`} />}
+        <text x="96" y="82" textAnchor="middle" style={{ fontSize: 28, fontWeight: 800, fill: 'var(--text)' }}>{pct.toLocaleString('fr-FR')} %</text>
+      </svg>
+      <div style={{ fontSize: 13 }}>
+        <strong style={{ fontSize: 20, color }}>{value}</strong>
+        <span style={{ color: 'var(--text-muted)' }}> / {total} DEM Pro</span>
+      </div>
+    </div>
+  )
+}
+
+// ── Nouveaux clients et nouveaux DEM Pro (GET /admin/dem-pro/newcomers) ──
+const PRO_STATUS = {
+  PENDING:  { label: 'En attente', color: '#b45309' },
+  ACTIVE:   { label: 'Validé',     color: '#15803d' },
+  REJECTED: { label: 'Refusé',     color: '#dc2626' },
+}
+const fmtDay = d => new Date(d).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })
+
+function Newcomers({ isMobile, onOpenPro, onOpenClient }) {
+  const [days, setDays] = useState(7)
+  const [data, setData] = useState(null)
+  const [error, setError] = useState('')
+  const load = useCallback(() => {
+    api.get('/admin/dem-pro/newcomers', { params: { days } })
+      .then(r => { setData(r.data); setError('') })
+      .catch(e => setError(e.response?.data?.message ?? 'Liste indisponible.'))
+  }, [days])
+  useEffect(() => { load() }, [load])
+  useAutoRefresh(load, 60_000)
+
+  const periodSwitch = (
+    <div style={{ display: 'flex', gap: 4, background: 'rgba(255,255,255,.45)', borderRadius: 8, padding: 3 }}>
+      {[7, 30].map(n => (
+        <button key={n} onClick={() => setDays(n)} style={{
+          padding: '4px 12px', borderRadius: 6, border: 'none', cursor: 'pointer', fontSize: 12,
+          background: days === n ? 'var(--primary)' : 'transparent', color: days === n ? '#fff' : 'var(--text-muted)', fontWeight: days === n ? 700 : 500,
+        }}>{n} jours</button>
+      ))}
+    </div>
+  )
+
+  const contact = phone => phone && (
+    <span style={{ display: 'inline-flex', gap: 6, alignItems: 'center' }}>
+      <a href={`tel:${phone}`} title={`Appeler ${phone}`} style={{ color: 'var(--primary)', display: 'flex' }}><Phone size={13} /></a>
+      <WhatsAppButton phone={phone} compact />
+    </span>
+  )
+
+  return (
+    <Section title="Nouveaux inscrits" hint="Du plus récent au plus ancien" right={periodSwitch}>
+      {error ? <div style={{ ...card, color: '#dc2626', fontSize: 13 }}>{error}</div> : !data ? <div style={{ ...card, ...emptyStyle }}>Chargement…</div> : (
+        <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(auto-fit, minmax(420px, 1fr))', gap: 10 }}>
+          <NewcomerTable
+            title="Nouveaux clients" total={data.clients.total} shown={data.clients.list.length} empty={`Aucun client inscrit sur ${days} jours.`}
+            head={['Nom', 'Téléphone', 'Inscrit le', 'Courses', '']}
+            rows={data.clients.list.map(c => ({
+              key: c.id,
+              cells: [
+                <button key="n" onClick={() => onOpenClient(c.phone)} style={linkBtn}>{c.name || 'Sans nom'}</button>,
+                c.phone,
+                fmtDay(c.createdAt),
+                <strong key="o" style={{ color: c.orders ? '#15803d' : 'var(--text-muted)' }}>{c.orders}</strong>,
+                contact(c.phone),
+              ],
+            }))} />
+          <NewcomerTable
+            title="Nouveaux DEM Pro" total={data.pros.total} shown={data.pros.list.length} empty={`Aucun DEM Pro inscrit sur ${days} jours.`}
+            head={['Boutique', 'Statut', 'Inscrit le', 'Courses', '']}
+            rows={data.pros.list.map(p => {
+              const st = !p.isActive && p.proStatus === 'ACTIVE' ? { label: 'Suspendu', color: '#dc2626' } : (PRO_STATUS[p.proStatus] ?? { label: p.proStatus ?? '—', color: 'var(--text-muted)' })
+              return {
+                key: p.id,
+                cells: [
+                  <div key="n" style={{ minWidth: 0 }}>
+                    <button onClick={() => onOpenPro(p.id)} style={linkBtn}>{p.proBusinessName || p.name || 'Sans nom'}</button>
+                    <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>{[p.proBusinessName ? p.name : null, p.phone].filter(Boolean).join(' · ')}</div>
+                  </div>,
+                  <span key="s" style={{ fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 10, color: st.color, background: 'rgba(0,0,0,.05)', whiteSpace: 'nowrap' }}>{st.label}</span>,
+                  <div key="d">
+                    {fmtDay(p.createdAt)}
+                    {p.sourceLabel && <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>{p.sourceLabel}</div>}
+                  </div>,
+                  <strong key="o" style={{ color: p.orders ? '#15803d' : 'var(--text-muted)' }}>{p.orders}</strong>,
+                  contact(p.phone),
+                ],
+              }
+            })} />
+        </div>
+      )}
+    </Section>
+  )
+}
+
+function NewcomerTable({ title, total, shown, head, rows, empty }) {
+  return (
+    <div style={{ ...card, padding: 0, overflow: 'hidden' }}>
+      <div style={{ padding: '12px 16px 8px', display: 'flex', alignItems: 'baseline', gap: 8 }}>
+        <h3 style={{ ...cardTitle, margin: 0 }}>{title}</h3>
+        <span style={{ fontSize: 20, fontWeight: 800 }}>{total}</span>
+        {total > shown && <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>({shown} plus récents affichés)</span>}
+      </div>
+      {rows.length === 0 ? <div style={{ ...emptyStyle, padding: '0 16px 14px' }}>{empty}</div> : (
+        <div style={{ maxHeight: 340, overflow: 'auto' }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12.5 }}>
+            <thead>
+              <tr>{head.map((h, i) => <th key={i} style={th}>{h}</th>)}</tr>
+            </thead>
+            <tbody>
+              {rows.map(r => (
+                <tr key={r.key} style={{ borderTop: '1px solid var(--border)' }}>
+                  {r.cells.map((c, i) => <td key={i} style={td}>{c}</td>)}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  )
+}
+
 function ListCard({ title, color, items, empty, render }) {
   return (
     <div style={{ ...card, borderLeft: items.length ? `4px solid ${color}` : undefined }}>
@@ -83,7 +215,7 @@ export default function ProDashboard() {
   )
 
   const t = d.toHandle
-  const goalPct = Math.min(100, Math.round(d.goal.active / Math.max(1, d.goal.target) * 100))
+  const g = d.gauges ?? { total: 0, activeWithTrials: 0, paying: 0 } // serveur pas encore à jour
   const waitMin = o => Math.max(0, Math.round((live.at - new Date(o.createdAt)) / 60000))
 
   return (
@@ -114,20 +246,17 @@ export default function ProDashboard() {
         </Section>
 
         {/* 2. Objectif */}
-        <Section title="Objectif" hint={`${d.goal.target} Pro actifs (au moins 1 commande sur 7 jours) d'ici le ${fmtDate(d.goal.end)}`}>
-          <div style={{ ...card, display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
-            <Target size={22} color="#f97316" />
-            <div style={{ fontSize: 26, fontWeight: 800 }}>{d.goal.active} <span style={{ fontSize: 15, color: 'var(--text-muted)' }}>/ {d.goal.target}</span></div>
-            <div style={{ flex: 1, minWidth: 200 }}>
-              <div style={{ height: 12, borderRadius: 6, background: 'rgba(0,0,0,.07)' }}>
-                <div style={{ width: `${goalPct}%`, height: '100%', borderRadius: 6, background: '#f97316' }} />
-              </div>
-              <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 4 }}>
-                {goalPct} % · {d.goal.weeksLeft} semaine{d.goal.weeksLeft > 1 ? 's' : ''} restante{d.goal.weeksLeft > 1 ? 's' : ''}
-              </div>
-            </div>
+        <Section title="Objectif" hint="Sur l'ensemble des comptes DEM Pro">
+          <div style={grid(260)}>
+            <Gauge title="DEM Pro actifs, essais compris" hint="Au moins 1 commande sur 7 jours, ou essai gratuit en cours"
+              value={g.activeWithTrials} total={g.total} color="#f97316" />
+            <Gauge title="DEM Pro payants" hint="Abonnement payé en cours"
+              value={g.paying} total={g.total} color="#16a34a" />
           </div>
         </Section>
+
+        {/* 2 bis. Nouveaux clients et nouveaux DEM Pro */}
+        <Newcomers isMobile={isMobile} onOpenPro={openPro} onOpenClient={phone => navigate(`/clients?q=${encodeURIComponent(phone)}`)} />
 
         {/* 3. Tunnel Pro */}
         <Section title="Tunnel Pro" hint="Nombre à chaque étape et taux de passage depuis l'étape précédente">
@@ -213,4 +342,6 @@ const cardTitle  = { fontSize: 13, fontWeight: 600, marginBottom: 8, marginTop: 
 const emptyStyle = { fontSize: 12.5, color: 'var(--text-muted)' }
 const row        = { display: 'flex', alignItems: 'center', gap: 8, fontSize: 12.5, padding: '5px 0', borderBottom: '1px solid var(--border)' }
 const linkBtn    = { background: 'none', border: 'none', padding: 0, cursor: 'pointer', color: 'var(--primary)', fontWeight: 700, fontSize: 12.5, textAlign: 'left', whiteSpace: 'nowrap' }
+const th = { position: 'sticky', top: 0, background: 'rgba(240,249,255,0.97)', textAlign: 'left', fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', padding: '7px 8px', whiteSpace: 'nowrap', textTransform: 'uppercase', letterSpacing: 0.3 }
+const td = { padding: '7px 8px', verticalAlign: 'middle', whiteSpace: 'nowrap' }
 const outlineBtn = { display: 'inline-flex', alignItems: 'center', gap: 6, padding: '5px 12px', borderRadius: 8, border: '1px solid rgba(0,119,182,0.25)', background: 'rgba(255,255,255,0.5)', color: 'var(--text-muted)', fontSize: 12, cursor: 'pointer' }

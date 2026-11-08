@@ -287,7 +287,7 @@ function GrantModal({ count, planSystem, onClose, onConfirm, saving }) {
 }
 
 // ── Plan dans la liste : changement confirmé avant d'être enregistré ─────────
-function PlanCell({ account: a, isSuper, planSystem, onChanged }) {
+function PlanCell({ account: a, canChange, planSystem, onChanged }) {
   const current = a.proPlan ?? 'FREE'
   const [pending, setPending] = useState(null)
   const [busy, setBusy]       = useState(false)
@@ -308,7 +308,7 @@ function PlanCell({ account: a, isSuper, planSystem, onChanged }) {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 3, alignItems: 'flex-start' }} onClick={e => e.stopPropagation()}>
-      {isSuper ? (
+      {canChange ? (
         <select
           value={pending ?? current}
           onChange={e => { setError(''); setPending(e.target.value === current ? null : e.target.value) }}
@@ -447,13 +447,15 @@ function ProActions({ account: a, rights, isServiceClient, onDone, onEdit, onReq
 export default function DemPro() {
   const { user } = useAuth()
   const role = user?.adminRole
-  // Valider, suspendre, plan, supprimer, créer : Super uniquement ;
-  // modifier : Super + Service Client (PATCH /admin/dem-pro/:id).
+  // Valider, suspendre, supprimer : Super uniquement ; créer et changer le
+  // plan : Super + Commercial ; modifier : Super + Service Client + Commercial
+  // (PATCH /admin/dem-pro/:id).
   const isSuper = !role || role === 'SUPER'
   const isServiceClient = roleHas(role, 'SERVICE_CLIENT')
   const rights = {
     manage: isSuper,
-    edit:   isSuper || isServiceClient,
+    edit:   canSee(role, ACTION_ROLES.proEdit),
+    plan:   canSee(role, ACTION_ROLES.proPlan),   // Super + Commercial : liste, sélection groupée, fiche
     report: canSee(role, ACTION_ROLES.reportUser),
     export: canSee(role, ACTION_ROLES.listExport),
     create: canSee(role, ACTION_ROLES.proCreate), // Super + Commercial
@@ -703,7 +705,7 @@ export default function DemPro() {
         )}
 
         {/* Barre d'actions groupées — n'apparaît qu'avec une sélection active */}
-        {isSuper && (selected.size > 0 || bulkMessage) && (
+        {rights.plan && (selected.size > 0 || bulkMessage) && (
           <div style={{ ...glass, padding: '10px 16px', marginBottom: 12, flexShrink: 0, display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
             {selected.size > 0 ? (<>
               <span style={{ fontSize: 13, fontWeight: 600 }}>
@@ -746,7 +748,7 @@ export default function DemPro() {
               <table style={tableStyle}>
                 <thead>
                   <tr>
-                    {isSuper && (
+                    {rights.plan && (
                       <th style={{ ...thStyle, ...stickyTh, width: 30 }}>
                         <input type="checkbox" checked={selected.size > 0 && selected.size === filtered.length} onChange={toggleSelectAll} style={{ cursor: 'pointer' }} title="Tout sélectionner" />
                       </th>
@@ -763,7 +765,7 @@ export default function DemPro() {
                     const sectorColor = SECTOR_COLORS[a.proSector] ?? '#888'
                     return (
                     <tr key={a.id} onClick={() => setDetailId(a.id)} style={{ borderBottom: '1px solid var(--border)', opacity: isSuspended ? 0.6 : 1, cursor: 'pointer' }} title="Ouvrir la fiche">
-                      {isSuper && (
+                      {rights.plan && (
                         <td style={tdStyle} onClick={e => e.stopPropagation()}>
                           <input type="checkbox" checked={selected.has(a.id)} onChange={() => toggleSelect(a.id)} style={{ cursor: 'pointer' }} />
                         </td>
@@ -792,7 +794,7 @@ export default function DemPro() {
                           <WhatsAppButton phone={a.phone} compact />
                         </span>
                       </td>
-                      <td style={tdStyle}><PlanCell account={a} isSuper={isSuper} planSystem={planSystem} onChanged={onPlanChanged} /></td>
+                      <td style={tdStyle}><PlanCell account={a} canChange={rights.plan} planSystem={planSystem} onChanged={onPlanChanged} /></td>
                       <td style={{ ...tdStyle, textAlign: 'center', fontWeight: 600 }}>{a._count?.ordersAsClient ?? 0}</td>
                       <td style={tdStyle}><span style={{ fontSize: 12, fontWeight: 600, color: st.color, whiteSpace: 'nowrap' }}>{st.text}</span></td>
                       <td style={{ ...tdStyle, color: 'var(--text-muted)', fontSize: 12 }}>{a.createdAt ? new Date(a.createdAt).toLocaleDateString('fr-FR') : '—'}</td>
@@ -819,6 +821,7 @@ export default function DemPro() {
           canEdit={isSuper || isServiceClient}
           canManageApi={isSuper}
           asks={rights.asks}
+          canPlan={rights.plan}
           refreshKey={ficheVersion}
           actions={detailAccount && (
             <ProActions
