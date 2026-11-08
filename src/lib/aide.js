@@ -61,7 +61,8 @@ export const TITRES = {
   'Historique de connexion': "Temps passé en ligne dans l'app, jour par jour sur 7 ou 30 jours, et courses acceptées ce jour-là. Reconstitué depuis les passages en ligne / hors ligne du coursier.",
   'Notes internes': "Notes datées de l'équipe (retards, appels, avertissements, échanges avec le client). Jamais visibles du client ni du coursier.",
   'Pro › À traiter': "Ce qui demande une action : essais qui finissent dans 2 jours ou moins, Pro dormants, validés sans commande, Pro en attente de validation, réponses à vos demandes.",
-  'Pro › Objectif': "Pro actifs (au moins une commande sur les 7 derniers jours) face à l'objectif du poste, et semaines restantes.",
+  'Pro › Objectif': "Deux jauges sur l'ensemble des comptes DEM Pro (les inscrits du tunnel). Actifs, essais compris : au moins une commande sur les 7 derniers jours, ou un essai gratuit en cours. Payants : abonnement payé en cours.",
+  'Pro › Nouveaux inscrits': "Clients et comptes DEM Pro inscrits sur les 7 ou 30 derniers jours, du plus récent au plus ancien, avec leurs courses. Cliquez un nom pour ouvrir sa fiche.",
   'Pro › Tunnel Pro': "Inscrits → validés → essai → abonnés payants → actifs : le nombre à chaque étape et le taux de passage depuis l'étape d'avant.",
   'Pro › Activité Pro': "Commandes des comptes DEM Pro, Pro qui ont commandé et premières courses, aujourd'hui et sur 7 jours.",
   'Pro › Plans': "Plan en cours de chaque compte (Gratuit, Starter, Business, Premium), essais en cours et plans « sans paiement » (donnés sans abonnement payé).",
@@ -295,7 +296,7 @@ export const ONGLETS = {
   },
   '/equipes': {
     membres: "Comptes de l'équipe admin. Le rôle d'un membre se change dans sa ligne ou depuis Modifier ; l'effet est immédiat côté serveur, et le menu de ce compte se met à jour au prochain rechargement de la page.",
-    roles:   "« Voir en tant que » affiche l'admin exactement comme pour ce rôle (menu, pages, boutons, données), en lecture seule, jusqu'à « Quitter l'aperçu ». Un rôle ouvre un ou plusieurs accès (Dev, Finance, Marketing, Service client, Assistance exécutive, Responsable de flottes, Commercial / CRM Pro) ; chaque accès ouvre des pages et les actions qui vont avec. Les rôles d'origine se modifient mais ne se suppriment pas ; Super Admin garde l'accès total.",
+    roles:   "« Voir en tant que » affiche l'admin exactement comme pour ce rôle (menu, pages, boutons, données), en lecture seule, jusqu'à « Quitter l'aperçu ». Un rôle ouvre un ou plusieurs accès (Dev, Finance, Marketing, Service client, Assistance exécutive, Responsable de flottes, Commercial / CRM Pro) ; chaque accès ouvre des pages et les actions qui vont avec. Tous les rôles se modifient et se suppriment (leurs membres passent d'abord sur un autre rôle) ; un rôle d'origine supprimé ne revient pas. Super Admin garde l'accès total et ne se supprime pas.",
   },
   '/notifications': {
     envoyer:    "Envoyer une notification push maintenant ou la programmer, par type de compte. Un test sur un numéro est possible avant l'envoi.",
