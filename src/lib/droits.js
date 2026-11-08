@@ -22,11 +22,26 @@ export function isSuperRole(role) {
   return !role || role === 'SUPER'
 }
 
-let current = { role: null, access: null }
+let current = { role: null, access: null, hiddenPages: [] }
 
 /** Appelé par AuthContext à chaque connexion ou relecture du compte. */
-export function setCurrentAccess(role, access) {
-  current = { role: role ?? null, access: Array.isArray(access) ? access : null }
+export function setCurrentAccess(role, access, hiddenPages) {
+  current = {
+    role: role ?? null,
+    access: Array.isArray(access) ? access : null,
+    hiddenPages: Array.isArray(hiddenPages) ? hiddenPages : [],
+  }
+}
+
+/**
+ * Page du menu décochée pour ce rôle par le Super Admin (Équipes › Rôles) ?
+ * Affichage seulement : menu, recherche et adresse directe. Le Super Admin
+ * voit toujours tout. `path` : chemin d'une entrée du menu (/finance…) ou
+ * d'une sous-page (/chefs-de-flotte/12 suit /chefs-de-flotte).
+ */
+export function pageHidden(role, path) {
+  if (isSuperRole(role) || role !== current.role) return false
+  return current.hiddenPages.some(p => (p === '/' ? path === '/' : path === p || path.startsWith(p + '/')))
 }
 
 function accessOf(role) {
@@ -51,6 +66,20 @@ export function asksSuper(role) {
 /** Le rôle (hors Super Admin) ouvre-t-il cet accès ? */
 export function roleHas(role, key) {
   return !isSuperRole(role) && accessOf(role).includes(key)
+}
+
+/**
+ * Onglet d'une page décoché pour le rôle connecté (Équipes › Rôles) ?
+ * Rangé dans hiddenPages sous la forme « /marketing#promotions ». Le Super
+ * Admin n'a jamais rien de décoché (le serveur lui renvoie une liste vide).
+ */
+export function tabHidden(path, key) {
+  return current.hiddenPages.includes(`${path}#${key}`)
+}
+
+/** Onglets d'une page, moins ceux décochés pour le rôle connecté. */
+export function withoutHiddenTabs(path, tabs) {
+  return tabs.filter(t => !tabHidden(path, t.key))
 }
 
 // Onglets par page — rôles en plus du Super Admin.

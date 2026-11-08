@@ -11,7 +11,7 @@ import DispatchAlertBanner from './DispatchAlertBanner'
 import RequestAlerts from './RequestAlerts'
 import PreviewBanner from './PreviewBanner'
 import GlobalSearch from './GlobalSearch'
-import { canSee, isSuperRole } from '../lib/droits'
+import { canSee, isSuperRole, pageHidden } from '../lib/droits'
 import { GROUPS, NAV } from '../lib/menu'
 
 const CLOSED_GROUPS_KEY = 'dem_admin_menu_groupes_fermes'
@@ -35,7 +35,9 @@ const normalize = (text) => text.normalize('NFD').replace(/[\u0300-\u036f]/g, ''
 
 function canSeeNav(item, adminRole) {
   if (item.hideForSuper && isSuperRole(adminRole)) return false
-  return canSee(adminRole, item.roles)  // SUPER voit tout ; sinon selon les accès du rôle
+  // SUPER voit tout ; sinon selon les accès du rôle, moins les pages
+  // décochées par le Super Admin (Équipes › Rôles)
+  return canSee(adminRole, item.roles) && !pageHidden(adminRole, item.to)
 }
 
 export default function Layout({ children }) {
