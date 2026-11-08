@@ -11,7 +11,7 @@ function viewedAs(admin, preview) {
   if (!preview || !isSuperAccount(admin)) return admin
   return {
     ...admin,
-    adminRole: preview.key, adminAccess: preview.access,
+    adminRole: preview.key, adminAccess: preview.access, adminHiddenPages: preview.hiddenPages ?? [],
     adminRoleLabel: preview.label, adminRoleColor: preview.color,
     previewing: true,
   }
@@ -22,7 +22,7 @@ const AuthContext = createContext(null)
 // Les droits d'affichage (lib/droits.js) suivent les accès du rôle vu.
 function applyAccess(admin, preview) {
   const viewed = viewedAs(admin, preview)
-  setCurrentAccess(viewed?.adminRole, viewed?.adminAccess)
+  setCurrentAccess(viewed?.adminRole, viewed?.adminAccess, viewed?.adminHiddenPages)
 }
 
 export function AuthProvider({ children }) {
@@ -36,7 +36,7 @@ export function AuthProvider({ children }) {
     setUserState(admin)
   }
 
-  // Aperçu d'un rôle (Super Admin) : { key, label, color, access }
+  // Aperçu d'un rôle (Super Admin) : { key, label, color, access, hiddenPages }
   function startPreview(role) {
     if (!isSuperAccount(realUser)) return
     savePreview(role)

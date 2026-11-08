@@ -1,7 +1,8 @@
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom'
 import { AuthProvider, useAuth } from './contexts/AuthContext'
 import { lazy, Suspense } from 'react'
 import { homeRouteForRole } from './lib/roleHome'
+import { pageHidden } from './lib/droits'
 import Layout      from './components/Layout'
 import Login       from './pages/Login'
 import ChangePasswordRequired from './pages/ChangePasswordRequired'
@@ -42,6 +43,7 @@ const PageLoader = () => (
 
 function ProtectedRoute({ children }) {
   const { user, loading } = useAuth()
+  const { pathname } = useLocation()
   if (loading) return (
     <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)' }}>
       Chargement…
@@ -49,6 +51,11 @@ function ProtectedRoute({ children }) {
   )
   if (!user) return <Navigate to="/login" replace />
   if (user.mustChangePassword) return <Navigate to="/change-password" replace />
+  // Page décochée pour ce rôle (Équipes › Rôles) : retour à sa page d'accueil
+  if (pageHidden(user.adminRole, pathname)) {
+    const home = homeRouteForRole(user.adminRole)
+    if (home !== pathname) return <Navigate to={home} replace />
+  }
   return <Layout>{children}</Layout>
 }
 

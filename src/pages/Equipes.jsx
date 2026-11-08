@@ -231,7 +231,7 @@ export default function Equipes() {
       return {
         lines: [
           `Passer ${whoOf(a)} de ${roleMeta(roleOf(a)).label} à ${r.label} ?`,
-          to === 'SUPER' ? 'Accès total à l’admin, y compris Équipes et Maintenance.' : `Pages : ${pagesFor(r.access).join(', ') || 'aucune'}.`,
+          to === 'SUPER' ? 'Accès total à l’admin, y compris Équipes et Maintenance.' : `Pages : ${pagesFor(r.access, false, r.hiddenPages ?? []).join(', ') || 'aucune'}.`,
           'Effet immédiat ; le menu de ce compte se met à jour au prochain rechargement de la page.',
         ],
         label: 'Changer le rôle', danger: to === 'SUPER', go: () => changeRole(a, to),

@@ -1,4 +1,5 @@
-import { canSee } from './droits'
+import { canSee, isSuperRole, pageHidden } from './droits'
+import { NAV } from './menu'
 
 // Route d'atterrissage par rôle admin — certains rôles n'ont pas accès au Dashboard partagé.
 // Selon les accès du rôle (page Équipes) : le Dashboard s'il l'ouvre (comme
@@ -11,6 +12,10 @@ const ACCESS_HOME = [
 ]
 
 export function homeRouteForRole(adminRole) {
-  if (canSee(adminRole, DASHBOARD_ACCESS)) return '/'
-  return ACCESS_HOME.find(([key]) => canSee(adminRole, [key]))?.[1] ?? '/'
+  const home = canSee(adminRole, DASHBOARD_ACCESS)
+    ? '/'
+    : ACCESS_HOME.find(([key]) => canSee(adminRole, [key]))?.[1] ?? '/'
+  if (isSuperRole(adminRole) || !pageHidden(adminRole, home)) return home
+  // Page d'accueil décochée par le Super Admin : première page restante du menu
+  return NAV.find(n => canSee(adminRole, n.roles) && !pageHidden(adminRole, n.to))?.to ?? home
 }
