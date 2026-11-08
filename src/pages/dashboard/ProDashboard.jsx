@@ -108,19 +108,6 @@ function Newcomers({ isMobile, onOpenPro, onOpenClient }) {
       {error ? <div style={{ ...card, color: '#dc2626', fontSize: 13 }}>{error}</div> : !data ? <div style={{ ...card, ...emptyStyle }}>Chargement…</div> : (
         <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(auto-fit, minmax(420px, 1fr))', gap: 10 }}>
           <NewcomerTable
-            title="Nouveaux clients" total={data.clients.total} shown={data.clients.list.length} empty={`Aucun client inscrit sur ${days} jours.`}
-            head={['Nom', 'Téléphone', 'Inscrit le', 'Courses', '']}
-            rows={data.clients.list.map(c => ({
-              key: c.id,
-              cells: [
-                <button key="n" onClick={() => onOpenClient(c.phone)} style={linkBtn}>{c.name || 'Sans nom'}</button>,
-                c.phone,
-                fmtDay(c.createdAt),
-                <strong key="o" style={{ color: c.orders ? '#15803d' : 'var(--text-muted)' }}>{c.orders}</strong>,
-                contact(c.phone),
-              ],
-            }))} />
-          <NewcomerTable
             title="Nouveaux DEM Pro" total={data.pros.total} shown={data.pros.list.length} empty={`Aucun DEM Pro inscrit sur ${days} jours.`}
             head={['Boutique', 'Statut', 'Inscrit le', 'Courses', '']}
             rows={data.pros.list.map(p => {
@@ -142,6 +129,19 @@ function Newcomers({ isMobile, onOpenPro, onOpenClient }) {
                 ],
               }
             })} />
+          <NewcomerTable
+            title="Nouveaux clients" total={data.clients.total} shown={data.clients.list.length} empty={`Aucun client inscrit sur ${days} jours.`}
+            head={['Nom', 'Téléphone', 'Inscrit le', 'Courses', '']}
+            rows={data.clients.list.map(c => ({
+              key: c.id,
+              cells: [
+                <button key="n" onClick={() => onOpenClient(c.phone)} style={linkBtn}>{c.name || 'Sans nom'}</button>,
+                c.phone,
+                fmtDay(c.createdAt),
+                <strong key="o" style={{ color: c.orders ? '#15803d' : 'var(--text-muted)' }}>{c.orders}</strong>,
+                contact(c.phone),
+              ],
+            }))} />
         </div>
       )}
     </Section>

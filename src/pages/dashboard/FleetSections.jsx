@@ -53,9 +53,10 @@ function Tile(props) {
   )
 }
 
-function DriverRow({ d }) {
+function DriverRow({ d, rank }) {
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 13, padding: '6px 0', borderBottom: '1px solid var(--border)' }}>
+      {rank && <span style={{ width: 22, textAlign: 'right', fontWeight: 800, color: rank <= 3 ? '#f59e0b' : 'var(--text-muted)', flexShrink: 0 }}>{rank}</span>}
       <span style={{ width: 8, height: 8, borderRadius: '50%', background: d.online ? '#22c55e' : '#cbd5e1', flexShrink: 0 }} title={d.online ? 'En ligne' : 'Hors ligne'} />
       <span style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontWeight: 600 }}>{d.name ?? d.phone ?? '—'}</span>
       <span style={{ color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>{fmtDuration(d.onlineSeconds)}</span>
@@ -76,15 +77,14 @@ function DriversPart(props) {
         <Tile icon={Clock} color="#0077b6" label="Connectés aujourd'hui" value={d.connectedToday} />
         <Tile icon={Timer} color="#dc2626" label="Connectés sans course" value={d.idle.length} sub="30 min ou plus, aucune course acceptée" />
       </div>
-      <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: 10 }}>
-        <div style={card}>
-          <h3 style={cardTitle}>Classement par temps de connexion</h3>
-          {d.ranking.length === 0 ? <div style={empty}>Aucun coursier connecté aujourd'hui.</div> : d.ranking.map(x => <DriverRow key={x.id} d={x} />)}
-        </div>
-        <div style={card}>
-          <h3 style={cardTitle}>Connectés mais à 0 course</h3>
-          {d.idle.length === 0 ? <div style={empty}>Aucun : tous les coursiers connectés ont eu au moins une course.</div> : d.idle.map(x => <DriverRow key={x.id} d={x} />)}
-        </div>
+      <div style={card}>
+        <h3 style={cardTitle}>Classement par temps de connexion <span style={{ fontWeight: 500, color: 'var(--text-muted)' }}>· 15 premiers</span></h3>
+        {d.ranking.length === 0 ? <div style={empty}>Aucun coursier connecté aujourd'hui.</div> : (
+          // En colonnes (1 à 8 à gauche, 9 à 15 à droite), lu de haut en bas
+          <div style={{ columns: isMobile ? 1 : 2, columnGap: 24 }}>
+            {d.ranking.slice(0, 15).map((x, i) => <div key={x.id} style={{ breakInside: 'avoid' }}><DriverRow d={x} rank={i + 1} /></div>)}
+          </div>
+        )}
       </div>
     </Section>
   )
