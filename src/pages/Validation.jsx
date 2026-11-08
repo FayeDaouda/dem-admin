@@ -3,14 +3,14 @@ import { useSearchParams } from 'react-router-dom'
 import api from '../lib/api'
 import { useAuth } from '../contexts/AuthContext'
 import { glass, glassInput, pageWrap, pageScroll } from '../lib/glassStyles'
-import { RefreshCw, CheckCircle, XCircle, ChevronDown, ChevronUp, Shield, Motorbike, Layers, AlertTriangle, Briefcase, ClipboardList, Wallet, FileWarning, Truck, Send, Paperclip, HelpCircle } from 'lucide-react'
+import { RefreshCw, CheckCircle, XCircle, ChevronDown, ChevronUp, Shield, Motorbike, Layers, AlertTriangle, Briefcase, ClipboardList, Wallet, FileWarning, Truck, Send, Paperclip, HelpCircle, Megaphone } from 'lucide-react'
 import SuspendModal from '../components/SuspendModal'
 import AmbassadorDetailModal from '../components/AmbassadorDetailModal'
 import DocThumb from '../components/DocThumb'
 import PageHeader from '../components/PageHeader'
 import TabBar from '../components/TabBar'
 import { useUrlTab } from '../lib/useUrlTab'
-import { canSee, asksSuper, isSuperRole, TAB_ROLES, ACTION_ROLES } from '../lib/droits'
+import { canSee, asksSuper, isSuperRole, tabHidden, TAB_ROLES, ACTION_ROLES } from '../lib/droits'
 import { useAutoRefresh } from '../lib/useAutoRefresh'
 import { REQUEST_KIND_LABELS, REQUEST_STATUS_LABELS, requestDetails } from '../lib/requestKinds'
 import RequestModal from '../components/RequestModal'
@@ -176,6 +176,7 @@ const TABS = [
   { key: 'finance-requests', label: 'Demandes Finance',        icon: Wallet },
   { key: 'fleet-requests',   label: 'Demandes Flotte',         icon: Truck },
   { key: 'commercial-requests', label: 'Demandes Commercial',   icon: Briefcase },
+  { key: 'cm-requests',      label: 'Demandes CM',             icon: Megaphone },
   { key: 'my-requests',      label: 'Mes demandes',            icon: Send },
 ]
 
@@ -194,6 +195,7 @@ const COUNTERS = {
       'finance-requests': list.filter(FINANCE_FILTER).length,
       'fleet-requests':   list.filter(FLEET_FILTER).length,
       'commercial-requests': list.filter(r => r.origin === 'COMMERCIAL').length,
+      'cm-requests':      list.filter(r => r.origin === 'CM').length,
     }
   }),
   // Mes demandes : celles qui attendent ma réponse (précision demandée)
@@ -224,7 +226,8 @@ export default function Validation() {
   const highlightId = searchParams.get('highlight') || null
 
   // « Mes demandes » : suivi du demandeur, sans objet pour le Super Admin
-  const tabs = useMemo(() => TABS.filter(t => canSee(role, TAB_ROLES.validation[t.key]) && !(t.key === 'my-requests' && isSuperRole(role))), [role])
+  // Onglets décochés pour le rôle (Équipes › Rôles) : retirés, aussi du choix du premier onglet
+  const tabs = useMemo(() => TABS.filter(t => canSee(role, TAB_ROLES.validation[t.key]) && !(t.key === 'my-requests' && isSuperRole(role)) && !tabHidden('/validation', t.key)), [role])
   const [urlTab, setTab] = useUrlTab(tabs)
   const fromUrl = tabs.some(t => t.key === searchParams.get('tab'))
 
@@ -266,6 +269,7 @@ export default function Validation() {
         {tab === 'finance-requests' && <FinanceRequestsTab highlightId={highlightId} onChanged={refreshCounts} />}
         {tab === 'fleet-requests'   && <FleetRequestsTab highlightId={highlightId} onChanged={refreshCounts} />}
         {tab === 'commercial-requests' && <FleetRequestsTab origin="COMMERCIAL" emptyText="Aucune demande du Commercial / CRM Pro." highlightId={highlightId} onChanged={refreshCounts} />}
+        {tab === 'cm-requests' && <FleetRequestsTab origin="CM" emptyText="Aucune demande du CM / CRM Client." highlightId={highlightId} onChanged={refreshCounts} />}
         {tab === 'my-requests'      && <MyRequestsTab highlightId={highlightId} onChanged={refreshCounts} />}
       </div>
     </div>
@@ -913,7 +917,7 @@ function DemProTab({ highlightId, onChanged }) {
 // (/admin/requests), deux onglets pour ne pas les noyer les unes dans les autres.
 // Références stables (pas de fonction inline) pour ne pas invalider le
 // useCallback de chargement à chaque rendu.
-const SC_FILTER      = r => r.kind !== 'TARIFF_CHANGE' && !['FLOTTE', 'COMMERCIAL'].includes(r.origin)
+const SC_FILTER      = r => r.kind !== 'TARIFF_CHANGE' && !['FLOTTE', 'COMMERCIAL', 'CM'].includes(r.origin)
 const FINANCE_FILTER = r => r.kind === 'TARIFF_CHANGE'
 const FLEET_FILTER   = r => r.origin === 'FLOTTE'
 
@@ -1166,7 +1170,7 @@ function RequestCard({ r, highlighted, children }) {
   )
 }
 
-// origin : FLOTTE (Responsable de flottes) ou COMMERCIAL (Commercial / CRM Pro)
+// origin : FLOTTE (Responsable de flottes), COMMERCIAL (Commercial / CRM Pro) ou CM (CM / CRM Client)
 function FleetRequestsTab({ highlightId, onChanged, origin = 'FLOTTE', emptyText = 'Aucune demande du Responsable de flottes.' }) {
   const [list,    setList]    = useState([])
   const [loading, setLoading] = useState(true)

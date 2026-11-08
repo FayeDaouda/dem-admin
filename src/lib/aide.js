@@ -11,6 +11,7 @@
 // ============================================================
 
 export const PAGES = {
+  '/base-clients': "Base des clients particuliers : inscription et source, courses livrées et dernière commande, statut calculé (Jamais servi, Actif, Inactif, Fidèle), parrainage, prochaine action (À relancer, Relancé le…, Converti, Ne plus relancer) et une ligne de note.",
   '/base-pro': "Tableau de tri des comptes DEM Pro : viabilité, prochaine action (avec la date d'un rappel) et une ligne de note. Un nouveau Pro y arrive seul, « À appeler ». Le suivi détaillé des appels reste dans TAM.",
   '/': "Vue d'ensemble de l'activité : ce qui demande une action, les opérations en direct, les chiffres du jour, les comptes et les tendances. Les cartes s'ouvrent sur leur détail.",
   '/map': 'Carte en temps réel des coursiers en ligne et des courses en cours. Les positions se mettent à jour toutes seules.',
@@ -66,6 +67,12 @@ export const TITRES = {
   'Pro › Plans': "Plan en cours de chaque compte (Gratuit, Starter, Business, Premium), essais en cours et plans « sans paiement » (donnés sans abonnement payé).",
   'Pro › Courses Pro en direct': "Commandes des Pro en attente d'un coursier (en rouge au-delà de 3 min) et en cours. La Carte live permet de proposer ou d'attribuer.",
   'Pro › Mes bonus': "Courses offertes et essais prolongés ce mois par le commercial, face au plafond de 15 courses, et vos demandes en attente.",
+  'CM › À traiter': "Ce qui demande une action : incidents des clients encore ouverts (en rouge au-delà de 24 h), clients insatisfaits (note moyenne donnée < 3/5), réponses du Super Admin à vos demandes.",
+  'CM › KPI clients': "Nouveaux clients, clients actifs (au moins une course livrée), premières commandes et taux d'annulation des clients sur la période choisie, avec la tendance face à la période précédente de même durée. Rétention, inactifs et jamais servis : situation du jour. Le statut de chaque client est calculé automatiquement.",
+  'CM › Tunnel clients': "Inscrits → 1re course livrée → 2e course → fidèles (5 courses livrées ou plus, dont une sur 30 jours) : le nombre à chaque étape et le taux de passage.",
+  'CM › Campagnes': "Pour chaque envoi aux clients : inscriptions et commandes des clients dans les 48 h qui suivent (simple concordance dans le temps). Codes actifs pour les clients et leur utilisation.",
+  'CM › Parrainage': "Parrainages de clients ce mois, bonus de parrainage promis et pas encore versés, et les parrains qui ont le plus de filleuls.",
+  'CM › Mes bonus': "Courses offertes ce mois par le CM, face au plafond de 10 (une par client), et vos demandes en attente.",
   'Heures de pointe': "Par heure de la journée, en moyenne par jour : courses demandées et coursiers en ligne en même temps. La courbe rouge montre les annulations faute de coursier : là où il manque des coursiers.",
   "En attente d'un coursier": "Courses créées pour lesquelles aucun coursier n'a encore accepté.",
   'Courses en cours': "Courses acceptées par un coursier et pas encore livrées.",
@@ -252,6 +259,7 @@ export const ONGLETS = {
     'finance-requests': 'Demandes de changement de tarif envoyées par la Finance ; décision du Super Admin.',
     'fleet-requests':   "Demandes du Responsable de flottes pour les actions réservées au Super Admin (suspension longue, suppression, validation d'un chef, envoi aux clients…). Valider applique l'action ; refuser demande un motif ; « Demander une précision » renvoie une question au demandeur. Les urgentes sonnent et passent en tête.",
     'commercial-requests': "Demandes du Commercial / CRM Pro pour les actions réservées au Super Admin (bonus au-delà des plafonds, réductions, changement de plan, suspension, annulation ou remboursement d'une commande Pro). Valider applique l'action ; refuser demande un motif.",
+    'cm-requests':      "Demandes du CM / CRM Client pour les actions réservées au Super Admin (course offerte au-delà du plafond, réduction, envoi à tous les clients, alerte dans l'app, bannir un client, badge, annulation ou remboursement). Valider applique l'action ; refuser demande un motif.",
     'my-requests':      "Vos demandes au Super Admin et leur décision. Quand une précision est demandée, répondez ici : la demande repart en attente.",
   },
   '/finance': {

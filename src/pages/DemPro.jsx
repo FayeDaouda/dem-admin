@@ -10,7 +10,7 @@ import OffersTab from './dem-pro/OffersTab'
 import ReferralsTab from './dem-pro/ReferralsTab'
 import PageHeader from '../components/PageHeader'
 import TabBar from '../components/TabBar'
-import { canSee, roleHas, ACTION_ROLES, asksSuper } from '../lib/droits'
+import { canSee, roleHas, ACTION_ROLES, asksSuper, withoutHiddenTabs } from '../lib/droits'
 import {
   hasPaidTier, SECTOR_LABELS, SECTOR_COLORS, VOLUME_LABELS, PLAN_COLORS, proStatusInfo, planLabel,
 } from './dem-pro/labels'
@@ -464,7 +464,9 @@ export default function DemPro() {
   // Onglet, vue, plan et recherche gardés dans l'adresse.
   const [params, setParams] = useSearchParams()
   const onglet = params.get('onglet')
-  const view = onglet === 'offres' || onglet === 'parrainage' ? onglet : 'comptes'
+  // Onglets décochés pour le rôle (Équipes › Rôles) : retirés
+  const pageTabs = withoutHiddenTabs('/dem-pro', PAGE_TABS)
+  const view = pageTabs.some(t => t.key === onglet) ? onglet : (pageTabs[0]?.key ?? 'comptes')
   const status     = VIEWS.some(v => v.key === params.get('statut')) ? params.get('statut') : ''
   const planFilter = PLAN_FILTERS.some(f => f.key === params.get('plan')) ? params.get('plan') : ''
   const followFilter = FOLLOW_FILTERS.some(f => f.key === params.get('suivi')) ? params.get('suivi') : ''

@@ -1,7 +1,8 @@
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom'
 import { AuthProvider, useAuth } from './contexts/AuthContext'
 import { lazy, Suspense } from 'react'
 import { homeRouteForRole } from './lib/roleHome'
+import { pageHidden } from './lib/droits'
 import Layout      from './components/Layout'
 import Login       from './pages/Login'
 import ChangePasswordRequired from './pages/ChangePasswordRequired'
@@ -29,6 +30,7 @@ import BadgesPage from './pages/Badges'
 import Parrainage from './pages/Parrainage'
 import Notifications from './pages/Notifications'
 import ProBase from './pages/ProBase'
+import ClientBase from './pages/ClientBase'
 
 const LiveMap     = lazy(() => import('./pages/LiveMap'))
 const FleetSection = lazy(() => import('./pages/fleet/FleetSection'))
@@ -41,6 +43,7 @@ const PageLoader = () => (
 
 function ProtectedRoute({ children }) {
   const { user, loading } = useAuth()
+  const { pathname } = useLocation()
   if (loading) return (
     <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)' }}>
       Chargement…
@@ -48,6 +51,11 @@ function ProtectedRoute({ children }) {
   )
   if (!user) return <Navigate to="/login" replace />
   if (user.mustChangePassword) return <Navigate to="/change-password" replace />
+  // Page décochée pour ce rôle (Équipes › Rôles) : retour à sa page d'accueil
+  if (pageHidden(user.adminRole, pathname)) {
+    const home = homeRouteForRole(user.adminRole)
+    if (home !== pathname) return <Navigate to={home} replace />
+  }
   return <Layout>{children}</Layout>
 }
 
@@ -118,6 +126,7 @@ function AppRoutes() {
       <Route path="/nouveaux-profils" element={<Navigate to="/relances?tab=inscrits" replace />} />
       <Route path="/tableau" element={<Navigate to="/relances?tab=appels" replace />} />
       <Route path="/base-pro" element={<ProtectedRoute><ProBase /></ProtectedRoute>} />
+      <Route path="/base-clients" element={<ProtectedRoute><ClientBase /></ProtectedRoute>} />
       <Route path="/relances" element={<ProtectedRoute><Relances /></ProtectedRoute>} />
       <Route path="/badges" element={<ProtectedRoute><BadgesPage /></ProtectedRoute>} />
       <Route path="/badges/clients" element={<Navigate to="/badges?tab=clients" replace />} />

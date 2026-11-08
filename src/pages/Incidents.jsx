@@ -68,7 +68,9 @@ function Chip({ cfg, text }) {
 // ── Composant principal ───────────────────────────────────────────────────────
 export default function Incidents() {
   const { user } = useAuth()
+  // CM / CRM Client : incidents des clients seulement (incident.side, serveur admin.incidents.js)
   const canUpdate = canSee(user?.adminRole, ACTION_ROLES.incidentUpdate)
+  const canUpdateAll = canSee(user?.adminRole, ACTION_ROLES.incidentUpdateAll)
 
   const [incidents, setIncidents] = useState([])
   const [counts, setCounts]       = useState(null)
@@ -337,7 +339,7 @@ export default function Incidents() {
             )}
 
             <Section title="Suivi">
-              {canUpdate ? (
+              {canUpdate && (canUpdateAll || detail.side === 'CLIENT') ? (
                 <>
                   <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                     {['OPEN', 'INVESTIGATING', 'RESOLVED'].map(s => (
