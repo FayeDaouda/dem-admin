@@ -7,6 +7,7 @@ import { homeRouteForRole } from '../../lib/roleHome'
 import { glass, glassInput } from '../../lib/glassStyles'
 import { ACCESS, accessLine, pageEntriesFor, pagesFor } from '../../lib/roleAccess'
 import { GROUPS } from '../../lib/menu'
+import { PAGE_TABS, tabId, tabsFor } from '../../lib/pageTabs'
 import InlineConfirm from '../../components/InlineConfirm'
 
 // ── Rôles de l'équipe (onglet Rôles de la page Équipes) ──
@@ -14,7 +15,8 @@ import InlineConfirm from '../../components/InlineConfirm'
 // menu qui le citent (lib/menu.js) et les actions qui vont avec, comme
 // côté serveur (requireAdminRole). Le Super Admin peut ensuite décocher des
 // pages pour ce rôle (hiddenPages) : elles disparaissent du menu et ne
-// s'ouvrent plus par leur adresse. Super Admin : accès total, verrouillé.
+// s'ouvrent plus par leur adresse — et, dans une page, des onglets
+// (« /marketing#promotions », lib/pageTabs.js). Super Admin : accès total, verrouillé.
 
 const PALETTE = ['#6366f1', '#22c55e', '#ec4899', '#06b6d4', '#a855f7', '#0ea5e9', '#14b8a6', '#84cc16', '#f97316', '#ef4444', '#64748b', '#0f766e']
 
@@ -57,23 +59,30 @@ export default function RolesTab({ roles, countByRole, onChanged, onNotice }) {
       return { ...f, access, label: followsAccess && auto.length <= LABEL_MAX ? auto : f.label }
     })
   }
-  function togglePage(to) {
-    setForm(f => ({ ...f, hiddenPages: f.hiddenPages.includes(to) ? f.hiddenPages.filter(p => p !== to) : [...f.hiddenPages, to] }))
+  // Page ou onglet (« /marketing#promotions ») : coché = visible
+  function toggleHidden(id) {
+    setForm(f => ({ ...f, hiddenPages: f.hiddenPages.includes(id) ? f.hiddenPages.filter(p => p !== id) : [...f.hiddenPages, id] }))
   }
   function setAllPages(on) {
     setForm(f => ({ ...f, hiddenPages: on ? [] : pageEntriesFor(f.access).map(n => n.to) }))
   }
 
-  // Pages qu'ouvrent les accès cochés, et celles laissées visibles
+  // Pages qu'ouvrent les accès cochés, celles laissées visibles, et les
+  // onglets proposés (au moins deux dans la page pour ces accès)
   const formPages   = pageEntriesFor(form.access)
   const formVisible = formPages.filter(n => !form.hiddenPages.includes(n.to))
+  const formTabs    = Object.fromEntries(formPages.map(n => [n.to, tabsFor(n.to, form.access)]))
+  // Identifiants gardés à l'enregistrement : pages et onglets encore proposés
+  const offeredIds  = new Set(formPages.flatMap(n => [n.to, ...formTabs[n.to].map(x => tabId(n.to, x.key))]))
 
   async function save(e) {
     e.preventDefault()
     if (form.access.length === 0) { setFormError('Cochez au moins un accès.'); return }
     if (formVisible.length === 0) { setFormError('Laissez au moins une page active.'); return }
-    // Pages décochées : seulement parmi celles qu'ouvrent les accès gardés
-    const payload = { ...form, hiddenPages: formPages.filter(n => form.hiddenPages.includes(n.to)).map(n => n.to) }
+    const emptyPage = formVisible.find(n => formTabs[n.to].length > 0 && formTabs[n.to].every(x => form.hiddenPages.includes(tabId(n.to, x.key))))
+    if (emptyPage) { setFormError(`${emptyPage.label} : laissez au moins un onglet, ou désactivez la page.`); return }
+    // Pages et onglets décochés : seulement parmi ceux qu'ouvrent les accès gardés
+    const payload = { ...form, hiddenPages: form.hiddenPages.filter(id => offeredIds.has(id)) }
     setSaving(true); setFormError('')
     try {
       const res = editing === 'new'
@@ -120,7 +129,7 @@ export default function RolesTab({ roles, countByRole, onChanged, onNotice }) {
         {roles.map(role => {
           const members = countByRole[role.key] ?? 0
           const pages = pagesFor(role.access, role.locked, role.hiddenPages ?? [])
-          const hidden = role.locked ? [] : pageEntriesFor(role.access).filter(n => role.hiddenPages?.includes(n.to)).map(n => n.label)
+          const hidden = role.locked ? [] : hiddenLabels(role)
           const others = roles.filter(r => r.key !== role.key)
           return (
             <div key={role.key} style={{ ...glass, padding: '14px 16px', display: 'flex', flexDirection: 'column', gap: 10 }}>
@@ -265,16 +274,39 @@ export default function RolesTab({ roles, countByRole, onChanged, onNotice }) {
                           {items.map(n => {
                             const on = !form.hiddenPages.includes(n.to)
                             const Icon = n.icon
-                            return (
-                              <label key={n.to} style={{
-                                display: 'flex', alignItems: 'center', gap: 8, padding: '6px 9px', borderRadius: 8, cursor: 'pointer', fontSize: 12.5,
-                                border: `1px solid ${on ? form.color : 'var(--border)'}`, background: on ? form.color + '12' : 'transparent',
-                                color: on ? 'var(--text)' : 'var(--text-muted)',
-                              }}>
-                                <input type="checkbox" checked={on} onChange={() => togglePage(n.to)} />
+                            const tabs = formTabs[n.to]
+                            const pageBox = (
+                              <label style={{ ...pageChip(on, form.color), ...(tabs.length ? { border: 'none', background: 'transparent', padding: '2px 0' } : {}) }}>
+                                <input type="checkbox" checked={on} onChange={() => toggleHidden(n.to)} />
                                 {Icon && <Icon size={13} style={{ flexShrink: 0 }} />}
                                 <span style={{ fontWeight: on ? 600 : 500, textDecoration: on ? 'none' : 'line-through' }}>{n.label}</span>
+                                {tabs.length > 0 && on && (
+                                  <span style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 500 }}>
+                                    · {tabs.filter(x => !form.hiddenPages.includes(tabId(n.to, x.key))).length} / {tabs.length} onglets
+                                  </span>
+                                )}
                               </label>
+                            )
+                            if (!tabs.length) return <div key={n.to}>{pageBox}</div>
+                            // Page à onglets : sur toute la largeur, ses onglets en dessous
+                            return (
+                              <div key={n.to} style={{ gridColumn: '1 / -1', borderRadius: 8, padding: '6px 9px', border: `1px solid ${on ? form.color : 'var(--border)'}`, background: on ? form.color + '0d' : 'transparent' }}>
+                                {pageBox}
+                                {on && (
+                                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, margin: '6px 0 2px 22px' }}>
+                                    {tabs.map(x => {
+                                      const id = tabId(n.to, x.key)
+                                      const tabOn = !form.hiddenPages.includes(id)
+                                      return (
+                                        <label key={id} style={tabChip(tabOn, form.color)}>
+                                          <input type="checkbox" checked={tabOn} onChange={() => toggleHidden(id)} style={{ margin: 0 }} />
+                                          <span style={{ textDecoration: tabOn ? 'none' : 'line-through' }}>{x.label}</span>
+                                        </label>
+                                      )
+                                    })}
+                                  </div>
+                                )}
+                              </div>
                             )
                           })}
                         </div>
@@ -283,7 +315,7 @@ export default function RolesTab({ roles, countByRole, onChanged, onNotice }) {
                   })
                 )}
                 <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 8 }}>
-                  Une page décochée disparaît du menu de ce rôle et ne s'ouvre plus.
+                  Une page décochée disparaît du menu de ce rôle et ne s'ouvre plus ; un onglet décoché disparaît de sa page.
                   {editing !== 'new' && (countByRole[editing.key] ?? 0) > 0 && ` S'applique aux ${countByRole[editing.key]} membre(s) de ce rôle au prochain chargement de l'admin.`}
                 </div>
               </div>
@@ -308,6 +340,25 @@ const inputStyle = { ...glassInput, padding: '8px 10px', fontSize: 13 }
 const errorLine  = { fontSize: 12, color: '#ef4444', background: '#ef444410', padding: '8px 12px', borderRadius: 6, marginTop: 8 }
 const btnPrimary = { display: 'flex', alignItems: 'center', gap: 6, padding: '7px 14px', borderRadius: 'var(--radius-sm)', border: 'none', background: 'var(--primary)', color: '#fff', fontSize: 13, fontWeight: 600, cursor: 'pointer' }
 const actionBtn  = (color) => ({ display: 'flex', alignItems: 'center', gap: 4, padding: '4px 10px', borderRadius: 6, fontSize: 11, fontWeight: 600, cursor: 'pointer', border: `1px solid ${color}`, background: 'transparent', color, whiteSpace: 'nowrap' })
+// Pages et onglets décochés d'un rôle, en clair : « Parrainage, Marketing › Promotions »
+function hiddenLabels(role) {
+  const ids = role.hiddenPages ?? []
+  return pageEntriesFor(role.access).flatMap(n => [
+    ...(ids.includes(n.to) ? [n.label] : []),
+    ...(ids.includes(n.to) ? [] : (PAGE_TABS[n.to] ?? []).filter(x => ids.includes(tabId(n.to, x.key))).map(x => `${n.label} › ${x.label}`)),
+  ])
+}
+
+const pageChip = (on, color) => ({
+  display: 'flex', alignItems: 'center', gap: 8, padding: '6px 9px', borderRadius: 8, cursor: 'pointer', fontSize: 12.5,
+  border: `1px solid ${on ? color : 'var(--border)'}`, background: on ? color + '12' : 'transparent',
+  color: on ? 'var(--text)' : 'var(--text-muted)',
+})
+const tabChip = (on, color) => ({
+  display: 'flex', alignItems: 'center', gap: 6, padding: '3px 9px', borderRadius: 14, cursor: 'pointer', fontSize: 11.5, fontWeight: on ? 600 : 500,
+  border: `1px solid ${on ? color : 'var(--border)'}`, background: on ? '#fff' : 'transparent',
+  color: on ? 'var(--text)' : 'var(--text-muted)',
+})
 const linkBtn    = { background: 'none', border: 'none', padding: 0, cursor: 'pointer', fontSize: 11.5, fontWeight: 600, color: 'var(--primary)' }
 const chip       = (color) => ({ fontSize: 11, fontWeight: 600, padding: '2px 9px', borderRadius: 10, background: color + '18', color })
 const overlay    = { position: 'fixed', inset: 0, background: 'rgba(0,40,80,0.45)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 300 }

@@ -1,11 +1,14 @@
 import { useLocation } from 'react-router-dom'
 import InfoTip from './InfoTip'
 import { tabHelp } from '../lib/aide'
+import { withoutHiddenTabs } from '../lib/droits'
 
 // Barre d'onglets commune — l'onglet ouvert vient de lib/useUrlTab.js.
 // Le ⓘ à droite de la barre explique l'onglet ouvert (lib/aide.js, ONGLETS).
-export default function TabBar({ tabs, active, onChange }) {
+// Les onglets décochés pour le rôle (Équipes › Rôles) n'apparaissent pas.
+export default function TabBar({ tabs: allTabs, active, onChange }) {
   const { pathname } = useLocation()
+  const tabs = withoutHiddenTabs(pathname, allTabs)
   if (tabs.length < 2) return null
   const current = tabs.find(t => t.key === active)
   const title = current?.infoTitle ?? (typeof current?.label === 'string' ? current.label : undefined)

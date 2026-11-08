@@ -10,7 +10,7 @@ import DocThumb from '../components/DocThumb'
 import PageHeader from '../components/PageHeader'
 import TabBar from '../components/TabBar'
 import { useUrlTab } from '../lib/useUrlTab'
-import { canSee, asksSuper, isSuperRole, TAB_ROLES, ACTION_ROLES } from '../lib/droits'
+import { canSee, asksSuper, isSuperRole, tabHidden, TAB_ROLES, ACTION_ROLES } from '../lib/droits'
 import { useAutoRefresh } from '../lib/useAutoRefresh'
 import { REQUEST_KIND_LABELS, REQUEST_STATUS_LABELS, requestDetails } from '../lib/requestKinds'
 import RequestModal from '../components/RequestModal'
@@ -226,7 +226,8 @@ export default function Validation() {
   const highlightId = searchParams.get('highlight') || null
 
   // « Mes demandes » : suivi du demandeur, sans objet pour le Super Admin
-  const tabs = useMemo(() => TABS.filter(t => canSee(role, TAB_ROLES.validation[t.key]) && !(t.key === 'my-requests' && isSuperRole(role))), [role])
+  // Onglets décochés pour le rôle (Équipes › Rôles) : retirés, aussi du choix du premier onglet
+  const tabs = useMemo(() => TABS.filter(t => canSee(role, TAB_ROLES.validation[t.key]) && !(t.key === 'my-requests' && isSuperRole(role)) && !tabHidden('/validation', t.key)), [role])
   const [urlTab, setTab] = useUrlTab(tabs)
   const fromUrl = tabs.some(t => t.key === searchParams.get('tab'))
 

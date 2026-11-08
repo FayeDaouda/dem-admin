@@ -68,6 +68,20 @@ export function roleHas(role, key) {
   return !isSuperRole(role) && accessOf(role).includes(key)
 }
 
+/**
+ * Onglet d'une page décoché pour le rôle connecté (Équipes › Rôles) ?
+ * Rangé dans hiddenPages sous la forme « /marketing#promotions ». Le Super
+ * Admin n'a jamais rien de décoché (le serveur lui renvoie une liste vide).
+ */
+export function tabHidden(path, key) {
+  return current.hiddenPages.includes(`${path}#${key}`)
+}
+
+/** Onglets d'une page, moins ceux décochés pour le rôle connecté. */
+export function withoutHiddenTabs(path, tabs) {
+  return tabs.filter(t => !tabHidden(path, t.key))
+}
+
 // Onglets par page — rôles en plus du Super Admin.
 export const TAB_ROLES = {
   // CM / CRM Client : Marketing complet, Badges clients en lecture
