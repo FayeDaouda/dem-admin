@@ -77,14 +77,24 @@ class MapErrorBoundary extends Component {
   }
 }
 
-// Centre auto sur les marqueurs
+// Centre auto sur les marqueurs. Zoom toujours plafonné : avec un seul point
+// (ou des points confondus), fitBounds sans plafond vise un zoom infini tant
+// que le fond Google n'est pas chargé, et Leaflet plante.
+const FIT_MAX_ZOOM = 15
 function AutoFit({ points }) {
   const map = useMap()
+  // Recentre seulement si les points changent, pas à chaque rendu
+  // (sinon la carte revient en place pendant qu'on la déplace).
+  const key = points.map(p => p.join(',')).join(';')
   useEffect(() => {
     if (points.length === 0) return
     const bounds = L.latLngBounds(points)
-    map.fitBounds(bounds, { padding: [40, 40] })
-  }, [points, map])
+    if (bounds.getNorthEast().equals(bounds.getSouthWest())) {
+      map.setView(bounds.getCenter(), FIT_MAX_ZOOM)
+    } else {
+      map.fitBounds(bounds, { padding: [40, 40], maxZoom: FIT_MAX_ZOOM })
+    }
+  }, [key, map]) // eslint-disable-line react-hooks/exhaustive-deps
   return null
 }
 
@@ -205,6 +215,7 @@ export default function LiveMap() {
           <MapContainer
             center={defaultCenter}
             zoom={12}
+            maxZoom={20}
             style={{ height: '100%', width: '100%' }}
           >
             <MapBaseLayer />
