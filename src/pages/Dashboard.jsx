@@ -10,7 +10,7 @@ import {
   UserPlus, Repeat, Star, ShieldAlert, ClipboardCheck, Wallet, Clock, ChevronDown,
   ChevronRight, Map as MapIcon, ShoppingBag, RefreshCw,
 } from 'lucide-react'
-import { connectSocket, disconnectSocket } from '../lib/socket'
+import { connectSocket } from '../lib/socket'
 import api from '../lib/api'
 import Badge from '../components/Badge'
 import { glass } from '../lib/glassStyles'
@@ -620,16 +620,19 @@ function MainDashboard() {
       'admin:payment:disputed':  '⚠ Litige signalé',
       'admin:driver:flagged':    '🚨 Coursier signalé',
     }
-    Object.entries(handlers).forEach(([ev, label]) => {
-      s.on(ev, d => {
+    // Écouteurs nommés : on ne retire que les nôtres (les bandeaux d'alerte
+    // écoutent les mêmes événements), et la connexion partagée reste ouverte.
+    const listeners = Object.entries(handlers).map(([ev, label]) => {
+      const fn = d => {
         setEvents(prev => [{ label, data: d, time: new Date().toLocaleTimeString('fr-FR') }, ...prev.slice(0, 49)])
         scheduleReload()
-      })
+      }
+      s.on(ev, fn)
+      return [ev, fn]
     })
     return () => {
       clearTimeout(debounceRef.current)
-      Object.keys(handlers).forEach(ev => s.off(ev))
-      disconnectSocket()
+      listeners.forEach(([ev, fn]) => s.off(ev, fn))
     }
   }, [loadAll, loadLive])
 

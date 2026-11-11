@@ -2,6 +2,7 @@ import { createContext, useContext, useState, useEffect } from 'react'
 import api from '../lib/api'
 import { setCurrentAccess } from '../lib/droits'
 import { getPreview, savePreview } from '../lib/preview'
+import { disconnectSocket } from '../lib/socket'
 
 const isSuperAccount = admin => !!admin && (!admin.adminRole || admin.adminRole === 'SUPER')
 
@@ -85,6 +86,7 @@ export function AuthProvider({ children }) {
   }
 
   function logout() {
+    disconnectSocket()
     localStorage.removeItem('dem_admin_token')
     localStorage.removeItem('dem_admin_user')
     savePreview(null)
