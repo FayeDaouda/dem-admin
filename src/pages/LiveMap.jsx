@@ -1,9 +1,9 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, Component } from 'react'
 import { MapContainer, Marker, Popup, Polyline, useMap } from 'react-leaflet'
 import MapBaseLayer from '../components/MapBaseLayer'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
-import { connectSocket, disconnectSocket } from '../lib/socket'
+import { connectSocket } from '../lib/socket'
 import api from '../lib/api'
 import Badge from '../components/Badge'
 import { RefreshCw } from 'lucide-react'
@@ -50,6 +50,33 @@ const PICKUP_ICON  = makeIcon('#f59e0b', '📦')
 const WAITING_ICON = makeIcon('#dc2626', '⏳') // course en attente d'un coursier
 const DELIVERY_ICON = makeIcon('#22c55e', '🏁')
 
+// Coordonnées utilisables par Leaflet : une latitude sans longitude (ou hors
+// limites) fait planter toute la page (« Invalid LatLng »).
+const isLat = v => typeof v === 'number' && Number.isFinite(v) && Math.abs(v) <= 90
+const isLng = v => typeof v === 'number' && Number.isFinite(v) && Math.abs(v) <= 180
+const hasPos = (lat, lng) => isLat(lat) && isLng(lng)
+
+// Si la carte plante malgré tout, on garde la page et on propose de réessayer.
+class MapErrorBoundary extends Component {
+  constructor(props) {
+    super(props)
+    this.state = { error: null }
+  }
+  static getDerivedStateFromError(error) { return { error } }
+  componentDidCatch(error) { console.error('Carte live :', error) }
+  render() {
+    if (!this.state.error) return this.props.children
+    return (
+      <div style={{ height: '100%', display: 'flex', flexDirection: 'column', gap: 10, alignItems: 'center', justifyContent: 'center', background: 'var(--surface)', color: 'var(--text-muted)', fontSize: 13, textAlign: 'center', padding: 16 }}>
+        La carte n'a pas pu s'afficher.
+        <button onClick={() => this.setState({ error: null })} style={{ padding: '6px 12px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border)', background: 'transparent', color: 'var(--text)', fontSize: 12, cursor: 'pointer' }}>
+          Réessayer
+        </button>
+      </div>
+    )
+  }
+}
+
 // Centre auto sur les marqueurs
 function AutoFit({ points }) {
   const map = useMap()
@@ -71,6 +98,7 @@ export default function LiveMap() {
   const [notice, setNotice] = useState('')
   const [snapshot, setSnapshot] = useState(null)
   const [loading, setLoading]   = useState(true)
+  const [loadError, setLoadError] = useState(false)
   const [showDrivers, setShowDrivers]   = useState(true)
   const [showOrders, setShowOrders]     = useState(true)
   const [showRoutes, setShowRoutes]     = useState(true)
@@ -79,8 +107,10 @@ export default function LiveMap() {
     try {
       const res = await api.get('/admin/live')
       setSnapshot(res.data)
+      setLoadError(false)
     } catch (e) {
       console.error(e)
+      setLoadError(true)
     } finally {
       setLoading(false)
     }
@@ -91,18 +121,12 @@ export default function LiveMap() {
     const s = connectSocket()
     const refresh = () => fetch()
 
-    s.on('admin:order:new',        refresh)
-    s.on('admin:order:accepted',   refresh)
-    s.on('admin:order:pickedup',   refresh)
-    s.on('admin:order:delivered',  refresh)
-    s.on('admin:order:cancelled',  refresh)
+    const events = ['admin:order:new', 'admin:order:accepted', 'admin:order:pickedup',
+      'admin:order:delivered', 'admin:order:cancelled']
+    events.forEach(ev => s.on(ev, refresh))
 
-    return () => {
-      ['admin:order:new','admin:order:accepted','admin:order:pickedup',
-       'admin:order:delivered','admin:order:cancelled',
-      ].forEach(ev => s.off(ev))
-      disconnectSocket()
-    }
+    // Seulement nos écouteurs : la connexion partagée reste ouverte (bandeaux d'alerte).
+    return () => events.forEach(ev => s.off(ev, refresh))
   }, [fetch])
 
   const drivers = snapshot?.availableDrivers ?? []
@@ -110,8 +134,8 @@ export default function LiveMap() {
 
   // Tous les points pour le autofit
   const allPoints = [
-    ...drivers.filter(d => d.latitude).map(d => [d.latitude, d.longitude]),
-    ...orders.filter(o => o.pickupLatitude).map(o => [o.pickupLatitude, o.pickupLongitude]),
+    ...drivers.filter(d => hasPos(d.latitude, d.longitude)).map(d => [d.latitude, d.longitude]),
+    ...orders.filter(o => hasPos(o.pickupLatitude, o.pickupLongitude)).map(o => [o.pickupLatitude, o.pickupLongitude]),
   ]
 
   // Centre de secours : Dakar
@@ -162,6 +186,11 @@ export default function LiveMap() {
       </div>
 
       <div style={pageScroll}>
+      {loadError && (
+        <div style={{ fontSize: 13, fontWeight: 600, color: '#b91c1c', background: 'rgba(220,38,38,.10)', padding: '8px 12px', borderRadius: 10, marginBottom: 12 }}>
+          Impossible de charger les positions. Cliquez sur Actualiser pour réessayer.
+        </div>
+      )}
       {notice && (
         <div style={{ fontSize: 13, fontWeight: 600, color: '#15803d', background: 'rgba(34,197,94,.10)', padding: '8px 12px', borderRadius: 10, marginBottom: 12 }}>{notice}</div>
       )}
@@ -172,6 +201,7 @@ export default function LiveMap() {
             Chargement de la carte…
           </div>
         ) : (
+          <MapErrorBoundary>
           <MapContainer
             center={defaultCenter}
             zoom={12}
@@ -183,7 +213,7 @@ export default function LiveMap() {
 
             {/* Drivers en ligne */}
             {showDrivers && drivers.map(d => (
-              d.latitude && (
+              hasPos(d.latitude, d.longitude) && (
                 <Marker key={d.id} position={[d.latitude, d.longitude]} icon={DRIVER_ICON}>
                   <Popup>
                     <div style={{ minWidth: 160 }}>
@@ -200,7 +230,7 @@ export default function LiveMap() {
             {showOrders && orders.map(o => (
               <span key={o.id}>
                 {/* Point pickup */}
-                {o.pickupLatitude && (
+                {hasPos(o.pickupLatitude, o.pickupLongitude) && (
                   <Marker position={[o.pickupLatitude, o.pickupLongitude]} icon={o.status === 'PENDING' ? WAITING_ICON : PICKUP_ICON}>
                     <Popup>
                       <div style={{ minWidth: 180 }}>
@@ -221,7 +251,7 @@ export default function LiveMap() {
                   </Marker>
                 )}
                 {/* Point livraison */}
-                {o.deliveryLatitude && (
+                {hasPos(o.deliveryLatitude, o.deliveryLongitude) && (
                   <Marker position={[o.deliveryLatitude, o.deliveryLongitude]} icon={DELIVERY_ICON}>
                     <Popup>
                       <div style={{ minWidth: 180 }}>
@@ -233,7 +263,7 @@ export default function LiveMap() {
                   </Marker>
                 )}
                 {/* Ligne pickup → livraison */}
-                {showRoutes && o.pickupLatitude && o.deliveryLatitude && (
+                {showRoutes && hasPos(o.pickupLatitude, o.pickupLongitude) && hasPos(o.deliveryLatitude, o.deliveryLongitude) && (
                   <Polyline
                     positions={[
                       [o.pickupLatitude, o.pickupLongitude],
@@ -248,6 +278,7 @@ export default function LiveMap() {
               </span>
             ))}
           </MapContainer>
+          </MapErrorBoundary>
         )}
       </div>
 
