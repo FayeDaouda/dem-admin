@@ -105,6 +105,7 @@ export default function ApiTab({ accountId, canManage }) {
 // ── Accès et quotas ─────────────────────────────────────────────────────────
 function AccessSection({ accountId, overview: o, activeKeys, canManage, onChanged }) {
   const [confirm, setConfirm] = useState(false)
+  const [editQuotas, setEditQuotas] = useState(false)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const suspended = o.organization?.status === 'SUSPENDED'
@@ -127,9 +128,14 @@ function AccessSection({ accountId, overview: o, activeKeys, canManage, onChange
         <Stat label="Accès" value={o.available ? 'Ouvert' : 'Fermé'} color={o.available ? 'var(--success)' : 'var(--danger)'}
           sub={o.available ? 'Les clés actives fonctionnent' : (REASON_LABELS[o.reason] ?? o.reason)} />
         <Stat label="Offre" value={o.plan ?? '—'} sub="L'API est incluse dans Premium" />
-        <Stat label="Quotas" value={`${o.quotas.requestsPerMinute} / min`} sub={`${o.quotas.deliveriesPerDay} livraisons / jour`} />
+        <QuotaStat overview={o} canManage={canManage} onEdit={() => setEditQuotas(true)} />
         <Stat label="Clés actives" value={activeKeys} sub={o.organization ? `Organisation ${o.organization.id}` : 'Aucune clé créée'} />
       </div>
+      {editQuotas && (
+        <QuotaForm accountId={accountId} overview={o}
+          onCancel={() => setEditQuotas(false)}
+          onSaved={() => { setEditQuotas(false); onChanged() }} />
+      )}
       {confirm && (
         <InlineConfirm
           lines={suspended
@@ -140,6 +146,62 @@ function AccessSection({ accountId, overview: o, activeKeys, canManage, onChange
       )}
       {error && <ErrorLine>{error}</ErrorLine>}
     </Section>
+  )
+}
+
+// ── Quotas : valeurs de l'offre ou sur mesure pour ce compte ────────────────
+function QuotaStat({ overview: o, canManage, onEdit }) {
+  const custom = o.organization && (o.organization.requestsPerMinute != null || o.organization.deliveriesPerDay != null)
+  return (
+    <div style={{ background: 'var(--surface2)', borderRadius: 10, padding: '12px 14px', position: 'relative' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+        <span style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 600 }}>Quotas</span>
+        {custom && <Chip color="#7c3aed">Sur mesure</Chip>}
+        {canManage && <button onClick={onEdit} style={{ ...btnGhostSmall, marginLeft: 'auto', padding: '2px 8px' }} title="Quotas sur mesure pour ce compte">Ajuster</button>}
+      </div>
+      <div style={{ fontSize: 18, fontWeight: 800, marginTop: 3 }}>{o.quotas.requestsPerMinute} / min</div>
+      <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>{o.quotas.deliveriesPerDay} livraisons / jour</div>
+    </div>
+  )
+}
+
+function QuotaForm({ accountId, overview: o, onCancel, onSaved }) {
+  const plan = o.planQuotas ?? o.quotas
+  const [rpm, setRpm] = useState(o.organization?.requestsPerMinute ?? '')
+  const [perDay, setPerDay] = useState(o.organization?.deliveriesPerDay ?? '')
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState('')
+  const toValue = (v) => (v === '' || v == null ? null : Number(v))
+
+  async function save(body) {
+    setBusy(true); setError('')
+    try {
+      await api.patch(`/admin/dem-pro/${accountId}/api/quotas`, body)
+      onSaved()
+    } catch (e) { setError(errMsg(e, 'Enregistrement impossible.')) } finally { setBusy(false) }
+  }
+
+  return (
+    <form style={{ ...formBox, marginTop: 12 }} onSubmit={e => { e.preventDefault(); save({ requestsPerMinute: toValue(rpm), deliveriesPerDay: toValue(perDay) }) }}>
+      <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 4 }}>Quotas sur mesure pour ce compte</div>
+      <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 12 }}>
+        Laissez vide pour garder la valeur de l'offre {o.plan ?? ''} ({plan.requestsPerMinute} appels / min, {plan.deliveriesPerDay} livraisons / jour). Effet immédiat.
+      </div>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 12 }}>
+        <label style={lbl}>Appels par minute
+          <input type="number" min={1} max={10000} step={1} value={rpm} placeholder={`${plan.requestsPerMinute} (offre)`} onChange={e => setRpm(e.target.value)} style={input} />
+        </label>
+        <label style={lbl}>Livraisons par jour
+          <input type="number" min={1} max={100000} step={1} value={perDay} placeholder={`${plan.deliveriesPerDay} (offre)`} onChange={e => setPerDay(e.target.value)} style={input} />
+        </label>
+      </div>
+      {error && <ErrorLine>{error}</ErrorLine>}
+      <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 14, flexWrap: 'wrap' }}>
+        <button type="button" onClick={() => save({ requestsPerMinute: null, deliveriesPerDay: null })} disabled={busy} style={btnGhost}>Revenir à l'offre</button>
+        <button type="button" onClick={onCancel} disabled={busy} style={btnGhost}>Annuler</button>
+        <button type="submit" disabled={busy} style={{ ...btnPrimary, opacity: busy ? 0.7 : 1 }}>{busy ? 'Enregistrement…' : 'Enregistrer'}</button>
+      </div>
+    </form>
   )
 }
 
