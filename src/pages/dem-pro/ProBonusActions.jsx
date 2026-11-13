@@ -4,9 +4,10 @@ import api from '../../lib/api'
 import { glassInput } from '../../lib/glassStyles'
 import RequestModal from '../../components/RequestModal'
 
-// ── Semaine gratuite et bonus d'un Pro (Commercial / CRM Pro, C9 et C10) ────
+// ── Essai gratuit et bonus d'un Pro (Commercial / CRM Pro, C9 et C10) ────
 // Niveau 1, dans les plafonds (GET /admin/dem-pro/:id/bonus-status) :
-// semaine gratuite Business (une fois), 1 course offerte (une fois par Pro,
+// essai gratuit Business d'une semaine (une fois ; 2 semaines ou 1 mois :
+// Super Admin seul, sinon « Demander »), 1 course offerte (une fois par Pro,
 // 15 par mois en tout), prolongation d'essai de 7 jours (une fois). Au-delà,
 // le bouton devient « Demander » (PRO_BONUS, validé par le Super Admin).
 // `asks` : le rôle passe par des demandes (Commercial) ; le Super Admin agit seul.
@@ -16,6 +17,7 @@ export default function ProBonusActions({ account, asks, onChanged }) {
   const [notice, setNotice] = useState('')
   const [error, setError] = useState('')
   const [days, setDays] = useState('7')
+  const [trialDays, setTrialDays] = useState(7)
   const [request, setRequest] = useState(null) // { kind:'PRO_BONUS', title, payload }
 
   const load = useCallback(() => api.get(`/admin/dem-pro/${account.id}/bonus-status`)
@@ -43,11 +45,24 @@ export default function ProBonusActions({ account, asks, onChanged }) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
-        {/* C9 — semaine gratuite Business */}
+        {/* C9 — essai gratuit Business : 1 semaine, 2 semaines ou 1 mois */}
         {trial.available && (
-          <button disabled={busy} onClick={() => run(() => api.post(`/admin/dem-pro/${account.id}/trial`), `Semaine gratuite Business lancée pour ${who}.`)} style={btn('#7c3aed')}>
-            <Rocket size={14} /> Lancer la semaine gratuite Business
-          </button>
+          <span style={{ display: 'inline-flex', gap: 6, alignItems: 'center' }}>
+            <select value={trialDays} disabled={busy} onChange={e => setTrialDays(Number(e.target.value))}
+              aria-label="Durée de l'essai gratuit" style={{ ...glassInput, width: 'auto', padding: '6px 8px', fontSize: 13 }}>
+              {(trial.durations ?? [7]).map(d => <option key={d} value={d}>{trialLabel(d)}</option>)}
+            </select>
+            {asks && trialDays > (trial.commercialMaxDays ?? 7) ? (
+              <button disabled={busy} onClick={() => setRequest({ title: `Demander un essai gratuit Business de ${trialLabel(trialDays)} — ${who}`, payload: { type: 'PRO_TRIAL', days: trialDays },
+                intro: `Au-delà d'une semaine, l'essai gratuit est validé par le Super Admin. Il démarre à la validation.` })} style={btn('#b45309')}>
+                <Rocket size={14} /> Demander l'essai gratuit Business
+              </button>
+            ) : (
+              <button disabled={busy} onClick={() => run(() => api.post(`/admin/dem-pro/${account.id}/trial`, { days: trialDays }), `Essai gratuit Business (${trialLabel(trialDays)}) lancé pour ${who}.`)} style={btn('#7c3aed')}>
+                <Rocket size={14} /> Lancer l'essai gratuit Business
+              </button>
+            )}
+          </span>
         )}
         {trial.inTrial && (
           <span style={{ fontSize: 12.5, fontWeight: 600, color: '#7c3aed' }}>
@@ -93,7 +108,7 @@ export default function ProBonusActions({ account, asks, onChanged }) {
       <div style={{ fontSize: 11.5, color: 'var(--text-muted)' }}>
         Ce mois : {freeCourse.monthUsed} / {freeCourse.monthCap} courses offertes par le commercial
         {freeCourse.usedForPro && ' · course offerte déjà donnée à ce Pro'}
-        {trial.usedAt && !trial.inTrial && ` · semaine gratuite utilisée le ${new Date(trial.usedAt).toLocaleDateString('fr-FR')}`}
+        {trial.usedAt && !trial.inTrial && ` · essai gratuit utilisé le ${new Date(trial.usedAt).toLocaleDateString('fr-FR')}`}
       </div>
       {notice && <div style={{ fontSize: 12.5, color: '#15803d', fontWeight: 600 }}>{notice}</div>}
       {error && <div style={errorStyle}>{error}</div>}
@@ -110,7 +125,7 @@ export default function ProBonusActions({ account, asks, onChanged }) {
 function BonusRequest({ request, account, onClose, onDone }) {
   const [payload, setPayload] = useState(request.payload)
   const set = (k, v) => setPayload(p => ({ ...p, [k]: v }))
-  const valid = payload.type === 'COURSE_FREE' || Number(payload.value) > 0
+  const valid = payload.type === 'COURSE_FREE' || payload.type === 'PRO_TRIAL' || Number(payload.value) > 0
   return (
     <RequestModal kind="PRO_BONUS" title={request.title} intro={request.intro} targetUserId={account.id}
       payload={{ ...payload, value: payload.value != null ? Number(payload.value) : undefined, uses: payload.uses != null ? Number(payload.uses) : undefined }}
@@ -135,6 +150,13 @@ function BonusRequest({ request, account, onClose, onDone }) {
       )}
     </RequestModal>
   )
+}
+
+// 7 → « 1 semaine », 14 → « 2 semaines », 30 → « 1 mois »
+function trialLabel(d) {
+  if (d === 30) return '1 mois'
+  if (d % 7 === 0) return d === 7 ? '1 semaine' : `${d / 7} semaines`
+  return `${d} jours`
 }
 
 const btn = color => ({ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '7px 12px', borderRadius: 8, fontSize: 12.5, fontWeight: 600, cursor: 'pointer', border: `1px solid ${color}66`, background: color + '12', color })
