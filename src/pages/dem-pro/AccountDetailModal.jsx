@@ -21,7 +21,7 @@ import ProFileTab from './ProFileTab'
 // Onglets : Vue d'ensemble, Commandes, Abonnement, Wallet, Boutique, Tournées.
 // `canEdit` (SUPER + Service client) : catalogue modifiable dans l'onglet Boutique.
 // `actions` : barre d'actions de la page DEM Pro, affichée sous l'en-tête ;
-// `bonus` : semaine gratuite et bonus du Commercial, sous les actions ;
+// `bonus` : essai gratuit et bonus du Commercial, sous les actions ;
 // `refreshKey` : relit la fiche après une action faite depuis cette barre.
 
 const PERIODS = [
@@ -96,7 +96,7 @@ export default function AccountDetailModal({ accountId, onClose, canEdit = false
             <button onClick={onClose} style={closeBtn} title="Fermer"><X size={18} /></button>
           </div>
           {actions && <div style={{ marginTop: 14 }}>{actions}</div>}
-          {/* Semaine gratuite et bonus (Commercial / CRM Pro) */}
+          {/* Essai gratuit et bonus (Commercial / CRM Pro) */}
           {bonus && <div style={{ marginTop: 12, paddingTop: 12, borderTop: '1px solid var(--border)' }}>{bonus}</div>}
           <div style={{ display: 'flex', gap: 4, marginTop: 16 }}>
             {TABS.map(t => (

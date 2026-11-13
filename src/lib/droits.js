@@ -173,7 +173,7 @@ export const ACTION_ROLES = {
   orderCreateForClient: ['FLOTTE'],
   // Créer un compte DEM Pro (POST /admin/dem-pro) : Super + Commercial
   proCreate: ['COMMERCIAL'],
-  // Semaine gratuite et bonus d'un Pro (/admin/dem-pro/:id/trial, /bonus) : Super + Commercial
+  // Essai gratuit et bonus d'un Pro (/admin/dem-pro/:id/trial, /bonus) : Super + Commercial
   proBonus: ['COMMERCIAL'],
   // Changer le plan d'un Pro (PATCH /admin/dem-pro/:id/plan, liste, sélection
   // groupée, fiche › Suivi commercial) : Super + Commercial (08/11/2026)

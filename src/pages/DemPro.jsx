@@ -459,7 +459,7 @@ export default function DemPro() {
     report: canSee(role, ACTION_ROLES.reportUser),
     export: canSee(role, ACTION_ROLES.listExport),
     create: canSee(role, ACTION_ROLES.proCreate), // Super + Commercial
-    bonus:  canSee(role, ACTION_ROLES.proBonus),  // semaine gratuite, bonus (C9, C10)
+    bonus:  canSee(role, ACTION_ROLES.proBonus),  // essai gratuit, bonus (C9, C10)
     asks:   !isSuper && asksSuper(role),          // Commercial : « Demander » au-delà des plafonds
   }
 
