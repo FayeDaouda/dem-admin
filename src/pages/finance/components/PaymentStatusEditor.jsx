@@ -3,13 +3,12 @@ import api from '../../../lib/api'
 import Badge from '../../../components/Badge'
 import { glass, glassInput } from '../../../lib/glassStyles'
 
-// '' = non précisé : la course est marquée payée sans forcer de méthode
-// (celle déjà enregistrée est conservée côté serveur).
+// Encaissé PAR LE COURSIER — mode obligatoire pour marquer payé (« Non
+// précisé » laissait des courses payées sans qu'on sache comment).
 const PM_OPTIONS = [
-  ['', 'Non précisé'],
   ['CASH', 'Espèces'],
-  ['WAVE', 'Wave'],
-  ['ORANGE_MONEY', 'Orange Money'],
+  ['WAVE', 'Wave (au coursier)'],
+  ['ORANGE_MONEY', 'Orange Money (au coursier)'],
 ]
 
 // Édition rapide du statut de paiement d'une course, depuis la liste des
@@ -17,15 +16,17 @@ const PM_OPTIONS = [
 export default function PaymentStatusEditor({ order, onUpdated }) {
   const [open, setOpen] = useState(false)
   const [nextStatus, setNextStatus] = useState('PAID')
-  const [paymentMethod, setPaymentMethod] = useState(order.paymentMethod ?? '')
+  const [paymentMethod, setPaymentMethod] = useState(PM_OPTIONS.some(([v]) => v === order.paymentMethod) ? order.paymentMethod : '')
   const [disputeNotes, setDisputeNotes] = useState(order.disputeNotes ?? '')
   const [saving, setSaving] = useState(false)
+
+  const blocked = nextStatus === 'DISPUTED' ? !disputeNotes.trim() : !paymentMethod
 
   async function submit() {
     setSaving(true)
     try {
       const body = nextStatus === 'PAID'
-        ? { paymentStatus: 'PAID', paymentMethod: paymentMethod || null }
+        ? { paymentStatus: 'PAID', paymentMethod }
         : { paymentStatus: 'DISPUTED', disputeNotes }
       await api.patch(`/admin/orders/${order.id}/payment`, body)
       setOpen(false)
@@ -79,6 +80,7 @@ export default function PaymentStatusEditor({ order, onUpdated }) {
               <div style={{ marginBottom: 16 }}>
                 <label style={{ fontSize: 12, color: 'var(--text-muted)', display: 'block', marginBottom: 6 }}>Méthode de paiement</label>
                 <select value={paymentMethod} onChange={e => setPaymentMethod(e.target.value)} style={{ ...glassInput, width: '100%' }}>
+                  <option value="" disabled>Choisir le mode…</option>
                   {PM_OPTIONS.map(([val, label]) => <option key={val} value={val}>{label}</option>)}
                 </select>
               </div>
@@ -105,8 +107,8 @@ export default function PaymentStatusEditor({ order, onUpdated }) {
               </button>
               <button
                 onClick={submit}
-                disabled={saving || (nextStatus === 'DISPUTED' && !disputeNotes.trim())}
-                style={{ padding: '7px 14px', borderRadius: 8, border: 'none', background: 'var(--primary)', color: '#fff', cursor: 'pointer', fontSize: 13, fontWeight: 600, opacity: saving || (nextStatus === 'DISPUTED' && !disputeNotes.trim()) ? 0.6 : 1 }}
+                disabled={saving || blocked}
+                style={{ padding: '7px 14px', borderRadius: 8, border: 'none', background: 'var(--primary)', color: '#fff', cursor: 'pointer', fontSize: 13, fontWeight: 600, opacity: saving || blocked ? 0.6 : 1 }}
               >
                 {saving ? 'Enregistrement…' : 'Confirmer'}
               </button>

@@ -8,7 +8,7 @@ import { glass, glassInput, pageWrap, pageScroll, stickyTh, stickyCol, stickyThC
 import SubmitRequestModal from './service-client/components/SubmitRequestModal'
 import DocThumb from '../components/DocThumb'
 import PageHeader from '../components/PageHeader'
-import { canSee, roleHas, asksSuper, ACTION_ROLES } from '../lib/droits'
+import { canSee, roleHas, asksSuper, ACTION_ROLES, isSuperRole } from '../lib/droits'
 import DriverRequestModal from './drivers/DriverRequestModal'
 import { ConnectionHistory, DriverNotes } from './drivers/DriverFollowup'
 import DriverShifts from './drivers/DriverShifts'
@@ -18,6 +18,7 @@ import { useUrlQuery } from '../lib/useUrlQuery'
 import InfoTip from '../components/InfoTip'
 import ExportMenu from '../components/ExportMenu'
 import { fetchAllPages } from '../lib/exportList'
+import UserCashoutButton from '../components/UserCashoutButton'
 
 
 const DOC_LIST = [
@@ -483,6 +484,37 @@ function PaymentStats({ driverId }) {
   )
 }
 
+// Wallet du coursier + retrait fait pour lui (SUPER seul : la route
+// cashout-info l'est aussi). Toujours vers le numéro de son compte.
+function DriverWalletBox({ driverId }) {
+  const { user } = useAuth()
+  const isSuper = isSuperRole(user?.adminRole)
+  const [info, setInfo] = useState(null)
+  const [reload, setReload] = useState(0)
+  useEffect(() => {
+    if (!isSuper) return
+    let cancelled = false
+    api.get(`/admin/users/${driverId}/cashout-info`)
+      .then(r => { if (!cancelled) setInfo(r.data) })
+      .catch(() => { if (!cancelled) setInfo(false) })
+    return () => { cancelled = true }
+  }, [driverId, isSuper, reload])
+  if (!isSuper || info === false) return null
+  const fmt = n => `${Math.round(n ?? 0).toLocaleString('fr-FR')} F`
+  return (
+    <FicheSection title="Wallet">
+      {!info ? <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>Chargement…</span> : (
+        <>
+          <Row label="Retirable" value={<strong>{fmt(info.withdrawable)}</strong>} />
+          <Row label="Solde total" value={fmt(info.balance)} />
+          {info.pendingCashout.count > 0 && <Row label="Retrait en cours" value={<span style={{ color: '#b45309', fontWeight: 600 }}>{fmt(info.pendingCashout.amount)}</span>} />}
+          <UserCashoutButton userId={driverId} onDone={() => setReload(k => k + 1)} />
+        </>
+      )}
+    </FicheSection>
+  )
+}
+
 // ── Fiche coursier : informations à gauche, contact et actions à droite ─────
 function DriverFiche({ driver: d, deleted, rights, isServiceClient, notice, error, onClose, onAction }) {
   const [open, setOpen] = useState(null) // 'activate' | 'reactivate' | 'report'
@@ -581,6 +613,7 @@ function DriverFiche({ driver: d, deleted, rights, isServiceClient, notice, erro
             </FicheSection>
 
             {rights.paymentStats && !deleted && <PaymentStats driverId={d.id} />}
+            {!deleted && <DriverWalletBox driverId={d.id} />}
             {/* Fiche enrichie (Resp. flottes, C7) */}
             {!deleted && <DriverShifts driverId={d.id} canEdit={rights.shifts} Section={FicheSection} />}
             {!deleted && <ConnectionHistory driverId={d.id} Section={FicheSection} />}

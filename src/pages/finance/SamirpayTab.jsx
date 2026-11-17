@@ -7,6 +7,7 @@ import { useAutoRefresh } from '../../lib/useAutoRefresh'
 import { formatF, hoursSince } from '../../lib/format'
 import { useAuth } from '../../contexts/AuthContext'
 import CashoutReviewModal from './components/CashoutReviewModal'
+import CashoutIssuesSection from './components/CashoutIssuesSection'
 import InfoTip from '../../components/InfoTip'
 
 // Au-delà, le retrait est signalé en rouge (même seuil que l'alerte
@@ -537,6 +538,9 @@ export default function SamirpayTab() {
           </div>
         )}
       </div>
+
+      {/* Problèmes de retrait : échecs (raison), bloqués « en cours » — renvoi par le super admin */}
+      <CashoutIssuesSection isSuper={isSuper} reviewCount={manualReview?.length ?? 0} onChanged={() => load(true)} />
 
       {/* Retraits en attente de vérification manuelle */}
       <div style={{ ...glass, padding: '18px 20px' }}>
