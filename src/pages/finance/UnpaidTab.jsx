@@ -5,10 +5,12 @@ import { RefreshCw } from 'lucide-react'
 import { glass, glassModal, glassInput, stickyTh } from '../../lib/glassStyles'
 import { useAutoRefresh } from '../../lib/useAutoRefresh'
 
-const PAYMENT_METHODS = ['', 'CASH', 'WAVE', 'ORANGE_MONEY']
+const PAYMENT_METHODS = ['CASH', 'WAVE', 'ORANGE_MONEY']
 // Toujours un paiement reçu PAR LE COURSIER (Wave / OM sur son numéro) — un
 // paiement en ligne DEM (SamirPay) se confirme tout seul et n'arrive jamais ici.
-const PM_LABELS = { '': 'Non précisé', CASH: 'Espèces', WAVE: 'Wave (au coursier)', ORANGE_MONEY: 'Orange Money (au coursier)' }
+// Mode obligatoire : « Non précisé » laissait des courses « Payées » dont on
+// ne savait plus si le coursier avait encaissé ou non.
+const PM_LABELS = { CASH: 'Espèces', WAVE: 'Wave (au coursier)', ORANGE_MONEY: 'Orange Money (au coursier)' }
 const LIMIT = 50
 
 // Impayés et litiges des courses livrées — ancienne page /payments, devenue
@@ -55,7 +57,7 @@ export default function UnpaidTab() {
     setSaving(true)
     try {
       const body = form.paymentStatus === 'PAID'
-        ? { paymentStatus: 'PAID', paymentMethod: form.paymentMethod || null }
+        ? { paymentStatus: 'PAID', paymentMethod: form.paymentMethod }
         : { paymentStatus: 'DISPUTED', disputeNotes: form.disputeNotes }
       const res = await api.patch(`/admin/orders/${modal.order.id}/payment`, body)
       const notes = []
@@ -230,6 +232,7 @@ export default function UnpaidTab() {
                   onChange={e => setForm(f => ({ ...f, paymentMethod: e.target.value }))}
                   style={inputStyle}
                 >
+                  <option value="" disabled>Choisir le mode…</option>
                   {PAYMENT_METHODS.map(m => (
                     <option key={m} value={m}>{PM_LABELS[m]}</option>
                   ))}
@@ -252,7 +255,11 @@ export default function UnpaidTab() {
 
             <div style={{ display: 'flex', gap: 10, marginTop: 24, justifyContent: 'flex-end' }}>
               <button onClick={() => setModal(null)} style={btnOutline}>Annuler</button>
-              <button onClick={handleSave} disabled={saving} style={btnPrimary}>
+              <button
+                onClick={handleSave}
+                disabled={saving || (form.paymentStatus === 'PAID' && !form.paymentMethod)}
+                style={{ ...btnPrimary, opacity: saving || (form.paymentStatus === 'PAID' && !form.paymentMethod) ? 0.6 : 1 }}
+              >
                 {saving ? 'Enregistrement…' : 'Confirmer'}
               </button>
             </div>

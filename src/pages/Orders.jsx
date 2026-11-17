@@ -89,6 +89,9 @@ export default function Orders() {
 
   const [detail, setDetail]   = useState(null)
   const [confirming, setConfirming] = useState(null) // 'paid' | 'redispatch' | 'PICKED_UP' | 'DELIVERED'
+  // « Marquer payé » : comment le coursier a encaissé — obligatoire (sans
+  // ça la course restait « Payée » sans mode, impossible à vérifier ensuite)
+  const [paidMethod, setPaidMethod] = useState('')
   const [busy, setBusy]       = useState(false)
   const [actionError, setActionError] = useState('')
   const [driverPicker, setDriverPicker] = useState(null) // true = fenêtre de dispatch ouverte
@@ -183,8 +186,9 @@ export default function Orders() {
   }
 
   const markPaid = () => runAction(async () => {
-    await api.patch(`/admin/orders/${detail.id}/payment`, { paymentStatus: 'PAID' })
-    setDetail(prev => prev ? { ...prev, paymentStatus: 'PAID' } : prev)
+    if (!paidMethod) return
+    await api.patch(`/admin/orders/${detail.id}/payment`, { paymentStatus: 'PAID', paymentMethod: paidMethod })
+    setDetail(prev => prev ? { ...prev, paymentStatus: 'PAID', paymentMethod: paidMethod } : prev)
     setConfirming(null)
     fetch(true)
   })
@@ -261,7 +265,7 @@ export default function Orders() {
     canDispatch && detail.status === 'ACCEPTED' && { key: 'redispatch', label: 'Relancer la recherche', color: '#f97316', onClick: () => setConfirming('redispatch') },
     canForce && detail.driver && detail.status === 'ACCEPTED' && { key: 'pickup', label: 'Colis récupéré', color: '#7c3aed', onClick: () => setConfirming('PICKED_UP') },
     canForce && detail.driver && ['ACCEPTED', 'PICKED_UP', 'IN_TRANSIT'].includes(detail.status) && { key: 'deliver', label: 'Colis livré', color: '#16a34a', onClick: () => setConfirming('DELIVERED') },
-    canMarkPaid && detail.status === 'DELIVERED' && detail.paymentStatus === 'PENDING' && { key: 'paid', label: 'Marquer payé', color: '#16a34a', onClick: () => setConfirming('paid') },
+    canMarkPaid && detail.status === 'DELIVERED' && detail.paymentStatus === 'PENDING' && { key: 'paid', label: 'Marquer payé', color: '#16a34a', onClick: () => { setPaidMethod(''); setConfirming('paid') } },
     canCancel && !['DELIVERED', 'CANCELLED'].includes(detail.status) && (canCancelAny || ['SCHEDULED', 'PENDING'].includes(detail.status)) && { key: 'cancel', label: 'Annuler la course', color: '#dc2626', onClick: openCancelPicker },
     askCancel && { key: 'ask-cancel', label: "Demander l'annulation", color: '#dc2626', onClick: () => setOrderRequest('cancel') },
     askHere && detail.status !== 'CANCELLED' && (detail.client?.id || detail.clientId) && { key: 'ask-geste', label: 'Demander un geste', color: '#7c3aed', onClick: () => setOrderRequest('geste') },
@@ -270,7 +274,7 @@ export default function Orders() {
   // Texte et action de la confirmation ouverte
   const driverName = detail?.driver ? firstNonEmpty(detail.driver.name, detail.driver.phone) : 'le coursier'
   const confirmCopy = !confirming ? null
-    : confirming === 'paid' ? { title: `Marquer le paiement de ${clientCharge(detail).toLocaleString('fr-FR')} F comme reçu ?`, button: 'Confirmer', color: '#16a34a', run: markPaid }
+    : confirming === 'paid' ? { title: `Marquer le paiement de ${clientCharge(detail).toLocaleString('fr-FR')} F comme reçu par ${driverName} ?`, button: 'Confirmer', color: '#16a34a', run: markPaid, disabled: !paidMethod }
     : confirming === 'redispatch' ? { title: 'Relancer la recherche ? Le coursier actuel sera retiré et un nouveau coursier sera cherché automatiquement.', button: 'Confirmer', color: '#f97316', run: redispatch }
     : confirming === 'PICKED_UP' ? { title: `Marquer le colis comme récupéré par ${driverName} ?`, button: 'Colis récupéré', color: '#7c3aed', run: () => forceStatus('PICKED_UP') }
     : { title: `Marquer la course comme livrée par ${driverName} ?`, button: 'Colis livré', color: '#16a34a', run: () => forceStatus('DELIVERED') }
@@ -278,7 +282,11 @@ export default function Orders() {
     ? 'Le client est prévenu que son colis est en route.'
     : confirming === 'DELIVERED'
       ? `${driverName} est crédité de ${(detail?.price ?? 0).toLocaleString('fr-FR')} F et le client est prévenu. La course passe en Livrée : impossible de revenir en arrière.`
-      : null
+      : confirming === 'paid'
+        ? 'Un paiement en ligne se confirme tout seul : ne marquez payé que ce que le coursier a encaissé lui-même. Les frais DEM sont repris sur son wallet.'
+        : null
+  // Paiement de la course, rappelé avant « Colis livré »
+  const deliverPayment = confirming === 'DELIVERED' && detail ? paymentSummary(detail) : null
 
   return (
     <div style={pageWrap}>
@@ -431,9 +439,28 @@ export default function Orders() {
               <div style={{ background: 'var(--surface2)', borderRadius: 10, padding: '12px 14px', marginBottom: 14, fontSize: 13 }}>
                 <div style={{ fontWeight: 600, marginBottom: confirmHint ? 4 : 8 }}>{confirmCopy.title}</div>
                 {confirmHint && <div style={{ color: 'var(--text-muted)', marginBottom: 8 }}>{confirmHint}</div>}
+                {deliverPayment && (
+                  <div style={{ fontWeight: 600, color: deliverPayment.color, marginBottom: 8 }}>Paiement : {deliverPayment.label}</div>
+                )}
+                {confirming === 'paid' && (
+                  <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 10 }}>
+                    {COLLECT_METHODS.map(([val, label]) => (
+                      <button
+                        key={val}
+                        type="button"
+                        onClick={() => setPaidMethod(val)}
+                        disabled={busy}
+                        aria-pressed={paidMethod === val}
+                        style={{ ...btnOutline, ...(paidMethod === val ? { background: 'var(--primary)', color: '#fff', borderColor: 'transparent', fontWeight: 600 } : {}) }}
+                      >
+                        {label}
+                      </button>
+                    ))}
+                  </div>
+                )}
                 <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
                   <button onClick={() => setConfirming(null)} disabled={busy} style={btnOutline}>Retour</button>
-                  <button onClick={confirmCopy.run} disabled={busy} style={{ ...btnOutline, color: '#fff', background: confirmCopy.color, borderColor: 'transparent', fontWeight: 600 }}>
+                  <button onClick={confirmCopy.run} disabled={busy || confirmCopy.disabled} style={{ ...btnOutline, color: '#fff', background: confirmCopy.color, borderColor: 'transparent', fontWeight: 600, opacity: confirmCopy.disabled ? 0.5 : 1 }}>
                     {busy ? 'En cours…' : confirmCopy.button}
                   </button>
                 </div>
@@ -465,7 +492,9 @@ export default function Orders() {
                       </div>
                     ))}
                     <div style={{ fontSize: 11.5, color: 'var(--text-muted)' }}>
-                      {detail.proPaymentMode === 'SPLIT_IN_APP' ? 'Articles payés dans l’app (inclus dans le paiement en ligne)' : 'Articles réglés hors de l’app'}
+                      {detail.proPaymentMode === 'SPLIT_IN_APP' ? 'Articles payés dans l’app (inclus dans le paiement en ligne)'
+                        : detail.proPaymentMode === 'PREPAID_LINK' ? 'Articles payés en ligne par le client (lien de commande) — rien à encaisser pour eux'
+                        : 'Articles réglés hors de l’app'}
                     </div>
                   </FicheSection>
                 )}
@@ -524,7 +553,7 @@ export default function Orders() {
                 {detail.status !== 'CANCELLED' && (
                   <FicheSection title="Paiement">
                     <Row label="Statut" value={detail.status === 'DELIVERED' ? <Badge status={detail.paymentStatus ?? 'PENDING'} /> : 'Après la livraison'} />
-                    {detail.paymentMethod && <Row label="Mode" value={PAYMENT_METHOD_LABELS[detail.paymentMethod] ?? detail.paymentMethod} />}
+                    {(() => { const p = paymentSummary(detail); return <Row label="Mode" value={<span style={{ color: p.color, fontWeight: 600 }}>{p.label}</span>} /> })()}
                     {detail.paidOnlineAt && <Row label="Payée en ligne le" value={fmtDate(detail.paidOnlineAt)} />}
                     {detail.disputeNotes && <Row label="Note litige" value={<span style={{ color: 'var(--danger)' }}>{detail.disputeNotes}</span>} />}
                   </FicheSection>
@@ -610,7 +639,31 @@ export default function Orders() {
   )
 }
 
-const PAYMENT_METHOD_LABELS = { CASH: 'Espèces', WAVE: 'Wave', ORANGE_MONEY: 'Orange Money', WALLET: 'Wallet DEM' }
+// Encaissé PAR LE COURSIER (jamais un paiement en ligne DEM, qui se confirme seul)
+const COLLECT_METHODS = [['CASH', 'Espèces'], ['WAVE', 'Wave (au coursier)'], ['ORANGE_MONEY', 'Orange Money (au coursier)']]
+const COLLECTED_LABELS = { CASH: 'Espèces (au coursier)', WAVE: 'Wave (au coursier)', ORANGE_MONEY: 'Orange Money (au coursier)' }
+
+// Qui a payé la livraison, et comment — même lecture que le serveur :
+// paidOnlineAt = argent reçu par DEM (SamirPay), WALLET = wallet client,
+// sinon encaissé par le coursier (mode choisi par lui ou par l'admin).
+function paymentSummary(o) {
+  const ok = '#15803d', warn = '#b45309', muted = 'var(--text-muted)'
+  if (o.paidOnlineAt) return { label: 'Payée en ligne via DEM — rien à encaisser', color: ok }
+  if (o.paymentMethod === 'WALLET') return { label: 'Wallet DEM du client — rien à encaisser', color: ok }
+  if (o.paymentMode === 'merchant') {
+    return o.paymentStatus === 'PAID'
+      ? { label: 'Réglée par le commerçant', color: ok }
+      : { label: 'À régler par le commerçant — rien à encaisser au destinataire', color: muted }
+  }
+  if (o.paymentStatus === 'PAID') {
+    return COLLECTED_LABELS[o.paymentMethod]
+      ? { label: COLLECTED_LABELS[o.paymentMethod], color: ok }
+      : { label: 'Non précisé (marquée payée sans mode)', color: warn }
+  }
+  if (o.paymentStatus === 'DISPUTED') return { label: 'En litige', color: '#dc2626' }
+  if (o.proPaymentMode === 'SPLIT_IN_APP') return { label: 'À payer en ligne (articles + livraison) — pas d’espèces', color: warn }
+  return { label: `${clientCharge(o).toLocaleString('fr-FR')} F à encaisser par le coursier`, color: warn }
+}
 const CANCELLED_BY_LABELS = { CLIENT: 'le client', DRIVER: 'le coursier', ADMIN: 'l’équipe DEM', SYSTEM: 'automatiquement' }
 
 // Étapes de la course avec leur heure et la durée de chaque étape (données

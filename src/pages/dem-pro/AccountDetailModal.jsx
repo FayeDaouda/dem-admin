@@ -13,6 +13,7 @@ import { ProductFormModal, DeleteProductModal } from './ProductModals'
 import ApiTab from './ApiTab'
 import { cancelReasonLabel } from '../../lib/cancelReasons'
 import InfoTip from '../../components/InfoTip'
+import UserCashoutButton from '../../components/UserCashoutButton'
 import ProFileTab from './ProFileTab'
 
 // ── Fiche commerçant DEM Pro (admin) ──────────────────────────────────────────
@@ -474,8 +475,9 @@ function SubscriptionTab({ accountId }) {
 // journal), ventes en paiement intégré, retraits, journal paginé.
 function WalletTab({ accountId }) {
   const [page, setPage] = useState(1)
+  const [reload, setReload] = useState(0)
   const [result, setResult] = useState(null) // { key, data?, error? }
-  const requestKey = `${accountId}|${page}`
+  const requestKey = `${accountId}|${page}|${reload}`
 
   useEffect(() => {
     let cancelled = false
@@ -507,13 +509,18 @@ function WalletTab({ accountId }) {
           <Stat label="Solde total" value={formatF(b.balance)} />
           <Stat label="Paiement intégré" value={b.inAppPaymentEnabled ? 'Activé' : 'Désactivé'} color={b.inAppPaymentEnabled ? '#0ea5e9' : 'var(--text-muted)'} sub="produits payés via DEM puis reversés au commerçant" />
         </div>
+        {b.withdrawable > 0 && (
+          <div style={{ marginTop: 12 }}>
+            <UserCashoutButton userId={accountId} label="Faire un retrait pour ce commerçant" onDone={() => setReload(k => k + 1)} />
+          </div>
+        )}
       </Section>
 
-      <Section title="Ventes en paiement intégré" hint="Créditées à la livraison, nettes de la commission DEM.">
+      <Section title="Ventes en paiement intégré" hint="Paiement intégré : créditées à la livraison. Lien de commande : versées au paiement, retirables à la livraison, sans commission.">
         <div style={grid3}>
           <Stat label="Ventes créditées" value={formatF(sales.net)} sub={`${formatCount(sales.count)} vente${sales.count > 1 ? 's' : ''} · brut ${formatF(sales.gross)}`} color="var(--success)" />
           <Stat label="Commission DEM retenue" value={formatF(sales.commission)} color="var(--primary)" />
-          <Stat label="Encaissées, pas encore créditées" value={formatF(sales.held.gross)} sub={`${formatCount(sales.held.count)} commande${sales.held.count > 1 ? 's' : ''} payée${sales.held.count > 1 ? 's' : ''} en ligne, non livrée${sales.held.count > 1 ? 's' : ''}`} color={sales.held.count > 0 ? '#f59e0b' : undefined} />
+          <Stat label="Encaissées, pas encore créditées" value={formatF(sales.held.gross)} sub={`${formatCount(sales.held.count)} commande${sales.held.count > 1 ? 's' : ''} payée${sales.held.count > 1 ? 's' : ''} en ligne, non livrée${sales.held.count > 1 ? 's' : ''}${sales.refunded > 0 ? ` · ${formatF(sales.refunded)} remboursés` : ''}`} color={sales.held.count > 0 ? '#f59e0b' : undefined} />
         </div>
       </Section>
 

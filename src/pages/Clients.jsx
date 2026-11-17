@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import api from '../lib/api'
 import { useAuth } from '../contexts/AuthContext'
+import UserCashoutButton from '../components/UserCashoutButton'
 import { RefreshCw, X, Plus, Pencil, Trash2, Search, Phone, CheckCircle, XCircle, Briefcase, Flag, MessageCircle, ChevronDown, ChevronUp, Ban } from 'lucide-react'
 import { glass, glassInput, pageWrap, pageScroll, stickyTh, stickyCol, stickyThCol } from '../lib/glassStyles'
 import { useAutoRefresh } from '../lib/useAutoRefresh'
@@ -151,18 +152,20 @@ const WALLET_TX_LABELS = {
 
 function ClientWalletBox({ clientId }) {
   const [wallet, setWallet] = useState(null)
+  const [reload, setReload] = useState(0)
   useEffect(() => {
     let cancelled = false
     api.get(`/admin/clients/${clientId}/wallet`)
       .then(r => { if (!cancelled) setWallet(r.data) })
       .catch(() => {})
     return () => { cancelled = true }
-  }, [clientId])
+  }, [clientId, reload])
   if (!wallet) return null
   const fmt = n => `${Math.round(n).toLocaleString('fr-FR')} F`
   return (
     <FicheSection title="Wallet" aside={`dont ${fmt(wallet.withdrawable)} retirable (remboursements)`}>
       <div style={{ fontSize: 22, fontWeight: 800 }}>{fmt(wallet.balance)}</div>
+      {wallet.withdrawable > 0 && <UserCashoutButton userId={clientId} onDone={() => setReload(k => k + 1)} />}
       {wallet.transactions.length === 0 ? (
         <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>Aucun mouvement.</div>
       ) : wallet.transactions.slice(0, 8).map(t => (
