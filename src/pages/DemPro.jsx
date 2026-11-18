@@ -8,6 +8,7 @@ import SubmitRequestModal from './service-client/components/SubmitRequestModal'
 import AccountDetailModal from './dem-pro/AccountDetailModal'
 import OffersTab from './dem-pro/OffersTab'
 import ReferralsTab from './dem-pro/ReferralsTab'
+import ApiMonitoringTab from './dem-pro/ApiMonitoringTab'
 import PageHeader from '../components/PageHeader'
 import TabBar from '../components/TabBar'
 import { canSee, roleHas, ACTION_ROLES, asksSuper, withoutHiddenTabs } from '../lib/droits'
@@ -67,6 +68,7 @@ const PAGE_TABS = [
   { key: 'comptes',    label: 'Comptes' },
   { key: 'offres',     label: 'Offres DEM Pro' },
   { key: 'parrainage', label: 'Parrainage' },
+  { key: 'api',        label: 'API DEM' },
 ]
 
 // ── Modal Créer / Modifier ────────────────────────────────────────────────────
@@ -505,6 +507,7 @@ export default function DemPro() {
   const [editTarget, setEditTarget] = useState(null)
   const [requestTarget, setRequestTarget] = useState(null)
   const [detailId, setDetailId] = useState(() => params.get('fiche')) // fiche commerçant ouverte (?fiche= depuis le Dashboard Pro)
+  const [detailTab, setDetailTab] = useState(null) // onglet ouvert d'emblée (ex. « API » depuis API DEM)
   const [ficheVersion, setFicheVersion] = useState(0)
   const [pageNotice, setPageNotice] = useState('')
 
@@ -809,6 +812,8 @@ export default function DemPro() {
         </>
       ) : view === 'parrainage' ? (
         <ReferralsTab isSuper={isSuper} />
+      ) : view === 'api' ? (
+        <ApiMonitoringTab isSuper={isSuper} onOpenAccount={id => { setDetailTab('api'); setDetailId(id) }} />
       ) : (
         <OffersTab isSuper={isSuper} onSystemChange={loadPlanSystem} />
       )}
@@ -816,8 +821,10 @@ export default function DemPro() {
       {/* Fiche commerçant, avec sa barre d'actions */}
       {detailId && (
         <AccountDetailModal
+          key={`${detailId}|${detailTab ?? ''}`}
           accountId={detailId}
-          onClose={() => setDetailId(null)}
+          initialTab={detailTab ?? undefined}
+          onClose={() => { setDetailId(null); setDetailTab(null) }}
           canEdit={isSuper || isServiceClient}
           canManageApi={isSuper}
           asks={rights.asks}

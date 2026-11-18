@@ -54,8 +54,8 @@ const fmtDate = (d, withTime = false) => d
   : '—'
 
 // canManageApi : clés API et suspension de l'accès API (SUPER uniquement)
-export default function AccountDetailModal({ accountId, onClose, canEdit = false, canManageApi = false, actions = null, bonus = null, asks = false, canPlan = false, refreshKey = 0 }) {
-  const [tab, setTab]       = useState('overview')
+export default function AccountDetailModal({ accountId, onClose, canEdit = false, canManageApi = false, actions = null, bonus = null, asks = false, canPlan = false, refreshKey = 0, initialTab = 'overview' }) {
+  const [tab, setTab]       = useState(initialTab)
   const [period, setPeriod] = useState('month')
   const [version, setVersion] = useState(0) // relit la fiche après une modification du catalogue
   // Dernière réponse reçue, étiquetée par sa requête : "chargement" = la
