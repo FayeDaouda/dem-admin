@@ -31,6 +31,7 @@ export const PAGE_TABS = {
     t('comptes',    'Comptes'),
     t('offres',     'Offres DEM Pro'),
     t('parrainage', 'Parrainage'),
+    t('api',        'API DEM'),
   ],
   '/finance': [
     t('revenue',   'Revenus'),
