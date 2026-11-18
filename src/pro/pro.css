@@ -1,0 +1,153 @@
+/* ============================================================
+   Espace web DEM Pro (pro.dem.sn) — charte propre, alignée sur l'app :
+   bleu nuit + cyan DEM, cartes blanches, Plus Jakarta Sans.
+   Tout est rangé sous .pro pour ne jamais toucher l'admin.
+   ============================================================ */
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
+
+.pro {
+  --p-navy:      #04317c;
+  --p-navy-deep: #021b47;
+  --p-ink:       #0b1b33;
+  --p-cyan:      #0cb8de;
+  --p-cyan-2:    #0671ba;
+  --p-bg:        #f3f6fb;
+  --p-card:      #ffffff;
+  --p-line:      #e6ebf3;
+  --p-muted:     #6b7c93;
+  --p-soft:      #f6f9fd;
+  --p-success:   #16a34a;
+  --p-success-bg:#e8f7ee;
+  --p-warning:   #d97706;
+  --p-warning-bg:#fff4e2;
+  --p-danger:    #dc2626;
+  --p-danger-bg: #fdecec;
+  --p-violet:    #6d5dfc;
+  --p-radius:    18px;
+  --p-radius-sm: 12px;
+  --p-shadow:    0 1px 2px rgba(11, 27, 51, 0.04), 0 8px 24px rgba(11, 27, 51, 0.06);
+  --p-shadow-lg: 0 24px 64px rgba(4, 49, 124, 0.18);
+  --p-gradient:  linear-gradient(135deg, #0cb8de 0%, #0671ba 45%, #04317c 100%);
+  --p-ease:      cubic-bezier(.2, .8, .2, 1);
+
+  font-family: 'Plus Jakarta Sans', 'Inter', system-ui, sans-serif;
+  color: var(--p-ink);
+  background: var(--p-bg);
+  min-height: 100vh;
+  font-size: 14px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+.pro *, .pro *::before, .pro *::after { box-sizing: border-box; }
+.pro button { font-family: inherit; }
+.pro ::selection { background: rgba(12, 184, 222, 0.25); }
+
+/* ── Animations ──────────────────────────────────────────────── */
+@keyframes pro-fade-up { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
+@keyframes pro-fade-in { from { opacity: 0; } to { opacity: 1; } }
+@keyframes pro-scale-in { from { opacity: 0; transform: scale(.96) translateY(8px); } to { opacity: 1; transform: none; } }
+@keyframes pro-slide-in-right { from { opacity: 0; transform: translateX(28px); } to { opacity: 1; transform: none; } }
+@keyframes pro-toast-in { from { opacity: 0; transform: translateY(-12px) scale(.97); } to { opacity: 1; transform: none; } }
+@keyframes pro-shimmer { 0% { background-position: -400px 0; } 100% { background-position: 400px 0; } }
+@keyframes pro-pulse { 0% { box-shadow: 0 0 0 0 rgba(12, 184, 222, .55); } 70% { box-shadow: 0 0 0 10px rgba(12, 184, 222, 0); } 100% { box-shadow: 0 0 0 0 rgba(12, 184, 222, 0); } }
+@keyframes pro-spin { to { transform: rotate(360deg); } }
+@keyframes pro-ring { 0%,100% { transform: rotate(0); } 15% { transform: rotate(14deg); } 30% { transform: rotate(-12deg); } 45% { transform: rotate(8deg); } 60% { transform: rotate(-4deg); } }
+@keyframes pro-float { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-6px); } }
+
+.pro .anim-up { animation: pro-fade-up .55s var(--p-ease) both; }
+.pro .anim-in { animation: pro-fade-in .4s ease both; }
+.pro .anim-scale { animation: pro-scale-in .32s var(--p-ease) both; }
+.pro .stagger > * { animation: pro-fade-up .55s var(--p-ease) both; }
+.pro .stagger > *:nth-child(1) { animation-delay: .02s; }
+.pro .stagger > *:nth-child(2) { animation-delay: .07s; }
+.pro .stagger > *:nth-child(3) { animation-delay: .12s; }
+.pro .stagger > *:nth-child(4) { animation-delay: .17s; }
+.pro .stagger > *:nth-child(5) { animation-delay: .22s; }
+.pro .stagger > *:nth-child(6) { animation-delay: .27s; }
+.pro .stagger > *:nth-child(n+7) { animation-delay: .3s; }
+@media (prefers-reduced-motion: reduce) {
+  .pro *, .pro *::before, .pro *::after { animation: none !important; transition: none !important; }
+}
+
+/* ── Cartes ──────────────────────────────────────────────────── */
+.pro .card {
+  background: var(--p-card);
+  border: 1px solid var(--p-line);
+  border-radius: var(--p-radius);
+  box-shadow: var(--p-shadow);
+}
+.pro .card-hover { transition: transform .25s var(--p-ease), box-shadow .25s var(--p-ease), border-color .25s; }
+.pro .card-hover:hover { transform: translateY(-2px); box-shadow: 0 2px 4px rgba(11,27,51,.05), 0 16px 40px rgba(11,27,51,.10); border-color: #d6e1ee; }
+
+/* ── Boutons ─────────────────────────────────────────────────── */
+.pro .btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  height: 42px; padding: 0 18px; border-radius: 12px; border: 1px solid transparent;
+  font-weight: 700; font-size: 13.5px; letter-spacing: .1px; cursor: pointer; white-space: nowrap;
+  transition: transform .15s var(--p-ease), box-shadow .2s, background .2s, color .2s, border-color .2s, opacity .2s;
+}
+.pro .btn:active { transform: scale(.97); }
+.pro .btn:disabled { opacity: .55; cursor: not-allowed; transform: none; }
+.pro .btn-primary { background: var(--p-gradient); color: #fff; box-shadow: 0 8px 20px rgba(6, 113, 186, .28); }
+.pro .btn-primary:hover:not(:disabled) { box-shadow: 0 10px 26px rgba(6, 113, 186, .38); }
+.pro .btn-dark { background: var(--p-navy); color: #fff; }
+.pro .btn-dark:hover:not(:disabled) { background: var(--p-navy-deep); }
+.pro .btn-ghost { background: #fff; color: var(--p-ink); border-color: var(--p-line); }
+.pro .btn-ghost:hover:not(:disabled) { border-color: #c9d6e6; background: var(--p-soft); }
+.pro .btn-danger { background: var(--p-danger-bg); color: var(--p-danger); }
+.pro .btn-danger:hover:not(:disabled) { background: #fbdcdc; }
+.pro .btn-sm { height: 34px; padding: 0 12px; font-size: 12.5px; border-radius: 10px; }
+.pro .btn-lg { height: 52px; padding: 0 24px; font-size: 15px; border-radius: 14px; }
+.pro .btn-icon { width: 40px; padding: 0; }
+
+/* ── Champs ──────────────────────────────────────────────────── */
+.pro .field { display: flex; flex-direction: column; gap: 6px; }
+.pro .field > span { font-size: 12.5px; font-weight: 700; color: var(--p-muted); }
+.pro .input {
+  height: 46px; width: 100%; padding: 0 14px; border-radius: 12px;
+  border: 1.5px solid var(--p-line); background: #fff; color: var(--p-ink);
+  font: 600 14px 'Plus Jakarta Sans', sans-serif; outline: none;
+  transition: border-color .2s, box-shadow .2s;
+}
+.pro textarea.input { height: auto; padding: 12px 14px; resize: vertical; }
+.pro .input:focus { border-color: var(--p-cyan); box-shadow: 0 0 0 4px rgba(12, 184, 222, .14); }
+.pro .input::placeholder { color: #a3b1c4; font-weight: 500; }
+
+/* ── Squelettes de chargement ────────────────────────────────── */
+.pro .skel {
+  border-radius: 10px;
+  background: linear-gradient(90deg, #eef2f8 0px, #f7f9fc 160px, #eef2f8 320px);
+  background-size: 800px 100%;
+  animation: pro-shimmer 1.3s linear infinite;
+}
+
+/* ── Divers ──────────────────────────────────────────────────── */
+.pro .muted { color: var(--p-muted); }
+.pro .num { font-variant-numeric: tabular-nums; }
+.pro .live-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--p-cyan); animation: pro-pulse 1.8s infinite; display: inline-block; }
+.pro .scroll-y { overflow-y: auto; }
+.pro .scroll-y::-webkit-scrollbar { width: 8px; }
+.pro .scroll-y::-webkit-scrollbar-thumb { background: #d3dcea; border-radius: 4px; }
+.pro .row-hover { transition: background .15s; }
+.pro .row-hover:hover { background: var(--p-soft); }
+.pro .link { color: var(--p-cyan-2); font-weight: 700; cursor: pointer; }
+.pro .link:hover { text-decoration: underline; }
+
+/* Mise en page responsive */
+.pro .grid-stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px; }
+.pro .grid-main { display: grid; grid-template-columns: minmax(0, 1.65fr) minmax(0, 1fr); gap: 20px; align-items: start; }
+.pro .grid-products { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 16px; }
+@media (max-width: 1180px) { .pro .grid-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 1020px) { .pro .grid-main { grid-template-columns: minmax(0, 1fr); } }
+.pro .grid-main > *, .pro .grid-stats > * { min-width: 0; }
+@media (max-width: 560px)  { .pro .grid-stats { grid-template-columns: 1fr; } }
+
+/* Leaflet dans l'espace Pro */
+.pro .leaflet-container { font-family: 'Plus Jakarta Sans', sans-serif; border-radius: var(--p-radius); }
+
+/* Bascule cartes (téléphone) / tableau (tablette, ordinateur) */
+.pro .pro-only-sm { display: none; }
+@media (max-width: 640px) {
+  .pro .pro-only-sm { display: block; }
+  .pro .pro-hide-only-sm { display: none; }
+}

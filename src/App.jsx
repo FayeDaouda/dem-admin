@@ -34,6 +34,10 @@ import ClientBase from './pages/ClientBase'
 
 const LiveMap     = lazy(() => import('./pages/LiveMap'))
 const FleetSection = lazy(() => import('./pages/fleet/FleetSection'))
+// Espace web DEM Pro : pro.dem.sn, ou /pro sur l'admin (développement, aperçus)
+const ProApp = lazy(() => import('./pro/ProApp'))
+const PRO_HOST = /^pro\./.test(window.location.hostname)
+const isProPath = (p) => p === '/pro' || p.startsWith('/pro/')
 
 const PageLoader = () => (
   <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)' }}>
@@ -149,6 +153,13 @@ function AppRoutes() {
 }
 
 export default function App() {
+  if (PRO_HOST || isProPath(window.location.pathname)) {
+    return (
+      <Suspense fallback={<PageLoader />}>
+        <ProApp basename={PRO_HOST ? '' : '/pro'} />
+      </Suspense>
+    )
+  }
   return (
     <BrowserRouter>
       <AuthProvider>
