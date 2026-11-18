@@ -201,7 +201,7 @@ function QuotaForm({ accountId, overview: o, onCancel, onSaved }) {
       </div>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 12 }}>
         <label style={lbl}>Appels par minute
-          <input type="number" min={1} max={10000} step={1} value={rpm} placeholder={`${plan.requestsPerMinute} (offre)`} onChange={e => setRpm(e.target.value)} style={input} />
+          <input type="number" min={1} max={60000} step={1} value={rpm} placeholder={`${plan.requestsPerMinute} (offre)`} onChange={e => setRpm(e.target.value)} style={input} />
         </label>
         <label style={lbl}>Livraisons par jour
           <input type="number" min={1} max={100000} step={1} value={perDay} placeholder={`${plan.deliveriesPerDay} (offre)`} onChange={e => setPerDay(e.target.value)} style={input} />
