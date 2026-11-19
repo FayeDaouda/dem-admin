@@ -36,6 +36,7 @@ export const PAGES = {
   '/equipes': "Comptes de l'équipe admin et leurs rôles. Le rôle décide des pages et des actions accessibles ; l'onglet Rôles permet d'en créer, d'en modifier et d'en supprimer. Les demandes de réinitialisation de mot de passe arrivent ici.",
   '/audit': "Journal de toutes les actions faites par les admins (qui, quoi, sur quoi, quand). Un clic sur une ligne ouvre son détail.",
   '/maintenance': "Tâches ponctuelles sur les données (aperçu puis exécution), fournisseur des SMS et activation du code secret. Chaque exécution est tracée dans l'audit.",
+  '/lieux': "Recherche d'adresse de l'app : les lieux connus de Dakar que les clients trouvent en premier (dès 2 lettres, fautes et surnoms compris), avant Google, et les recherches restées sans résultat.",
   '/version-app': "Version minimale de l'application et invitation à mettre à jour, pour Android et iPhone.",
 }
 
@@ -305,6 +306,10 @@ export const ONGLETS = {
     envoyer:    "Envoyer une notification push maintenant ou la programmer, par type de compte. Un test sur un numéro est possible avant l'envoi.",
     historique: 'Notifications déjà envoyées, avec leur cible et leurs résultats.',
     alerte:     "Message affiché en haut de l'application tant qu'il est actif.",
+  },
+  '/lieux': {
+    catalogue:    "Lieux trouvés en premier dans la recherche d'adresse de l'app, avec leur position exacte. ★ : proposé en puce « Lieux connus » avant toute frappe. « Visible » décoché : caché sans être supprimé. Chaque changement est visible tout de suite dans l'app.",
+    introuvables: "Ce que les clients ont tapé avant de quitter la recherche sans rien choisir, regroupé et compté. « Ajouter au catalogue » crée le lieu et garde la frappe du client comme surnom.",
   },
   '/relances': {
     inscrits: 'Nouveaux inscrits par type de compte et par période, à contacter.',

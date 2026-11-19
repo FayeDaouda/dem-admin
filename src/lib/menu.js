@@ -1,7 +1,7 @@
 // Menu de l'admin (Layout.jsx) — aussi lu par la page Équipes pour montrer
 // les pages qu'ouvre chaque rôle.
 import {
-  Gift, LayoutDashboard, Package, Users, Bike, Map, TrendingUp, ShieldCheck, AlertTriangle, ScrollText, UserCog, Briefcase, UsersRound, SlidersHorizontal, Award, GitBranch, Bell, Wallet, Table2, KeyRound, Wrench, Headset, Smartphone, Gauge, Activity, Contact, Banknote, Rocket, Settings,
+  Gift, LayoutDashboard, Package, Users, Bike, Map, TrendingUp, ShieldCheck, AlertTriangle, ScrollText, UserCog, Briefcase, UsersRound, SlidersHorizontal, Award, GitBranch, Bell, Wallet, Table2, KeyRound, Wrench, Headset, Smartphone, Gauge, Activity, Contact, Banknote, Rocket, Settings, MapPin,
 } from 'lucide-react'
 import { roleHas } from './droits'
 
@@ -29,6 +29,7 @@ export const NAV = [
   { group: 'operations', to: '/orders',          icon: Package,         label: 'Courses',              keywords: 'commandes livraisons orders tournées', roles: ['SUPER','DEV','FINANCE','SERVICE_CLIENT','ASSISTANCE_EXECUTIVE','FLOTTE','COMMERCIAL','CM'] },
   { group: 'operations', to: '/incidents',       icon: AlertTriangle,   label: 'Incidents',            keywords: 'sos alertes litiges', roles: ['SUPER','DEV','SERVICE_CLIENT','ASSISTANCE_EXECUTIVE','FLOTTE','CM'] },
   { group: 'operations', to: '/validation',      icon: ShieldCheck,     label: 'Validation',           keywords: 'documents vérification inscriptions', roles: ['SUPER','ASSISTANCE_EXECUTIVE','SERVICE_CLIENT','FLOTTE','COMMERCIAL'] },
+  { group: 'operations', to: '/lieux',           icon: MapPin,          label: 'Lieux',                keywords: 'adresses recherche introuvables catalogue quartiers repères marchés hôpitaux', roles: ['SUPER','SERVICE_CLIENT','ASSISTANCE_EXECUTIVE'] },
   { group: 'operations', to: '/service-client',  icon: Headset,         label: 'Poste Service Client', labelFor: role => (roleHas(role, 'COMMERCIAL') && !roleHas(role, 'SERVICE_CLIENT') ? 'Poste Commercial' : null), keywords: 'dashboard gestes demandes', roles: ['SUPER','SERVICE_CLIENT','COMMERCIAL','CM'], hideForSuper: true },
   { group: 'comptes',    to: '/clients',         icon: Users,           label: 'Clients',              roles: ['SUPER','DEV','SERVICE_CLIENT','COMMERCIAL','CM'] },
   { group: 'comptes',    to: '/drivers',         icon: Bike,            label: 'Coursiers',            keywords: 'livreurs motos drivers', roles: ['SUPER','DEV','ASSISTANCE_EXECUTIVE','SERVICE_CLIENT','FLOTTE'] },
