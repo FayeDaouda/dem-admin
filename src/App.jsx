@@ -12,6 +12,7 @@ import Drivers     from './pages/Drivers'
 import Clients     from './pages/Clients'
 import Config      from './pages/Config'
 import AppVersion from './pages/AppVersion'
+import Lieux from './pages/Lieux'
 import CodesAcces from './pages/CodesAcces'
 import Relances from './pages/Relances'
 import Rewards from './pages/Rewards'
@@ -117,6 +118,7 @@ function AppRoutes() {
       <Route path="/tarifs" element={<ProtectedRoute><Config /></ProtectedRoute>} />
       <Route path="/config" element={<Navigate to="/tarifs" replace />} />
       <Route path="/version-app" element={<ProtectedRoute><AppVersion /></ProtectedRoute>} />
+      <Route path="/lieux" element={<ProtectedRoute><Lieux /></ProtectedRoute>} />
       <Route path="/codes-acces" element={<ProtectedRoute><CodesAcces /></ProtectedRoute>} />
       <Route path="/acquisition" element={<Navigate to="/marketing?tab=acquisition" replace />} />
       {/* Anciennes adresses — redirigées sans échéance (plan de refonte, étape 1) */}
