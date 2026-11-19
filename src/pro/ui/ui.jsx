@@ -99,6 +99,16 @@ export function Segmented({ value, onChange, options, label, disabled, full }) {
   )
 }
 
+// Interrupteur (réglages) : role="switch", angles vifs, actif en bleu nuit
+export function Toggle({ checked, onChange, label, disabled, busy }) {
+  return (
+    <button type="button" role="switch" aria-checked={!!checked} aria-label={label} aria-busy={busy || undefined}
+      className={`sp-switch ${checked ? 'is-on' : ''}`} disabled={disabled || busy} onClick={() => onChange(!checked)}>
+      <span className="sp-switch-knob" aria-hidden />
+    </button>
+  )
+}
+
 export function Card({ children, style, className = '', ...rest }) {
   return <div className={`card ${className}`} style={{ padding: 24, ...style }} {...rest}>{children}</div>
 }
