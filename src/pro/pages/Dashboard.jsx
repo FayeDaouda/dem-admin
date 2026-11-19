@@ -74,13 +74,13 @@ export default function Dashboard() {
           {data?.requests?.length > 0 && <ToHandle requests={data.requests} />}
 
           <section className="grid-stats dash-stats" aria-label="Chiffres clés">
-            <StatCard label="Livrées aujourd'hui" icon={PackageCheck} to="/livraisons" loading={loading}
+            <StatCard label="Livrées aujourd'hui" icon={PackageCheck} to="/livraisons?filtre=livrees&periode=jour" loading={loading}
               value={s ? (s.deliveriesToday?.completed ?? 0) : '—'}
               sub={orders ? `hier : ${deliveredYesterday}` : 'Indisponible'} />
-            <StatCard label="En cours" icon={Bike} to="/livraisons" loading={loading}
+            <StatCard label="En cours" icon={Bike} to="/livraisons?filtre=en-cours" loading={loading}
               value={s?.deliveriesToday?.inProgress ?? (orders ? active.length : '—')}
               sub={!orders ? 'Indisponible' : searching > 0 ? `dont ${searching} en recherche de coursier` : active.length ? 'Toutes prises en charge' : 'Aucune livraison en cours'} />
-            <StatCard label="Dépensé ce mois" icon={Receipt} to="/livraisons" loading={loading}
+            <StatCard label="Dépensé ce mois" icon={Receipt} to="/livraisons?periode=30j" loading={loading}
               value={s ? fcfa(s.spendingMonth) : '—'}
               sub={s ? `aujourd'hui : ${fcfa(s.spendingToday)}` : 'Indisponible'} />
             <StatCard label="Solde retirable" icon={Wallet} to="/wallet" loading={loading}
