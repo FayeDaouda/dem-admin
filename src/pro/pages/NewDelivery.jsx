@@ -1,26 +1,53 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useId, useMemo, useRef, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { MapContainer, Marker, Polyline, useMap, useMapEvents } from 'react-leaflet'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 import {
-  Store, MapPin, User, Phone, Package, Clock, Zap, CalendarClock, Wallet, Users, Search, Check, Minus, Plus, ArrowRight, History, Navigation,
+  MapPin, Search, Check, Minus, Plus, X, History, MousePointerClick, Lock, BadgeCheck, Clock, Users, Store, Zap, CalendarClock, AlertCircle,
 } from 'lucide-react'
 import MapBaseLayer from '../../components/MapBaseLayer'
 import proApi, { errMsg } from '../lib/proApi'
-import { fcfa } from '../lib/format'
-import { Button, Card, Skeleton, Spinner } from '../ui/ui'
+import { fcfa, phoneFmt } from '../lib/format'
+import { Button, Chip, Corners, PageHeader, Segmented, Skeleton, Spinner } from '../ui/ui'
 import { useNotify } from '../ui/notifyContext'
 
 // Nouvelle livraison (simple ou programmée) : même création que l'app
 // (POST /orders, prix officiel /orders/estimate garanti à la création).
+// ?commande=ID : commande reçue par le lien, pré-remplie (point de retrait et
+// prix figés si le serveur les fournit). ?dupliquer=ID : reprise d'une
+// livraison existante.
 const newToken = () => Math.random().toString(36).slice(2) + Date.now().toString(36)
+const fmtPhone = (d) => d.replace(/(\d{2})(\d{0,3})(\d{0,2})(\d{0,2})/, (_, a, b, c, e) => [a, b, c, e].filter(Boolean).join(' '))
+
+// Codes d'erreur du serveur (lien de commande à prix figé)
+const LOCK_ERRORS = {
+  PICKUP_LOCKED: 'Cette commande part obligatoirement du point de retrait choisi à la commande de votre client.',
+  PRICE_LOCKED: 'Le prix de cette commande est fixé : seule la livraison standard est possible.',
+  APP_UPDATE_REQUIRED: 'Cette commande a été payée d\'avance : rechargez la page pour la valider avec la dernière version.',
+}
+
+// Description d'une livraison → repère et note (format écrit à la création)
+function splitDescription(desc, items) {
+  const out = { landmark: '', note: '' }
+  if (!desc) return out
+  const itemsText = (items ?? []).map(i => `${i.name} ×${i.quantity}`).join(', ')
+  const rest = []
+  for (const part of desc.split(' · ')) {
+    const m = part.match(/^Repère\s*:\s*(.*)$/)
+    if (m) out.landmark = m[1]
+    else if (part !== itemsText) rest.push(part)
+  }
+  out.note = rest.join(' · ')
+  return out
+}
 
 export default function NewDelivery() {
   const navigate = useNavigate()
   const notify = useNotify()
   const [params] = useSearchParams()
   const requestId = params.get('commande') // commande reçue par le lien, à livrer
+  const dupId = params.get('dupliquer')    // livraison à reprendre
   const [request, setRequest] = useState(null)
   const [addresses, setAddresses] = useState(null)
   const [recent, setRecent] = useState([])
@@ -38,11 +65,14 @@ export default function NewDelivery() {
   const [estimate, setEstimate] = useState(null)
   const [estimating, setEstimating] = useState(false)
   const [submitting, setSubmitting] = useState(false)
+  const [touched, setTouched] = useState({})
+  const [triedSubmit, setTriedSubmit] = useState(false)
+  const [dupFrom, setDupFrom] = useState(null)
 
   useEffect(() => {
     proApi.get('/dem-pro/addresses').then(r => {
       setAddresses(r.data ?? [])
-      setPickupId((r.data ?? []).find(a => a.isDefault)?.id ?? r.data?.[0]?.id ?? null)
+      setPickupId(id => id ?? (r.data ?? []).find(a => a.isDefault)?.id ?? r.data?.[0]?.id ?? null)
     }).catch(() => setAddresses([]))
     proApi.get('/dem-pro/me/recent-destinations').then(r => setRecent(r.data ?? [])).catch(() => {})
     proApi.get('/dem-pro/products').then(r => setProducts((r.data ?? []).filter(p => !p.locked))).catch(() => {})
@@ -61,14 +91,47 @@ export default function NewDelivery() {
       if (req.landmark) setLandmark(req.landmark)
       if (req.notes) setNote(req.notes)
       setItems((req.items ?? []).map(i => ({ productId: i.productId, name: i.name, quantity: i.quantity ?? 1, price: i.price ?? undefined })))
-      if (req.deliveryPayment === 'WITH_ORDER') setPayment('merchant')
+      if (req.pickupAddressId) setPickupId(req.pickupAddressId)
+      if (req.deliveryPayment === 'WITH_ORDER' && !req.paymentTiming) setPayment('merchant')
     }).catch(() => {})
   }, [requestId])
 
-  const pickup = useMemo(() => (addresses ?? []).find(a => a.id === pickupId), [addresses, pickupId])
-
-  // Prix officiel dès que départ et arrivée sont connus
+  // Dupliquer : reprise d'une livraison existante (nouvel horaire « maintenant »)
   useEffect(() => {
+    if (!dupId || requestId) return
+    proApi.get(`/orders/${dupId}`).then(r => {
+      const o = r.data?.order ?? r.data
+      if (!o) return
+      setDupFrom(o)
+      if (o.receiverName) setName(o.receiverName)
+      if (o.receiverPhone) setPhone(o.receiverPhone.replace(/^\+221/, ''))
+      if (o.deliveryLatitude != null) setDrop({ address: o.deliveryAddress, lat: o.deliveryLatitude, lng: o.deliveryLongitude })
+      const its = Array.isArray(o.items) ? o.items : []
+      setItems(its.map(i => ({ productId: i.productId, name: i.name, quantity: i.quantity ?? 1, price: i.price ?? undefined })))
+      const { landmark: lm, note: nt } = splitDescription(o.description, its)
+      setLandmark(lm); setNote(nt)
+      if (o.proAddressId) setPickupId(o.proAddressId)
+      if (o.paymentMode === 'merchant' || o.paymentMode === 'cod') setPayment(o.paymentMode)
+    }).catch(() => notify.error('Livraison introuvable', 'Impossible de reprendre cette livraison.'))
+  }, [dupId, requestId, notify])
+
+  // Commande au prix figé (serveur récent) : point de retrait et prix imposés
+  const locked = !!(request && (request.pickupAddressId || request.pickupAddress || request.deliveryQuote || request.paymentTiming))
+  const frozenQuote = locked && request.deliveryQuote?.price != null ? request.deliveryQuote : null
+  const lockedPickup = useMemo(() => {
+    if (!locked) return null
+    const known = (addresses ?? []).find(a => a.id === request.pickupAddressId)
+    if (known) return known
+    if (request.pickupLatitude == null) return null
+    return { id: request.pickupAddressId ?? null, label: 'Point de retrait', address: request.pickupAddress, lat: request.pickupLatitude, lng: request.pickupLongitude }
+  }, [locked, request, addresses])
+
+  const pickup = lockedPickup ?? (addresses ?? []).find(a => a.id === pickupId)
+  const payer = locked ? 'cod' : payment
+
+  // Prix officiel dès que départ et arrivée sont connus (sauf prix figé)
+  useEffect(() => {
+    if (frozenQuote) return
     if (!pickup || !drop) { setEstimate(null); return }
     let alive = true
     setEstimating(true)
@@ -76,20 +139,44 @@ export default function NewDelivery() {
       .then(r => alive && setEstimate(r.data)).catch(() => alive && setEstimate(null))
       .finally(() => alive && setEstimating(false))
     return () => { alive = false }
-  }, [pickup, drop])
+  }, [pickup, drop, frozenQuote])
 
-  const phoneDigits = phone.replace(/\D/g, '').slice(0, 9)
+  const quote = frozenQuote
+    ? { price: frozenQuote.price, demFee: frozenQuote.demFee ?? 0, totalClient: frozenQuote.total ?? frozenQuote.price + (frozenQuote.demFee ?? 0), distanceKm: frozenQuote.distanceKm }
+    : estimate
+  const total = quote ? (quote.totalClient ?? quote.price + quote.demFee) : null
+
+  const phoneDigits = phone.replace(/\D/g, '').replace(/^221(?=\d{9}$)/, '').slice(0, 9)
   const phoneOk = /^7[015678]\d{7}$/.test(phoneDigits)
+  const nameOk = name.trim().length >= 2
+  const minSchedule = new Date(Date.now() + 15 * 60_000)
   const scheduleOk = when === 'now' || (scheduledAt && new Date(scheduledAt).getTime() > Date.now() + 15 * 60_000)
-  const ready = pickup && drop && name.trim().length >= 2 && phoneOk && estimate && scheduleOk
+
+  const missing = [
+    !pickup && 'le point de retrait',
+    !nameOk && 'le nom du client',
+    !phoneOk && 'le téléphone du client',
+    !drop && 'l\'adresse de livraison',
+    !scheduleOk && 'l\'heure de départ',
+  ].filter(Boolean)
+  const ready = missing.length === 0 && !!quote && !estimating
+
+  const showErr = (k) => touched[k] || triedSubmit
+  const errors = {
+    name: showErr('name') && !nameOk ? 'Indiquez le nom du client (2 lettres au moins).' : null,
+    phone: showErr('phone') && !phoneOk ? 'Numéro mobile sénégalais : 70, 75, 76, 77 ou 78, puis 7 chiffres.' : null,
+    drop: triedSubmit && !drop ? 'Choisissez l\'adresse, ou cliquez sur la carte.' : null,
+    schedule: (showErr('schedule') || scheduledAt) && when === 'later' && !scheduleOk ? 'Choisissez une heure au moins 15 minutes plus tard.' : null,
+  }
 
   const submit = async () => {
+    setTriedSubmit(true)
     if (!ready) return
     setSubmitting(true)
     const parts = []
     if (items.length) parts.push(items.map(i => `${i.name} ×${i.quantity}`).join(', '))
     if (note.trim()) parts.push(note.trim())
-    if (landmark.trim()) parts.push(`Repère: ${landmark.trim()}`)
+    if (landmark.trim()) parts.push(`Repère : ${landmark.trim()}`)
     try {
       const res = await proApi.post('/orders', {
         orderType: 'DELIVERY',
@@ -103,230 +190,301 @@ export default function NewDelivery() {
         receiverName: name.trim(),
         receiverPhone: `+221${phoneDigits}`,
         ...(parts.length ? { description: parts.join(' · ') } : {}),
-        price: estimate.price,
-        demFee: estimate.demFee,
+        price: quote.price,
+        demFee: quote.demFee,
         ...(when === 'later' ? { scheduledAt: new Date(scheduledAt).toISOString() } : {}),
-        paymentMode: payment,
-        proAddressId: pickup.id,
+        paymentMode: payer,
+        ...(pickup.id ? { proAddressId: pickup.id } : {}),
+        ...(request ? { orderRequestId: request.id } : {}),
         ...(items.length ? { items: items.map(i => ({ name: i.name, quantity: i.quantity, ...(i.price ? { price: i.price } : {}), ...(i.productId ? { productId: i.productId } : {}) })) } : {}),
       })
       const order = res.data.order ?? res.data
+      // Ancien parcours : le serveur relie déjà la demande via orderRequestId ;
+      // la confirmation explicite reste pour les serveurs qui ne le font pas.
       if (request) await proApi.post(`/dem-pro/order-requests/${request.id}/confirm`, { orderId: order.id }).catch(() => {})
       notify.success(when === 'later' ? 'Livraison programmée' : 'Livraison lancée', when === 'later' ? 'Elle partira à l\'heure choisie.' : 'Nous cherchons un coursier proche. Vous serez prévenu en direct.')
       window.dispatchEvent(new CustomEvent('dem-pro:refresh'))
       navigate(`/livraisons?id=${order.id}`)
     } catch (e) {
-      notify.error('Livraison non créée', errMsg(e))
+      const code = e?.response?.data?.code
+      notify.error('Livraison non créée', LOCK_ERRORS[code] ?? errMsg(e))
     } finally { setSubmitting(false) }
   }
 
+  const title = request ? 'Livrer la commande' : dupFrom ? 'Dupliquer la livraison' : 'Nouvelle livraison'
+  const description = request
+    ? `Commande de ${request.customerName || 'votre client'}, pré-remplie. Vérifiez puis lancez la livraison.`
+    : dupFrom
+      ? `Reprise de la livraison pour ${dupFrom.receiverName || 'votre client'}. Modifiez ce qui change, puis lancez-la.`
+      : 'Un coursier DEM récupère le colis à votre point de retrait et le livre à votre client.'
+  const submitLabel = `${when === 'later' ? 'Programmer la livraison' : 'Lancer la livraison'}${total != null ? ` · ${fcfa(total)}` : ''}`
+  const paidOnline = request && (request.paidAt || request.paymentTiming === 'NOW')
+
   return (
-    <div>
-      <div className="anim-up" style={{ marginBottom: 20 }}>
-        <h1 style={{ fontSize: 28, fontWeight: 800, letterSpacing: '-.7px', margin: 0 }}>{request ? 'Livrer la commande reçue' : 'Nouvelle livraison'}</h1>
-        <div className="muted" style={{ marginTop: 4 }}>{request
-          ? `Commande de ${request.customerName || 'votre client'} pré-remplie${request.paidAt ? ' · articles payés en ligne' : ''}. Vérifiez puis lancez la livraison.`
-          : 'Un coursier DEM récupère le colis chez vous et le livre à votre client.'}</div>
-      </div>
+    <div className="nd">
+      <PageHeader
+        eyebrow={request ? 'Commande reçue' : 'Livraisons'}
+        title={<>{title}<span className="dot">.</span></>}
+        description={description}
+        actions={<Button variant="ghost" to={request ? '/commandes' : '/livraisons'}>Annuler</Button>}
+      />
 
-      <div className="grid-main" style={{ gridTemplateColumns: 'minmax(0, 1.45fr) minmax(0, 1fr)' }}>
-        <div style={{ display: 'grid', gap: 18 }} className="stagger">
-          {/* Retrait */}
-          <Step n={1} icon={Store} title="Point de retrait" hint="Où le coursier récupère le colis">
-            {!addresses ? <Skeleton h={64} r={14} /> : addresses.length === 0 ? (
-              <div className="muted" style={{ fontSize: 13 }}>Ajoutez une adresse de boutique dans Compte › Mes adresses.</div>
+      {locked && (
+        <div className="nd-banner has-corners" role="status">
+          <Corners />
+          <BadgeCheck size={18} aria-hidden />
+          <div>
+            <strong>{paidOnline ? 'Payée en ligne par votre client' : 'Paiement à l\'arrivée du coursier'}</strong>
+            <span className="muted">
+              {paidOnline
+                ? 'Articles et livraison sont réglés. Le coursier ne demandera rien à votre client.'
+                : 'Votre client paie le coursier à la livraison, en ligne ou en espèces.'}
+            </span>
+          </div>
+        </div>
+      )}
+
+      <div className="nd-grid">
+        <div className="card nd-form">
+          {/* 1. Retrait */}
+          <Section title="Point de retrait" hint={locked ? 'Fixé à la commande de votre client' : 'Où le coursier récupère le colis'}>
+            {locked && lockedPickup ? (
+              <div className="nd-pick is-on is-locked has-corners">
+                <Corners />
+                <Lock size={16} aria-hidden />
+                <span className="nd-pick-txt"><b>{lockedPickup.label}</b><span>{lockedPickup.address}</span></span>
+                <span className="nd-lock-note">Point de retrait fixé à la commande du client</span>
+              </div>
+            ) : !addresses ? <Skeleton h={64} /> : addresses.length === 0 ? (
+              <p className="muted nd-help">Ajoutez une adresse de retrait dans <a className="link" href="#" onClick={(e) => { e.preventDefault(); navigate('/compte') }}>Compte</a> pour lancer une livraison.</p>
             ) : (
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 10 }}>
-                {addresses.map(a => (
-                  <Choice key={a.id} active={a.id === pickupId} onClick={() => setPickupId(a.id)} icon={Store} title={a.label} text={a.address} />
-                ))}
-              </div>
-            )}
-          </Step>
-
-          {/* Client */}
-          <Step n={2} icon={User} title="Votre client" hint="Le coursier l'appelle à l'arrivée">
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-              <label className="field"><span>Nom</span><input className="input" value={name} onChange={e => setName(e.target.value)} placeholder="Ex. Fatou Sow" /></label>
-              <label className="field"><span>Téléphone</span>
-                <div style={{ position: 'relative' }}>
-                  <Phone size={15} style={{ position: 'absolute', left: 13, top: 16, color: '#9aa8bb' }} />
-                  <input className="input" inputMode="numeric" value={phoneDigits.replace(/(\d{2})(\d{0,3})(\d{0,2})(\d{0,2})/, (_, a, b, c, d) => [a, b, c, d].filter(Boolean).join(' '))}
-                    onChange={e => setPhone(e.target.value)} placeholder="77 123 45 67" style={{ paddingLeft: 36, borderColor: phone && !phoneOk ? '#f3b4b4' : undefined }} />
-                </div>
-              </label>
-            </div>
-            {recent.length > 0 && (
-              <div style={{ marginTop: 12 }}>
-                <div className="muted" style={{ fontSize: 12, fontWeight: 700, marginBottom: 6, display: 'flex', alignItems: 'center', gap: 6 }}><History size={13} /> Clients récents</div>
-                <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-                  {recent.slice(0, 6).map(r => (
-                    <button key={`${r.receiverPhone}-${r.address}`} className="btn btn-ghost btn-sm" onClick={() => {
-                      if (r.receiverName) setName(r.receiverName)
-                      if (r.receiverPhone) setPhone(r.receiverPhone.replace(/^\+221/, ''))
-                      if (r.lat != null) setDrop({ address: r.address, lat: r.lat, lng: r.lng })
-                    }}>{r.receiverName ?? r.address}</button>
-                  ))}
-                </div>
-              </div>
-            )}
-          </Step>
-
-          {/* Destination */}
-          <Step n={3} icon={MapPin} title="Adresse de livraison" hint="Cherchez, ou touchez la carte à droite">
-            <PlaceSearch value={drop} onPick={setDrop} />
-            <label className="field" style={{ marginTop: 12 }}><span>Repère (conseillé)</span>
-              <input className="input" value={landmark} onChange={e => setLandmark(e.target.value)} placeholder="Ex. face pharmacie, 2e étage, portail bleu" /></label>
-          </Step>
-
-          {/* Colis */}
-          <Step n={4} icon={Package} title="Colis" hint="Facultatif — affiché au coursier et sur le reçu">
-            {products.length > 0 && (
-              <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 12 }}>
-                {products.slice(0, 12).map(p => {
-                  const it = items.find(i => i.productId === p.id)
+              <div className="nd-picks" role="radiogroup" aria-label="Point de retrait">
+                {addresses.map(a => {
+                  const on = a.id === pickup?.id
                   return (
-                    <button key={p.id} className="btn btn-ghost btn-sm" style={{ borderColor: it ? 'var(--p-cyan)' : undefined, background: it ? '#e3f8fc' : undefined }}
-                      onClick={() => setItems(list => it ? list.filter(i => i.productId !== p.id) : [...list, { productId: p.id, name: p.name, quantity: 1, price: p.defaultPrice ?? undefined }])}>
-                      {it ? <Check size={14} /> : <Plus size={14} />} {p.name}
+                    <button key={a.id} type="button" role="radio" aria-checked={on} onClick={() => setPickupId(a.id)}
+                      className={`nd-pick ${on ? 'is-on has-corners' : ''}`}>
+                      {on && <Corners />}
+                      <span className="nd-radio" aria-hidden />
+                      <span className="nd-pick-txt"><b>{a.label}{a.isDefault && <em>Par défaut</em>}</b><span>{a.address}</span></span>
                     </button>
                   )
                 })}
               </div>
             )}
-            {items.map(it => (
-              <div key={it.productId ?? it.name} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 12px', borderRadius: 12, background: 'var(--p-soft)', marginBottom: 6 }}>
-                <span style={{ flex: 1, fontWeight: 700, fontSize: 13.5 }}>{it.name}</span>
-                {it.price ? <span className="muted num" style={{ fontSize: 12.5 }}>{fcfa(it.price)}</span> : null}
-                <Qty value={it.quantity} onChange={(q) => setItems(list => list.map(x => x === it ? { ...x, quantity: q } : x))} />
-              </div>
-            ))}
-            <label className="field" style={{ marginTop: 8 }}><span>Description du colis</span>
-              <input className="input" value={note} onChange={e => setNote(e.target.value)} placeholder="Ex. 1 sac fragile" /></label>
-          </Step>
+          </Section>
 
-          {/* Paiement et horaire */}
-          <Step n={5} icon={Wallet} title="Paiement et horaire">
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-              <Choice active={payment === 'cod'} onClick={() => setPayment('cod')} icon={Users} title="Mon client paie" text="La livraison est réglée au coursier par le client" />
-              <Choice active={payment === 'merchant'} onClick={() => setPayment('merchant')} icon={Store} title="Je paie" text="Vous réglez le coursier au retrait" />
-              <Choice active={when === 'now'} onClick={() => setWhen('now')} icon={Zap} title="Maintenant" text="Un coursier part tout de suite" />
-              <Choice active={when === 'later'} onClick={() => setWhen('later')} icon={CalendarClock} title="Programmer" text="À une date et une heure précises" />
-            </div>
-            {when === 'later' && (
-              <label className="field anim-up" style={{ marginTop: 12 }}><span>Date et heure de retrait</span>
-                <input type="datetime-local" className="input" value={scheduledAt} onChange={e => setScheduledAt(e.target.value)} />
-                {scheduledAt && !scheduleOk && <small style={{ color: 'var(--p-danger)', fontWeight: 600 }}>Au moins 15 minutes à l'avance.</small>}
-              </label>
-            )}
-          </Step>
-        </div>
-
-        {/* Résumé fixe */}
-        <div style={{ position: 'sticky', top: 92, display: 'grid', gap: 16 }} className="anim-up">
-          <Card style={{ padding: 0, overflow: 'hidden' }}>
-            <div style={{ height: 300 }}>
-              <PickMap pickup={pickup} drop={drop} onPick={setDrop} />
-            </div>
-            <div style={{ padding: 20 }}>
-              <SummaryRow icon={Store} label="Retrait" value={pickup?.label ?? '—'} />
-              <SummaryRow icon={MapPin} label="Livraison" value={drop?.address ?? 'À choisir'} muted={!drop} />
-              <SummaryRow icon={Clock} label="Départ" value={when === 'now' ? 'Dès maintenant' : scheduledAt ? new Date(scheduledAt).toLocaleString('fr-FR', { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : 'À programmer'} />
-              <div style={{ borderTop: '1px dashed var(--p-line)', margin: '14px 0' }} />
-              {estimating ? <Skeleton h={50} r={12} /> : estimate ? (
-                <div className="anim-in">
-                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13 }} className="muted"><span>Livraison · {estimate.distanceKm} km</span><span className="num">{fcfa(estimate.price)}</span></div>
-                  {estimate.demFee > 0 && <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, marginTop: 4 }} className="muted"><span>Frais de service</span><span className="num">{fcfa(estimate.demFee)}</span></div>}
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginTop: 10 }}>
-                    <span style={{ fontWeight: 800 }}>Total</span>
-                    <span style={{ fontWeight: 800, fontSize: 26, letterSpacing: '-.6px' }} className="num">{fcfa(estimate.totalClient ?? estimate.price + estimate.demFee)}</span>
+          {/* 2. Client */}
+          <Section title="Votre client" hint="Le coursier l'appelle à l'arrivée">
+            <div className="nd-cols">
+              <Field label="Nom" error={errors.name}>
+                {(p) => <input {...p} className="input" value={name} autoComplete="off" onChange={e => setName(e.target.value)}
+                  onBlur={() => setTouched(t => ({ ...t, name: true }))} placeholder="Ex. Fatou Sow" />}
+              </Field>
+              <Field label="Téléphone" error={errors.phone}>
+                {(p) => (
+                  <div className="nd-phone">
+                    <span className="nd-prefix">+221</span>
+                    <input {...p} className="input" inputMode="numeric" autoComplete="off" value={fmtPhone(phoneDigits)}
+                      onChange={e => setPhone(e.target.value)} onBlur={() => setTouched(t => ({ ...t, phone: true }))} placeholder="77 123 45 67" />
+                    {phoneOk && <Check size={16} className="nd-ok" aria-hidden />}
                   </div>
-                  <div className="muted" style={{ fontSize: 12, marginTop: 2 }}>{payment === 'cod' ? 'Payé par votre client à la livraison' : 'Payé par vous au coursier'}</div>
-                </div>
-              ) : (
-                <div className="muted" style={{ fontSize: 13 }}>Le prix s'affiche dès que l'adresse de livraison est choisie.</div>
-              )}
-              <Button size="lg" loading={submitting} disabled={!ready} onClick={submit} style={{ width: '100%', marginTop: 18 }}>
-                {when === 'later' ? 'Programmer la livraison' : 'Lancer la livraison'} <ArrowRight size={17} />
-              </Button>
-              {!ready && <div className="muted" style={{ fontSize: 12, textAlign: 'center', marginTop: 8 }}>
-                {!drop ? 'Choisissez l\'adresse de livraison' : name.trim().length < 2 ? 'Indiquez le nom du client' : !phoneOk ? 'Numéro du client : mobile sénégalais (77, 78, 76, 70, 75)' : !scheduleOk ? 'Choisissez l\'heure de la livraison' : ''}
-              </div>}
+                )}
+              </Field>
             </div>
-          </Card>
+            {recent.length > 0 && !request && (
+              <div className="nd-chips-block">
+                <span className="label-caps nd-sub"><History size={13} aria-hidden /> Clients récents</span>
+                <div className="nd-chips">
+                  {recent.slice(0, 6).map(r => {
+                    const on = !!r.receiverPhone && phoneDigits && r.receiverPhone.endsWith(phoneDigits) && drop?.address === r.address
+                    return (
+                      <Chip key={`${r.receiverPhone}-${r.address}`} selected={on} title={`${r.receiverName ?? ''} · ${phoneFmt(r.receiverPhone)} · ${r.address}`}
+                        onClick={() => {
+                          if (r.receiverName) setName(r.receiverName)
+                          if (r.receiverPhone) setPhone(r.receiverPhone.replace(/^\+221/, ''))
+                          if (r.lat != null) setDrop({ address: r.address, lat: r.lat, lng: r.lng })
+                        }}>{r.receiverName ?? r.address}</Chip>
+                    )
+                  })}
+                </div>
+              </div>
+            )}
+          </Section>
+
+          {/* 3. Adresse */}
+          <Section title="Adresse de livraison" hint={frozenQuote ? 'Adresse donnée par votre client · le prix en dépend' : 'Cherchez un quartier, une rue ou un lieu connu, ou cliquez sur la carte'}>
+            <PlaceSearch value={drop} onPick={setDrop} onClear={() => setDrop(null)} error={errors.drop} readOnly={!!frozenQuote && !!drop} />
+            <div style={{ marginTop: 16 }}>
+              <Field label="Repère (conseillé)">
+                {(p) => <input {...p} className="input" value={landmark} onChange={e => setLandmark(e.target.value)} placeholder="Ex. face pharmacie, 2e étage, portail bleu" />}
+              </Field>
+            </div>
+          </Section>
+
+          {/* 4. Colis */}
+          <Section title="Colis" hint="Facultatif · affiché au coursier et sur le reçu">
+            {products.length > 0 && (
+              <div className="nd-chips" style={{ marginBottom: items.length ? 12 : 16 }}>
+                {products.slice(0, 16).map(p => {
+                  const it = items.find(i => i.productId === p.id)
+                  return (
+                    <Chip key={p.id} selected={!!it} icon={it ? Check : Plus}
+                      onClick={() => setItems(list => it ? list.filter(i => i.productId !== p.id) : [...list, { productId: p.id, name: p.name, quantity: 1, price: p.defaultPrice ?? undefined }])}>
+                      {p.name}
+                    </Chip>
+                  )
+                })}
+              </div>
+            )}
+            {items.length > 0 && (
+              <ul className="nd-items">
+                {items.map(it => (
+                  <li key={it.productId ?? it.name}>
+                    <span className="nd-item-name">{it.name}</span>
+                    {it.price ? <span className="muted num">{fcfa(it.price)}</span> : null}
+                    <Qty value={it.quantity} name={it.name} onChange={(q) => setItems(list => list.map(x => x === it ? { ...x, quantity: q } : x))} />
+                    <button type="button" className="nd-x" aria-label={`Retirer ${it.name}`} onClick={() => setItems(list => list.filter(x => x !== it))}><X size={14} aria-hidden /></button>
+                  </li>
+                ))}
+              </ul>
+            )}
+            <Field label="Description du colis">
+              {(p) => <input {...p} className="input" value={note} onChange={e => setNote(e.target.value)} placeholder="Ex. 1 sac fragile" />}
+            </Field>
+          </Section>
+
+          {/* 5. Paiement et horaire */}
+          <Section title="Paiement et horaire" last>
+            <div className="nd-cols">
+              <div className="nd-group">
+                <span className="label-caps nd-sub">Qui paie la livraison ?</span>
+                <Segmented full label="Qui paie la livraison" value={payer} onChange={setPayment} disabled={locked}
+                  options={[['cod', 'Le client', Users], ['merchant', 'Ma boutique', Store]]} />
+                <p className="muted nd-help">{locked
+                  ? 'Imposé : votre client a accepté ce prix à la commande.'
+                  : payer === 'cod' ? 'Votre client règle la livraison au coursier, en ligne ou en espèces.' : 'Vous réglez la livraison en ligne depuis le suivi. Rien n\'est demandé à votre client.'}</p>
+              </div>
+              <div className="nd-group">
+                <span className="label-caps nd-sub">Quand ?</span>
+                <Segmented full label="Quand" value={when} onChange={setWhen}
+                  options={[['now', 'Maintenant', Zap], ['later', 'Programmer', CalendarClock]]} />
+                {when === 'later' ? (
+                  <div style={{ marginTop: 10 }}>
+                    <Field label="Date et heure de retrait" error={errors.schedule}>
+                      {(p) => <input {...p} type="datetime-local" className="input" value={scheduledAt}
+                        min={new Date(minSchedule.getTime() - minSchedule.getTimezoneOffset() * 60000).toISOString().slice(0, 16)}
+                        onChange={e => setScheduledAt(e.target.value)} onBlur={() => setTouched(t => ({ ...t, schedule: true }))} />}
+                    </Field>
+                  </div>
+                ) : <p className="muted nd-help">Un coursier proche part tout de suite.</p>}
+              </div>
+            </div>
+          </Section>
         </div>
+
+        {/* Résumé collant */}
+        <aside className="nd-summary" aria-label="Résumé de la livraison">
+          <div className="card nd-sum-card">
+            <div className="nd-map">
+              <PickMap pickup={pickup} drop={drop} onPick={frozenQuote && drop ? null : setDrop} />
+            </div>
+            <div className="nd-sum-body">
+              <dl className="nd-rows">
+                <div><dt>Retrait</dt><dd>{pickup?.label ?? <span className="muted">À choisir</span>}</dd></div>
+                <div><dt>Livraison</dt><dd>{drop?.address ?? <span className="muted">À choisir</span>}</dd></div>
+                <div><dt>Départ</dt><dd>{when === 'now' ? 'Dès maintenant' : scheduledAt ? new Date(scheduledAt).toLocaleString('fr-FR', { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : <span className="muted">À programmer</span>}</dd></div>
+              </dl>
+              <div className="nd-price" aria-live="polite">
+                {estimating && !frozenQuote ? <Skeleton h={64} /> : quote ? (
+                  <>
+                    {frozenQuote && <span className="nd-frozen"><Lock size={12} aria-hidden /> Prix accepté par le client</span>}
+                    <div className="nd-line"><span>Livraison{quote.distanceKm != null ? ` · ${String(quote.distanceKm).replace('.', ',')} km` : ''}</span><span className="num">{fcfa(quote.price)}</span></div>
+                    {quote.demFee > 0 && <div className="nd-line"><span>Frais de service</span><span className="num">{fcfa(quote.demFee)}</span></div>}
+                    <div className="nd-total"><span>Total</span><span className="num">{fcfa(total)}</span></div>
+                    <p className="muted nd-help">{payer === 'cod' ? (paidOnline ? 'Déjà réglé par votre client.' : 'Payé par votre client à la livraison.') : 'Payé par votre boutique, en ligne depuis le suivi.'}</p>
+                  </>
+                ) : (
+                  <p className="muted nd-help" style={{ margin: 0 }}><Clock size={13} aria-hidden style={{ verticalAlign: '-2px' }} /> Le prix s'affiche dès que l'adresse de livraison est choisie.</p>
+                )}
+              </div>
+              <Button size="lg" arrow="right" loading={submitting} disabled={submitting || (triedSubmit && !ready)} onClick={submit} className="nd-submit">
+                {submitLabel}
+              </Button>
+              {missing.length > 0 && (
+                <div className="nd-missing">
+                  <span className="label-caps">À compléter</span>
+                  <ul>{missing.map(m => <li key={m}><AlertCircle size={13} aria-hidden /> {m.charAt(0).toUpperCase() + m.slice(1)}</li>)}</ul>
+                </div>
+              )}
+            </div>
+          </div>
+        </aside>
+      </div>
+
+      {/* Mobile : total + bouton toujours à portée */}
+      <div className="nd-mbar">
+        <div className="nd-mbar-total">
+          <span className="label-caps">Total</span>
+          <span className="num">{total != null ? fcfa(total) : '—'}</span>
+        </div>
+        <Button arrow="right" loading={submitting} disabled={submitting || (triedSubmit && !ready)} onClick={submit}>
+          {when === 'later' ? 'Programmer' : 'Lancer'}
+        </Button>
       </div>
     </div>
   )
 }
 
-function Step({ n, icon, title, hint, children }) {
-  const Icon = icon
+function Section({ title, hint, children, last }) {
   return (
-    <Card>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>
-        <div style={{ width: 34, height: 34, borderRadius: 11, background: 'var(--p-gradient)', color: '#fff', display: 'grid', placeItems: 'center', fontWeight: 800, fontSize: 14 }}>{n}</div>
-        <div style={{ flex: 1 }}>
-          <div style={{ fontWeight: 800, fontSize: 15.5, display: 'flex', alignItems: 'center', gap: 8 }}><Icon size={16} color="var(--p-cyan-2)" /> {title}</div>
-          {hint && <div className="muted" style={{ fontSize: 12.5 }}>{hint}</div>}
-        </div>
-      </div>
+    <section className={`nd-sec ${last ? 'is-last' : ''}`}>
+      <header className="nd-sec-head">
+        <h2 className="section-title">{title}</h2>
+        {hint && <p className="muted">{hint}</p>}
+      </header>
       {children}
-    </Card>
+    </section>
   )
 }
 
-function Choice({ active, onClick, icon, title, text }) {
-  const Icon = icon
+// Champ avec libellé et erreur sous le champ (aria-invalid / aria-describedby)
+function Field({ label, error, children }) {
+  const id = useId()
+  const errId = `${id}-err`
   return (
-    <button onClick={onClick} style={{
-      textAlign: 'left', padding: 14, borderRadius: 14, cursor: 'pointer', fontFamily: 'inherit', display: 'flex', gap: 12,
-      border: `1.5px solid ${active ? 'var(--p-cyan)' : 'var(--p-line)'}`, background: active ? '#f0fafd' : '#fff',
-      boxShadow: active ? '0 0 0 4px rgba(12,184,222,.10)' : 'none', transition: 'all .18s',
-    }}>
-      <div style={{ width: 34, height: 34, borderRadius: 11, display: 'grid', placeItems: 'center', background: active ? 'var(--p-cyan)' : 'var(--p-soft)', color: active ? '#fff' : 'var(--p-muted)', flexShrink: 0, transition: 'all .18s' }}><Icon size={17} /></div>
-      <div style={{ minWidth: 0 }}>
-        <div style={{ fontWeight: 800, fontSize: 13.5, color: 'var(--p-ink)' }}>{title}</div>
-        <div className="muted" style={{ fontSize: 12, marginTop: 1 }}>{text}</div>
-      </div>
-    </button>
-  )
-}
-
-function Qty({ value, onChange }) {
-  return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-      <button className="btn btn-ghost btn-icon btn-sm" style={{ width: 28, height: 28 }} onClick={() => onChange(Math.max(1, value - 1))}><Minus size={13} /></button>
-      <span className="num" style={{ minWidth: 20, textAlign: 'center', fontWeight: 800 }}>{value}</span>
-      <button className="btn btn-ghost btn-icon btn-sm" style={{ width: 28, height: 28 }} onClick={() => onChange(Math.min(99, value + 1))}><Plus size={13} /></button>
+    <div className="field">
+      <label htmlFor={id}><span className="nd-label">{label}</span></label>
+      {children({ id, 'aria-invalid': error ? true : undefined, 'aria-describedby': error ? errId : undefined })}
+      {error && <span id={errId} className="nd-err" role="alert"><AlertCircle size={13} aria-hidden /> {error}</span>}
     </div>
   )
 }
 
-function SummaryRow({ icon, label, value, muted }) {
-  const Icon = icon
+function Qty({ value, onChange, name }) {
   return (
-    <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start', padding: '5px 0' }}>
-      <Icon size={16} color="var(--p-cyan-2)" style={{ marginTop: 2 }} />
-      <span className="muted" style={{ fontSize: 13, width: 70 }}>{label}</span>
-      <span style={{ flex: 1, fontWeight: 700, fontSize: 13, color: muted ? '#9aa8bb' : undefined }}>{value}</span>
+    <div className="nd-qty" role="group" aria-label={`Quantité ${name}`}>
+      <button type="button" aria-label="Retirer un" onClick={() => onChange(Math.max(1, value - 1))} disabled={value <= 1}><Minus size={13} aria-hidden /></button>
+      <span className="num" aria-live="polite">{value}</span>
+      <button type="button" aria-label="Ajouter un" onClick={() => onChange(Math.min(99, value + 1))}><Plus size={13} aria-hidden /></button>
     </div>
   )
 }
 
 // Recherche d'adresse (Google via le serveur DEM, comme dans l'app)
-export function PlaceSearch({ value, onPick }) {
+export function PlaceSearch({ value, onPick, onClear, error, readOnly }) {
   const [q, setQ] = useState('')
   const [results, setResults] = useState([])
   const [loading, setLoading] = useState(false)
   const [open, setOpen] = useState(false)
   const token = useRef(newToken())
+  const inputId = useId()
   useEffect(() => {
     const input = q.trim()
-    if (input.length < 3) { setResults([]); return }
+    if (input.length < 3) return
     let alive = true
-    setLoading(true)
     const t = setTimeout(() => {
+      setLoading(true)
       proApi.get('/public/places/autocomplete', { params: { input, sessionToken: token.current } })
         .then(r => alive && setResults(r.data.predictions ?? [])).catch(() => alive && setResults([]))
         .finally(() => alive && setLoading(false))
@@ -338,53 +496,59 @@ export function PlaceSearch({ value, onPick }) {
     try {
       const r = await proApi.get('/public/places/details', { params: { placeId: p.place_id, sessionToken: token.current } })
       token.current = newToken()
-      if (r.data.lat != null) { onPick({ address: r.data.address ?? p.description, lat: r.data.lat, lng: r.data.lng }); setQ('') }
+      if (r.data.lat != null) { onPick({ address: r.data.address ?? p.description, lat: r.data.lat, lng: r.data.lng }); setQ(''); setResults([]) }
     } catch { /* adresse introuvable */ }
   }
+  const shown = q.trim().length >= 3 ? results : []
   return (
-    <div style={{ position: 'relative' }}>
+    <div className="nd-place">
       {value && (
-        <div className="anim-in" style={{ display: 'flex', gap: 10, alignItems: 'center', padding: '10px 12px', borderRadius: 12, background: '#f0fafd', border: '1.5px solid var(--p-cyan)', marginBottom: 10 }}>
-          <MapPin size={17} color="var(--p-cyan-2)" />
-          <span style={{ flex: 1, fontWeight: 700, fontSize: 13.5 }}>{value.address}</span>
-          <Check size={17} color="var(--p-success)" />
+        <div className="nd-picked">
+          <MapPin size={16} aria-hidden />
+          <span>{value.address}</span>
+          {readOnly ? <Lock size={14} className="nd-lock" aria-label="Adresse fixée" /> : onClear && <button type="button" className="nd-x" aria-label="Changer d'adresse" onClick={onClear}><X size={14} aria-hidden /></button>}
         </div>
       )}
-      <div style={{ position: 'relative' }}>
-        <Search size={16} style={{ position: 'absolute', left: 13, top: 15, color: '#9aa8bb' }} />
-        <input className="input" value={q} onFocus={() => setOpen(true)} onChange={e => { setQ(e.target.value); setOpen(true) }}
-          placeholder={value ? 'Changer d\'adresse…' : 'Quartier, rue, lieu connu…'} style={{ paddingLeft: 38 }} />
-        {loading && <span style={{ position: 'absolute', right: 14, top: 14, color: '#9aa8bb' }}><Spinner size={16} /></span>}
+      {!readOnly && <>
+      <label htmlFor={inputId} className="sr-only">Adresse de livraison</label>
+      <div className="nd-search">
+        <Search size={16} aria-hidden />
+        <input id={inputId} className="input" value={q} onFocus={() => setOpen(true)} onBlur={() => setTimeout(() => setOpen(false), 150)}
+          onChange={e => { setQ(e.target.value); setOpen(true) }} aria-invalid={error ? true : undefined}
+          placeholder={value ? 'Changer d\'adresse…' : 'Quartier, rue, lieu connu…'} autoComplete="off" />
+        {loading && <span className="nd-spin"><Spinner size={16} /></span>}
       </div>
-      {open && results.length > 0 && (
-        <div className="card anim-scale" style={{ position: 'absolute', left: 0, right: 0, top: '100%', marginTop: 6, zIndex: 30, padding: 6, boxShadow: 'var(--p-shadow-lg)' }}>
-          {results.slice(0, 6).map(p => (
-            <button key={p.place_id} className="pro-menu-item" onClick={() => pick(p)} style={{ alignItems: 'flex-start', textAlign: 'left' }}>
-              <MapPin size={16} color="var(--p-cyan-2)" style={{ marginTop: 2, flexShrink: 0 }} />
-              <span><b style={{ fontWeight: 700 }}>{p.structured_formatting?.main_text ?? p.description}</b><br /><span className="muted" style={{ fontSize: 12 }}>{p.structured_formatting?.secondary_text ?? ''}</span></span>
+      {error && <span className="nd-err" role="alert"><AlertCircle size={13} aria-hidden /> {error}</span>}
+      {open && shown.length > 0 && (
+        <div className="nd-results" role="listbox">
+          {shown.slice(0, 6).map(p => (
+            <button key={p.place_id} type="button" role="option" aria-selected={false} onMouseDown={(e) => e.preventDefault()} onClick={() => pick(p)}>
+              <MapPin size={15} aria-hidden />
+              <span><b>{p.structured_formatting?.main_text ?? p.description}</b><small>{p.structured_formatting?.secondary_text ?? ''}</small></span>
             </button>
           ))}
         </div>
       )}
-      {open && q.trim().length >= 3 && !loading && results.length === 0 && (
-        <div className="muted" style={{ fontSize: 12.5, marginTop: 6 }}>Aucun résultat : touchez la carte pour placer le point de livraison.</div>
+      {open && q.trim().length >= 3 && !loading && shown.length === 0 && (
+        <p className="muted nd-help">Aucun résultat : cliquez sur la carte pour placer le point de livraison.</p>
       )}
+      </>}
     </div>
   )
 }
 
 // Carte : départ, arrivée ; un clic place l'arrivée (adresse retrouvée)
 const pinIcon = (bg, label) => L.divIcon({
-  className: '', iconSize: [30, 30], iconAnchor: [15, 30],
-  html: `<div style="width:30px;height:30px;border-radius:11px 11px 11px 2px;transform:rotate(-45deg);background:${bg};box-shadow:0 6px 16px rgba(4,49,124,.35);border:2px solid #fff;display:grid;place-items:center"><span style="transform:rotate(45deg);color:#fff;font:800 12px Plus Jakarta Sans">${label}</span></div>`,
+  className: '', iconSize: [26, 26], iconAnchor: [13, 13],
+  html: `<div style="width:26px;height:26px;border-radius:50%;background:${bg};border:2px solid #fff;box-shadow:0 1px 3px rgba(0,0,0,.3);display:grid;place-items:center;color:#fff;font:700 11px 'DM Sans',sans-serif">${label}</div>`,
 })
 
 function ClickToPick({ onPick }) {
   useMapEvents({
     click: async (e) => {
       const { lat, lng } = e.latlng
-      let address = `Point choisi (${lat.toFixed(5)}, ${lng.toFixed(5)})`
-      try { const r = await proApi.get('/public/places/reverse-geocode', { params: { lat, lng } }); if (r.data.address) address = r.data.address } catch { /* coordonnées seules */ }
+      let address = 'Point placé sur la carte'
+      try { const r = await proApi.get('/public/places/reverse-geocode', { params: { lat, lng } }); if (r.data.address) address = r.data.address } catch { /* sans adresse */ }
       onPick({ address, lat, lng })
     },
   })
@@ -397,8 +561,10 @@ function FitTo({ points }) {
   const key = JSON.stringify(points)
   useEffect(() => {
     const v = JSON.parse(key).filter(Boolean)
-    if (v.length === 2) map.fitBounds(L.latLngBounds(v).pad(0.35), { animate: true })
-    else if (v.length === 1) map.setView(v[0], 14, { animate: true })
+    // La taille du conteneur peut changer après le premier rendu (mise en page)
+    map.invalidateSize()
+    if (v.length === 2) map.fitBounds(L.latLngBounds(v).pad(0.35), { animate: false })
+    else if (v.length === 1) map.setView(v[0], 14, { animate: false })
   }, [map, key])
   return null
 }
@@ -407,16 +573,14 @@ function PickMap({ pickup, drop, onPick }) {
   const a = pickup ? [pickup.lat, pickup.lng] : null
   const b = drop ? [drop.lat, drop.lng] : null
   return (
-    <MapContainer center={a ?? [14.7167, -17.4677]} zoom={13} style={{ height: '100%', width: '100%', cursor: 'crosshair' }} zoomControl={false} attributionControl={false}>
+    <MapContainer center={a ?? [14.7167, -17.4677]} zoom={13} style={{ height: '100%', width: '100%', cursor: onPick ? 'crosshair' : 'grab' }} zoomControl={false} attributionControl={false}>
       <MapBaseLayer />
-      <ClickToPick onPick={onPick} />
-      {a && b && <Polyline positions={[a, b]} pathOptions={{ color: '#0671ba', weight: 3, dashArray: '6 8' }} />}
-      {a && <Marker position={a} icon={pinIcon('#04317c', 'A')} />}
-      {b && <Marker position={b} icon={pinIcon('#0cb8de', 'B')} />}
+      {onPick && <ClickToPick onPick={onPick} />}
+      {a && b && <Polyline positions={[a, b]} pathOptions={{ color: '#021520', weight: 2, dashArray: '6 6' }} />}
+      {a && <Marker position={a} icon={pinIcon('#021520', 'A')} />}
+      {b && <Marker position={b} icon={pinIcon('#0086C8', 'B')} />}
       <FitTo points={[a, b]} />
-      <div style={{ position: 'absolute', left: 12, bottom: 12, zIndex: 500, background: 'rgba(255,255,255,.92)', padding: '6px 10px', borderRadius: 10, fontSize: 12, fontWeight: 700, display: 'flex', gap: 6, alignItems: 'center' }}>
-        <Navigation size={13} color="var(--p-cyan-2)" /> Touchez la carte pour placer le point B
-      </div>
+      {onPick && <div className="nd-map-hint"><MousePointerClick size={13} aria-hidden /> Cliquez sur la carte pour placer le point de livraison</div>}
     </MapContainer>
   )
 }

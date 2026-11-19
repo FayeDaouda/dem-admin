@@ -183,6 +183,7 @@ export default function Deliveries() {
       onToggle={() => setMenuId(id => id === o.id ? null : o.id)}
       onDetail={() => open(o.id)}
       onCopy={() => { setMenuId(null); copyTrackingLink(o.id, notify) }}
+      onDuplicate={() => { setMenuId(null); navigate(`/livraisons/nouvelle?dupliquer=${o.id}`) }}
       onCancel={() => { setMenuId(null); setCancelling(o) }} />
   )
 
@@ -338,7 +339,7 @@ function SortButton({ label, active, dir, onClick, align }) {
 }
 
 // Menu « ⋯ » d'une ligne
-function RowMenu({ order: o, open, onToggle, onDetail, onCopy, onCancel }) {
+function RowMenu({ order: o, open, onToggle, onDetail, onCopy, onDuplicate, onCancel }) {
   const canTrack = o.status !== 'CANCELLED'
   const canCall = !!o.driver?.phone && ACTIVE_STATUSES.has(o.status)
   const canCancel = CANCELLABLE.has(o.status)
@@ -351,6 +352,7 @@ function RowMenu({ order: o, open, onToggle, onDetail, onCopy, onCancel }) {
           <button role="menuitem" type="button" onClick={onDetail}><Eye size={15} aria-hidden /> Voir le détail</button>
           {canTrack && <button role="menuitem" type="button" onClick={onCopy}><Link2 size={15} aria-hidden /> Copier le lien de suivi</button>}
           {canCall && <a role="menuitem" href={`tel:${o.driver.phone}`}><Phone size={15} aria-hidden /> Appeler le coursier</a>}
+          <button role="menuitem" type="button" onClick={onDuplicate}><Copy size={15} aria-hidden /> Dupliquer</button>
           {canCancel && <>
             <span className="dl-menu-sep" aria-hidden />
             <button role="menuitem" type="button" className="danger" onClick={onCancel}><Ban size={15} aria-hidden /> Annuler la livraison</button>

@@ -69,7 +69,7 @@ export function NotifyProvider({ children }) {
       {children}
       {createPortal(
         <div className="pro" style={{ background: 'transparent', minHeight: 0 }}>
-          <div aria-live="polite" style={{ position: 'fixed', bottom: 24, right: 24, zIndex: 2000, display: 'flex', flexDirection: 'column', gap: 8, width: 360, maxWidth: 'calc(100vw - 32px)' }}>
+          <div aria-live="polite" className="pro-toasts" style={{ position: 'fixed', bottom: 24, right: 24, zIndex: 2000, display: 'flex', flexDirection: 'column', gap: 8, width: 360, maxWidth: 'calc(100vw - 32px)' }}>
             {toasts.map(t => <Toast key={t.id} t={t} onClose={() => dismiss(t.id)} />)}
           </div>
         </div>,

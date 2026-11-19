@@ -61,12 +61,41 @@ export function StatusBadge({ status }) {
   )
 }
 
-export function Chip({ color = '#0086C8', bg, children, style }) {
+// Puce : étiquette colorée (par défaut) ou, avec `onClick`, puce cliquable
+// sélectionnable (clients récents, produits) — `selected` la marque.
+export function Chip({ color = '#0086C8', bg, children, style, onClick, selected, icon, ...rest }) {
+  if (onClick) {
+    const Icon = icon
+    return (
+      <button type="button" className={`chip-btn ${selected ? 'is-on' : ''}`} aria-pressed={!!selected} onClick={onClick} style={style} {...rest}>
+        {Icon && <Icon size={14} aria-hidden />}
+        <span className="chip-label">{children}</span>
+      </button>
+    )
+  }
   return (
     <span style={{
       display: 'inline-flex', alignItems: 'center', gap: 5, padding: '3px 8px', borderRadius: 2,
       background: bg ?? color + '14', color, fontSize: 11.5, fontWeight: 600, whiteSpace: 'nowrap', ...style,
     }}>{children}</span>
+  )
+}
+
+// Contrôle segmenté : un seul choix parmi 2 à 4 options [valeur, libellé, icône?]
+export function Segmented({ value, onChange, options, label, disabled, full }) {
+  return (
+    <div className={`seg ${full ? 'seg-full' : ''}`} role="radiogroup" aria-label={label}>
+      {options.map(([v, text, icon]) => {
+        const Icon = icon
+        const on = value === v
+        return (
+          <button key={v} type="button" role="radio" aria-checked={on} disabled={disabled}
+            className={on ? 'is-on' : ''} onClick={() => !on && onChange(v)}>
+            {Icon && <Icon size={15} aria-hidden />}{text}
+          </button>
+        )
+      })}
+    </div>
   )
 }
 
