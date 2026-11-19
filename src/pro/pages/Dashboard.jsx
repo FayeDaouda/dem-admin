@@ -1,142 +1,183 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
-import { Area, AreaChart, ResponsiveContainer, Tooltip, XAxis, YAxis, CartesianGrid } from 'recharts'
-import {
-  Plus, PackageCheck, Bike, Wallet, TrendingUp, TrendingDown, ArrowRight, Copy, Check, ExternalLink, Store, Clock,
-  MapPin, Inbox, Sparkles,
-} from 'lucide-react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { Link } from 'react-router-dom'
+import { Bar, BarChart, Cell, ResponsiveContainer, Tooltip, XAxis, YAxis, CartesianGrid } from 'recharts'
+import { PackageCheck, Bike, Wallet, Receipt, ChevronRight, Copy, Check, ArrowUpRight } from 'lucide-react'
 import proApi from '../lib/proApi'
 import { useProAuth } from '../proAuthContext'
-import { ACTIVE_STATUSES, ORDER_STATUS, fcfa, greeting, orderLink, orderTotal, timeAgo, todayLabel } from '../lib/format'
-import { Button, Card, CountUp, Empty, SectionTitle, Skeleton, StatusBadge } from '../ui/ui'
+import { ACTIVE_STATUSES, fcfa, greeting, orderLink, orderTotal, todayLabel } from '../lib/format'
+import { Button, Card, Corners, Empty, ErrorState, PageHeader, SectionTitle, Skeleton, StatCard, StatusBadge } from '../ui/ui'
 import { useNotify } from '../ui/notifyContext'
 import { useLiveRefresh } from '../lib/useLiveRefresh'
 
+// Tableau de bord DEM Pro : à traiter, chiffres du jour, activité sur
+// 14 jours, livraisons en cours, boutique en ligne, bilan du mois.
+const safe = (p) => p.then(r => ({ ok: true, v: r.data })).catch(() => ({ ok: false, v: null }))
+
 export default function Dashboard() {
   const { user } = useProAuth()
-  const navigate = useNavigate()
   const [data, setData] = useState(null)
+  const [failed, setFailed] = useState(false)
+  const shown = useRef(false)
 
   const load = useCallback(async () => {
     const [stats, orders, wallet, insights, requests] = await Promise.all([
-      proApi.get('/dem-pro/me/stats').then(r => r.data).catch(() => null),
-      proApi.get('/orders/my', { params: { page: 1, limit: 100 } }).then(r => r.data.orders ?? []).catch(() => []),
-      proApi.get('/users/dem-pro/wallet').then(r => r.data).catch(() => null),
-      proApi.get('/dem-pro/me/insights', { params: { period: 'this_month' } }).then(r => r.data).catch(() => null),
-      proApi.get('/dem-pro/order-requests', { params: { status: 'PENDING' } }).then(r => r.data ?? []).catch(() => []),
+      safe(proApi.get('/dem-pro/me/stats')),
+      safe(proApi.get('/orders/my', { params: { page: 1, limit: 100 } })),
+      safe(proApi.get('/users/dem-pro/wallet')),
+      safe(proApi.get('/dem-pro/me/insights', { params: { period: 'this_month' } })),
+      safe(proApi.get('/dem-pro/order-requests', { params: { status: 'PENDING' } })),
     ])
-    setData({ stats, orders, wallet, insights, requests: requests.filter(x => (x.status ?? 'PENDING') === 'PENDING') })
+    // Rien d'essentiel n'a répondu : état d'erreur (si rien n'est encore
+    // affiché) plutôt que des zéros trompeurs ; sinon on garde l'affichage
+    if (!stats.ok && !orders.ok) { if (!shown.current) setFailed(true); return }
+    shown.current = true
+    setFailed(false)
+    setData({
+      stats: stats.v,
+      orders: orders.ok ? (orders.v?.orders ?? []) : null,
+      wallet: wallet.v,
+      insights: insights.v, insightsOk: insights.ok,
+      requests: (requests.v ?? []).filter(x => (x.status ?? 'PENDING') === 'PENDING'),
+    })
   }, [])
 
   useEffect(() => { load() }, [load])
   useLiveRefresh(load)
 
+  const retry = () => { shown.current = false; setFailed(false); setData(null); load() }
+
   const firstName = (user?.name ?? '').split(' ')[0]
-  const active = useMemo(() => (data?.orders ?? []).filter(o => ACTIVE_STATUSES.has(o.status)), [data])
+  const orders = data?.orders
+  const active = useMemo(() => (orders ?? []).filter(o => ACTIVE_STATUSES.has(o.status) && o.status !== 'SCHEDULED'), [orders])
+  const searching = active.filter(o => o.status === 'PENDING').length
+  const deliveredYesterday = useMemo(() => {
+    const y = new Date(); y.setDate(y.getDate() - 1)
+    return (orders ?? []).filter(o => o.status === 'DELIVERED' && new Date(o.deliveredAt ?? o.updatedAt ?? o.createdAt).toDateString() === y.toDateString()).length
+  }, [orders])
+
+  const loading = !data
+  const s = data?.stats
+  const w = data?.wallet
 
   return (
-    <div>
-      {/* ── En-tête ── */}
-      <div className="anim-up" style={{ display: 'flex', alignItems: 'flex-end', gap: 16, flexWrap: 'wrap', marginBottom: 24 }}>
-        <div style={{ flex: 1, minWidth: 260 }}>
-          <div className="muted" style={{ fontSize: 13, fontWeight: 600, textTransform: 'capitalize' }}>{todayLabel()}</div>
-          <h1 style={{ fontSize: 30, fontWeight: 800, letterSpacing: '-.8px', margin: '4px 0 0' }}>
-            {greeting()}{firstName ? `, ${firstName}` : ''} 👋
-          </h1>
-        </div>
-        <Button variant="ghost" icon={Store} onClick={() => navigate('/boutique')}>Ma boutique</Button>
-        <Button icon={Plus} onClick={() => navigate('/livraisons/nouvelle')}>Nouvelle livraison</Button>
-      </div>
+    <div className="dash">
+      <PageHeader
+        eyebrow={<>Tableau de bord <span aria-hidden>·</span> {todayLabel()}</>}
+        title={<>{greeting()}{firstName ? `, ${firstName}` : ''}<span className="dot">.</span></>}
+        actions={<Button variant="ghost" to="/boutique" arrow="right">Ma boutique</Button>}
+      />
 
-      {/* ── Indicateurs ── */}
-      <div className="grid-stats stagger" style={{ marginBottom: 20 }}>
-        <Kpi icon={PackageCheck} color="#16a34a" label="Livrées aujourd'hui" loading={!data}
-          value={data?.stats?.deliveriesToday?.completed} />
-        <Kpi icon={Bike} color="#0cb8de" label="En cours" loading={!data} live={active.length > 0}
-          value={data?.stats?.deliveriesToday?.inProgress ?? active.length} />
-        <Kpi icon={TrendingUp} color="#6d5dfc" label="Dépensé en livraisons" loading={!data} money
-          value={data?.stats?.spendingMonth} sub={data ? `Ce mois · ${fcfa(data.stats?.spendingToday)} aujourd'hui` : null} />
-        <Kpi icon={Wallet} color="#04317c" label="Solde retirable" loading={!data} money
-          value={data?.wallet?.withdrawableBalance} sub={data?.wallet ? `${fcfa(data.wallet.balance)} au total` : null}
-          onClick={() => navigate('/wallet')} />
-      </div>
+      {failed ? (
+        <Card><ErrorState title="Impossible de charger votre tableau de bord" onRetry={retry} /></Card>
+      ) : (
+        <>
+          {data?.requests?.length > 0 && <ToHandle requests={data.requests} />}
 
-      <div className="grid-main">
-        <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 20 }}>
-          <ActivityChart orders={data?.orders} loading={!data} />
-          <ActiveOrders orders={active} loading={!data} onOpen={(id) => navigate(`/livraisons?id=${id}`)} onNew={() => navigate('/livraisons/nouvelle')} />
-        </div>
-        <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 20 }}>
-          {data?.requests?.length > 0 && <RequestsCallout count={data.requests.length} onOpen={() => navigate('/commandes')} />}
-          <ShopCard user={user} />
-          <Insights insights={data?.insights} loading={!data} />
-        </div>
-      </div>
+          <section className="grid-stats dash-stats" aria-label="Chiffres clés">
+            <StatCard label="Livrées aujourd'hui" icon={PackageCheck} to="/livraisons" loading={loading}
+              value={s ? (s.deliveriesToday?.completed ?? 0) : '—'}
+              sub={orders ? `hier : ${deliveredYesterday}` : 'Indisponible'} />
+            <StatCard label="En cours" icon={Bike} to="/livraisons" loading={loading}
+              value={s?.deliveriesToday?.inProgress ?? (orders ? active.length : '—')}
+              sub={!orders ? 'Indisponible' : searching > 0 ? `dont ${searching} en recherche de coursier` : active.length ? 'Toutes prises en charge' : 'Aucune livraison en cours'} />
+            <StatCard label="Dépensé ce mois" icon={Receipt} to="/livraisons" loading={loading}
+              value={s ? fcfa(s.spendingMonth) : '—'}
+              sub={s ? `aujourd'hui : ${fcfa(s.spendingToday)}` : 'Indisponible'} />
+            <StatCard label="Solde retirable" icon={Wallet} to="/wallet" loading={loading}
+              value={w ? fcfa(w.withdrawableBalance) : '—'}
+              sub={w ? `total : ${fcfa(w.balance)}` : 'Indisponible'} />
+          </section>
+
+          <div className="dash-grid">
+            <div className="dash-col">
+              <ActivityChart orders={orders} loading={loading} />
+              <ActiveOrders orders={active} loading={loading} failed={!!data && !orders} onRetry={retry} />
+            </div>
+            <div className="dash-col">
+              <ShopCard user={user} />
+              <Insights insights={data?.insights} loading={loading} failed={!!data && !data.insightsOk} onRetry={retry} />
+            </div>
+          </div>
+        </>
+      )}
+      <style>{DASH_CSS}</style>
     </div>
   )
 }
 
-function Kpi({ icon, color, label, value, money, sub, loading, live, onClick }) {
+// ── À traiter : commandes reçues en attente de validation ─────────────────
+function ToHandle({ requests }) {
+  const n = requests.length
+  const r = requests[0]
+  const amount = r?.total ?? r?.productAmount
+  const detail = [r?.customerName, amount != null ? fcfa(amount) : null, r?.paidAt ? 'payée en ligne' : 'paiement à la livraison'].filter(Boolean).join(' · ')
   return (
-    <KpiBox icon={icon} onClick={onClick} color={color} label={label} live={live}>
-      <div style={{ fontSize: 30, fontWeight: 800, letterSpacing: '-.8px', marginTop: 14, color: 'var(--p-ink)' }}>
-        {loading ? <Skeleton w={110} h={30} /> : money ? <CountUp value={value ?? 0} format={(v) => fcfa(v)} /> : <CountUp value={value ?? 0} />}
+    <section className="card has-corners dash-todo" aria-label="À traiter">
+      <Corners />
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <p className="eyebrow" style={{ marginBottom: 10 }}>À traiter</p>
+        <p className="dash-todo-title">
+          {n === 1 ? '1 commande attend votre validation' : `${n} commandes attendent votre validation`}
+        </p>
+        <p className="muted dash-todo-detail">{n > 1 ? `La plus récente : ${detail}` : detail}</p>
       </div>
-      <div className="muted" style={{ fontSize: 12.5, marginTop: 4, minHeight: 18 }}>{loading ? <Skeleton w={90} h={12} /> : sub}</div>
-    </KpiBox>
+      <Button to="/commandes" arrow="right">{n === 1 ? 'Voir la commande' : 'Voir les commandes'}</Button>
+    </section>
   )
 }
 
-function KpiBox({ icon, color, label, live, onClick, children }) {
-  const Icon = icon
-  return (
-    <div className={`card ${onClick ? 'card-hover' : ''}`} onClick={onClick} style={{ padding: 20, cursor: onClick ? 'pointer' : 'default', position: 'relative', overflow: 'hidden' }}>
-      <div aria-hidden style={{ position: 'absolute', right: -18, top: -18, width: 96, height: 96, borderRadius: '50%', background: color + '0d' }} />
-      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-        <div style={{ width: 38, height: 38, borderRadius: 12, background: color + '14', color, display: 'grid', placeItems: 'center' }}><Icon size={19} /></div>
-        <span className="muted" style={{ fontSize: 13, fontWeight: 700 }}>{label}</span>
-        {live && <span className="live-dot" style={{ marginLeft: 'auto' }} />}
-      </div>
-      {children}
-    </div>
-  )
-}
-
+// ── Activité : livraisons effectuées sur 14 jours ─────────────────────────
 function ActivityChart({ orders, loading }) {
   const series = useMemo(() => {
     const days = Array.from({ length: 14 }, (_, i) => {
       const d = new Date(); d.setHours(0, 0, 0, 0); d.setDate(d.getDate() - (13 - i))
-      return { key: d.toDateString(), label: d.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' }), livrees: 0, montant: 0 }
+      return {
+        key: d.toDateString(),
+        label: i === 13 ? 'Auj.' : d.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' }),
+        full: d.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' }),
+        livrees: 0, montant: 0, today: i === 13,
+      }
     })
     for (const o of orders ?? []) {
       if (o.status !== 'DELIVERED') continue
-      const k = new Date(o.deliveredAt ?? o.createdAt); k.setHours(0, 0, 0, 0)
+      const k = new Date(o.deliveredAt ?? o.updatedAt ?? o.createdAt); k.setHours(0, 0, 0, 0)
       const row = days.find(d => d.key === k.toDateString())
       if (row) { row.livrees++; row.montant += orderTotal(o) }
     }
     return days
   }, [orders])
+  // Une étiquette sur deux, aujourd'hui toujours étiquetée
+  const ticks = series.filter((_, i) => (13 - i) % 2 === 0).map(d => d.label)
   const total = series.reduce((n, d) => n + d.livrees, 0)
   return (
-    <Card className="anim-up">
-      <SectionTitle title="Livraisons effectuées" hint={loading ? ' ' : `${total} livrée${total > 1 ? 's' : ''} sur les 14 derniers jours`} />
-      <div style={{ height: 220, marginLeft: -12 }}>
-        {loading ? <Skeleton h={200} r={14} /> : (
+    <Card>
+      <div style={{ display: 'flex', alignItems: 'flex-start', gap: 16, marginBottom: 20 }}>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <h3 className="section-title">Livraisons effectuées</h3>
+          <div className="muted" style={{ fontSize: 13, marginTop: 2 }}>14 derniers jours</div>
+        </div>
+        <div style={{ textAlign: 'right' }}>
+          {loading ? <Skeleton w={120} h={28} /> : orders && (
+            <div className="num dash-kpi">{total}<span> livraison{total > 1 ? 's' : ''}</span></div>
+          )}
+        </div>
+      </div>
+      <div style={{ height: 220 }}>
+        {loading ? <Skeleton h={210} /> : !orders ? (
+          <ErrorState compact title="Activité indisponible" text={null} />
+        ) : (
           <ResponsiveContainer>
-            <AreaChart data={series} margin={{ top: 8, right: 8, bottom: 0, left: 0 }}>
-              <defs>
-                <linearGradient id="proArea" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="#0cb8de" stopOpacity={0.35} />
-                  <stop offset="100%" stopColor="#0cb8de" stopOpacity={0} />
-                </linearGradient>
-              </defs>
-              <CartesianGrid vertical={false} stroke="#eef2f7" />
-              <XAxis dataKey="label" tickLine={false} axisLine={false} tick={{ fontSize: 11.5, fill: '#8a9ab0' }} interval={1} />
-              <YAxis allowDecimals={false} tickLine={false} axisLine={false} tick={{ fontSize: 11.5, fill: '#8a9ab0' }} width={36} />
-              <Tooltip cursor={{ stroke: '#0cb8de', strokeDasharray: '4 4' }} contentStyle={{ borderRadius: 12, border: '1px solid #e6ebf3', boxShadow: '0 12px 32px rgba(11,27,51,.12)', fontFamily: 'Plus Jakarta Sans', fontSize: 12.5 }}
-                formatter={(v, n) => n === 'livrees' ? [`${v} livraison${v > 1 ? 's' : ''}`, 'Livrées'] : [fcfa(v), 'Montant']} />
-              <Area type="monotone" dataKey="livrees" stroke="#0671ba" strokeWidth={2.5} fill="url(#proArea)" animationDuration={900} />
-            </AreaChart>
+            <BarChart data={series} margin={{ top: 4, right: 0, bottom: 0, left: -12 }} barCategoryGap="28%">
+              <CartesianGrid vertical={false} stroke="#EEF2F6" />
+              <XAxis dataKey="label" ticks={ticks} interval={0} tickLine={false} axisLine={{ stroke: '#E2E8F0' }}
+                tick={{ fontSize: 11.5, fill: '#64748B', fontFamily: 'DM Sans' }} />
+              <YAxis allowDecimals={false} domain={[0, 'dataMax + 1']} tickLine={false} axisLine={false} width={40}
+                tick={{ fontSize: 11.5, fill: '#64748B', fontFamily: 'DM Sans' }} />
+              <Tooltip cursor={{ fill: 'rgba(2, 21, 32, .04)' }} content={<ChartTip />} />
+              <Bar dataKey="livrees" maxBarSize={22} radius={0} isAnimationActive={false}>
+                {series.map(d => <Cell key={d.key} fill={d.today ? '#00D2FF' : '#021520'} />)}
+              </Bar>
+            </BarChart>
           </ResponsiveContainer>
         )}
       </div>
@@ -144,121 +185,192 @@ function ActivityChart({ orders, loading }) {
   )
 }
 
-function ActiveOrders({ orders, loading, onOpen, onNew }) {
+function ChartTip({ active, payload }) {
+  if (!active || !payload?.length) return null
+  const d = payload[0].payload
   return (
-    <Card className="anim-up" style={{ padding: 0 }}>
-      <div style={{ padding: '20px 22px 6px' }}>
-        <SectionTitle title="Livraisons en cours" hint="Mises à jour en direct" style={{ marginBottom: 6 }} />
+    <div style={{ background: '#021520', color: '#fff', padding: '10px 12px', fontSize: 12.5, fontFamily: 'DM Sans', minWidth: 150 }}>
+      <div style={{ color: '#94A3B8', textTransform: 'capitalize', marginBottom: 4 }}>{d.full}</div>
+      <div style={{ fontWeight: 700 }}>{d.livrees} livraison{d.livrees > 1 ? 's' : ''}</div>
+      {d.montant > 0 && <div style={{ color: '#CBD5E1' }}>{fcfa(d.montant)}</div>}
+    </div>
+  )
+}
+
+// ── Livraisons en cours ───────────────────────────────────────────────────
+function ActiveOrders({ orders, loading, failed, onRetry }) {
+  return (
+    <Card style={{ padding: 0 }}>
+      <div style={{ padding: '20px 24px 16px', display: 'flex', alignItems: 'center', gap: 12 }}>
+        <div style={{ flex: 1 }}>
+          <h3 className="section-title">Livraisons en cours</h3>
+          <div className="muted" style={{ fontSize: 13, marginTop: 2 }}>Mises à jour en direct</div>
+        </div>
+        {!loading && !failed && orders.length > 0 && <span className="badge num" style={{ background: 'var(--p-slate-bg)', color: 'var(--p-slate)' }}>{orders.length}</span>}
       </div>
       {loading ? (
-        <div style={{ padding: 22, display: 'grid', gap: 12 }}>{[0, 1, 2].map(i => <Skeleton key={i} h={58} r={14} />)}</div>
+        <div style={{ padding: '0 24px 20px', display: 'grid', gap: 8 }}>{[0, 1, 2].map(i => <Skeleton key={i} h={48} />)}</div>
+      ) : failed ? (
+        <ErrorState compact title="Livraisons indisponibles" onRetry={onRetry} />
       ) : orders.length === 0 ? (
-        <Empty icon={Bike} title="Aucune livraison en cours" text="Créez une livraison : un coursier DEM vient chercher le colis et le livre à votre client." action={<Button icon={Plus} onClick={onNew}>Nouvelle livraison</Button>} />
-      ) : (
-        <div className="stagger">
-          {orders.slice(0, 6).map(o => (
-            <div key={o.id} className="row-hover" onClick={() => onOpen(o.id)} style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '14px 22px', cursor: 'pointer', borderTop: '1px solid var(--p-line)' }}>
-              <Progress status={o.status} />
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontWeight: 700, fontSize: 14, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{o.receiverName || 'Client'} · {o.deliveryAddress}</div>
-                <div className="muted" style={{ fontSize: 12.5 }}>{o.driver?.name ? `Coursier : ${o.driver.name}` : 'Recherche d\'un coursier proche'} · {timeAgo(o.createdAt)}</div>
-              </div>
-              <StatusBadge status={o.status} />
-            </div>
-          ))}
+        <div style={{ borderTop: '1px solid var(--p-line)' }}>
+          <Empty icon={Bike} title="Aucune livraison en cours"
+            text="Créez une livraison : un coursier DEM récupère le colis chez vous et le livre à votre client."
+            action={<Button to="/livraisons/nouvelle" arrow="right">Nouvelle livraison</Button>} />
         </div>
+      ) : (
+        <>
+          <ul className="dash-list">
+            {orders.slice(0, 6).map(o => (
+              <li key={o.id}>
+                <Link to={`/livraisons?id=${o.id}`} className="dash-row">
+                  <span className="dash-row-main">
+                    <span className="dash-row-name">{o.receiverName || 'Client'}</span>
+                    <span className="dash-row-addr">{o.deliveryAddress}</span>
+                  </span>
+                  <span className="dash-row-driver">{o.driver?.name ?? 'Recherche d\'un coursier'}</span>
+                  <StatusBadge status={o.status} />
+                  <ChevronRight size={16} color="#94A3B8" aria-hidden style={{ flexShrink: 0 }} />
+                </Link>
+              </li>
+            ))}
+          </ul>
+          <div style={{ padding: '16px 24px', borderTop: '1px solid var(--p-line)' }}>
+            <Link to="/livraisons" className="link-caps">
+              {orders.length > 6 ? `Voir les ${orders.length} livraisons en cours` : 'Voir toutes les livraisons'}
+              <ChevronRight size={14} aria-hidden />
+            </Link>
+          </div>
+        </>
       )}
     </Card>
   )
 }
 
-// Petite jauge : recherche → en route → récupéré → livré
-function Progress({ status }) {
-  const step = ORDER_STATUS[status]?.step ?? 0
-  return (
-    <div style={{ display: 'flex', gap: 3 }} aria-hidden>
-      {[0, 1, 2].map(i => (
-        <span key={i} style={{ width: 18, height: 6, borderRadius: 3, background: i < step || (i === step && step > 0) ? 'var(--p-cyan)' : i === step ? '#ffd28a' : '#e6ebf3', transition: 'background .4s' }} />
-      ))}
-    </div>
-  )
-}
-
-function RequestsCallout({ count, onOpen }) {
-  return (
-    <div className="card card-hover anim-up" onClick={onOpen} style={{ padding: 18, cursor: 'pointer', display: 'flex', gap: 14, alignItems: 'center', background: 'linear-gradient(135deg, #6d5dfc, #4f46e5)', color: '#fff', border: 'none' }}>
-      <div style={{ width: 44, height: 44, borderRadius: 14, background: 'rgba(255,255,255,.18)', display: 'grid', placeItems: 'center' }}><Inbox size={22} /></div>
-      <div style={{ flex: 1 }}>
-        <div style={{ fontWeight: 800 }}>{count} commande{count > 1 ? 's' : ''} à valider</div>
-        <div style={{ fontSize: 12.5, opacity: .8 }}>Reçue{count > 1 ? 's' : ''} par votre lien de commande</div>
-      </div>
-      <ArrowRight size={18} />
-    </div>
-  )
-}
-
+// ── Boutique en ligne : lien de commande ──────────────────────────────────
 function ShopCard({ user }) {
   const notify = useNotify()
   const [copied, setCopied] = useState(false)
   const link = user?.id ? orderLink(user.id) : null
+  const id = user?.id ?? ''
+  const short = link ? link.replace(/^https?:\/\/(www\.)?/, '').replace(id, `${id.slice(0, 4)}…${id.slice(-4)}`) : '…'
   const copy = async () => {
-    try { await navigator.clipboard.writeText(link); setCopied(true); notify.success('Lien copié', 'Partagez-le sur WhatsApp, Instagram ou par SMS.'); setTimeout(() => setCopied(false), 1800) } catch { /* ignoré */ }
+    try {
+      await navigator.clipboard.writeText(link)
+      setCopied(true); notify.success('Lien copié', 'Partagez-le sur WhatsApp, Instagram ou par SMS.')
+      setTimeout(() => setCopied(false), 1800)
+    } catch { notify.error('Copie impossible', 'Sélectionnez le lien et copiez-le à la main.') }
   }
   return (
-    <div className="card anim-up" style={{ padding: 22, background: 'linear-gradient(150deg, #04317c 0%, #021b47 100%)', color: '#fff', border: 'none', position: 'relative', overflow: 'hidden' }}>
-      <div aria-hidden style={{ position: 'absolute', right: -40, top: -40, width: 160, height: 160, borderRadius: '50%', background: 'radial-gradient(circle, rgba(12,184,222,.45), transparent 70%)' }} />
-      <div style={{ display: 'flex', alignItems: 'center', gap: 10, position: 'relative' }}>
-        <div style={{ width: 40, height: 40, borderRadius: 12, background: 'rgba(255,255,255,.12)', display: 'grid', placeItems: 'center' }}><Store size={20} /></div>
-        <div>
-          <div style={{ fontWeight: 800, fontSize: 15 }}>Votre boutique en ligne</div>
-          <div style={{ fontSize: 12.5, opacity: .7 }}>Vos clients commandent et paient en ligne</div>
-        </div>
+    <Card>
+      <SectionTitle title="Votre boutique en ligne" hint="Votre lien de commande" />
+      <div className="dash-link">
+        <span className="mono dash-link-text" title={link ?? ''}>{short}</span>
+        <button type="button" className="icon-btn sm plain" onClick={copy} disabled={!link} aria-label={copied ? 'Lien copié' : 'Copier le lien'} title={copied ? 'Copié' : 'Copier le lien'}>
+          {copied ? <Check size={15} color="var(--p-success)" aria-hidden /> : <Copy size={15} aria-hidden />}
+        </button>
+        <a className="icon-btn sm plain" href={link ?? undefined} target="_blank" rel="noopener noreferrer" aria-label="Ouvrir ma boutique" title="Ouvrir ma boutique">
+          <ArrowUpRight size={15} aria-hidden />
+        </a>
       </div>
-      <div style={{ marginTop: 16, padding: '10px 12px', borderRadius: 12, background: 'rgba(255,255,255,.08)', fontSize: 12.5, fontWeight: 600, wordBreak: 'break-all', position: 'relative' }}>{link ?? '…'}</div>
-      <div style={{ display: 'flex', gap: 8, marginTop: 12, position: 'relative' }}>
-        <button className="btn btn-sm" style={{ background: '#fff', color: '#04317c', flex: 1 }} onClick={copy}>{copied ? <Check size={15} /> : <Copy size={15} />} {copied ? 'Copié' : 'Copier le lien'}</button>
-        <a className="btn btn-sm" style={{ background: 'rgba(255,255,255,.14)', color: '#fff' }} href={link ?? '#'} target="_blank" rel="noreferrer"><ExternalLink size={15} /> Voir</a>
-      </div>
-    </div>
-  )
-}
-
-function Insights({ insights, loading }) {
-  const t = insights?.trend
-  const pct = t?.countTrendPct
-  return (
-    <Card className="anim-up">
-      <SectionTitle title="Ce mois-ci" hint={insights?.period?.label} />
-      {loading ? <div style={{ display: 'grid', gap: 10 }}>{[0, 1, 2].map(i => <Skeleton key={i} h={44} r={12} />)}</div> : (
-        <div style={{ display: 'grid', gap: 10 }}>
-          <Line icon={Bike} label="Livraisons créées" value={insights?.totalOrdersCreated ?? 0}
-            extra={pct != null && <Trend pct={pct} />} />
-          <Line icon={Clock} label="Durée moyenne" value={insights?.avgDeliveryMinutes ? `${Math.round(insights.avgDeliveryMinutes)} min` : '—'} />
-          <Line icon={TrendingDown} label="Taux d'annulation" value={`${pctOf(insights?.cancellationRate)} %`} />
-          {insights?.topDestinations?.[0] && <Line icon={MapPin} label="Destination n° 1" value={insights.topDestinations[0].label ?? insights.topDestinations[0].address ?? '—'} />}
-          {insights?.topProduct && <Line icon={Sparkles} label="Produit star" value={insights.topProduct.name ?? insights.topProduct} />}
-        </div>
-      )}
+      <p className="muted" style={{ fontSize: 13, margin: '12px 0 0' }}>
+        {copied
+          ? <span role="status" style={{ color: 'var(--p-success)', fontWeight: 600 }}>Copié. Collez-le dans WhatsApp, Instagram ou un SMS.</span>
+          : 'Partagez ce lien : vos clients commandent, vous validez, on livre.'}
+      </p>
     </Card>
   )
 }
 
+// ── Bilan du mois ─────────────────────────────────────────────────────────
 // Le serveur donne un taux entre 0 et 1, ou déjà en %
 const pctOf = (r) => Math.round((r ?? 0) <= 1 ? (r ?? 0) * 100 : r)
 
-function Line({ icon, label, value, extra }) {
-  const Icon = icon
+function Insights({ insights, loading, failed, onRetry }) {
+  const pct = insights?.trend?.countTrendPct
+  const cancel = pctOf(insights?.cancellationRate)
+  const top = insights?.topDestinations?.[0]
+  const product = insights?.topProduct
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 12px', borderRadius: 12, background: 'var(--p-soft)' }}>
-      <Icon size={17} color="var(--p-cyan-2)" />
-      <span className="muted" style={{ flex: 1, fontSize: 13, fontWeight: 600 }}>{label}</span>
-      <span style={{ fontWeight: 800, fontSize: 13.5, maxWidth: 170, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{value}</span>
-      {extra}
-    </div>
+    <Card>
+      <SectionTitle title="Ce mois-ci" hint={insights?.period?.label} style={{ marginBottom: 8 }} />
+      {loading ? <div style={{ display: 'grid', gap: 12, paddingTop: 8 }}>{[0, 1, 2, 3].map(i => <Skeleton key={i} h={18} />)}</div>
+        : failed ? <ErrorState compact title="Bilan indisponible" onRetry={onRetry} /> : (
+          <dl className="dash-dl">
+            <div>
+              <dt>Livraisons créées</dt>
+              <dd className="num">
+                {insights?.totalOrdersCreated ?? 0}
+                {pct != null && <span className="dash-trend" style={{ color: pct >= 0 ? 'var(--p-success)' : 'var(--p-danger)' }}>{pct >= 0 ? '+' : ''}{Math.round(pct)}&nbsp;%</span>}
+              </dd>
+            </div>
+            <div>
+              <dt>Durée moyenne</dt>
+              <dd className="num">{insights?.avgDeliveryMinutes ? `${Math.round(insights.avgDeliveryMinutes)}\u00a0min` : '—'}</dd>
+            </div>
+            <div>
+              <dt>Taux d'annulation</dt>
+              <dd className="num" style={{ color: cancel > 20 ? 'var(--p-danger)' : undefined }}>{cancel}&nbsp;%</dd>
+            </div>
+            {top && (
+              <div>
+                <dt>Destination n°&nbsp;1</dt>
+                <dd title={top.label ?? top.address}>{top.label ?? top.address ?? '—'}</dd>
+              </div>
+            )}
+            {product && (
+              <div>
+                <dt>Produit star</dt>
+                <dd>{product.name ?? product}</dd>
+              </div>
+            )}
+          </dl>
+        )}
+    </Card>
   )
 }
 
-function Trend({ pct }) {
-  const up = pct >= 0
-  return <span style={{ fontSize: 11.5, fontWeight: 800, color: up ? 'var(--p-success)' : 'var(--p-danger)' }}>{up ? '+' : ''}{Math.round(pct)} %</span>
+const DASH_CSS = `
+.pro .dash { max-width: 1440px; }
+.pro .dash-stats { margin-bottom: 20px; }
+.pro .dash-todo { display: flex; align-items: center; gap: 24px; padding: 20px 24px; margin-bottom: 20px; flex-wrap: wrap; border-color: var(--p-dark); }
+.pro .dash-todo-title { margin: 0; font: 700 18px/1.3 var(--p-head); color: var(--p-ink); }
+.pro .dash-todo-detail { margin: 4px 0 0; font-size: 13.5px; }
+.pro .dash-grid { display: grid; grid-template-columns: minmax(0, 1.65fr) minmax(0, 1fr); gap: 20px; align-items: start; }
+.pro .dash-col { display: grid; grid-template-columns: minmax(0, 1fr); gap: 20px; min-width: 0; }
+@media (min-width: 1600px) { .pro .dash-grid { grid-template-columns: minmax(0, 2fr) minmax(0, 1fr); } }
+@media (max-width: 1100px) { .pro .dash-grid { grid-template-columns: minmax(0, 1fr); } }
+.pro .dash-kpi { font: 700 28px/1 var(--p-head); color: var(--p-ink); white-space: nowrap; }
+.pro .dash-kpi span { font: 500 13px var(--p-body); color: var(--p-muted); }
+.pro .dash-list { list-style: none; margin: 0; padding: 0; }
+.pro .dash-row {
+  display: flex; align-items: center; gap: 16px; min-height: 60px; padding: 10px 24px; color: inherit; text-decoration: none;
+  border-top: 1px solid var(--p-line); transition: background var(--p-fast);
 }
+.pro .dash-row:hover { background: var(--p-soft); }
+.pro .dash-row:focus-visible { outline-offset: -2px; }
+.pro .dash-row-main { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.pro .dash-row-name { font-weight: 600; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pro .dash-row-addr { font-size: 13px; color: var(--p-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pro .dash-row-driver { width: 160px; flex-shrink: 0; font-size: 13px; color: var(--p-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pro .dash-link { display: flex; align-items: center; gap: 4px; height: 44px; padding: 0 6px 0 14px; border: 1px solid var(--p-line-2); background: var(--p-soft); }
+.pro .dash-link-text { flex: 1; min-width: 0; font-size: 13px; color: var(--p-ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pro .dash-dl { margin: 0; }
+.pro .dash-dl > div { display: flex; align-items: baseline; justify-content: space-between; gap: 16px; padding: 12px 0; border-top: 1px solid var(--p-line); }
+.pro .dash-dl > div:first-child { border-top: none; }
+.pro .dash-dl dt { font-size: 13px; color: var(--p-muted); }
+.pro .dash-dl dd { margin: 0; font-size: 14px; font-weight: 600; text-align: right; min-width: 0; max-width: 60%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pro .dash-trend { margin-left: 8px; font-size: 12px; font-weight: 700; }
+@media (max-width: 720px) {
+  .pro .dash-row { padding: 10px 16px; gap: 12px; }
+  .pro .dash-row-driver { display: none; }
+  .pro .dash-todo { padding: 18px 16px; }
+  .pro .dash-todo .btn { width: 100%; }
+}
+@media (max-width: 560px) {
+  .pro .dash-stats { gap: 10px; }
+  .pro .dash-stats .stat-card { padding: 14px; gap: 8px; }
+  .pro .dash-stats .stat-value { font-size: 22px; }
+  .pro .dash-stats .stat-sub { font-size: 12px; }
+}
+`

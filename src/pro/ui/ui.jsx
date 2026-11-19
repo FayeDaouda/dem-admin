@@ -1,137 +1,233 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useId, useRef } from 'react'
 import { createPortal } from 'react-dom'
-import { X, Loader2 } from 'lucide-react'
-import { ORDER_STATUS } from '../lib/format'
+import { Link } from 'react-router-dom'
+import { X, Loader2, ArrowRight, ArrowUpRight, AlertTriangle, RotateCw } from 'lucide-react'
+import { ORDER_STATUS, num } from '../lib/format'
 
-// ── Chiffre qui défile jusqu'à sa valeur (tableaux de bord) ─────────────────
-export function CountUp({ value, format = (v) => Math.round(v).toLocaleString('fr-FR'), duration = 900 }) {
-  const [shown, setShown] = useState(0)
-  const from = useRef(0)
-  useEffect(() => {
-    const target = Number(value) || 0
-    const start = performance.now()
-    const begin = from.current
-    let raf
-    const step = (t) => {
-      const k = Math.min(1, (t - start) / duration)
-      const eased = 1 - Math.pow(1 - k, 3)
-      setShown(begin + (target - begin) * eased)
-      if (k < 1) raf = requestAnimationFrame(step)
-      else from.current = target
-    }
-    raf = requestAnimationFrame(step)
-    return () => cancelAnimationFrame(raf)
-  }, [value, duration])
-  return <span className="num">{format(shown)}</span>
+// Composants de base de l'espace web DEM Pro — charte du site dem.sn :
+// angles vifs, DM Sans, surtitres en capitales espacées, bleu nuit et cyan.
+
+// Ancien compteur animé : la valeur s'affiche directement (pas de défilement)
+export function CountUp({ value, format = num }) {
+  return <span className="num">{format(Number(value) || 0)}</span>
 }
 
 export function Skeleton({ w = '100%', h = 14, r, style }) {
-  return <div className="skel" style={{ width: w, height: h, borderRadius: r, ...style }} />
+  return <div className="skel" style={{ width: w, height: h, borderRadius: r != null ? Math.min(r, 2) : undefined, ...style }} />
 }
 
 export function Spinner({ size = 16 }) {
-  return <Loader2 size={size} style={{ animation: 'pro-spin .8s linear infinite' }} />
+  return <Loader2 size={size} aria-hidden style={{ animation: 'pro-spin .8s linear infinite' }} />
 }
 
-export function Button({ variant = 'primary', size, icon: Icon, loading, children, className = '', ...rest }) {
-  return (
-    <button
-      className={`btn btn-${variant} ${size ? `btn-${size}` : ''} ${className}`}
-      disabled={loading || rest.disabled}
-      {...rest}
-    >
-      {loading ? <Spinner size={16} /> : Icon ? <Icon size={size === 'sm' ? 15 : 17} /> : null}
+// Bouton : primary (sombre → cyan au survol), ghost/outline (contour), quiet,
+// danger. `arrow` = 'right' | 'ne' ajoute la flèche du site, qui glisse au
+// survol. Avec `href` (ou `to`), rendu en lien.
+export function Button({ variant = 'primary', size, icon, arrow, loading, children, className = '', href, to, ...rest }) {
+  const Icon = icon
+  const cls = `btn btn-${variant} ${size ? `btn-${size}` : ''} ${className}`
+  const iconSize = size === 'sm' ? 15 : 16
+  const content = (
+    <>
+      {loading ? <Spinner size={iconSize} /> : Icon ? <Icon size={iconSize} aria-hidden /> : null}
       {children}
+      {arrow === 'right' && <ArrowRight size={iconSize} className="arrow" aria-hidden />}
+      {arrow === 'ne' && <ArrowUpRight size={iconSize} className="arrow-ne" aria-hidden />}
+    </>
+  )
+  if (to) return <Link to={to} className={cls} {...rest}>{content}</Link>
+  if (href) return <a href={href} className={cls} {...rest}>{content}</a>
+  return <button type="button" className={cls} disabled={loading || rest.disabled} {...rest}>{content}</button>
+}
+
+// Bouton icône : le libellé est obligatoire (lecteurs d'écran, infobulle)
+export function IconButton({ icon, label, size, variant, className = '', ...rest }) {
+  const Icon = icon
+  return (
+    <button type="button" aria-label={label} title={label}
+      className={`icon-btn ${size === 'sm' ? 'sm' : ''} ${variant === 'plain' ? 'plain' : ''} ${className}`} {...rest}>
+      <Icon size={size === 'sm' ? 15 : 16} aria-hidden />
     </button>
   )
 }
 
 export function StatusBadge({ status }) {
-  const s = ORDER_STATUS[status] ?? { label: status, color: '#6b7c93', bg: '#eef2f7' }
-  const live = ['PENDING', 'ACCEPTED', 'PICKED_UP', 'IN_TRANSIT'].includes(status)
+  const s = ORDER_STATUS[status] ?? { label: status, color: '#475569', bg: '#F1F5F9' }
   return (
-    <span style={{
-      display: 'inline-flex', alignItems: 'center', gap: 6, padding: '4px 10px', borderRadius: 20,
-      background: s.bg, color: s.color, fontSize: 12, fontWeight: 700, whiteSpace: 'nowrap',
-    }}>
-      <span style={{
-        width: 6, height: 6, borderRadius: '50%', background: s.color,
-        animation: live ? 'pro-pulse 1.8s infinite' : 'none',
-      }} />
+    <span className="badge" style={{ background: s.bg, color: s.color }}>
+      <span className="badge-dot" aria-hidden />
       {s.label}
     </span>
   )
 }
 
-export function Chip({ color = '#0671ba', bg, children, style }) {
+export function Chip({ color = '#0086C8', bg, children, style }) {
   return (
     <span style={{
-      display: 'inline-flex', alignItems: 'center', gap: 5, padding: '3px 9px', borderRadius: 20,
-      background: bg ?? color + '16', color, fontSize: 11.5, fontWeight: 700, whiteSpace: 'nowrap', ...style,
+      display: 'inline-flex', alignItems: 'center', gap: 5, padding: '3px 8px', borderRadius: 2,
+      background: bg ?? color + '14', color, fontSize: 11.5, fontWeight: 600, whiteSpace: 'nowrap', ...style,
     }}>{children}</span>
   )
 }
 
 export function Card({ children, style, className = '', ...rest }) {
-  return <div className={`card ${className}`} style={{ padding: 22, ...style }} {...rest}>{children}</div>
+  return <div className={`card ${className}`} style={{ padding: 24, ...style }} {...rest}>{children}</div>
+}
+
+// Petits coins cyan aux angles (élément mis en avant) — le parent doit
+// porter la classe has-corners
+export function Corners() {
+  return <>{['tl', 'tr', 'bl', 'br'].map(k => <span key={k} className={`corner ${k}`} aria-hidden />)}</>
+}
+
+export function Eyebrow({ children, onDark, style }) {
+  return <p className={`eyebrow ${onDark ? 'on-dark' : ''}`} style={style}>{children}</p>
+}
+
+// En-tête de page : surtitre à trait, titre, description, actions à droite
+export function PageHeader({ eyebrow, title, description, actions, style }) {
+  return (
+    <header className="page-header" style={{ display: 'flex', alignItems: 'flex-end', gap: 16, flexWrap: 'wrap', marginBottom: 28, ...style }}>
+      <div style={{ flex: '1 1 320px', minWidth: 0 }}>
+        {eyebrow && <Eyebrow style={{ marginBottom: 14 }}>{eyebrow}</Eyebrow>}
+        <h1 className="page-title">{title}</h1>
+        {description && <p className="muted" style={{ margin: '8px 0 0', fontSize: 14.5, maxWidth: 640 }}>{description}</p>}
+      </div>
+      {actions && <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>{actions}</div>}
+    </header>
+  )
+}
+
+// Carte chiffrée façon Stripe : libellé en capitales, valeur, sous-ligne.
+// Avec `to`, toute la carte est un lien.
+export function StatCard({ label, value, sub, to, icon, loading, tone }) {
+  const Icon = icon
+  const body = (
+    <>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+        <span className="label-caps" style={{ flex: 1, minWidth: 0 }}>{label}</span>
+        {Icon && <Icon size={16} color="#94A3B8" aria-hidden />}
+      </div>
+      <div className="num stat-value" style={{ color: tone ?? 'var(--p-ink)' }}>
+        {loading ? <Skeleton w={110} h={30} /> : value}
+      </div>
+      <div className="muted stat-sub">
+        {loading ? <Skeleton w={90} h={12} /> : sub}
+        {to && !loading && <ArrowRight size={14} className="stat-arrow" aria-hidden />}
+      </div>
+    </>
+  )
+  return to
+    ? <Link to={to} className="card stat-card is-link">{body}</Link>
+    : <div className="card stat-card">{body}</div>
 }
 
 export function SectionTitle({ title, hint, action, style }) {
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 14, ...style }}>
+    <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16, ...style }}>
       <div style={{ flex: 1, minWidth: 0 }}>
-        <h3 style={{ margin: 0, fontSize: 16, fontWeight: 800, letterSpacing: '-.2px' }}>{title}</h3>
-        {hint && <div className="muted" style={{ fontSize: 12.5, marginTop: 2 }}>{hint}</div>}
+        <h3 className="section-title">{title}</h3>
+        {hint && <div className="muted" style={{ fontSize: 13, marginTop: 2 }}>{hint}</div>}
       </div>
       {action}
     </div>
   )
 }
 
-export function Empty({ icon: Icon, title, text, action }) {
+export function Empty({ icon, title, text, action }) {
+  const Icon = icon
   return (
-    <div className="anim-in" style={{ textAlign: 'center', padding: '44px 20px' }}>
+    <div style={{ textAlign: 'center', padding: '44px 20px' }}>
       {Icon && (
         <div style={{
-          width: 64, height: 64, borderRadius: 20, margin: '0 auto 14px', display: 'grid', placeItems: 'center',
-          background: 'linear-gradient(135deg, #e3f8fc, #e6f0fb)', color: 'var(--p-cyan-2)', animation: 'pro-float 4s ease-in-out infinite',
-        }}><Icon size={28} /></div>
+          width: 48, height: 48, margin: '0 auto 16px', display: 'grid', placeItems: 'center',
+          border: '1px solid var(--p-line)', background: 'var(--p-soft)', color: 'var(--p-subtle)',
+        }}><Icon size={22} aria-hidden /></div>
       )}
-      <div style={{ fontWeight: 800, fontSize: 15.5 }}>{title}</div>
-      {text && <div className="muted" style={{ fontSize: 13, marginTop: 6, maxWidth: 380, marginInline: 'auto' }}>{text}</div>}
-      {action && <div style={{ marginTop: 18 }}>{action}</div>}
+      <div style={{ fontWeight: 700, fontSize: 15 }}>{title}</div>
+      {text && <div className="muted" style={{ fontSize: 13.5, marginTop: 6, maxWidth: 400, marginInline: 'auto' }}>{text}</div>}
+      {action && <div style={{ marginTop: 20, display: 'flex', justifyContent: 'center' }}>{action}</div>}
     </div>
   )
 }
 
-// ── Fenêtre centrée (formulaires, confirmations) ────────────────────────────
-export function Modal({ open, onClose, title, subtitle, children, width = 520, footer }) {
+// Chargement impossible : jamais de faux « vide » ni de zéros trompeurs
+export function ErrorState({ title = 'Impossible de charger ces informations', text = 'Vérifiez votre connexion puis réessayez.', onRetry, compact }) {
+  return (
+    <div role="alert" style={{ textAlign: 'center', padding: compact ? '24px 16px' : '44px 20px' }}>
+      <div style={{
+        width: 48, height: 48, margin: '0 auto 16px', display: 'grid', placeItems: 'center',
+        background: 'var(--p-danger-bg)', color: 'var(--p-danger)',
+      }}><AlertTriangle size={22} aria-hidden /></div>
+      <div style={{ fontWeight: 700, fontSize: 15 }}>{title}</div>
+      {text && <div className="muted" style={{ fontSize: 13.5, marginTop: 6, maxWidth: 400, marginInline: 'auto' }}>{text}</div>}
+      {onRetry && (
+        <div style={{ marginTop: 20, display: 'flex', justifyContent: 'center' }}>
+          <Button variant="ghost" size="sm" icon={RotateCw} onClick={onRetry}>Réessayer</Button>
+        </div>
+      )}
+    </div>
+  )
+}
+
+function useEscape(open, onClose) {
   useEffect(() => {
     if (!open) return
     const onKey = (e) => e.key === 'Escape' && onClose?.()
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
   }, [open, onClose])
+}
+
+// Garde le focus dans la fenêtre ouverte et le rend à l'élément d'origine
+function useFocusTrap(open, ref) {
+  useEffect(() => {
+    if (!open) return
+    const prev = document.activeElement
+    const node = ref.current
+    const focusables = () => [...(node?.querySelectorAll('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])') ?? [])].filter(el => !el.disabled)
+    const first = focusables()[0]
+    ;(first ?? node)?.focus?.()
+    const onKey = (e) => {
+      if (e.key !== 'Tab') return
+      const els = focusables()
+      if (!els.length) return
+      const a = els[0], z = els[els.length - 1]
+      if (e.shiftKey && document.activeElement === a) { e.preventDefault(); z.focus() }
+      else if (!e.shiftKey && document.activeElement === z) { e.preventDefault(); a.focus() }
+    }
+    node?.addEventListener('keydown', onKey)
+    return () => { node?.removeEventListener('keydown', onKey); prev?.focus?.() }
+  }, [open, ref])
+}
+
+// ── Fenêtre centrée (formulaires, confirmations) ────────────────────────────
+export function Modal({ open, onClose, title, subtitle, children, width = 520, footer }) {
+  const ref = useRef(null)
+  const titleId = useId()
+  useEscape(open, onClose)
+  useFocusTrap(open, ref)
   if (!open) return null
   return createPortal(
     <div className="pro" style={{ background: 'transparent', minHeight: 0 }}>
       <div onClick={onClose} style={{
-        position: 'fixed', inset: 0, background: 'rgba(2, 27, 71, .45)', backdropFilter: 'blur(4px)',
-        zIndex: 1000, display: 'grid', placeItems: 'center', padding: 20, animation: 'pro-fade-in .2s ease both',
+        position: 'fixed', inset: 0, background: 'rgba(2, 21, 32, .55)',
+        zIndex: 1000, display: 'grid', placeItems: 'center', padding: 20, animation: 'pro-fade-in .14s ease-out both',
       }}>
-        <div className="card anim-scale" onClick={(e) => e.stopPropagation()} style={{
-          width: '100%', maxWidth: width, maxHeight: 'calc(100vh - 40px)', display: 'flex', flexDirection: 'column',
-          boxShadow: 'var(--p-shadow-lg)', border: 'none', overflow: 'hidden',
-        }}>
-          <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12, padding: '22px 24px 0' }}>
-            <div style={{ flex: 1 }}>
-              <div style={{ fontSize: 18, fontWeight: 800, letterSpacing: '-.3px' }}>{title}</div>
-              {subtitle && <div className="muted" style={{ fontSize: 13, marginTop: 4 }}>{subtitle}</div>}
+        <div ref={ref} role="dialog" aria-modal="true" aria-labelledby={titleId} tabIndex={-1}
+          className="card" onClick={(e) => e.stopPropagation()} style={{
+            width: '100%', maxWidth: width, maxHeight: 'calc(100vh - 40px)', display: 'flex', flexDirection: 'column',
+            boxShadow: 'var(--p-shadow-lg)', overflow: 'hidden', outline: 'none',
+          }}>
+          <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12, padding: '24px 24px 0' }}>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div id={titleId} style={{ fontFamily: 'var(--p-head)', fontSize: 20, fontWeight: 700, letterSpacing: '-.01em' }}>{title}</div>
+              {subtitle && <div className="muted" style={{ fontSize: 13.5, marginTop: 4 }}>{subtitle}</div>}
             </div>
-            <button className="btn btn-ghost btn-icon btn-sm" onClick={onClose} aria-label="Fermer"><X size={16} /></button>
+            <IconButton icon={X} label="Fermer" size="sm" variant="plain" onClick={onClose} />
           </div>
-          <div className="scroll-y" style={{ padding: '18px 24px 22px', flex: 1 }}>{children}</div>
-          {footer && <div style={{ padding: '14px 24px', borderTop: '1px solid var(--p-line)', display: 'flex', justifyContent: 'flex-end', gap: 10, background: 'var(--p-soft)' }}>{footer}</div>}
+          <div className="scroll-y" style={{ padding: '20px 24px 24px', flex: 1 }}>{children}</div>
+          {footer && <div style={{ padding: '16px 24px', borderTop: '1px solid var(--p-line)', display: 'flex', justifyContent: 'flex-end', gap: 10, flexWrap: 'wrap', background: 'var(--p-soft)' }}>{footer}</div>}
         </div>
       </div>
     </div>,
@@ -140,21 +236,18 @@ export function Modal({ open, onClose, title, subtitle, children, width = 520, f
 }
 
 // ── Panneau latéral (détail d'une livraison) ────────────────────────────────
-export function Drawer({ open, onClose, children, width = 520 }) {
-  useEffect(() => {
-    if (!open) return
-    const onKey = (e) => e.key === 'Escape' && onClose?.()
-    window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
-  }, [open, onClose])
+export function Drawer({ open, onClose, children, width = 520, label = 'Détail' }) {
+  const ref = useRef(null)
+  useEscape(open, onClose)
+  useFocusTrap(open, ref)
   if (!open) return null
   return createPortal(
     <div className="pro" style={{ background: 'transparent', minHeight: 0 }}>
-      <div onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(2, 27, 71, .32)', zIndex: 900, animation: 'pro-fade-in .2s ease both' }} />
-      <aside style={{
-        position: 'fixed', top: 0, right: 0, bottom: 0, width: '100%', maxWidth: width, zIndex: 901,
+      <div onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(2, 21, 32, .4)', zIndex: 900, animation: 'pro-fade-in .14s ease-out both' }} />
+      <aside ref={ref} role="dialog" aria-modal="true" aria-label={label} tabIndex={-1} style={{
+        position: 'fixed', top: 0, right: 0, bottom: 0, width: '100%', maxWidth: width, zIndex: 901, outline: 'none',
         background: '#fff', boxShadow: 'var(--p-shadow-lg)', display: 'flex', flexDirection: 'column',
-        animation: 'pro-slide-in-right .32s var(--p-ease) both',
+        borderLeft: '1px solid var(--p-line)', animation: 'pro-slide-in-right .18s ease-out both',
       }}>
         {children}
       </aside>

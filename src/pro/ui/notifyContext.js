@@ -6,13 +6,13 @@ export const NotifyContext = createContext(null)
 export const useNotify = () => useContext(NotifyContext)
 
 export const KIND = {
-  success: { icon: CheckCircle2, color: '#16a34a' },
-  error:   { icon: AlertTriangle, color: '#dc2626' },
-  info:    { icon: Info, color: '#0671ba' },
-  driver:  { icon: Bike, color: '#0671ba' },
-  delivered: { icon: PackageCheck, color: '#16a34a' },
-  order:   { icon: ShoppingBag, color: '#6d5dfc' },
-  wallet:  { icon: Wallet, color: '#0cb8de' },
+  success: { icon: CheckCircle2, color: '#15803D' },
+  error:   { icon: AlertTriangle, color: '#B91C1C' },
+  info:    { icon: Info, color: '#0086C8' },
+  driver:  { icon: Bike, color: '#0086C8' },
+  delivered: { icon: PackageCheck, color: '#15803D' },
+  order:   { icon: ShoppingBag, color: '#021520' },
+  wallet:  { icon: Wallet, color: '#0E6F87' },
 }
 
 // Autorisation des notifications du navigateur (demandée après un clic)

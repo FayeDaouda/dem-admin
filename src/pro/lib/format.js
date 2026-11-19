@@ -1,6 +1,9 @@
 // Formats de l'espace web DEM Pro (français, FCFA, heure de Dakar = UTC)
-export const fcfa = (n) => `${Math.round(Number(n) || 0).toLocaleString('fr-FR')} F`
-export const fcfaLong = (n) => `${Math.round(Number(n) || 0).toLocaleString('fr-FR')} FCFA`
+// fr-FR sépare les milliers par une espace fine (U+202F), quasi invisible
+// en DM Sans gras : on la remplace par une espace insécable normale.
+export const num = (n) => Math.round(Number(n) || 0).toLocaleString('fr-FR').replace(/[\u202f\u00a0]/g, '\u00a0')
+export const fcfa = (n) => `${num(n)}\u00a0F`
+export const fcfaLong = (n) => `${num(n)}\u00a0FCFA`
 
 export const phoneFmt = (p) => {
   const d = String(p ?? '').replace(/\D/g, '').replace(/^221/, '')
@@ -25,20 +28,21 @@ export const timeOnly = (d) => d ? new Date(d).toLocaleTimeString('fr-FR', { hou
 
 export function greeting() {
   const h = new Date().getHours()
-  return h < 12 ? 'Bonjour' : h < 18 ? 'Bon après-midi' : 'Bonsoir'
+  return h < 18 ? 'Bonjour' : 'Bonsoir'
 }
 
 export const todayLabel = () => new Date().toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' })
 
-// Statuts d'une course, comme dans l'app
+// Statuts d'une course, comme dans l'app — paires texte foncé / fond clair
+// (contraste AA), sans violet
 export const ORDER_STATUS = {
-  SCHEDULED:  { label: 'Programmée',         color: '#6d5dfc', bg: '#efedff', step: 0 },
-  PENDING:    { label: 'Recherche coursier', color: '#d97706', bg: '#fff4e2', step: 0 },
-  ACCEPTED:   { label: 'Coursier en route',  color: '#0671ba', bg: '#e6f3fb', step: 1 },
-  PICKED_UP:  { label: 'Colis récupéré',     color: '#0cb8de', bg: '#e3f8fc', step: 2 },
-  IN_TRANSIT: { label: 'En livraison',       color: '#0cb8de', bg: '#e3f8fc', step: 2 },
-  DELIVERED:  { label: 'Livrée',             color: '#16a34a', bg: '#e8f7ee', step: 3 },
-  CANCELLED:  { label: 'Annulée',            color: '#dc2626', bg: '#fdecec', step: -1 },
+  SCHEDULED:  { label: 'Programmée',         color: '#475569', bg: '#F1F5F9', step: 0 },
+  PENDING:    { label: 'Recherche coursier', color: '#B45309', bg: '#FFF7ED', step: 0 },
+  ACCEPTED:   { label: 'Coursier en route',  color: '#0E6F87', bg: '#E6F7FB', step: 1 },
+  PICKED_UP:  { label: 'Colis récupéré',     color: '#0E6F87', bg: '#E6F7FB', step: 2 },
+  IN_TRANSIT: { label: 'En livraison',       color: '#0E6F87', bg: '#E6F7FB', step: 2 },
+  DELIVERED:  { label: 'Livrée',             color: '#15803D', bg: '#ECFDF3', step: 3 },
+  CANCELLED:  { label: 'Annulée',            color: '#B91C1C', bg: '#FEF2F2', step: -1 },
 }
 export const ACTIVE_STATUSES = new Set(['PENDING', 'ACCEPTED', 'PICKED_UP', 'IN_TRANSIT', 'SCHEDULED'])
 export const orderTotal = (o) => (Number(o?.price) || 0) + (Number(o?.demFee) || 0) - (Number(o?.discountAmount) || 0)
@@ -46,4 +50,7 @@ export const orderTotal = (o) => (Number(o?.price) || 0) + (Number(o?.demFee) ||
 export const planName = (p) => ({ PREMIUM: 'Offre Premium', BUSINESS: 'Offre Business', STARTER: 'Offre Starter', PRO: 'Offre Pro' })[p] ?? 'Offre gratuite'
 
 // Lien de commande public du commerçant (même lien que dans l'app)
-export const orderLink = (userId) => `https://www.dem.sn/commander/${userId}`
+// Lien public de la boutique (site dem.sn). VITE_SHOP_URL permet de pointer
+// vers le site lancé en local pendant les tests.
+const SHOP_URL = (import.meta.env.VITE_SHOP_URL || 'https://www.dem.sn').replace(/\/$/, '')
+export const orderLink = (userId) => `${SHOP_URL}/commander/${userId}`

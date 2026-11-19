@@ -69,7 +69,7 @@ export function NotifyProvider({ children }) {
       {children}
       {createPortal(
         <div className="pro" style={{ background: 'transparent', minHeight: 0 }}>
-          <div style={{ position: 'fixed', top: 18, right: 18, zIndex: 2000, display: 'flex', flexDirection: 'column', gap: 10, width: 360, maxWidth: 'calc(100vw - 36px)' }}>
+          <div aria-live="polite" style={{ position: 'fixed', bottom: 24, right: 24, zIndex: 2000, display: 'flex', flexDirection: 'column', gap: 8, width: 360, maxWidth: 'calc(100vw - 32px)' }}>
             {toasts.map(t => <Toast key={t.id} t={t} onClose={() => dismiss(t.id)} />)}
           </div>
         </div>,
@@ -83,19 +83,16 @@ function Toast({ t, onClose }) {
   const k = KIND[t.kind] ?? KIND.info
   const Icon = k.icon
   return (
-    <div className="card" role="status" style={{
-      padding: '14px 14px 14px 16px', display: 'flex', gap: 12, alignItems: 'flex-start',
-      boxShadow: '0 18px 48px rgba(4, 49, 124, .18)', animation: 'pro-toast-in .35s var(--p-ease) both',
-      borderLeft: `4px solid ${k.color}`,
+    <div className="card" role={t.kind === 'error' ? 'alert' : 'status'} style={{
+      padding: '14px 12px 14px 16px', display: 'flex', gap: 12, alignItems: 'flex-start',
+      boxShadow: 'var(--p-shadow-lg)', animation: 'pro-toast-in .16s ease-out both',
     }}>
-      <div style={{ width: 32, height: 32, borderRadius: 10, display: 'grid', placeItems: 'center', background: k.color + '14', color: k.color, flexShrink: 0 }}>
-        <Icon size={17} />
-      </div>
+      <Icon size={16} color={k.color} aria-hidden style={{ flexShrink: 0, marginTop: 2 }} />
       <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ fontWeight: 800, fontSize: 13.5 }}>{t.title}</div>
-        {t.text && <div className="muted" style={{ fontSize: 12.5, marginTop: 2 }}>{t.text}</div>}
+        <div style={{ fontWeight: 700, fontSize: 13.5 }}>{t.title}</div>
+        {t.text && <div className="muted" style={{ fontSize: 13, marginTop: 2 }}>{t.text}</div>}
       </div>
-      <button onClick={onClose} aria-label="Fermer" style={{ border: 'none', background: 'none', color: '#9aa8bb', cursor: 'pointer', padding: 2 }}><X size={15} /></button>
+      <button type="button" onClick={onClose} aria-label="Fermer" className="icon-btn sm plain" style={{ width: 24, height: 24, color: 'var(--p-subtle)' }}><X size={14} /></button>
     </div>
   )
 }

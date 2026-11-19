@@ -110,7 +110,7 @@ function ProductCard({ p, onEdit, onDelete }) {
         <div style={{ fontWeight: 800, fontSize: 14.5, lineHeight: 1.3 }}>{p.name}</div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
           <span style={{ fontWeight: 800, color: 'var(--p-cyan-2)' }} className="num">{p.defaultPrice != null ? fcfa(p.defaultPrice) : 'Prix libre'}</span>
-          {p.category && <Chip color="#6d5dfc"><Tag size={11} /> {p.category}</Chip>}
+          {p.category && <Chip color="#475569"><Tag size={11} /> {p.category}</Chip>}
         </div>
         <div className="muted" style={{ fontSize: 12 }}>{p.quantity != null ? `${p.quantity} en stock` : 'Stock non suivi'}{p.usageCount ? ` · vendu ${p.usageCount} fois` : ''}</div>
       </div>

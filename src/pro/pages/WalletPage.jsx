@@ -18,7 +18,7 @@ const TX = {
   CREDIT_DELIVERY:       ['Crédit', '#16a34a'],
   CREDIT_PROMO_SUBSIDY:  ['Prise en charge DEM', '#16a34a'],
   DEBIT_CASHOUT:         ['Retrait', '#0671ba'],
-  DEBIT_SUBSCRIPTION:    ['Abonnement DEM Pro', '#6d5dfc'],
+  DEBIT_SUBSCRIPTION:    ['Abonnement DEM Pro', '#475569'],
   DEBIT_ORDER:           ['Livraison payée', '#d97706'],
   DEBIT_PRO_SALE_REFUND: ['Vente remboursée', '#dc2626'],
   DEBIT_CASH_FEE:        ['Frais', '#d97706'],

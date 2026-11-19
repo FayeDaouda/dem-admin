@@ -19,10 +19,12 @@ const Account = lazy(() => import('./pages/Account'))
 
 function Loader() {
   return (
-    <div className="pro" style={{ display: 'grid', placeItems: 'center' }}>
+    <div className="pro" style={{ display: 'grid', placeItems: 'center' }} role="status" aria-label="Chargement de votre espace">
       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 14 }} className="anim-in">
-        <div style={{ width: 44, height: 44, borderRadius: 14, background: 'var(--p-gradient)', animation: 'pro-pulse 1.6s infinite' }} />
-        <span className="muted" style={{ fontWeight: 700, fontSize: 13 }}>Chargement de votre espace…</span>
+        <p className="label-caps" style={{ margin: 0, color: 'var(--p-ink)' }}>DEM <span style={{ color: 'var(--p-cyan-2)' }}>Pro</span></p>
+        <div style={{ width: 120, height: 2, background: 'var(--p-line)', overflow: 'hidden' }}>
+          <div className="skel" style={{ width: '100%', height: '100%', background: 'linear-gradient(90deg, transparent, #00D2FF, transparent)', backgroundSize: '240px 100%' }} />
+        </div>
       </div>
     </div>
   )
@@ -43,8 +45,8 @@ function PublicOnly({ children }) {
 
 export default function ProApp({ basename = '' }) {
   useEffect(() => {
-    document.title = 'DEM Pro — Votre espace'
-    document.body.style.background = '#f3f6fb'
+    document.title = 'DEM Pro'
+    document.body.style.background = '#F6F8FB'
   }, [])
   return (
     <BrowserRouter basename={basename}>

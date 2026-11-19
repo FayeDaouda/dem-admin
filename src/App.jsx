@@ -38,6 +38,23 @@ const FleetSection = lazy(() => import('./pages/fleet/FleetSection'))
 const ProApp = lazy(() => import('./pro/ProApp'))
 const PRO_HOST = /^pro\./.test(window.location.hostname)
 const isProPath = (p) => p === '/pro' || p.startsWith('/pro/')
+// Onglet « DEM Pro » dès le premier affichage (index.html dit « DEM Admin »)
+if (PRO_HOST || isProPath(window.location.pathname)) document.title = 'DEM Pro'
+
+// Premier affichage de l'espace DEM Pro (avant le chargement de son code) :
+// ses couleurs et son titre, pas ceux de l'admin
+const ProBootLoader = () => (
+  <div style={{ minHeight: '100vh', background: '#F6F8FB', display: 'grid', placeItems: 'center', fontFamily: "'DM Sans', system-ui, sans-serif" }}>
+    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 14 }}>
+      <div style={{ font: '700 13px/1 system-ui, sans-serif', letterSpacing: '.14em', textTransform: 'uppercase', color: '#021520' }}>
+        DEM <span style={{ color: '#0086C8' }}>Pro</span>
+      </div>
+      <div style={{ width: 120, height: 2, background: '#E2E8F0', overflow: 'hidden' }}>
+        <div style={{ width: '40%', height: '100%', background: '#00D2FF' }} />
+      </div>
+    </div>
+  </div>
+)
 
 const PageLoader = () => (
   <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)' }}>
@@ -155,7 +172,7 @@ function AppRoutes() {
 export default function App() {
   if (PRO_HOST || isProPath(window.location.pathname)) {
     return (
-      <Suspense fallback={<PageLoader />}>
+      <Suspense fallback={<ProBootLoader />}>
         <ProApp basename={PRO_HOST ? '' : '/pro'} />
       </Suspense>
     )
