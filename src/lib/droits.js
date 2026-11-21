@@ -191,6 +191,9 @@ export const ACTION_ROLES = {
   // (incident.side === 'CLIENT', incidentUpdateAll sinon)
   incidentUpdate: ['ASSISTANCE_EXECUTIVE', 'FLOTTE', 'CM'],
   incidentUpdateAll: ['ASSISTANCE_EXECUTIVE', 'FLOTTE'],
+  // Geste commercial sur une réclamation (argent crédité au client) — même
+  // règle que le serveur (admin.incidents.js:replyToClaim)
+  claimRefund: ['ASSISTANCE_EXECUTIVE'],
   // Validation › chefs de flotte, Suspendre : PATCH /admin/chefs-de-flotte/:id/suspend, Super seul.
   chefSuspend: [],
   // Validation › pièces à revoir, Rejeter une pièce et Vérifier :
