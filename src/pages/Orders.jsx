@@ -510,6 +510,12 @@ export default function Orders() {
                   </FicheSection>
                 )}
 
+                {detail.pickupPhotoUrl && (
+                  <FicheSection title="Colis au départ">
+                    <DocThumb url={detail.pickupPhotoUrl} label="Photo au départ" width={160} height={120} />
+                  </FicheSection>
+                )}
+
                 {detail.status === 'DELIVERED' && (
                   <FicheSection title="Preuve de livraison">
                     {detail.proofPhotoUrl
