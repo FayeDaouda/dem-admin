@@ -82,6 +82,11 @@ export default function ClaimThread({ incidentId, canReply, canRefund, onChanged
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center', fontSize: 12.5 }}>
         <span style={{ fontWeight: 700 }}>{thread.reference}</span>
         <span style={{ color: 'var(--text-muted)' }}>· {thread.categoryLabel}</span>
+        {thread.loyaltyTier && (
+          <span title="Support prioritaire (fidélité)" style={{ padding: '2px 8px', borderRadius: 20, fontSize: 11, fontWeight: 700, color: '#b45309', background: '#f59e0b20' }}>
+            Client fidèle · {thread.loyaltyTier}
+          </span>
+        )}
         <span style={{ marginLeft: 'auto', padding: '2px 10px', borderRadius: 20, fontSize: 11, fontWeight: 700, color: step.color, background: `${step.color}20` }}>
           Côté client : {step.label}
         </span>
