@@ -330,19 +330,22 @@ export default function Incidents() {
               <button onClick={() => setDetail(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)' }}><X size={18} /></button>
             </div>
 
-            {detail.type === 'CLIENT_CLAIM' ? (
-              <Section title="Échanges avec le client">
+            {/* Faits (SOS : position, contact d'urgence…) sauf réclamation client */}
+            {detail.type !== 'CLIENT_CLAIM' && (
+              <Section title="Ce qui s'est passé">
+                <IncidentFacts inc={detail} />
+              </Section>
+            )}
+            {/* Fil d'échanges : réclamation du client, signalement ou SOS du coursier */}
+            {(detail.type === 'CLIENT_CLAIM' || detail.threaded) && (
+              <Section title={detail.type === 'CLIENT_CLAIM' ? 'Échanges avec le client' : 'Échanges avec le coursier'}>
                 <ClaimThread
                   key={detail.id}
                   incidentId={detail.id}
-                  canReply={canUpdate}
+                  canReply={canUpdate && (canUpdateAll || detail.side === 'CLIENT')}
                   canRefund={canSee(user?.adminRole, ACTION_ROLES.claimRefund)}
                   onChanged={fetch}
                 />
-              </Section>
-            ) : (
-              <Section title="Ce qui s'est passé">
-                <IncidentFacts inc={detail} />
               </Section>
             )}
 

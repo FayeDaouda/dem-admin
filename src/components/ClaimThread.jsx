@@ -47,6 +47,11 @@ export default function ClaimThread({ incidentId, canReply, canRefund, onChanged
   if (!thread) return <div style={{ fontSize: 13, color: 'var(--text-muted)' }}>Chargement du fil…</div>
 
   const step = CLIENT_STEP[thread.status] ?? CLIENT_STEP.RECEIVED
+  // Réclamation d'un client ou signalement d'un coursier (même fil)
+  const byDriver = thread.reporter === 'DRIVER'
+  const who = byDriver ? 'coursier' : 'client'
+  const Who = byDriver ? 'Coursier' : 'Client'
+  const kind = byDriver ? 'le signalement' : 'la réclamation'
   const closed = thread.status === 'RESOLVED'
   const cap = thread.refundCap ?? 0
   const refundValue = refundOn ? Number(refund) : 0
@@ -54,9 +59,9 @@ export default function ClaimThread({ incidentId, canReply, canRefund, onChanged
   const canSend = message.trim().length > 0 && !refundInvalid && !sending
 
   const summary = [
-    resolve ? 'Envoyer la réponse et marquer la réclamation comme traitée ?' : 'Envoyer la réponse au client ?',
+    resolve ? `Envoyer la réponse et marquer ${kind} comme traité${byDriver ? '' : 'e'} ?` : `Envoyer la réponse au ${who} ?`,
     refundOn && `Geste commercial : ${fcfa(refundValue)} crédités sur son wallet (avoir pour ses prochaines courses, non retirable). Une seule fois par réclamation.`,
-    'Le client reçoit une notification avec votre message.',
+    `Le ${who} reçoit une notification avec votre message.`,
   ].filter(Boolean)
 
   async function send() {
@@ -88,7 +93,7 @@ export default function ClaimThread({ incidentId, canReply, canRefund, onChanged
           </span>
         )}
         <span style={{ marginLeft: 'auto', padding: '2px 10px', borderRadius: 20, fontSize: 11, fontWeight: 700, color: step.color, background: `${step.color}20` }}>
-          Côté client : {step.label}
+          Côté {who} : {step.label}
         </span>
       </div>
       {thread.order && (
@@ -128,7 +133,7 @@ export default function ClaimThread({ incidentId, canReply, canRefund, onChanged
               )}
             </div>
             <div style={{ fontSize: 10.5, color: 'var(--text-muted)', marginTop: 3, textAlign: m.fromClient ? 'left' : 'right' }}>
-              {m.fromClient ? 'Client' : 'Équipe DEM'} · {when(m.createdAt)}
+              {m.fromClient ? Who : 'Équipe DEM'} · {when(m.createdAt)}
               {m.photoUrls?.length > 0 && <> · <ImageIcon size={10} style={{ verticalAlign: -1 }} /> {m.photoUrls.length}</>}
             </div>
           </div>
@@ -145,8 +150,8 @@ export default function ClaimThread({ incidentId, canReply, canRefund, onChanged
             </div>
           )}
           <textarea value={message} onChange={e => setMessage(e.target.value)} rows={3} maxLength={1000}
-            aria-label="Réponse au client"
-            placeholder="Réponse au client : visible dans son application et envoyée en notification."
+            aria-label={`Réponse au ${who}`}
+            placeholder={`Réponse au ${who} : visible dans son application et envoyée en notification.`}
             style={{ ...glassInput, resize: 'vertical', fontFamily: 'inherit' }} />
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 14, alignItems: 'center', fontSize: 12.5 }}>
             {!closed && (
@@ -180,7 +185,7 @@ export default function ClaimThread({ incidentId, canReply, canRefund, onChanged
                 background: 'linear-gradient(135deg,#00b4d8,#0077b6)', color: '#fff', fontSize: 13, fontWeight: 700,
                 cursor: canSend ? 'pointer' : 'not-allowed', opacity: canSend ? 1 : 0.5,
               }}>
-                <Send size={14} /> Répondre au client
+                <Send size={14} /> Répondre au {who}
               </button>
             </div>
           )}
