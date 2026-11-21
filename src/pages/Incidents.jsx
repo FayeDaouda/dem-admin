@@ -11,6 +11,7 @@ import PageHeader from '../components/PageHeader'
 import { canSee, ACTION_ROLES } from '../lib/droits'
 import { cancelReasonLabel } from '../lib/cancelReasons'
 import InfoTip from '../components/InfoTip'
+import ClaimThread from '../components/ClaimThread'
 
 // ── Constantes ────────────────────────────────────────────────────────────────
 const SEVERITY_CFG = {
@@ -35,6 +36,7 @@ const TYPE_LABELS = {
   PAYMENT_DISPUTE:    'Litige de paiement',
   ORDER_STUCK:        'Course bloquée',
   USER_REPORT:        'Signalement d’un utilisateur',
+  CLIENT_CLAIM:       'Réclamation client',
 }
 
 const VIEWS = [
@@ -42,6 +44,9 @@ const VIEWS = [
   { key: 'resolved', label: 'Résolus',   match: i => i.status === 'RESOLVED' },
   { key: 'all',      label: 'Tous',      match: () => true },
 ]
+
+// Réclamation dont le dernier message vient du client
+const AWAITING_CFG = { bg: '#0ea5e920', color: '#0284c7', label: 'Réponse attendue' }
 
 const STALE_HOURS = 24 // un incident ouvert depuis plus longtemps s'affiche en orange
 
@@ -117,7 +122,7 @@ export default function Incidents() {
   // ── Temps réel : nouveaux incidents via socket ──
   useEffect(() => {
     const s = connectSocket()
-    const events = ['admin:incident:driver_redispatched', 'admin:incident:driver_unreachable', 'admin:incident:user_report', 'admin:payment:disputed', 'admin:incident:sos', 'admin:incident:sos_safe']
+    const events = ['admin:incident:driver_redispatched', 'admin:incident:driver_unreachable', 'admin:incident:user_report', 'admin:payment:disputed', 'admin:incident:sos', 'admin:incident:sos_safe', 'admin:incident:claim']
     events.forEach(ev => s.on(ev, fetch))
     return () => events.forEach(ev => s.off(ev, fetch))
   }, [fetch])
@@ -271,7 +276,12 @@ export default function Incidents() {
                       }}>
                         <td style={tdStyle}><Chip cfg={SEVERITY_CFG[inc.severity]} /></td>
                         <td style={{ ...tdStyle, fontSize: 12.5 }}>{TYPE_LABELS[inc.type] ?? inc.label ?? inc.type}</td>
-                        <td style={tdStyle}><Chip cfg={STATUS_CFG[inc.status]} /></td>
+                        <td style={tdStyle}>
+                          <span style={{ display: 'inline-flex', gap: 4, flexWrap: 'wrap' }}>
+                            <Chip cfg={STATUS_CFG[inc.status]} />
+                            {inc.awaitingReply && <Chip cfg={AWAITING_CFG} />}
+                          </span>
+                        </td>
                         <td style={{ ...tdStyle, fontSize: 12.5 }}>{inc.driverName ?? '—'}</td>
                         <td style={tdStyle} onClick={e => e.stopPropagation()}>
                           {inc.orderId
@@ -320,12 +330,24 @@ export default function Incidents() {
               <button onClick={() => setDetail(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)' }}><X size={18} /></button>
             </div>
 
-            <Section title="Ce qui s'est passé">
-              <IncidentFacts inc={detail} />
-            </Section>
+            {detail.type === 'CLIENT_CLAIM' ? (
+              <Section title="Échanges avec le client">
+                <ClaimThread
+                  key={detail.id}
+                  incidentId={detail.id}
+                  canReply={canUpdate}
+                  canRefund={canSee(user?.adminRole, ACTION_ROLES.claimRefund)}
+                  onChanged={fetch}
+                />
+              </Section>
+            ) : (
+              <Section title="Ce qui s'est passé">
+                <IncidentFacts inc={detail} />
+              </Section>
+            )}
 
             {(detail.driverName || detail.driverPhone) && (
-              <Section title={detail.type === 'USER_REPORT' ? 'Utilisateur signalé' : 'Coursier'}>
+              <Section title={detail.type === 'USER_REPORT' ? 'Utilisateur signalé' : detail.type === 'CLIENT_CLAIM' ? 'Coursier de la course' : 'Coursier'}>
                 <Person name={detail.driverName ?? '—'} phone={detail.driverPhone} />
               </Section>
             )}
