@@ -106,6 +106,7 @@ export const TITRES = {
   // ── Incidents ──
   "Ce qui s'est passé": "Type d'incident, gravité, heure de détection et détails envoyés par le système.",
   'Course liée': 'La course concernée par l’incident, avec un lien vers sa fiche.',
+  'Supplément par type de colis': "Montant ajouté au prix selon le type de colis choisi par le client (ex. Grand colis). Il revient au coursier et figure dans le prix garanti avant la commande.",
   'Suivi': "Statut de l'incident et notes de l'équipe. Clore l'incident le passe en résolu.",
   'Échanges avec le client': "Réclamation du client : ses messages et photos, vos réponses (visibles dans son application, envoyées en notification), le passage en traitée et le geste commercial éventuel. Les notes de Suivi restent internes.",
   'Coursier': 'Le coursier concerné, avec son téléphone.',
