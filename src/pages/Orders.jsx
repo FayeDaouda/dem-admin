@@ -18,6 +18,9 @@ import ClientOrderModal from './orders/ClientOrderModal'
 import InternalNotes from '../components/InternalNotes'
 import { clientCharge } from '../lib/orderPrice'
 
+// Catégories de colis (dem-backend orders/package-categories.js)
+const PACKAGE_LABELS = { DOCUMENTS: 'Documents', SMALL: 'Petit colis', LARGE: 'Grand colis', FOOD: 'Repas / alimentaire', VALUABLE: 'Objet de valeur', OTHER: 'Autre' }
+
 
 const firstNonEmpty = (...values) => values.find(v => typeof v === 'string' && v.trim() !== '') ?? '—'
 
@@ -478,6 +481,14 @@ export default function Orders() {
                 <FicheSection title="Trajet">
                   <Place label="Départ" address={detail.pickupAddress} lat={detail.pickupLatitude} lng={detail.pickupLongitude} />
                   <Place label="Arrivée" address={detail.deliveryAddress} lat={detail.deliveryLatitude} lng={detail.deliveryLongitude} />
+                  {detail.packageCategory && (
+                    <Row label="Type de colis" value={[
+                      PACKAGE_LABELS[detail.packageCategory] ?? detail.packageCategory,
+                      detail.isFragile ? 'Fragile' : null,
+                      detail.packageSurcharge > 0 ? `supplément ${Math.round(detail.packageSurcharge).toLocaleString('fr-FR')} F` : null,
+                      detail.prohibitedItemsAckAt ? 'objets interdits : absence confirmée par le client' : null,
+                    ].filter(Boolean).join(' · ')} />
+                  )}
                   {(detail.description || detail.weight) && (
                     <Row label="Colis" value={[detail.description, detail.weight ? `${detail.weight} kg` : null].filter(Boolean).join(' · ')} />
                   )}
