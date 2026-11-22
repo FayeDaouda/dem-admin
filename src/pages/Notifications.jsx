@@ -12,9 +12,10 @@ import { SegmentsTab, ResultsTab, CodesTab } from './notifications/CmCampaignTab
 // (plan de refonte, étape 3.10) : envoi et notifications programmées
 // (ancienne page Notification), historique des envois et alerte dans l'app
 // (ancien onglet Marketing › Campagnes et alertes). Super et Marketing ;
-// le Responsable de flottes envoie et programme aux coursiers seulement, le
-// CM / CRM Client aux clients (l'envoi à tous et l'alerte : demandes) et à
-// ses segments, avec les résultats et les codes de campagne (C3, C4, C6).
+// le Responsable de flottes envoie et programme aux coursiers seulement ; le
+// CM / CRM Client aux clients, coursiers, DEM Pro et chefs de flotte (tous,
+// choisis un par un ou segment de clients ; l'alerte : demande), avec les
+// résultats et les codes de campagne (C3, C4, C6).
 const TABS = [
   { key: 'envoyer',    label: 'Envoyer et programmer' },
   { key: 'segments',   label: 'Segments' },
@@ -28,14 +29,18 @@ export default function Notifications() {
   const { user } = useAuth()
   const role = user?.adminRole
   const tabs = TABS.filter(t => canSee(role, TAB_ROLES.notifications[t.key]))
-  const audience = canSee(role, ACTION_ROLES.broadcastAll) ? null : roleHas(role, 'FLOTTE') ? 'drivers' : 'clients'
+  // Public du rôle (Broadcast.jsx) : null = tout ouvert (Super, Marketing)
+  const all = canSee(role, ACTION_ROLES.broadcastAll)
+  const isCm = roleHas(role, 'CM'), isFlotte = roleHas(role, 'FLOTTE')
+  const direct = all ? null : [...new Set([...(isFlotte ? ['drivers'] : []), ...(isCm ? ['clients', 'drivers', 'dem_pro', 'chefs'] : [])])]
+  const pickable = all ? null : isCm ? ['clients', 'drivers', 'dem_pro', 'chefs'] : ['drivers']
   const [tab, setTab] = useUrlTab(tabs)
   return (
     <div style={pageWrap}>
       <PageHeader title="Notifications" subtitle="Notifications push, envois programmés et alerte affichée dans l'application" />
       <TabBar tabs={tabs} active={tab} onChange={setTab} />
       <div style={pageScroll}>
-        {tab === 'envoyer'    && <Broadcast embedded audience={audience} canSegment={canSee(role, TAB_ROLES.notifications.segments)} />}
+        {tab === 'envoyer'    && <Broadcast embedded direct={direct} pickable={pickable} canSegment={canSee(role, TAB_ROLES.notifications.segments)} />}
         {tab === 'segments'   && <SegmentsTab />}
         {tab === 'resultats'  && <ResultsTab />}
         {tab === 'codes'      && <CodesTab asks={roleHas(role, 'CM')} />}
