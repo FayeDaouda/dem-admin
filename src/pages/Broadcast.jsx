@@ -4,6 +4,7 @@ import { Send, Users, Bike, Briefcase, Truck, Bell, FlaskConical, Clock, Pencil,
 import { glass, pageWrap } from '../lib/glassStyles'
 import { targetLabel } from '../lib/broadcastTargets'
 import RequestModal from '../components/RequestModal'
+import RecipientPicker from './notifications/RecipientPicker'
 
 // Profils combinables : on en coche un, deux, trois… Tout coché = « Tous ».
 // Envoyé au serveur sous la forme 'all' ou 'clients,drivers' (même format
@@ -49,30 +50,34 @@ function toDatetimeLocal(date) {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
 }
 
-// audience : public d'un rôle sans Marketing (serveur :
-// admin.broadcast.controller.js) —
-//  - 'drivers' (Responsable de flottes) : coursiers ; un envoi à d'autres
-//    profils devient une demande au Super Admin (niveau 2) ;
-//  - 'clients' (CM / CRM Client) : clients seulement ; l'envoi à tous les
-//    clients est une demande au Super Admin (niveau 2).
-// Appliquée s'il la valide.
-const AUDIENCE_TEXT = {
-  drivers: { only: 'Seuls les coursiers sont ouverts à votre rôle', schedule: 'Votre rôle programme des notifications aux coursiers seulement. Pour les autres profils : « Demander l’envoi ».' },
-  clients: { only: 'L’envoi à tous les clients passe par le Super Admin', schedule: 'L’envoi à tous les clients passe par le Super Admin : « Demander l’envoi ».' },
-}
+// Public d'un rôle sans Marketing (serveur : admin.broadcast.controller.js) :
+//  - direct : profils envoyés « à tous » sans demande — Responsable de
+//    flottes : coursiers ; CM / CRM Client : les quatre (tous les clients
+//    compris depuis le 22/11). Tout autre profil devient une demande au
+//    Super Admin (niveau 2), appliquée s'il la valide.
+//  - pickable : profils où choisir des personnes une par une (CM : les
+//    quatre, clients compris ; Responsable de flottes : coursiers).
+// null = tout est ouvert (Super, Marketing).
 // canSegment : envoi à un segment de clients (Super + CM, C3) — niveau 1,
 // sans demande ; segments créés depuis la Base de données Clients.
-export default function Broadcast({ embedded = false, audience = null, canSegment = false }) {
-  const profiles = audience === 'clients' ? PROFILES.filter(p => p.value === 'clients') : PROFILES
-  const [selected, setSelected] = useState(audience ? [audience] : [...ALL_PROFILES])
+const PROFILE_TEXT = { clients: 'tous les clients', drivers: 'les coursiers', dem_pro: 'les DEM Pro', chefs: 'les chefs de flotte' }
+export default function Broadcast({ embedded = false, direct = null, pickable = null, canSegment = false }) {
+  const profiles = PROFILES
+  const pickProfiles = pickable ?? ALL_PROFILES
+  const [mode, setMode] = useState('profiles') // 'profiles' | 'people'
+  const [picked, setPicked] = useState([])     // personnes choisies (RecipientPicker)
+  const [selected, setSelected] = useState(direct ? [...direct] : [...ALL_PROFILES])
   const [segments, setSegments] = useState([])
   const [segmentId, setSegmentId] = useState('')
   const [asking, setAsking] = useState(false) // demande d'envoi au Super Admin
   const [requestNotice, setRequestNotice] = useState('')
-  const segment = segments.find(sg => sg.id === segmentId) ?? null
-  const needsRequest = !segment && (audience === 'clients' || (audience === 'drivers' && toTarget(selected) !== 'drivers'))
-  const target = segment ? segment.target : toTarget(selected)
-  const label = segment ? targetLabel(target, segment.name) : targetLabel(target)
+  const people = mode === 'people'
+  const segment = !people ? (segments.find(sg => sg.id === segmentId) ?? null) : null
+  const needsRequest = !people && !segment && Boolean(direct) && selected.some(p => !direct.includes(p))
+  const target = people ? `users:${picked.map(p => p.id).join(',')}` : segment ? segment.target : toTarget(selected)
+  const label = people ? targetLabel(target) : segment ? targetLabel(target, segment.name) : targetLabel(target)
+  const directText = direct ? (direct.length ? direct.map(p => PROFILE_TEXT[p]).join(', ') : 'aucun profil') : ''
+  const nothingChosen = people ? picked.length === 0 : !segment && selected.length === 0
 
   useEffect(() => {
     if (!canSegment) return
@@ -119,8 +124,8 @@ export default function Broadcast({ embedded = false, audience = null, canSegmen
       setError('Le titre et le message sont obligatoires.')
       return
     }
-    if (!segment && selected.length === 0) {
-      setError('Choisissez au moins un profil.')
+    if (nothingChosen) {
+      setError(people ? 'Choisissez au moins une personne.' : 'Choisissez au moins un profil.')
       return
     }
     setError('')
@@ -138,6 +143,7 @@ export default function Broadcast({ embedded = false, audience = null, canSegmen
       setResult(data.stats)
       setTitle('')
       setBody('')
+      setPicked([])
     } catch (e) {
       setError(e.response?.data?.message ?? 'Erreur lors de l\'envoi.')
     } finally {
@@ -150,8 +156,8 @@ export default function Broadcast({ embedded = false, audience = null, canSegmen
       setScheduleError('Le titre et le message sont obligatoires.')
       return
     }
-    if (!segment && selected.length === 0) {
-      setScheduleError('Choisissez au moins un profil.')
+    if (nothingChosen) {
+      setScheduleError(people ? 'Choisissez au moins une personne.' : 'Choisissez au moins un profil.')
       return
     }
     if (!scheduledAt) {
@@ -159,7 +165,7 @@ export default function Broadcast({ embedded = false, audience = null, canSegmen
       return
     }
     if (needsRequest) {
-      setScheduleError(AUDIENCE_TEXT[audience].schedule)
+      setScheduleError(`Votre rôle programme directement pour ${directText}. Pour les autres profils : « Demander l’envoi ».`)
       return
     }
     const iso = new Date(scheduledAt).toISOString()
@@ -185,8 +191,14 @@ export default function Broadcast({ embedded = false, audience = null, canSegmen
     setEditingId(item.id)
     setTitle(item.title)
     setBody(item.body)
-    if (String(item.target).startsWith('segment:')) setSegmentId(item.target.slice('segment:'.length))
-    else { setSegmentId(''); setSelected(fromTarget(item.target)) }
+    if (String(item.target).startsWith('users:')) {
+      setMode('people'); setSegmentId('')
+      const ids = item.target.slice('users:'.length)
+      api.get('/admin/broadcast/recipients', { params: { ids } })
+        .then(r => setPicked(r.data?.recipients ?? []))
+        .catch(() => setPicked([]))
+    } else if (String(item.target).startsWith('segment:')) { setMode('profiles'); setSegmentId(item.target.slice('segment:'.length)) }
+    else { setMode('profiles'); setSegmentId(''); setSelected(fromTarget(item.target)) }
     setScheduledAt(toDatetimeLocal(item.scheduledAt))
     setScheduleError('')
     setResult(null)
@@ -270,8 +282,29 @@ export default function Broadcast({ embedded = false, audience = null, canSegmen
             </div>
           )}
 
+          {/* Par profil (tous) ou personnes choisies une par une */}
+          <div role="tablist" aria-label="Destinataires" style={{ display: 'flex', gap: 4, padding: 4, borderRadius: 10, background: 'rgba(0,119,182,.06)', marginBottom: 14 }}>
+            {[['profiles', 'Par profil'], ['people', 'Personnes choisies']].map(([val, lbl]) => (
+              <button
+                key={val}
+                role="tab"
+                aria-selected={mode === val}
+                onClick={() => { setMode(val); setError(''); setScheduleError('') }}
+                style={{
+                  flex: 1, padding: '8px 10px', borderRadius: 8, border: 'none', cursor: 'pointer', fontSize: 13, fontWeight: 700,
+                  background: mode === val ? 'var(--primary)' : 'transparent', color: mode === val ? '#fff' : 'var(--text-muted)',
+                }}
+              >{lbl}</button>
+            ))}
+          </div>
+
+          {people && <>
+            <label style={labelStyle}>Destinataires</label>
+            <RecipientPicker profiles={pickProfiles} value={picked} onChange={setPicked} />
+          </>}
+
           {/* Segment de clients (C3) — à la place des profils */}
-          {canSegment && (
+          {canSegment && !people && (
             <div style={{ marginBottom: 14 }}>
               <label style={labelStyle}>Segment de clients</label>
               <select value={segmentId} onChange={e => setSegmentId(e.target.value)} style={inputStyle}>
@@ -282,7 +315,7 @@ export default function Broadcast({ embedded = false, audience = null, canSegmen
           )}
 
           {/* Cible — un ou plusieurs profils */}
-          {!segment && <>
+          {!people && !segment && <>
           <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between' }}>
             <label style={labelStyle}>Destinataires</label>
             {profiles.length > 1 && <button
@@ -327,9 +360,16 @@ export default function Broadcast({ embedded = false, audience = null, canSegmen
             })}
           </div>
           </>}
-          <div style={{ fontSize: 12, color: segment || selected.length ? 'var(--text-muted)' : 'var(--danger)', marginBottom: 18 }}>
-            {segment ? `Envoi à : ${label} (${segment.size} client${segment.size > 1 ? 's' : ''})` : selected.length ? `Envoi à : ${label}` : 'Aucun profil sélectionné'}
+          <div style={{ fontSize: 12, color: nothingChosen ? 'var(--danger)' : 'var(--text-muted)', marginBottom: needsRequest ? 6 : 18 }}>
+            {people
+              ? (picked.length ? `Envoi à : ${label}` : 'Aucune personne choisie')
+              : segment ? `Envoi à : ${label} (${segment.size} client${segment.size > 1 ? 's' : ''})` : selected.length ? `Envoi à : ${label}` : 'Aucun profil sélectionné'}
           </div>
+          {needsRequest && (
+            <div style={{ fontSize: 12, color: '#b45309', marginBottom: 18 }}>
+              Votre rôle envoie directement à {directText}. Pour {selected.filter(p => !direct.includes(p)).map(p => PROFILE_TEXT[p]).join(', ')} : demande au Super Admin{pickProfiles.includes('clients') ? ', ou choisissez des personnes une par une' : ''}.
+            </div>
+          )}
 
           {/* Titre */}
           <label style={labelStyle}>Titre</label>
@@ -361,7 +401,7 @@ export default function Broadcast({ embedded = false, audience = null, canSegmen
             </div>
           )}
           {!editingId && !confirmSend && (
-            <button onClick={askSend} disabled={sending || (!segment && selected.length === 0)} style={{
+            <button onClick={askSend} disabled={sending || nothingChosen} style={{
               width: '100%', padding: '12px 0', borderRadius: 10,
               border: 'none', background: 'var(--primary)', color: '#fff',
               fontSize: 14, fontWeight: 700, cursor: 'pointer',
@@ -377,7 +417,7 @@ export default function Broadcast({ embedded = false, audience = null, canSegmen
             <RequestModal
               kind="BROADCAST"
               title="Demander l’envoi d’une notification"
-              intro={`Envoi à : ${label}. ${AUDIENCE_TEXT[audience]?.only ?? ''} ; le Super Admin envoie s’il valide. Pour envoyer vous-même, choisissez un segment.`}
+              intro={`Envoi à : ${label}. Votre rôle envoie directement à ${directText} ; le Super Admin envoie s’il valide. Pour envoyer vous-même, choisissez des personnes une par une${canSegment ? ' ou un segment' : ''}.`}
               payload={{ title: title.trim(), body: body.trim(), target }}
               onClose={() => setAsking(false)}
               onDone={text => { setAsking(false); setResult(null); setError(''); setRequestNotice(text) }}
@@ -400,6 +440,7 @@ export default function Broadcast({ embedded = false, audience = null, canSegmen
               <div style={{ fontWeight: 700, color: 'var(--success)', marginBottom: 4 }}>Notification envoyée !</div>
               <div style={{ fontSize: 13, color: 'var(--text-muted)' }}>
                 {result.sent} envoyée{result.sent > 1 ? 's' : ''} sur {result.totalUsers} téléphone{result.totalUsers > 1 ? 's' : ''}
+                {result.pickedCount > result.totalAccounts && ` · ${result.pickedCount - result.totalAccounts} personne${result.pickedCount - result.totalAccounts > 1 ? 's' : ''} sans notifications activées`}
                 {result.totalAccounts > result.totalUsers && ` (${result.totalAccounts} comptes — un seul envoi par téléphone)`}
                 {result.failed > 0 && ` · ${result.failed} échoué${result.failed > 1 ? 's' : ''}`}
               </div>
