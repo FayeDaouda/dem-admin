@@ -10,6 +10,20 @@ export const phoneFmt = (p) => {
   return d.length === 9 ? `${d.slice(0, 2)} ${d.slice(2, 5)} ${d.slice(5, 7)} ${d.slice(7)}` : (p ?? '')
 }
 
+// Heure de Dakar (UTC, sans heure d'été) — la même que le serveur, quel que
+// soit le réglage de l'ordinateur (un PC réglé sur Paris décalait les jours)
+export const TZ = 'Africa/Dakar'
+// Jour à Dakar, « AAAA-MM-JJ » (clé de regroupement)
+export const dakarDay = (d = Date.now()) => new Date(d).toISOString().slice(0, 10)
+// Minuit à Dakar, il y a `daysAgo` jours
+export const dakarMidnight = (daysAgo = 0) => {
+  const n = new Date()
+  return new Date(Date.UTC(n.getUTCFullYear(), n.getUTCMonth(), n.getUTCDate() - daysAgo))
+}
+// Champ « date et heure » du navigateur lu et écrit en heure de Dakar
+export const dakarInputToISO = (v) => (v ? new Date(`${v}:00Z`).toISOString() : null)
+export const isoToDakarInput = (d) => new Date(d).toISOString().slice(0, 16)
+
 export function timeAgo(date) {
   if (!date) return ''
   const s = Math.max(0, (Date.now() - new Date(date).getTime()) / 1000)
@@ -17,21 +31,21 @@ export function timeAgo(date) {
   if (s < 3600) return `il y a ${Math.round(s / 60)} min`
   if (s < 86400) return `il y a ${Math.round(s / 3600)} h`
   if (s < 172800) return 'hier'
-  return new Date(date).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })
+  return new Date(date).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', timeZone: TZ })
 }
 
 export const dateTime = (d) => d
-  ? new Date(d).toLocaleString('fr-FR', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })
+  ? new Date(d).toLocaleString('fr-FR', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', timeZone: TZ })
   : '—'
 
-export const timeOnly = (d) => d ? new Date(d).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }) : '—'
+export const timeOnly = (d) => d ? new Date(d).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit', timeZone: TZ }) : '—'
 
 export function greeting() {
-  const h = new Date().getHours()
+  const h = new Date().getUTCHours()
   return h < 18 ? 'Bonjour' : 'Bonsoir'
 }
 
-export const todayLabel = () => new Date().toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' })
+export const todayLabel = () => new Date().toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', timeZone: TZ })
 
 // Statuts d'une course, comme dans l'app — paires texte foncé / fond clair
 // (contraste AA), sans violet

@@ -99,7 +99,8 @@ export default function Shop() {
 
       {editing && (
         <ProductModal key={editing.id ?? 'new'} product={editing} categories={[...new Set(list.map(p => p.category).filter(Boolean))].sort()}
-          onClose={() => setEditing(null)} onSaved={() => { setEditing(null); reloadProducts() }} />
+          // Fermeture après un produit créé sans sa photo : la liste le montre quand même
+          onClose={() => { setEditing(null); reloadProducts() }} onSaved={() => { setEditing(null); reloadProducts() }} />
       )}
     </div>
   )
@@ -361,7 +362,10 @@ function WhatsAppIcon({ size = 16 }) {
 // ── Fenêtre produit (ajout / modification) ───────────────────────────────────
 function ProductModal({ product, categories, onClose, onSaved }) {
   const notify = useNotify()
-  const isNew = !product.id
+  // Produit créé mais photo refusée : la fenêtre passe en modification, un
+  // nouvel essai ne crée jamais de doublon
+  const [savedId, setSavedId] = useState(product.id ?? null)
+  const isNew = !savedId
   const [name, setName] = useState(product.name ?? '')
   const [price, setPrice] = useState(product.defaultPrice != null ? String(product.defaultPrice) : '')
   const [category, setCategory] = useState(product.category ?? '')
@@ -375,23 +379,35 @@ function ProductModal({ product, categories, onClose, onSaved }) {
   const pickFile = (f) => {
     if (!f) return
     if (!/^image\/(jpeg|png|webp)$/.test(f.type)) { notify.error('Format non pris en charge', 'Choisissez une photo JPG ou PNG.'); return }
-    if (f.size > 8 * 1024 * 1024) { notify.error('Image trop lourde', 'Choisissez une photo de moins de 8 Mo.'); return }
+    if (f.size > 5 * 1024 * 1024) { notify.error('Image trop lourde', 'Choisissez une photo de moins de 5 Mo.'); return }
     setFile(f); setPreview(URL.createObjectURL(f))
   }
 
   const save = async () => {
+    if (busy) return
     setBusy(true)
     const body = { name: name.trim(), defaultPrice: price === '' ? null : Number(price), category: category.trim() || null, quantity: stock === '' ? null : Number(stock) }
+    const creating = !savedId
+    let id = savedId
     try {
-      const res = isNew ? await proApi.post('/dem-pro/products', body) : await proApi.patch(`/dem-pro/products/${product.id}`, body)
-      const id = res.data?.id ?? res.data?.product?.id ?? product.id
-      if (file && id) {
+      const res = creating ? await proApi.post('/dem-pro/products', body) : await proApi.patch(`/dem-pro/products/${savedId}`, body)
+      id = res.data?.id ?? res.data?.product?.id ?? savedId
+      if (id) setSavedId(id)
+    } catch (e) { notify.error('Enregistrement impossible', errMsg(e)); setBusy(false); return }
+    if (file && id) {
+      try {
         const fd = new FormData(); fd.append('file', file)
         await proApi.post(`/dem-pro/products/${id}/image`, fd, { headers: { 'Content-Type': 'multipart/form-data' } })
+        setFile(null)
+      } catch (e) {
+        notify.error(creating ? 'Produit ajouté, sans sa photo' : 'Photo non enregistrée', `${errMsg(e)} Réessayez d'enregistrer, ou choisissez une autre photo.`)
+        setBusy(false)
+        return
       }
-      notify.success(isNew ? 'Produit ajouté' : 'Produit mis à jour', 'Visible dans l\'application et sur votre boutique en ligne.')
-      onSaved()
-    } catch (e) { notify.error('Enregistrement impossible', errMsg(e)) } finally { setBusy(false) }
+    }
+    notify.success(creating ? 'Produit ajouté' : 'Produit mis à jour', 'Visible dans l\'application et sur votre boutique en ligne.')
+    setBusy(false)
+    onSaved()
   }
 
   const tooShort = name.trim().length < 2
@@ -408,7 +424,7 @@ function ProductModal({ product, categories, onClose, onSaved }) {
           onDragOver={e => { e.preventDefault(); setDrag(true) }} onDragLeave={() => setDrag(false)}
           onDrop={e => { e.preventDefault(); setDrag(false); pickFile(e.dataTransfer.files?.[0]) }}
           style={preview ? { backgroundImage: `url(${preview})` } : undefined}>
-          {!preview && <span className="sp-drop-empty"><ImagePlus size={24} aria-hidden /><strong>Ajouter une photo</strong><span>JPG ou PNG, 8 Mo max. Glissez-la ici ou cliquez.</span></span>}
+          {!preview && <span className="sp-drop-empty"><ImagePlus size={24} aria-hidden /><strong>Ajouter une photo</strong><span>JPG ou PNG, 5 Mo max. Glissez-la ici ou cliquez.</span></span>}
           {preview && <span className="sp-drop-change"><ImagePlus size={14} aria-hidden /> Changer la photo</span>}
           <input ref={input} type="file" accept="image/jpeg,image/png,image/webp" hidden onChange={e => pickFile(e.target.files?.[0])} />
         </div>
@@ -496,7 +512,7 @@ function ShopEditor({ shop, onSaved, onBanner, products }) {
   const uploadBanner = async (f) => {
     if (!f) return
     if (!/^image\/(jpeg|png|webp)$/.test(f.type)) { notify.error('Format non pris en charge', 'Choisissez une photo JPG ou PNG.'); return }
-    if (f.size > 8 * 1024 * 1024) { notify.error('Image trop lourde', 'Choisissez une photo de moins de 8 Mo.'); return }
+    if (f.size > 5 * 1024 * 1024) { notify.error('Image trop lourde', 'Choisissez une photo de moins de 5 Mo.'); return }
     setBannerBusy(true)
     try {
       const fd = new FormData(); fd.append('file', f)
@@ -687,7 +703,7 @@ function BannerDrop({ banner, busy, onPick, onRemove, disabled }) {
         onDrop={e => { e.preventDefault(); setDrag(false); if (!disabled) onPick(e.dataTransfer.files?.[0]) }}
         style={banner ? { backgroundImage: `url(${banner})` } : undefined}>
         {busy ? <span className="sp-banner-empty"><Skeleton w={120} h={12} /></span>
-          : !banner && <span className="sp-banner-empty"><ImagePlus size={22} aria-hidden /><strong>Ajouter une bannière</strong><span>Photo horizontale, JPG ou PNG, 8 Mo max.</span></span>}
+          : !banner && <span className="sp-banner-empty"><ImagePlus size={22} aria-hidden /><strong>Ajouter une bannière</strong><span>Photo horizontale, JPG ou PNG, 5 Mo max.</span></span>}
         <input ref={input} type="file" accept="image/jpeg,image/png,image/webp" hidden onChange={e => onPick(e.target.files?.[0])} />
       </div>
       {banner && !disabled && (

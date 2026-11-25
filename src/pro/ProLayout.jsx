@@ -68,10 +68,24 @@ export default function ProLayout({ children }) {
 
   // Wallet et commandes reçues : relus à chaque événement (rafales regroupées)
   // et toutes les minutes en filet de sécurité, onglet visible seulement
+  // Nouvelle commande : le serveur l'annonce en direct (order_request:new) ;
+  // sinon (serveur plus ancien, socket coupé), le relevé de la minute prévient
+  // quand le nombre de nouvelles commandes augmente.
+  const lastPending = useRef(null)
+  const lastLiveNew = useRef(0)
+  const pushRef = useRef(null)
   const loadSide = useCallback(() => {
     proApi.get('/users/dem-pro/wallet').then(r => setWallet(r.data)).catch(() => {})
     proApi.get('/dem-pro/order-requests', { params: { status: 'PENDING' } })
-      .then(r => setRequests((r.data ?? []).filter(x => (x.status ?? 'PENDING') === 'PENDING').length)).catch(() => {})
+      .then(r => {
+        const n = (r.data ?? []).filter(x => (x.status ?? 'PENDING') === 'PENDING').length
+        const before = lastPending.current
+        lastPending.current = n
+        setRequests(n)
+        if (before != null && n > before && Date.now() - lastLiveNew.current > 90_000) {
+          pushRef.current?.('order', n - before > 1 ? `${n - before} nouvelles commandes` : 'Nouvelle commande reçue', 'À accepter dans Commandes reçues.', '/commandes')
+        }
+      }).catch(() => {})
   }, [])
   useEffect(() => {
     loadSide()
@@ -83,6 +97,7 @@ export default function ProLayout({ children }) {
   // Temps réel. Le bandeau « Connexion perdue » n'apparaît qu'après 4 s
   // sans socket (pas de clignotement au démarrage ni sur une micro-coupure).
   const push = notify.notify
+  useEffect(() => { pushRef.current = push }, [push])
   useEffect(() => {
     const s = proSocket()
     let lostTimer = null
@@ -111,8 +126,9 @@ export default function ProLayout({ children }) {
         refresh({ ev: 'order:status_updated', p })
       }),
       on('order_request:new', (p) => {
+        lastLiveNew.current = Date.now()
         push('order', p?.paid ? 'Nouvelle commande payée' : 'Nouvelle commande reçue',
-          `${p?.customerName ?? 'Un client'} · ${fcfa(p?.total)} — à valider pour lancer la livraison.`, '/commandes')
+          `${p?.customerName ?? 'Un client'} · ${fcfa(p?.total)} · à accepter dans Commandes reçues.`, '/commandes')
         refresh({ ev: 'order_request:new', p })
       }),
       on('wallet:updated', () => refresh({ ev: 'wallet:updated' })),

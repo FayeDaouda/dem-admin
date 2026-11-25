@@ -8,7 +8,7 @@ import {
 } from 'lucide-react'
 import MapBaseLayer from '../../components/MapBaseLayer'
 import proApi, { errMsg } from '../lib/proApi'
-import { fcfa, phoneFmt } from '../lib/format'
+import { fcfa, phoneFmt, dakarInputToISO, isoToDakarInput, TZ } from '../lib/format'
 import { Button, Chip, Corners, PageHeader, Segmented, Skeleton, Spinner } from '../ui/ui'
 import { useNotify } from '../ui/notifyContext'
 
@@ -64,6 +64,9 @@ export default function NewDelivery() {
   const [scheduledAt, setScheduledAt] = useState('')
   const [estimate, setEstimate] = useState(null)
   const [estimating, setEstimating] = useState(false)
+  // Calcul du prix impossible : message affiché à la place du prix, avec « Réessayer »
+  const [estimateError, setEstimateError] = useState(null)
+  const [estimateTry, setEstimateTry] = useState(0)
   const [submitting, setSubmitting] = useState(false)
   const [touched, setTouched] = useState({})
   const [triedSubmit, setTriedSubmit] = useState(false)
@@ -132,14 +135,23 @@ export default function NewDelivery() {
   // Prix officiel dès que départ et arrivée sont connus (sauf prix figé)
   useEffect(() => {
     if (frozenQuote) return
+    setEstimateError(null)
     if (!pickup || !drop) { setEstimate(null); return }
+    // Adresse de retrait enregistrée sans position : le serveur refuserait
+    if (pickup.lat == null || pickup.lng == null) {
+      setEstimate(null)
+      setEstimateError('Ce point de retrait n\'a pas de position sur la carte. Modifiez-le dans Compte, ou choisissez-en un autre.')
+      return
+    }
     let alive = true
     setEstimating(true)
+    setEstimate(null) // l'ancien prix disparaît tout de suite quand le trajet change
     proApi.get('/orders/estimate', { params: { pickupLat: pickup.lat, pickupLng: pickup.lng, deliveryLat: drop.lat, deliveryLng: drop.lng, orderType: 'DELIVERY', priority: 'NORMAL' } })
-      .then(r => alive && setEstimate(r.data)).catch(() => alive && setEstimate(null))
+      .then(r => { if (alive) setEstimate(r.data) })
+      .catch((e) => { if (alive) { setEstimate(null); setEstimateError(errMsg(e, 'Le prix n\'a pas pu être calculé.')) } })
       .finally(() => alive && setEstimating(false))
     return () => { alive = false }
-  }, [pickup, drop, frozenQuote])
+  }, [pickup, drop, frozenQuote, estimateTry])
 
   const quote = frozenQuote
     ? { price: frozenQuote.price, demFee: frozenQuote.demFee ?? 0, totalClient: frozenQuote.total ?? frozenQuote.price + (frozenQuote.demFee ?? 0), distanceKm: frozenQuote.distanceKm }
@@ -150,7 +162,8 @@ export default function NewDelivery() {
   const phoneOk = /^7[015678]\d{7}$/.test(phoneDigits)
   const nameOk = name.trim().length >= 2
   const minSchedule = new Date(Date.now() + 15 * 60_000)
-  const scheduleOk = when === 'now' || (scheduledAt && new Date(scheduledAt).getTime() > Date.now() + 15 * 60_000)
+  // Heure saisie = heure de Dakar
+  const scheduleOk = when === 'now' || (scheduledAt && Date.parse(dakarInputToISO(scheduledAt)) > Date.now() + 15 * 60_000)
 
   const missing = [
     !pickup && 'le point de retrait',
@@ -158,6 +171,7 @@ export default function NewDelivery() {
     !phoneOk && 'le téléphone du client',
     !drop && 'l\'adresse de livraison',
     !scheduleOk && 'l\'heure de départ',
+    pickup && drop && !frozenQuote && !estimating && !estimate && 'le prix (voir ci-dessus)',
   ].filter(Boolean)
   const ready = missing.length === 0 && !!quote && !estimating
 
@@ -171,7 +185,14 @@ export default function NewDelivery() {
 
   const submit = async () => {
     setTriedSubmit(true)
-    if (!ready) return
+    if (!ready || submitting) return
+    // Prix garanti 10 min : passé ce délai, nouveau calcul AVANT l'envoi,
+    // pour que le commerçant voie le prix réellement facturé (comme l'app)
+    if (!frozenQuote && estimate?.quoteExpiresAt && Date.parse(estimate.quoteExpiresAt) < Date.now() + 30_000) {
+      setEstimateTry(n => n + 1)
+      notify.info('Prix recalculé', 'Le prix affiché datait de plus de 10 minutes. Vérifiez-le, puis relancez.')
+      return
+    }
     setSubmitting(true)
     const parts = []
     if (items.length) parts.push(items.map(i => `${i.name} ×${i.quantity}`).join(', '))
@@ -192,7 +213,9 @@ export default function NewDelivery() {
         ...(parts.length ? { description: parts.join(' · ') } : {}),
         price: quote.price,
         demFee: quote.demFee,
-        ...(when === 'later' ? { scheduledAt: new Date(scheduledAt).toISOString() } : {}),
+        // Prix garanti : le devis signé affiché (10 min) prime sur un recalcul
+        ...(!frozenQuote && estimate?.quoteToken ? { quoteToken: estimate.quoteToken } : {}),
+        ...(when === 'later' ? { scheduledAt: dakarInputToISO(scheduledAt) } : {}),
         paymentMode: payer,
         ...(pickup.id ? { proAddressId: pickup.id } : {}),
         ...(request ? { orderRequestId: request.id } : {}),
@@ -207,7 +230,9 @@ export default function NewDelivery() {
       navigate(`/livraisons?id=${order.id}`)
     } catch (e) {
       const code = e?.response?.data?.code
-      notify.error('Livraison non créée', LOCK_ERRORS[code] ?? errMsg(e))
+      if (code === 'DEM_PRO_PLAN_REQUIRED') notify.error('Offre requise', `${errMsg(e)} Choisissez une offre dans Compte.`)
+      else notify.error('Livraison non créée', LOCK_ERRORS[code] ?? errMsg(e))
+
     } finally { setSubmitting(false) }
   }
 
@@ -373,7 +398,7 @@ export default function NewDelivery() {
                   <div style={{ marginTop: 10 }}>
                     <Field label="Date et heure de retrait" error={errors.schedule}>
                       {(p) => <input {...p} type="datetime-local" className="input" value={scheduledAt}
-                        min={new Date(minSchedule.getTime() - minSchedule.getTimezoneOffset() * 60000).toISOString().slice(0, 16)}
+                        min={isoToDakarInput(minSchedule)}
                         onChange={e => setScheduledAt(e.target.value)} onBlur={() => setTouched(t => ({ ...t, schedule: true }))} />}
                     </Field>
                   </div>
@@ -393,7 +418,7 @@ export default function NewDelivery() {
               <dl className="nd-rows">
                 <div><dt>Retrait</dt><dd>{pickup?.label ?? <span className="muted">À choisir</span>}</dd></div>
                 <div><dt>Livraison</dt><dd>{drop?.address ?? <span className="muted">À choisir</span>}</dd></div>
-                <div><dt>Départ</dt><dd>{when === 'now' ? 'Dès maintenant' : scheduledAt ? new Date(scheduledAt).toLocaleString('fr-FR', { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : <span className="muted">À programmer</span>}</dd></div>
+                <div><dt>Départ</dt><dd>{when === 'now' ? 'Dès maintenant' : scheduledAt ? new Date(dakarInputToISO(scheduledAt)).toLocaleString('fr-FR', { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', timeZone: TZ }) : <span className="muted">À programmer</span>}</dd></div>
               </dl>
               <div className="nd-price" aria-live="polite">
                 {estimating && !frozenQuote ? <Skeleton h={64} /> : quote ? (
@@ -404,8 +429,13 @@ export default function NewDelivery() {
                     <div className="nd-total"><span>Total</span><span className="num">{fcfa(total)}</span></div>
                     <p className="muted nd-help">{payer === 'cod' ? (paidOnline ? 'Déjà réglé par votre client.' : 'Payé par votre client à la livraison.') : 'Payé par votre boutique, en ligne depuis le suivi.'}</p>
                   </>
+                ) : estimateError ? (
+                  <div role="alert" style={{ display: 'grid', gap: 8 }}>
+                    <p className="nd-help" style={{ margin: 0, color: 'var(--p-danger)', fontWeight: 600 }}><AlertCircle size={13} aria-hidden style={{ verticalAlign: '-2px' }} /> {estimateError}</p>
+                    {pickup?.lat != null && <Button variant="ghost" size="sm" onClick={() => setEstimateTry(n => n + 1)}>Réessayer le calcul</Button>}
+                  </div>
                 ) : (
-                  <p className="muted nd-help" style={{ margin: 0 }}><Clock size={13} aria-hidden style={{ verticalAlign: '-2px' }} /> Le prix s'affiche dès que l'adresse de livraison est choisie.</p>
+                  <p className="muted nd-help" style={{ margin: 0 }}><Clock size={13} aria-hidden style={{ verticalAlign: '-2px' }} /> {!pickup ? 'Le prix s\'affiche dès que le point de retrait et l\'adresse de livraison sont choisis.' : 'Le prix s\'affiche dès que l\'adresse de livraison est choisie.'}</p>
                 )}
               </div>
               <Button size="lg" arrow="right" loading={submitting} disabled={submitting || (triedSubmit && !ready)} onClick={submit} className="nd-submit">

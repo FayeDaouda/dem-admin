@@ -4,14 +4,14 @@ import { Bar, BarChart, Cell, ResponsiveContainer, Tooltip, XAxis, YAxis, Cartes
 import { PackageCheck, Bike, Wallet, Receipt, ChevronRight, Copy, Check, ArrowUpRight } from 'lucide-react'
 import proApi from '../lib/proApi'
 import { useProAuth } from '../proAuthContext'
-import { ACTIVE_STATUSES, fcfa, greeting, orderLink, orderTotal, todayLabel } from '../lib/format'
+import { ACTIVE_STATUSES, fcfa, greeting, orderLink, orderTotal, todayLabel, dakarDay, dakarMidnight, TZ } from '../lib/format'
 import { Button, Card, Corners, Empty, ErrorState, PageHeader, SectionTitle, Skeleton, StatCard, StatusBadge } from '../ui/ui'
 import { useNotify } from '../ui/notifyContext'
 import { useLiveRefresh } from '../lib/useLiveRefresh'
 
 // Tableau de bord DEM Pro : à traiter, chiffres du jour, activité sur
 // 14 jours, livraisons en cours, boutique en ligne, bilan du mois.
-const safe = (p) => p.then(r => ({ ok: true, v: r.data })).catch(() => ({ ok: false, v: null }))
+const safe = (p) => p.then(r => ({ ok: true, v: r.data })).catch((e) => ({ ok: false, v: null, status: e?.response?.status, message: e?.response?.data?.message }))
 
 export default function Dashboard() {
   const { user } = useProAuth()
@@ -37,6 +37,8 @@ export default function Dashboard() {
       orders: orders.ok ? (orders.v?.orders ?? []) : null,
       wallet: wallet.v,
       insights: insights.v, insightsOk: insights.ok,
+      // 403 : bilan réservé à une offre supérieure — pas une panne, pas de « Réessayer »
+      insightsLocked: insights.status === 403 ? (insights.message ?? 'Réservé aux offres Business et Premium.') : null,
       requests: (requests.v ?? []).filter(x => (x.status ?? 'PENDING') === 'PENDING'),
     })
   }, [])
@@ -51,8 +53,8 @@ export default function Dashboard() {
   const active = useMemo(() => (orders ?? []).filter(o => ACTIVE_STATUSES.has(o.status) && o.status !== 'SCHEDULED'), [orders])
   const searching = active.filter(o => o.status === 'PENDING').length
   const deliveredYesterday = useMemo(() => {
-    const y = new Date(); y.setDate(y.getDate() - 1)
-    return (orders ?? []).filter(o => o.status === 'DELIVERED' && new Date(o.deliveredAt ?? o.updatedAt ?? o.createdAt).toDateString() === y.toDateString()).length
+    const y = dakarDay(dakarMidnight(1))
+    return (orders ?? []).filter(o => o.status === 'DELIVERED' && dakarDay(o.deliveredAt ?? o.updatedAt ?? o.createdAt) === y).length
   }, [orders])
 
   const loading = !data
@@ -95,7 +97,7 @@ export default function Dashboard() {
             </div>
             <div className="dash-col">
               <ShopCard user={user} />
-              <Insights insights={data?.insights} loading={loading} failed={!!data && !data.insightsOk} onRetry={retry} />
+              <Insights insights={data?.insights} loading={loading} failed={!!data && !data.insightsOk && !data.insightsLocked} locked={data?.insightsLocked} onRetry={retry} />
             </div>
           </div>
         </>
@@ -130,18 +132,18 @@ function ToHandle({ requests }) {
 function ActivityChart({ orders, loading }) {
   const series = useMemo(() => {
     const days = Array.from({ length: 14 }, (_, i) => {
-      const d = new Date(); d.setHours(0, 0, 0, 0); d.setDate(d.getDate() - (13 - i))
+      const d = dakarMidnight(13 - i)
       return {
-        key: d.toDateString(),
-        label: i === 13 ? 'Auj.' : d.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' }),
-        full: d.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' }),
+        key: dakarDay(d),
+        label: i === 13 ? 'Auj.' : d.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', timeZone: TZ }),
+        full: d.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', timeZone: TZ }),
         livrees: 0, montant: 0, today: i === 13,
       }
     })
     for (const o of orders ?? []) {
       if (o.status !== 'DELIVERED') continue
-      const k = new Date(o.deliveredAt ?? o.updatedAt ?? o.createdAt); k.setHours(0, 0, 0, 0)
-      const row = days.find(d => d.key === k.toDateString())
+      const k = dakarDay(o.deliveredAt ?? o.updatedAt ?? o.createdAt)
+      const row = days.find(d => d.key === k)
       if (row) { row.livrees++; row.montant += orderTotal(o) }
     }
     return days
@@ -283,10 +285,14 @@ function ShopCard({ user }) {
 }
 
 // ── Bilan du mois ─────────────────────────────────────────────────────────
-// Le serveur donne un taux entre 0 et 1, ou déjà en %
-const pctOf = (r) => Math.round((r ?? 0) <= 1 ? (r ?? 0) * 100 : r)
+// Le serveur donne déjà un pourcentage arrondi au dixième (0,5 = 0,5 %) —
+// dem_pro.service.js:getBusinessInsights. Ne jamais le multiplier.
+const pctOf = (r) => {
+  const n = Number(r) || 0
+  return n > 0 && n < 10 ? Math.round(n * 10) / 10 : Math.round(n)
+}
 
-function Insights({ insights, loading, failed, onRetry }) {
+function Insights({ insights, loading, failed, locked, onRetry }) {
   const pct = insights?.trend?.countTrendPct
   const cancel = pctOf(insights?.cancellationRate)
   const top = insights?.topDestinations?.[0]
@@ -295,7 +301,12 @@ function Insights({ insights, loading, failed, onRetry }) {
     <Card>
       <SectionTitle title="Ce mois-ci" hint={insights?.period?.label} style={{ marginBottom: 8 }} />
       {loading ? <div style={{ display: 'grid', gap: 12, paddingTop: 8 }}>{[0, 1, 2, 3].map(i => <Skeleton key={i} h={18} />)}</div>
-        : failed ? <ErrorState compact title="Bilan indisponible" onRetry={onRetry} /> : (
+        : locked ? (
+          <div style={{ display: 'grid', gap: 10, paddingTop: 8 }}>
+            <p className="muted" style={{ margin: 0, fontSize: 14 }}>{locked}</p>
+            <Link className="link" to="/compte">Voir mon offre</Link>
+          </div>
+        ) : failed ? <ErrorState compact title="Bilan indisponible" onRetry={onRetry} /> : (
           <dl className="dash-dl">
             <div>
               <dt>Livraisons créées</dt>
@@ -310,7 +321,7 @@ function Insights({ insights, loading, failed, onRetry }) {
             </div>
             <div>
               <dt>Taux d'annulation</dt>
-              <dd className="num" style={{ color: cancel > 20 ? 'var(--p-danger)' : undefined }}>{cancel}&nbsp;%</dd>
+              <dd className="num" style={{ color: cancel > 20 ? 'var(--p-danger)' : undefined }}>{cancel.toLocaleString('fr-FR')}&nbsp;%</dd>
             </div>
             {top && (
               <div>

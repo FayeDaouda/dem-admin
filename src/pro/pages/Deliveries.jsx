@@ -9,7 +9,7 @@ import {
 } from 'lucide-react'
 import MapBaseLayer from '../../components/MapBaseLayer'
 import proApi, { errMsg } from '../lib/proApi'
-import { ACTIVE_STATUSES, ORDER_STATUS, dateTime, fcfa, orderTotal, phoneFmt, timeAgo, timeOnly } from '../lib/format'
+import { ACTIVE_STATUSES, ORDER_STATUS, dateTime, fcfa, orderTotal, phoneFmt, timeAgo, timeOnly, dakarDay, dakarMidnight } from '../lib/format'
 import { Button, Card, Drawer, Empty, ErrorState, IconButton, Modal, PageHeader, Skeleton, StatusBadge } from '../ui/ui'
 import { useNotify } from '../ui/notifyContext'
 import { useLiveRefresh } from '../lib/useLiveRefresh'
@@ -43,15 +43,14 @@ const match = (o, f) => f === 'toutes' ? true
   : true
 
 function periodStart(p) {
-  const d = new Date()
-  if (p === 'jour') { d.setHours(0, 0, 0, 0); return d }
+  if (p === 'jour') return dakarMidnight(0)
   if (p === '7j') return new Date(Date.now() - 7 * 86400e3)
   if (p === '30j') return new Date(Date.now() - 30 * 86400e3)
   return null
 }
 
 const shortRef = (id) => String(id ?? '').slice(0, 8).toUpperCase()
-const sameDay = (a, b) => new Date(a).toDateString() === new Date(b).toDateString()
+const sameDay = (a, b) => dakarDay(a) === dakarDay(b)
 const stamp = (d) => !d ? '' : sameDay(d, Date.now()) ? timeOnly(d) : dateTime(d)
 
 // Lien de suivi à envoyer au destinataire (même lien que l'app)
@@ -104,8 +103,29 @@ export default function Deliveries() {
     setParams(next, { replace: true })
   }
 
-  // Toutes les pages (le serveur en sert 100 au plus par appel)
+  // Chargement complet (le serveur sert 100 livraisons au plus par appel) au
+  // démarrage et sur « Réessayer » ; à chaque événement temps réel, seulement
+  // les 100 plus récentes, fusionnées — le quota de requêtes du serveur est
+  // partagé avec le téléphone du commerçant.
+  const seq = useRef(0)
+  const shown = useRef(null)
+  const apply = useCallback((all) => {
+    shown.current = all
+    // Lignes dont le statut a changé depuis la dernière lecture : surlignées une fois
+    const before = prevStatus.current
+    if (before) {
+      const changed = all.filter(o => before.has(o.id) && before.get(o.id) !== o.status).map(o => o.id)
+      if (changed.length) {
+        setFlash(new Set(changed))
+        setTimeout(() => setFlash(new Set()), 1800)
+      }
+    }
+    prevStatus.current = new Map(all.map(o => [o.id, o.status]))
+    setOrders(all)
+    setFailed(false)
+  }, [])
   const load = useCallback(async () => {
+    const n = ++seq.current
     try {
       const all = []
       for (let p = 1; p <= 10; p++) {
@@ -113,24 +133,24 @@ export default function Deliveries() {
         all.push(...(res.data?.orders ?? []))
         if (p >= (res.data?.totalPages ?? 1)) break
       }
-      // Lignes dont le statut a changé depuis la dernière lecture : surlignées une fois
-      const before = prevStatus.current
-      if (before) {
-        const changed = all.filter(o => before.has(o.id) && before.get(o.id) !== o.status).map(o => o.id)
-        if (changed.length) {
-          setFlash(new Set(changed))
-          setTimeout(() => setFlash(new Set()), 1800)
-        }
-      }
-      prevStatus.current = new Map(all.map(o => [o.id, o.status]))
-      setOrders(all)
-      setFailed(false)
+      if (n === seq.current) apply(all)
     } catch {
-      setFailed(true)
+      if (n === seq.current) setFailed(true)
     }
-  }, [])
+  }, [apply])
+  const loadRecent = useCallback(async () => {
+    if (!prevStatus.current) return load()
+    const n = ++seq.current
+    try {
+      const res = await proApi.get('/orders/my', { params: { page: 1, limit: 100 } })
+      if (n !== seq.current) return
+      const recent = res.data?.orders ?? []
+      const ids = new Set(recent.map(o => o.id))
+      apply([...recent, ...(shown.current ?? []).filter(o => !ids.has(o.id))])
+    } catch { /* la liste affichée reste valable */ }
+  }, [apply, load])
   useEffect(() => { load() }, [load])
-  useLiveRefresh(load)
+  useLiveRefresh(loadRecent)
 
   const retry = () => { setFailed(false); setOrders(null); load() }
 

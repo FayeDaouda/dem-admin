@@ -5,9 +5,9 @@ import { Button } from './ui/ui'
 // Statut du compte DEM Pro, même ordre que l'app (app_startup_notifier.dart) :
 // suspendu, inscription inachevée, en attente de validation, refusé.
 // Tant que le compte n'est pas actif, l'espace web ne s'ouvre pas.
-export const SUPPORT_WHATSAPP = 'https://wa.me/221784448524'
+const SUPPORT_WHATSAPP = 'https://wa.me/221784448524'
 
-export function accountState(user) {
+function accountState(user) {
   if (!user) return null
   if (user.isActive === false) return 'SUSPENDED'
   if (!user.proBusinessName) return 'ONBOARDING'
