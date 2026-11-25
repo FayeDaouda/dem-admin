@@ -23,6 +23,7 @@ export const PAGE_TABS = {
     t('ambassadors',      'Chefs de flotte',      TAB_ROLES.validation.ambassadors),
     t('drivers',          'Coursiers en attente', TAB_ROLES.validation.drivers),
     t('kyc-review',       'Pièces à revoir',      TAB_ROLES.validation['kyc-review']),
+    t('photos',           'Nouvelles photos',     TAB_ROLES.validation.photos),
     t('dem-pro',          'DEM Pro',              TAB_ROLES.validation['dem-pro']),
     t('fleet',            'Extensions de flotte', TAB_ROLES.validation.fleet),
     t('my-requests',      'Mes demandes',         TAB_ROLES.validation['my-requests']),

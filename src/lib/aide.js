@@ -261,6 +261,7 @@ export const ONGLETS = {
     ambassadors:        'Chefs de flotte inscrits : vérifier leurs pièces puis valider ou refuser. Les chefs actifs peuvent être suspendus (Super Admin).',
     drivers:            "Coursiers inscrits qui attendent d'être activés. Impossible tant que leur chef de flotte n'est pas validé ou que l'assurance est expirée.",
     'kyc-review':       'Coursiers déjà inscrits dont une ou plusieurs pièces sont à vérifier ou à compléter. Une pièce peut être rejetée avec un motif.',
+    photos:             "Coursiers vérifiés qui ont changé leur photo de profil. Les clients voient l'ancienne tant qu'elle n'est pas validée. Le chef de flotte d'un coursier peut aussi décider depuis son application.",
     'dem-pro':          'Comptes commerçants DEM Pro qui attendent une validation.',
     fleet:              "Demandes des chefs de flotte pour agrandir leur flotte (Super Admin).",
     'service-requests': 'Demandes envoyées par le Service Client (comptes DEM Pro, gestes commerciaux, suspensions) ; décision du Super Admin.',
