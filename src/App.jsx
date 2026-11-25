@@ -39,6 +39,13 @@ const FleetSection = lazy(() => import('./pages/fleet/FleetSection'))
 const ProApp = lazy(() => import('./pro/ProApp'))
 const PRO_HOST = /^pro\./.test(window.location.hostname)
 const isProPath = (p) => p === '/pro' || p.startsWith('/pro/')
+// En production, l'espace DEM Pro vit sur pro.dem.sn, jamais sur l'origine de
+// l'admin (même stockage du navigateur : une faille d'un côté exposerait la
+// session de l'autre). /pro reste ouvert en local et sur les préversions.
+if (window.location.hostname === 'admin.dem.sn' && isProPath(window.location.pathname)) {
+  const rest = window.location.pathname.replace(/^\/pro/, '') || '/'
+  window.location.replace(`https://pro.dem.sn${rest}${window.location.search}${window.location.hash}`)
+}
 // Onglet « DEM Pro » dès le premier affichage (index.html dit « DEM Admin »)
 if (PRO_HOST || isProPath(window.location.pathname)) document.title = 'DEM Pro'
 
