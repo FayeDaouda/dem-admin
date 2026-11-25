@@ -3,7 +3,7 @@ import { useSearchParams } from 'react-router-dom'
 import api from '../lib/api'
 import { useAuth } from '../contexts/AuthContext'
 import { glass, glassInput, pageWrap, pageScroll } from '../lib/glassStyles'
-import { RefreshCw, CheckCircle, XCircle, ChevronDown, ChevronUp, Shield, Motorbike, Layers, AlertTriangle, Briefcase, ClipboardList, Wallet, FileWarning, Truck, Send, Paperclip, HelpCircle, Megaphone } from 'lucide-react'
+import { RefreshCw, CheckCircle, XCircle, ChevronDown, ChevronUp, Shield, Motorbike, Layers, AlertTriangle, Briefcase, ClipboardList, Wallet, FileWarning, Truck, Send, Paperclip, HelpCircle, Megaphone, Camera, ArrowRight } from 'lucide-react'
 import SuspendModal from '../components/SuspendModal'
 import AmbassadorDetailModal from '../components/AmbassadorDetailModal'
 import DocThumb from '../components/DocThumb'
@@ -170,6 +170,7 @@ const TABS = [
   { key: 'ambassadors',      label: 'Chefs de flotte',         icon: Shield },
   { key: 'drivers',          label: 'Coursiers en attente',    icon: Motorbike },
   { key: 'kyc-review',       label: 'Pièces à revoir',         icon: FileWarning },
+  { key: 'photos',           label: 'Nouvelles photos',        icon: Camera },
   { key: 'dem-pro',          label: 'DEM Pro',                 icon: Briefcase },
   { key: 'fleet',            label: 'Extensions de flotte',    icon: Layers },
   { key: 'service-requests', label: 'Demandes Service Client', icon: ClipboardList },
@@ -187,6 +188,7 @@ const COUNTERS = {
   drivers:      () => api.get('/admin/drivers/pending').then(r => ({ drivers: (r.data.drivers ?? []).length })),
   'kyc-review': () => api.get('/admin/drivers', { params: { status: 'kyc-review', limit: 1 } }).then(r => ({ 'kyc-review': r.data.total ?? (r.data.drivers ?? []).length })),
   'dem-pro':    () => api.get('/admin/dem-pro', { params: { status: 'PENDING' } }).then(r => ({ 'dem-pro': (r.data.accounts ?? []).length })),
+  photos:       () => api.get('/admin/drivers/pending-avatars').then(r => ({ photos: (r.data.drivers ?? []).length })),
   fleet:        () => api.get('/admin/fleet-extensions', { params: { status: 'PENDING' } }).then(r => ({ fleet: (r.data.extensions ?? []).length })),
   'service-requests': () => api.get('/admin/requests', { params: { status: 'PENDING' } }).then(r => {
     const list = r.data.requests ?? []
@@ -263,6 +265,7 @@ export default function Validation() {
         {tab === 'ambassadors'      && <AmbassadorsTab canSuspend={canSuspendChef} canDecide={canDecideChef} askSuper={askSuper} highlightId={highlightId} onChanged={refreshCounts} />}
         {tab === 'drivers'          && <DriversTab highlightId={highlightId} onChanged={refreshCounts} />}
         {tab === 'kyc-review'       && <KycReviewTab canReview={canReviewKyc} highlightId={highlightId} onChanged={refreshCounts} />}
+        {tab === 'photos'           && <PhotosTab canReview={canReviewKyc} highlightId={highlightId} onChanged={refreshCounts} />}
         {tab === 'dem-pro'          && <DemProTab highlightId={highlightId} onChanged={refreshCounts} />}
         {tab === 'fleet'            && <FleetTab canDecide={canDecideFleet} askSuper={askSuper} highlightId={highlightId} onChanged={refreshCounts} />}
         {tab === 'service-requests' && <ServiceRequestsTab highlightId={highlightId} onChanged={refreshCounts} />}
@@ -599,6 +602,84 @@ const KYC_FIELDS = [
 
 const VEHICLE_LABELS = { MOTO: 'Moto', VELO: 'Vélo', VOITURE: 'Voiture' }
 const fmtDate = v => (v ? new Date(v).toLocaleDateString('fr-FR') : '—')
+
+// ── Tab Nouvelles photos ───────────────────────────────────────────────────────
+// Coursier vérifié qui change sa photo : les clients voient l'ancienne tant
+// qu'elle n'est pas validée (serveur : avatar-review.service.js).
+function PhotosTab({ canReview, highlightId, onChanged }) {
+  const [list,    setList]    = useState([])
+  const [loading, setLoading] = useState(true)
+  const rowRefs = useRef({})
+
+  const load = useCallback(async (silent = false) => {
+    if (!silent) setLoading(true)
+    try {
+      const res = await api.get('/admin/drivers/pending-avatars')
+      setList(res.data.drivers ?? [])
+    } catch (e) { console.error(e) }
+    finally { if (!silent) setLoading(false) }
+  }, [])
+
+  useEffect(() => { load() }, [load])
+  useAutoRefresh(() => load(true))
+  const { acting, errors, notice, run } = useDecisions(load, onChanged)
+
+  useEffect(() => {
+    if (!highlightId || !list.some(d => d.id === highlightId)) return
+    rowRefs.current[highlightId]?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+  }, [highlightId, list])
+
+  const who = d => d.name || d.phone || 'Coursier'
+  const photo = (url, label) => (
+    <div style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:6 }}>
+      <div style={{ width:112, height:112, borderRadius:14, overflow:'hidden', background:'rgba(0,0,0,.05)', display:'flex', alignItems:'center', justifyContent:'center' }}>
+        {url
+          ? <a href={url} target="_blank" rel="noreferrer"><img src={url} alt={label} style={{ width:112, height:112, objectFit:'cover', display:'block' }} /></a>
+          : <span style={{ fontSize:12, color:'var(--text-muted)' }}>Aucune</span>}
+      </div>
+      <span style={{ fontSize:12, fontWeight:700, color:'var(--text-muted)' }}>{label}</span>
+    </div>
+  )
+
+  if (loading) return <Loading />
+  return (
+    <div style={{ display:'flex', flexDirection:'column', gap:12 }}>
+      <Toolbar onRefresh={load} />
+      <Notice text={notice} />
+      {list.length === 0 && <Empty>Aucune nouvelle photo à valider.</Empty>}
+      {list.map(d => (
+        <div key={d.id} ref={el => { rowRefs.current[d.id] = el }} style={{ ...card, ...(highlightId === d.id ? cardHighlight : {}), display:'flex', flexDirection:'column', gap:12 }}>
+          <div style={{ display:'flex', justifyContent:'space-between', gap:12, flexWrap:'wrap' }}>
+            <div>
+              <div style={{ fontWeight:800, fontSize:15 }}>{who(d)}</div>
+              <div style={{ fontSize:12, color:'var(--text-muted)' }}>
+                {d.phone}{d.pendingAvatarAt ? ` · envoyée le ${new Date(d.pendingAvatarAt).toLocaleString('fr-FR', { day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit' })}` : ''}
+              </div>
+            </div>
+            <span style={{ fontSize:12, fontWeight:600, color:'var(--text-muted)', alignSelf:'flex-start' }}>
+              {d.managedBy ? `Flotte ${d.managedBy.companyName || d.managedBy.name || ''} : son chef de flotte peut aussi décider` : 'Sans chef de flotte'}
+            </span>
+          </div>
+          <div style={{ display:'flex', alignItems:'center', gap:16, flexWrap:'wrap' }}>
+            {photo(d.avatar, 'Actuelle')}
+            <ArrowRight size={18} color="var(--text-muted)" />
+            {photo(d.pendingAvatar, 'Nouvelle')}
+          </div>
+          {canReview ? (
+            <DecisionBar
+              busy={acting === d.id}
+              error={errors[d.id]}
+              onAccept={() => run(d.id, () => api.patch(`/admin/drivers/${d.id}/avatar/approve`), `${who(d)} : nouvelle photo validée.`)}
+              onRefuse={reason => run(d.id, () => api.patch(`/admin/drivers/${d.id}/avatar/reject`, { reason }), `${who(d)} : nouvelle photo refusée.`)}
+            />
+          ) : (
+            <div style={{ fontSize:12, color:'var(--text-muted)' }}>Lecture seule pour votre rôle.</div>
+          )}
+        </div>
+      ))}
+    </div>
+  )
+}
 
 function KycReviewTab({ canReview, highlightId, onChanged }) {
   const [list,     setList]     = useState([])

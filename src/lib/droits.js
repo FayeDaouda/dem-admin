@@ -105,6 +105,8 @@ export const TAB_ROLES = {
     ambassadors:        ['SERVICE_CLIENT', 'ASSISTANCE_EXECUTIVE', 'FLOTTE'],
     drivers:            ['SERVICE_CLIENT', 'ASSISTANCE_EXECUTIVE', 'FLOTTE'],
     'kyc-review':       ['SERVICE_CLIENT', 'ASSISTANCE_EXECUTIVE', 'FLOTTE'],
+    // Nouvelles photos des coursiers vérifiés (décision : kycReview)
+    photos:             ['SERVICE_CLIENT', 'ASSISTANCE_EXECUTIVE', 'FLOTTE'],
     // DEM Pro : Service Client et Commercial (Valider / Refuser), pas le Resp. flottes
     'dem-pro':          ['SERVICE_CLIENT', 'ASSISTANCE_EXECUTIVE', 'COMMERCIAL'],
     // Extensions de flotte : Responsable de flottes en lecture (décision : Super)
