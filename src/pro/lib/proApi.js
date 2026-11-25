@@ -4,7 +4,7 @@ import { session, deviceId, deviceName } from './session'
 // Client HTTP de l'espace web DEM Pro : même serveur et mêmes routes que
 // l'app DEM Pro (/dem-pro/*, /orders/*, /users/dem-pro/*) — données
 // synchronisées par construction.
-const BASE = import.meta.env.VITE_API_URL ?? ''
+const BASE = import.meta.env?.VITE_API_URL ?? ''
 
 export const PRO_APP_VERSION = 'pro-web-1.0.0'
 

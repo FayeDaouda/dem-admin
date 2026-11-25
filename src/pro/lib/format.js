@@ -24,6 +24,13 @@ export const dakarMidnight = (daysAgo = 0) => {
 export const dakarInputToISO = (v) => (v ? new Date(`${v}:00Z`).toISOString() : null)
 export const isoToDakarInput = (d) => new Date(d).toISOString().slice(0, 16)
 
+// Pourcentage reçu du serveur, déjà en % arrondi au dixième (0,5 = 0,5 %) —
+// dem_pro.service.js:getBusinessInsights. Ne jamais le multiplier par 100.
+export const pctOf = (r) => {
+  const n = Number(r) || 0
+  return n > 0 && n < 10 ? Math.round(n * 10) / 10 : Math.round(n)
+}
+
 export function timeAgo(date) {
   if (!date) return ''
   const s = Math.max(0, (Date.now() - new Date(date).getTime()) / 1000)
@@ -66,5 +73,5 @@ export const planName = (p) => ({ PREMIUM: 'Offre Premium', BUSINESS: 'Offre Bus
 // Lien de commande public du commerçant (même lien que dans l'app)
 // Lien public de la boutique (site dem.sn). VITE_SHOP_URL permet de pointer
 // vers le site lancé en local pendant les tests.
-const SHOP_URL = (import.meta.env.VITE_SHOP_URL || 'https://www.dem.sn').replace(/\/$/, '')
+const SHOP_URL = (import.meta.env?.VITE_SHOP_URL || 'https://www.dem.sn').replace(/\/$/, '')
 export const orderLink = (userId) => `${SHOP_URL}/commander/${userId}`

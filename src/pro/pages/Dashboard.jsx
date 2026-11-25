@@ -4,7 +4,7 @@ import { Bar, BarChart, Cell, ResponsiveContainer, Tooltip, XAxis, YAxis, Cartes
 import { PackageCheck, Bike, Wallet, Receipt, ChevronRight, Copy, Check, ArrowUpRight } from 'lucide-react'
 import proApi from '../lib/proApi'
 import { useProAuth } from '../proAuthContext'
-import { ACTIVE_STATUSES, fcfa, greeting, orderLink, orderTotal, todayLabel, dakarDay, dakarMidnight, TZ } from '../lib/format'
+import { ACTIVE_STATUSES, fcfa, greeting, orderLink, orderTotal, todayLabel, dakarDay, dakarMidnight, TZ, pctOf } from '../lib/format'
 import { Button, Card, Corners, Empty, ErrorState, PageHeader, SectionTitle, Skeleton, StatCard, StatusBadge } from '../ui/ui'
 import { useNotify } from '../ui/notifyContext'
 import { useLiveRefresh } from '../lib/useLiveRefresh'
@@ -285,12 +285,6 @@ function ShopCard({ user }) {
 }
 
 // ── Bilan du mois ─────────────────────────────────────────────────────────
-// Le serveur donne déjà un pourcentage arrondi au dixième (0,5 = 0,5 %) —
-// dem_pro.service.js:getBusinessInsights. Ne jamais le multiplier.
-const pctOf = (r) => {
-  const n = Number(r) || 0
-  return n > 0 && n < 10 ? Math.round(n * 10) / 10 : Math.round(n)
-}
 
 function Insights({ insights, loading, failed, locked, onRetry }) {
   const pct = insights?.trend?.countTrendPct
