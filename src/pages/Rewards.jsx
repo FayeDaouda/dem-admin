@@ -1,11 +1,12 @@
 import { useState, useEffect } from 'react'
-import { Gift, Power, CalendarClock, Search, X, History } from 'lucide-react'
+import { Gift, Power, CalendarClock, Search, X, History, Crown } from 'lucide-react'
 import api from '../lib/api'
 import { glass, glassInput, pageWrap, pageScroll } from '../lib/glassStyles'
 import PageHeader from '../components/PageHeader'
 import TabBar from '../components/TabBar'
 import { useUrlTab } from '../lib/useUrlTab'
 import RequestModal from '../components/RequestModal'
+import LoyaltyPerksPanel from '../components/LoyaltyPerksPanel'
 
 // ── Centre des récompenses ────────────────────────────────────────────────────
 // Décision 06/10 : rien n'est offert automatiquement. Toute récompense passe
@@ -26,6 +27,7 @@ const TABS = [
   { key: 'grant', label: 'Attribuer', icon: Gift },
   { key: 'history', label: 'Historique', icon: History },
   { key: 'rules', label: 'Règles automatiques', icon: Power },
+  { key: 'loyalty', label: 'Fidélité', icon: Crown },
 ]
 
 const ROLE_LABELS = { CLIENT: 'Client', DRIVER: 'Coursier', DEM_PRO: 'DEM Pro', CHEF_DE_FLOTTE: 'Chef de flotte' }
@@ -69,7 +71,7 @@ export default function Rewards() {
         title="Récompenses"
         subtitle="Rien n'est offert automatiquement : vous attribuez chaque récompense, ou vous activez une règle, avec ses dates."
       />
-      <TabBar tabs={meta?.clientsOnly ? TABS.filter(t => t.key !== 'rules') : TABS} active={tab} onChange={setTab} />
+      <TabBar tabs={meta?.clientsOnly ? TABS.filter(t => !['rules', 'loyalty'].includes(t.key)) : TABS} active={tab} onChange={setTab} />
       <div style={pageScroll}>
         {!meta ? (
           <div style={{ color: 'var(--text-muted)', padding: 30 }}>Chargement…</div>
@@ -77,7 +79,9 @@ export default function Rewards() {
           <GrantForm meta={meta} onGranted={() => { setHistoryVersion(v => v + 1); setTab('history') }} />
         ) : tab === 'history' ? (
           <HistoryTab key={historyVersion} />
-        ) : meta.clientsOnly ? null : (
+        ) : meta.clientsOnly ? null : tab === 'loyalty' ? (
+          <LoyaltyPerksPanel />
+        ) : (
           <RulesTab rules={meta.rules} onSaved={() => setMetaVersion(v => v + 1)} />
         )}
       </div>

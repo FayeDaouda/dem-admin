@@ -80,9 +80,9 @@ function DriversPart(props) {
       <div style={card}>
         <h3 style={cardTitle}>Classement par temps de connexion <span style={{ fontWeight: 500, color: 'var(--text-muted)' }}>· 15 premiers</span></h3>
         {d.ranking.length === 0 ? <div style={empty}>Aucun coursier connecté aujourd'hui.</div> : (
-          // En colonnes (1 à 8 à gauche, 9 à 15 à droite), lu de haut en bas
-          <div style={{ columns: isMobile ? 1 : 2, columnGap: 24 }}>
-            {d.ranking.slice(0, 15).map((x, i) => <div key={x.id} style={{ breakInside: 'avoid' }}><DriverRow d={x} rank={i + 1} /></div>)}
+          // Une seule liste verticale, de 1 à 15
+          <div style={{ maxWidth: 760 }}>
+            {d.ranking.slice(0, 15).map((x, i) => <DriverRow key={x.id} d={x} rank={i + 1} />)}
           </div>
         )}
       </div>

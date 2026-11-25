@@ -6,6 +6,7 @@ import { glass, glassInput, pageWrap, pageScroll } from '../lib/glassStyles'
 import ZoneMatrixSection from './ZoneMatrixSection'
 import FlatPromoSection from './FlatPromoSection'
 import CashFeeSection from './CashFeeSection'
+import PackageSurchargeSection from './PackageSurchargeSection'
 import PassLivreursSection from './PassLivreursSection'
 import PassForfaitSettings from './PassForfaitSettings'
 import { useAuth } from '../contexts/AuthContext'
@@ -191,6 +192,7 @@ function PrixTab({ rights }) {
     <div>
       {rights.tariffBlocks && <FlatPromoSection />}
       {rights.tariffBlocks && <CashFeeSection />}
+      {rights.tariffBlocks && <PackageSurchargeSection />}
       {rights.tariffBlocks && <ZoneMatrixSection />}
 
       {!config ? <ConfigLoading error={error} /> : (

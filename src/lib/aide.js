@@ -36,6 +36,7 @@ export const PAGES = {
   '/equipes': "Comptes de l'équipe admin et leurs rôles. Le rôle décide des pages et des actions accessibles ; l'onglet Rôles permet d'en créer, d'en modifier et d'en supprimer. Les demandes de réinitialisation de mot de passe arrivent ici.",
   '/audit': "Journal de toutes les actions faites par les admins (qui, quoi, sur quoi, quand). Un clic sur une ligne ouvre son détail.",
   '/maintenance': "Tâches ponctuelles sur les données (aperçu puis exécution), fournisseur des SMS et activation du code secret. Chaque exécution est tracée dans l'audit.",
+  '/lieux': "Recherche d'adresse de l'app : les lieux connus de Dakar que les clients trouvent en premier (dès 2 lettres, fautes et surnoms compris), avant Google, et les recherches restées sans résultat.",
   '/version-app': "Version minimale de l'application et invitation à mettre à jour, pour Android et iPhone.",
 }
 
@@ -57,7 +58,7 @@ export const TITRES = {
   "Motifs d'annulation": "Annulations regroupées : pas de coursier (aucun coursier trouvé, ou trop long sans coursier), client, coursier, adresse fausse, doublon, autre. « Sans motif » : le client a annulé dans l'app sans choisir de motif.",
   'Délais': "Temps moyen entre la création et l'acceptation (courses immédiates), l'acceptation et le retrait du colis, le retrait et la livraison. Entre parenthèses : nombre de courses mesurées.",
   'Shifts': "Créneaux prévus pour ce coursier, jour par jour. Cochez puis enregistrez ; les créneaux eux-mêmes se règlent sur le Dashboard (Shifts du jour).",
-  'Shifts du jour': "Planning de la flotte DEM comparé à la connexion réelle : présent, en retard, absent, parti avant la fin (15 min de tolérance). Les absents remontent dans « À traiter ». Super Admin et Responsable de flottes règlent les créneaux (« Modifier les créneaux ») et les coursiers de chaque créneau, jour par jour (bouton « Coursiers »).",
+  'Shifts du jour': "Planning de la flotte DEM comparé au temps réellement connecté sur chaque créneau, sans tolérance : présent = connecté du début à la fin (coupures de moins de 10 min ignorées), partiel = 2 h ou plus (1 h sur un créneau de 2 h), absent = moins. Pendant le créneau : en ligne / hors ligne et temps cumulé, verdict à la fin. Absents, partiels et coursiers hors ligne pendant leur créneau remontent dans « À traiter ». Super Admin et Responsable de flottes règlent les créneaux (« Modifier les créneaux ») et les coursiers de chaque créneau, jour par jour (bouton « Coursiers »).",
   'Historique de connexion': "Temps passé en ligne dans l'app, jour par jour sur 7 ou 30 jours, et courses acceptées ce jour-là. Reconstitué depuis les passages en ligne / hors ligne du coursier.",
   'Notes internes': "Notes datées de l'équipe (retards, appels, avertissements, échanges avec le client). Jamais visibles du client ni du coursier.",
   'Pro › À traiter': "Ce qui demande une action : essais qui finissent dans 2 jours ou moins, Pro dormants, validés sans commande, Pro en attente de validation, réponses à vos demandes.",
@@ -105,7 +106,10 @@ export const TITRES = {
   // ── Incidents ──
   "Ce qui s'est passé": "Type d'incident, gravité, heure de détection et détails envoyés par le système.",
   'Course liée': 'La course concernée par l’incident, avec un lien vers sa fiche.',
+  'Supplément par type de colis': "Montant ajouté au prix selon le type de colis choisi par le client (ex. Grand colis). Il revient au coursier et figure dans le prix garanti avant la commande.",
   'Suivi': "Statut de l'incident et notes de l'équipe. Clore l'incident le passe en résolu.",
+  'Échanges avec le coursier': "Signalement ou alerte SOS du coursier : ses messages, vos réponses (visibles dans son application, envoyées en notification) et le passage en traité.",
+  'Échanges avec le client': "Réclamation du client : ses messages et photos, vos réponses (visibles dans son application, envoyées en notification), le passage en traitée et le geste commercial éventuel. Les notes de Suivi restent internes.",
   'Coursier': 'Le coursier concerné, avec son téléphone.',
   'Utilisateur signalé': "La personne signalée par l'équipe et le motif du signalement.",
 
@@ -305,6 +309,10 @@ export const ONGLETS = {
     envoyer:    "Envoyer une notification push maintenant ou la programmer, par type de compte. Un test sur un numéro est possible avant l'envoi.",
     historique: 'Notifications déjà envoyées, avec leur cible et leurs résultats.',
     alerte:     "Message affiché en haut de l'application tant qu'il est actif.",
+  },
+  '/lieux': {
+    catalogue:    "Lieux trouvés en premier dans la recherche d'adresse de l'app, avec leur position exacte. ★ : proposé en puce « Lieux connus » avant toute frappe. « Visible » décoché : caché sans être supprimé. Chaque changement est visible tout de suite dans l'app.",
+    introuvables: "Ce que les clients ont tapé avant de quitter la recherche sans rien choisir, regroupé et compté. « Ajouter au catalogue » crée le lieu et garde la frappe du client comme surnom.",
   },
   '/relances': {
     inscrits: 'Nouveaux inscrits par type de compte et par période, à contacter.',
