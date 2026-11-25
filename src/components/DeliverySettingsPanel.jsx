@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { PackageCheck, MessageSquareText, Save, AlertTriangle, Store } from 'lucide-react'
+import { PackageCheck, MessageSquareText, Save, AlertTriangle, Store, SkipForward } from 'lucide-react'
 import api from '../lib/api'
 import { glass } from '../lib/glassStyles'
 import InlineConfirm from './InlineConfirm'
@@ -40,6 +40,7 @@ export default function DeliverySettingsPanel() {
   const [mode, setMode]       = useState('off')
   const [tracking, setTracking] = useState(true)
   const [pickupMode, setPickupMode] = useState('off')
+  const [chain, setChain] = useState(null) // course suivante (coursier qui termine)
   const [unavailable, setUnavailable] = useState(false)
   const [error, setError]     = useState('')
   const [done, setDone]       = useState('')
@@ -48,7 +49,7 @@ export default function DeliverySettingsPanel() {
 
   useEffect(() => {
     api.get('/admin/delivery-settings')
-      .then(({ data }) => { setData(data); setMode(data.deliveryCodeMode); setTracking(data.receiverTrackingSms); setPickupMode(data.pickupCodeMode ?? 'off') })
+      .then(({ data }) => { setData(data); setMode(data.deliveryCodeMode); setTracking(data.receiverTrackingSms); setPickupMode(data.pickupCodeMode ?? 'off'); setChain(data.chain ?? null) })
       .catch(err => {
         if (err.response?.status === 404) setUnavailable(true) // serveur pas encore à jour
         else setError(err.response?.data?.message ?? 'Erreur de chargement.')
@@ -58,7 +59,9 @@ export default function DeliverySettingsPanel() {
   if (unavailable) return null
 
   const hasPickup = data?.pickupCodeMode !== undefined // serveur à jour
-  const changed = data && (mode !== data.deliveryCodeMode || tracking !== data.receiverTrackingSms || (hasPickup && pickupMode !== data.pickupCodeMode))
+  const chainKeys = ['enabled', 'maxRemainingMin', 'maxKm', 'lateReleaseMin']
+  const chainChanged = !!(chain && data?.chain && chainKeys.some(k => chain[k] !== data.chain[k]))
+  const changed = data && (mode !== data.deliveryCodeMode || tracking !== data.receiverTrackingSms || (hasPickup && pickupMode !== data.pickupCodeMode) || chainChanged)
   const r = data?.readiness
   const known = r ? r.ready + r.notReady : 0
   const readyPct = r && r.activeDrivers > 0 ? Math.round((r.ready / r.activeDrivers) * 100) : 0
@@ -71,8 +74,9 @@ export default function DeliverySettingsPanel() {
       if (mode !== data.deliveryCodeMode) body.deliveryCodeMode = mode
       if (tracking !== data.receiverTrackingSms) body.receiverTrackingSms = tracking
       if (hasPickup && pickupMode !== data.pickupCodeMode) body.pickupCodeMode = pickupMode
+      if (chainChanged) body.chain = Object.fromEntries(chainKeys.map(k => [k, chain[k]]))
       const { data: next } = await api.put('/admin/delivery-settings', body)
-      setData(next); setMode(next.deliveryCodeMode); setTracking(next.receiverTrackingSms); setPickupMode(next.pickupCodeMode ?? 'off')
+      setData(next); setMode(next.deliveryCodeMode); setTracking(next.receiverTrackingSms); setPickupMode(next.pickupCodeMode ?? 'off'); setChain(next.chain ?? null)
       setDone('Réglages enregistrés.')
       setConfirming(false)
     } catch (err) {
@@ -85,6 +89,7 @@ export default function DeliverySettingsPanel() {
     tracking !== data?.receiverTrackingSms && `SMS de suivi au destinataire : ${tracking ? 'activé' : 'coupé'}`,
     hasPickup && pickupMode !== data?.pickupCodeMode && `Code de retrait DEM Pro : ${PICKUP_MODES.find(m => m.key === pickupMode)?.label}`,
     hasPickup && pickupMode === 'required' && pickupMode !== data?.pickupCodeMode && 'Les coursiers sans la 1.2.5 ne pourront plus valider un retrait DEM Pro sans passer par l\'admin.',
+    chainChanged && `Course suivante : ${chain.enabled ? 'activée' : 'éteinte'} (${chain.maxRemainingMin} min avant la fin, ${chain.maxKm} km, remise en recherche après ${chain.lateReleaseMin} min de retard)`,
     risky && `Attention : ${r.notReady + r.unknown} livreur(s) actif(s) pas encore en ${r.minVersion} ou inconnu(s).`,
   ].filter(Boolean)
 
@@ -164,6 +169,39 @@ export default function DeliverySettingsPanel() {
                   {data.pickupCodeMode === m.key && <span style={{ fontSize: 11, marginLeft: 8, color: 'var(--text-muted)' }}>(actuel)</span>}
                   <span style={{ display: 'block', fontSize: 12.5, color: 'var(--text-muted)', marginTop: 2 }}>{m.help}</span>
                 </span>
+              </label>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* ── Course suivante ── */}
+      {data && chain && (
+        <div style={{ ...glass, padding: '18px 22px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+            <SkipForward size={16} color="var(--primary)" />
+            <h3 style={{ fontSize: 14, fontWeight: 700, margin: 0 }}>Course suivante</h3>
+          </div>
+          <p style={{ fontSize: 12.5, color: 'var(--text-muted)', margin: '0 0 12px' }}>
+            Un coursier qui termine une course se voit proposer la suivante (course ou tournée) si le retrait est dans la même
+            zone que sa livraison. Il passe avant un coursier libre seulement s'il arrive aussi vite. Le client n'est pas prévenu :
+            il voit juste un délai juste. App coursier {data.chain.minAppVersion} ou plus.
+          </p>
+          <label style={{ display: 'flex', gap: 10, alignItems: 'center', cursor: 'pointer', marginBottom: 12 }}>
+            <input type="checkbox" checked={!!chain.enabled} onChange={e => { setChain({ ...chain, enabled: e.target.checked }); setDone('') }} />
+            <span style={{ fontSize: 13.5, fontWeight: 700 }}>Activer la course suivante</span>
+          </label>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 10 }}>
+            {[
+              ['maxRemainingMin', 'Minutes avant la fin', 1, 15, 1],
+              ['maxKm', 'Distance max. (km) si autre zone', 0.5, 5, 0.5],
+              ['lateReleaseMin', 'Retard avant remise en recherche (min)', 3, 30, 1],
+            ].map(([key, label, min, max, step]) => (
+              <label key={key} style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: 12, color: 'var(--text-muted)' }}>
+                {label}
+                <input type="number" min={min} max={max} step={step} value={chain[key]} disabled={!chain.enabled}
+                  onChange={e => { setChain({ ...chain, [key]: Number(e.target.value) }); setDone('') }}
+                  style={{ padding: '7px 10px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border)', fontSize: 13 }} />
               </label>
             ))}
           </div>
