@@ -1,7 +1,8 @@
 import { useState, useEffect, useCallback } from 'react'
 import api from '../lib/api'
 import { useAuth } from '../contexts/AuthContext'
-import { Pencil, X, Users, Bike } from 'lucide-react'
+import { Pencil, X, Users, Bike, Trophy } from 'lucide-react'
+import DriverWeeklyPointsTab from '../components/DriverWeeklyPointsTab'
 import { glass, glassInput, pageWrap, pageScroll } from '../lib/glassStyles'
 import { canSee, TAB_ROLES } from '../lib/droits'
 import PageHeader from '../components/PageHeader'
@@ -95,6 +96,7 @@ const NONE_VISUAL = { emoji: '🆕', color: '#7c849c', bg: 'rgba(124,132,156,.08
 const BADGE_TABS = [
   { key: 'clients',   label: 'Clients',   icon: Users },
   { key: 'coursiers', label: 'Coursiers', icon: Bike },
+  { key: 'points',    label: 'Points de la semaine', icon: Trophy },
 ]
 
 export default function BadgesPage() {
@@ -108,6 +110,7 @@ export default function BadgesPage() {
       <div style={pageScroll}>
         {tab === 'clients' && <ClientBadgesTab />}
         {tab === 'coursiers' && <DriverBadgesTab />}
+        {tab === 'points' && <DriverWeeklyPointsTab />}
       </div>
     </div>
   )

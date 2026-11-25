@@ -61,6 +61,7 @@ export const PAGE_TABS = {
   '/badges': [
     t('clients',   'Clients',   TAB_ROLES.badges.clients),
     t('coursiers', 'Coursiers', TAB_ROLES.badges.coursiers),
+    t('points',    'Points de la semaine', TAB_ROLES.badges.points),
   ],
   '/notifications': [
     t('envoyer',    'Envoyer et programmer', TAB_ROLES.notifications.envoyer),
