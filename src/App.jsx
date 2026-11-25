@@ -35,6 +35,34 @@ import ClientBase from './pages/ClientBase'
 
 const LiveMap     = lazy(() => import('./pages/LiveMap'))
 const FleetSection = lazy(() => import('./pages/fleet/FleetSection'))
+// Espace web DEM Pro : pro.dem.sn, ou /pro sur l'admin (développement, aperçus)
+const ProApp = lazy(() => import('./pro/ProApp'))
+const PRO_HOST = /^pro\./.test(window.location.hostname)
+const isProPath = (p) => p === '/pro' || p.startsWith('/pro/')
+// En production, l'espace DEM Pro vit sur pro.dem.sn, jamais sur l'origine de
+// l'admin (même stockage du navigateur : une faille d'un côté exposerait la
+// session de l'autre). /pro reste ouvert en local et sur les préversions.
+if (window.location.hostname === 'admin.dem.sn' && isProPath(window.location.pathname)) {
+  const rest = window.location.pathname.replace(/^\/pro/, '') || '/'
+  window.location.replace(`https://pro.dem.sn${rest}${window.location.search}${window.location.hash}`)
+}
+// Onglet « DEM Pro » dès le premier affichage (index.html dit « DEM Admin »)
+if (PRO_HOST || isProPath(window.location.pathname)) document.title = 'DEM Pro'
+
+// Premier affichage de l'espace DEM Pro (avant le chargement de son code) :
+// ses couleurs et son titre, pas ceux de l'admin
+const ProBootLoader = () => (
+  <div style={{ minHeight: '100vh', background: '#F6F8FB', display: 'grid', placeItems: 'center', fontFamily: "'DM Sans', system-ui, sans-serif" }}>
+    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 14 }}>
+      <div style={{ font: '700 13px/1 system-ui, sans-serif', letterSpacing: '.14em', textTransform: 'uppercase', color: '#021520' }}>
+        DEM <span style={{ color: '#0086C8' }}>Pro</span>
+      </div>
+      <div style={{ width: 120, height: 2, background: '#E2E8F0', overflow: 'hidden' }}>
+        <div style={{ width: '40%', height: '100%', background: '#00D2FF' }} />
+      </div>
+    </div>
+  </div>
+)
 
 const PageLoader = () => (
   <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)' }}>
@@ -151,6 +179,13 @@ function AppRoutes() {
 }
 
 export default function App() {
+  if (PRO_HOST || isProPath(window.location.pathname)) {
+    return (
+      <Suspense fallback={<ProBootLoader />}>
+        <ProApp basename={PRO_HOST ? '' : '/pro'} />
+      </Suspense>
+    )
+  }
   return (
     <BrowserRouter>
       <AuthProvider>
