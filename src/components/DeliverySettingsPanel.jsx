@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { PackageCheck, MessageSquareText, Save, AlertTriangle } from 'lucide-react'
+import { PackageCheck, MessageSquareText, Save, AlertTriangle, Store } from 'lucide-react'
 import api from '../lib/api'
 import { glass } from '../lib/glassStyles'
 import InlineConfirm from './InlineConfirm'
@@ -26,10 +26,18 @@ const MODES = [
   },
 ]
 
+// Code de retrait (commandes DEM Pro) : la boutique le donne au coursier
+const PICKUP_MODES = [
+  { key: 'off', label: 'Éteint', help: 'Aucun code au retrait.' },
+  { key: 'show', label: 'Affiché', help: 'Le commerçant reçoit le code dès qu\'un coursier accepte (notification + suivi). Le coursier peut le saisir, mais le retrait reste possible sans.' },
+  { key: 'required', label: 'Obligatoire', help: 'Le retrait exige le bon code. À activer seulement quand les coursiers sont en 1.2.5 : les versions plus anciennes ne savent pas le demander.' },
+]
+
 export default function DeliverySettingsPanel() {
   const [data, setData]       = useState(null)
   const [mode, setMode]       = useState('off')
   const [tracking, setTracking] = useState(true)
+  const [pickupMode, setPickupMode] = useState('off')
   const [unavailable, setUnavailable] = useState(false)
   const [error, setError]     = useState('')
   const [done, setDone]       = useState('')
@@ -38,7 +46,7 @@ export default function DeliverySettingsPanel() {
 
   useEffect(() => {
     api.get('/admin/delivery-settings')
-      .then(({ data }) => { setData(data); setMode(data.deliveryCodeMode); setTracking(data.receiverTrackingSms) })
+      .then(({ data }) => { setData(data); setMode(data.deliveryCodeMode); setTracking(data.receiverTrackingSms); setPickupMode(data.pickupCodeMode ?? 'off') })
       .catch(err => {
         if (err.response?.status === 404) setUnavailable(true) // serveur pas encore à jour
         else setError(err.response?.data?.message ?? 'Erreur de chargement.')
@@ -47,7 +55,8 @@ export default function DeliverySettingsPanel() {
 
   if (unavailable) return null
 
-  const changed = data && (mode !== data.deliveryCodeMode || tracking !== data.receiverTrackingSms)
+  const hasPickup = data?.pickupCodeMode !== undefined // serveur à jour
+  const changed = data && (mode !== data.deliveryCodeMode || tracking !== data.receiverTrackingSms || (hasPickup && pickupMode !== data.pickupCodeMode))
   const r = data?.readiness
   const known = r ? r.ready + r.notReady : 0
   const readyPct = r && r.activeDrivers > 0 ? Math.round((r.ready / r.activeDrivers) * 100) : 0
@@ -59,8 +68,9 @@ export default function DeliverySettingsPanel() {
       const body = {}
       if (mode !== data.deliveryCodeMode) body.deliveryCodeMode = mode
       if (tracking !== data.receiverTrackingSms) body.receiverTrackingSms = tracking
+      if (hasPickup && pickupMode !== data.pickupCodeMode) body.pickupCodeMode = pickupMode
       const { data: next } = await api.put('/admin/delivery-settings', body)
-      setData(next); setMode(next.deliveryCodeMode); setTracking(next.receiverTrackingSms)
+      setData(next); setMode(next.deliveryCodeMode); setTracking(next.receiverTrackingSms); setPickupMode(next.pickupCodeMode ?? 'off')
       setDone('Réglages enregistrés.')
       setConfirming(false)
     } catch (err) {
@@ -71,6 +81,7 @@ export default function DeliverySettingsPanel() {
   const summary = [
     mode !== data?.deliveryCodeMode && `Code de livraison : ${MODES.find(m => m.key === mode)?.label}`,
     tracking !== data?.receiverTrackingSms && `SMS de suivi au destinataire : ${tracking ? 'activé' : 'coupé'}`,
+    hasPickup && pickupMode !== data?.pickupCodeMode && `Code de retrait DEM Pro : ${PICKUP_MODES.find(m => m.key === pickupMode)?.label}`,
     risky && `Attention : ${r.notReady + r.unknown} livreur(s) actif(s) pas encore en ${r.minVersion} ou inconnu(s).`,
   ].filter(Boolean)
 
@@ -124,6 +135,37 @@ export default function DeliverySettingsPanel() {
           </div>
         )}
       </div>
+
+      {/* ── Code de retrait (DEM Pro) ── */}
+      {data && hasPickup && (
+        <div style={{ ...glass, padding: '18px 22px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+            <Store size={16} color="var(--primary)" />
+            <h3 style={{ fontSize: 14, fontWeight: 700, margin: 0 }}>Code de retrait (DEM Pro)</h3>
+          </div>
+          <p style={{ fontSize: 12.5, color: 'var(--text-muted)', margin: '0 0 14px' }}>
+            4 chiffres que la boutique donne au coursier quand il récupère le colis : le bon coursier repart avec le bon colis.
+            Une tournée a un seul code.
+          </p>
+          <div role="radiogroup" aria-label="Mode du code de retrait" style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            {PICKUP_MODES.map(m => (
+              <label key={m.key} style={{
+                display: 'flex', gap: 10, alignItems: 'flex-start', padding: '10px 12px', borderRadius: 'var(--radius-sm)', cursor: 'pointer',
+                border: `1.5px solid ${pickupMode === m.key ? 'var(--primary)' : 'var(--border)'}`,
+                background: pickupMode === m.key ? 'rgba(0,180,216,0.06)' : 'transparent',
+              }}>
+                <input type="radio" name="pickup-code-mode" value={m.key} checked={pickupMode === m.key}
+                  onChange={() => { setPickupMode(m.key); setDone('') }} style={{ marginTop: 3 }} />
+                <span>
+                  <span style={{ fontSize: 13.5, fontWeight: 700 }}>{m.label}</span>
+                  {data.pickupCodeMode === m.key && <span style={{ fontSize: 11, marginLeft: 8, color: 'var(--text-muted)' }}>(actuel)</span>}
+                  <span style={{ display: 'block', fontSize: 12.5, color: 'var(--text-muted)', marginTop: 2 }}>{m.help}</span>
+                </span>
+              </label>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* ── SMS de suivi ── */}
       {data && (
