@@ -1,11 +1,12 @@
 import { Clock, ShieldOff, XCircle, Smartphone } from 'lucide-react'
 import { useProAuth } from './proAuthContext'
 import { Button } from './ui/ui'
+import { whatsappUrl } from './support'
 
 // Statut du compte DEM Pro, même ordre que l'app (app_startup_notifier.dart) :
 // suspendu, inscription inachevée, en attente de validation, refusé.
 // Tant que le compte n'est pas actif, l'espace web ne s'ouvre pas.
-const SUPPORT_WHATSAPP = 'https://wa.me/221784448524'
+const SUPPORT_WHATSAPP = whatsappUrl('Bonjour DEM, j\'ai une question sur mon compte DEM Pro.')
 
 function accountState(user) {
   if (!user) return null

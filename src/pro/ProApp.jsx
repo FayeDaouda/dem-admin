@@ -17,6 +17,19 @@ const Shop = lazy(() => import('./pages/Shop'))
 const Requests = lazy(() => import('./pages/Requests'))
 const WalletPage = lazy(() => import('./pages/WalletPage'))
 const Account = lazy(() => import('./pages/Account'))
+const Batches = lazy(() => import('./pages/Batches'))
+const NewBatch = lazy(() => import('./pages/NewBatch'))
+const Clients = lazy(() => import('./pages/Clients'))
+const Stats = lazy(() => import('./pages/Stats'))
+const Team = lazy(() => import('./pages/Team'))
+const ApiDem = lazy(() => import('./pages/ApiDem'))
+const Referral = lazy(() => import('./pages/Referral'))
+
+// Accueil : tableau de bord, ou Livraisons pour un employé (sans accès au tableau de bord)
+function Home() {
+  const { can } = useProAuth()
+  return can('dashboard') ? <Dashboard /> : <Navigate to="/livraisons" replace />
+}
 
 function Loader() {
   return (
@@ -57,13 +70,20 @@ export default function ProApp({ basename = '' }) {
         <ProAuthProvider>
           <Routes>
             <Route path="/connexion" element={<PublicOnly><Login /></PublicOnly>} />
-            <Route path="/" element={<Protected><Dashboard /></Protected>} />
+            <Route path="/" element={<Protected><Home /></Protected>} />
             <Route path="/livraisons" element={<Protected><Deliveries /></Protected>} />
             <Route path="/livraisons/nouvelle" element={<Protected><NewDelivery /></Protected>} />
             <Route path="/boutique" element={<Protected><Shop /></Protected>} />
             <Route path="/commandes" element={<Protected><Requests /></Protected>} />
             <Route path="/wallet" element={<Protected><WalletPage /></Protected>} />
             <Route path="/compte" element={<Protected><Account /></Protected>} />
+            <Route path="/compte/equipe" element={<Protected><Team /></Protected>} />
+            <Route path="/compte/api" element={<Protected><ApiDem /></Protected>} />
+            <Route path="/compte/parrainage" element={<Protected><Referral /></Protected>} />
+            <Route path="/tournees" element={<Protected><Batches /></Protected>} />
+            <Route path="/tournees/nouvelle" element={<Protected><NewBatch /></Protected>} />
+            <Route path="/clients" element={<Protected><Clients /></Protected>} />
+            <Route path="/statistiques" element={<Protected><Stats /></Protected>} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </ProAuthProvider>

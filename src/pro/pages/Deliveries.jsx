@@ -1,15 +1,17 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
-import { MapContainer, Marker, Polyline, useMap } from 'react-leaflet'
-import L from 'leaflet'
-import 'leaflet/dist/leaflet.css'
 import {
   Plus, Search, Bike, X, Phone, Link2, Copy, Download, MoreHorizontal, Eye, Ban, ChevronLeft, ChevronRight,
-  ArrowDown, ArrowUp, ArrowUpDown,
+  ArrowDown, ArrowUp, ArrowUpDown, Star, Wine, Gauge,
 } from 'lucide-react'
-import MapBaseLayer from '../../components/MapBaseLayer'
 import proApi, { errMsg } from '../lib/proApi'
 import PayOrderModal from '../ui/PayOrderModal'
+import { ReceiptActions } from '../ui/ReceiptButton'
+import LiveDriverMap from '../ui/LiveDriverMap'
+import RateDriverModal, { StarInput } from '../ui/RateDriverModal'
+import { SCORE_LABELS } from '../ui/ratingLabels'
+import { categoryOf } from '../ui/packageCategories'
+import '../styles/delivery.css'
 import { ACTIVE_STATUSES, ORDER_STATUS, dateTime, fcfa, orderTotal, phoneFmt, timeAgo, timeOnly, dakarDay, dakarMidnight } from '../lib/format'
 import { Button, Card, Drawer, Empty, ErrorState, IconButton, Modal, PageHeader, Skeleton, StatusBadge } from '../ui/ui'
 import { useNotify } from '../ui/notifyContext'
@@ -397,12 +399,24 @@ function OrderDrawer({ id, onClose, onChanged }) {
   const [failed, setFailed] = useState(false)
   const [cancelOpen, setCancelOpen] = useState(false)
   const [payOpen, setPayOpen] = useState(false)
+  // Note du coursier : fenêtre ouverte d'elle-même quand la livraison passe
+  // à « Livrée » sous les yeux du commerçant (comme l'app), sinon depuis la fiche
+  const [rateOpen, setRateOpen] = useState(false)
+  const [rateScore, setRateScore] = useState(5)
+  const [rated, setRated] = useState(null) // note envoyée depuis cette fiche
+  const lastStatus = useRef(null)
 
   const load = useCallback(async () => {
     if (!id) return
     try {
       const res = await proApi.get(`/orders/${id}`)
-      setOrder(res?.data?.order ?? res?.data ?? null)
+      const next = res?.data?.order ?? res?.data ?? null
+      const before = lastStatus.current
+      lastStatus.current = next?.status ?? null
+      if (before && before !== 'DELIVERED' && next?.status === 'DELIVERED' && next.driver && !next.rating) {
+        setRateScore(5); setRateOpen(true)
+      }
+      setOrder(next)
       setFailed(false)
     } catch { setFailed(true) }
   }, [id])
@@ -422,12 +436,18 @@ function OrderDrawer({ id, onClose, onChanged }) {
     { label: 'Livraison créée', at: o.createdAt, done: true },
     ...(o.scheduledAt ? [{ label: `Programmée pour le ${dateTime(o.scheduledAt)}`, at: null, done: true }] : []),
     { label: o.driver?.name ? `Coursier trouvé · ${o.driver.name}` : 'Coursier trouvé', at: o.acceptedAt, done: !!o.acceptedAt },
+    // Arrivées détectées par le serveur (arrival-notifier.js), si connues
+    ...(o.pickupArrivedAt ? [{ label: 'Coursier arrivé au retrait', at: o.pickupArrivedAt, done: true }] : []),
     { label: 'Colis récupéré', at: o.pickedUpAt, done: !!o.pickedUpAt },
+    ...(o.deliveryArrivedAt ? [{ label: 'Coursier chez votre client', at: o.deliveryArrivedAt, done: true }] : []),
     { label: 'Livrée', at: o.deliveredAt, done: !!o.deliveredAt },
   ] : []
   const timeline = o?.status === 'CANCELLED'
     ? [...steps.filter(s => s.done), { label: `Annulée${o.cancelReason ? ` · ${CANCEL_LABELS[o.cancelReason] ?? o.cancelReason}` : ''}`, at: o.cancelledAt, done: true, danger: true }]
     : steps
+  const myRating = rated ?? o?.rating ?? null
+  const canRate = o?.status === 'DELIVERED' && !!o.driver && !myRating
+  const pkg = categoryOf(o?.packageCategory)
 
   return (
     <Drawer open={!!id} onClose={onClose} width={560} label="Détail de la livraison">
@@ -439,7 +459,14 @@ function OrderDrawer({ id, onClose, onChanged }) {
             <IconButton icon={Copy} label="Copier la référence" size="sm" variant="plain" onClick={copyRef} />
           </div>
           <div className="dl-dtitle">{o ? (o.receiverName || 'Client') : '…'}</div>
-          {o && <div className="dl-dmeta"><StatusBadge status={o.status} /><span className="muted">Créée le {dateTime(o.createdAt)}</span></div>}
+          {o && (
+            <div className="dl-dmeta">
+              <StatusBadge status={o.status} />
+              {o.priority === 'EXPRESS' && <span className="dv-tag dv-tag-express"><Gauge size={12} aria-hidden /> Express</span>}
+              {o.isFragile && <span className="dv-tag"><Wine size={12} aria-hidden /> Fragile</span>}
+              <span className="muted">Créée le {dateTime(o.createdAt)}</span>
+            </div>
+          )}
         </div>
         <IconButton icon={X} label="Fermer" size="sm" variant="plain" onClick={onClose} />
       </div>
@@ -449,7 +476,7 @@ function OrderDrawer({ id, onClose, onChanged }) {
           : !o ? <div style={{ padding: 24, display: 'grid', gap: 14 }}><Skeleton h={200} /><Skeleton h={120} /><Skeleton h={120} /></div>
           : (
             <>
-              <RouteMap order={o} />
+              <LiveDriverMap order={o} />
 
               <section className="dl-sec">
                 <h3 className="label-caps dl-sec-title">Suivi</h3>
@@ -468,6 +495,7 @@ function OrderDrawer({ id, onClose, onChanged }) {
                 <h3 className="label-caps dl-sec-title">Destinataire</h3>
                 <KV label="Client" value={<>{o.receiverName || '—'}{o.receiverPhone && <> · <a className="link" href={`tel:${o.receiverPhone}`}>{phoneFmt(o.receiverPhone)}</a></>}</>} />
                 <KV label="Adresse" value={o.deliveryAddress} />
+                {(pkg || o.isFragile) && <KV label="Type de colis" value={[pkg?.label, o.isFragile && 'Fragile'].filter(Boolean).join(' · ')} />}
                 {o.description && <KV label="Colis" value={o.description} />}
                 <KV label="Retrait" value={o.pickupAddress} />
               </section>
@@ -482,9 +510,35 @@ function OrderDrawer({ id, onClose, onChanged }) {
                       <div className="muted" style={{ fontSize: 13 }}>
                         {phoneFmt(o.driver.phone)}{o.driver.vehiclePlate ? ` · ${o.driver.vehiclePlate}` : ''}
                       </div>
+                      {(o.driver.averageRating != null || o.driver.deliveredCount > 0) && (
+                        <div className="dv-driver-stats">
+                          {o.driver.averageRating != null
+                            ? <span><Star size={12} aria-hidden className="dv-gold" /> <b className="num">{String(o.driver.averageRating).replace('.', ',')}</b></span>
+                            : <span>Nouveau coursier</span>}
+                          {o.driver.deliveredCount > 0 && <span className="num">{o.driver.deliveredCount} livraison{o.driver.deliveredCount > 1 ? 's' : ''}</span>}
+                        </div>
+                      )}
                     </div>
                     {canCall && <Button variant="ghost" size="sm" icon={Phone} href={`tel:${o.driver.phone}`}>Appeler</Button>}
                   </div>
+                  {o.status === 'DELIVERED' && (
+                    <div className={`dv-myrate ${canRate ? 'is-todo' : ''}`}>
+                      {myRating ? (
+                        <>
+                          <span className="dv-myrate-title">Votre note</span>
+                          <span className="dv-stars-static" role="img" aria-label={`${myRating.score} sur 5 · ${SCORE_LABELS[myRating.score] ?? ''}`}>
+                            {[1, 2, 3, 4, 5].map(n => <Star key={n} size={16} aria-hidden className={n <= myRating.score ? 'is-on' : ''} />)}
+                          </span>
+                          {myRating.comment && <p className="dv-myrate-comment">« {myRating.comment} »</p>}
+                        </>
+                      ) : (
+                        <>
+                          <span className="dv-myrate-title">Notez votre coursier</span>
+                          <StarInput value={0} size={24} label="Noter le coursier" onChange={(n) => { setRateScore(n); setRateOpen(true) }} />
+                        </>
+                      )}
+                    </div>
+                  )}
                 </section>
               )}
 
@@ -498,6 +552,7 @@ function OrderDrawer({ id, onClose, onChanged }) {
                   {o.paymentMode === 'merchant' ? (o.paymentStatus === 'PAID' ? 'Réglée par votre boutique.' : 'À régler par votre boutique, en ligne.') : `Payée par le client à la livraison${o.paymentStatus === 'PAID' ? ' · réglée' : ''}.`}
                 </div>
                 {canPay && <Button size="sm" style={{ marginTop: 12 }} onClick={() => setPayOpen(true)}>Payer {fcfa(orderTotal(o))}</Button>}
+                <ReceiptActions order={o} />
               </section>
             </>
           )}
@@ -515,6 +570,8 @@ function OrderDrawer({ id, onClose, onChanged }) {
       )}
       <CancelModal open={cancelOpen} order={o} onClose={() => setCancelOpen(false)} onDone={() => { setCancelOpen(false); load(); onChanged() }} />
       <PayOrderModal open={payOpen} order={o} onClose={() => setPayOpen(false)} onPaid={() => { load(); onChanged() }} />
+      <RateDriverModal open={rateOpen && !payOpen} order={o} initialScore={rateScore} onClose={() => setRateOpen(false)}
+        onRated={(r) => { setRateOpen(false); if (r) setRated(r); load() }} />
     </Drawer>
   )
 }
@@ -571,48 +628,5 @@ function CancelModal({ open, order, onClose, onDone }) {
         )}
       </fieldset>
     </Modal>
-  )
-}
-
-// ── Carte : retrait, destination, coursier ───────────────────────────────────
-const dot = (bg, svg) => L.divIcon({
-  className: '', iconSize: [24, 24], iconAnchor: [12, 12],
-  html: `<div style="width:24px;height:24px;border-radius:50%;background:${bg};border:2px solid #fff;box-shadow:0 1px 3px rgba(0,0,0,.25);display:grid;place-items:center;color:#fff">${svg}</div>`,
-})
-const SVG_STORE = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6"><path d="M3 9l1-5h16l1 5M4 9v11h16V9"/></svg>'
-const SVG_PIN = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6"><circle cx="12" cy="10" r="3"/><path d="M12 21s-7-6.5-7-11a7 7 0 0114 0c0 4.5-7 11-7 11z"/></svg>'
-const SVG_BIKE = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6"><circle cx="5.5" cy="17.5" r="3.5"/><circle cx="18.5" cy="17.5" r="3.5"/><path d="M15 6h2l3 11.5M5.5 17.5L9 10h6l3.5 7.5"/></svg>'
-
-function Fit({ points }) {
-  const map = useMap()
-  const key = JSON.stringify(points)
-  useEffect(() => {
-    const valid = JSON.parse(key).filter(Boolean)
-    if (valid.length) map.fitBounds(L.latLngBounds(valid).pad(0.3), { animate: false })
-  }, [map, key])
-  return null
-}
-
-function RouteMap({ order: o }) {
-  const pickup = o.pickupLatitude != null ? [o.pickupLatitude, o.pickupLongitude] : null
-  const drop = o.deliveryLatitude != null ? [o.deliveryLatitude, o.deliveryLongitude] : null
-  const driver = o.driver?.latitude != null && ['ACCEPTED', 'PICKED_UP', 'IN_TRANSIT'].includes(o.status) ? [o.driver.latitude, o.driver.longitude] : null
-  if (!pickup && !drop) return null
-  return (
-    <div className="dl-map">
-      <MapContainer center={drop ?? pickup} zoom={13} style={{ height: '100%', width: '100%' }} zoomControl={false} attributionControl={false}>
-        <MapBaseLayer />
-        {pickup && drop && <Polyline positions={[pickup, drop]} pathOptions={{ color: '#021520', weight: 2, dashArray: '6 6', opacity: .7 }} />}
-        {pickup && <Marker position={pickup} icon={dot('#021520', SVG_STORE)} />}
-        {drop && <Marker position={drop} icon={dot('#0086C8', SVG_PIN)} />}
-        {driver && <Marker position={driver} icon={dot('#15803D', SVG_BIKE)} />}
-        <Fit points={[pickup, drop, driver]} />
-      </MapContainer>
-      <div className="dl-map-legend" aria-hidden>
-        <span><i style={{ background: '#021520' }} />Retrait</span>
-        <span><i style={{ background: '#0086C8' }} />Destination</span>
-        {driver && <span><i style={{ background: '#15803D' }} />Coursier</span>}
-      </div>
-    </div>
   )
 }

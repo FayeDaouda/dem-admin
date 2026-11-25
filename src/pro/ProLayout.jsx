@@ -2,8 +2,9 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { Link, NavLink, useLocation, useNavigate } from 'react-router-dom'
 import {
   LayoutDashboard, Bike, Plus, Store, Inbox, Wallet, UserRound, LogOut, Bell, ChevronDown, Menu, X, BellRing,
-  MessageCircle, WifiOff,
+  MessageCircle, WifiOff, Route as RouteIcon, Users, ChartColumn, Plug,
 } from 'lucide-react'
+import { whatsappUrl } from './support'
 import wordmark from './assets/dem-wordmark-white.svg'
 import { useProAuth } from './proAuthContext'
 import proApi from './lib/proApi'
@@ -18,12 +19,17 @@ import { Button, IconButton } from './ui/ui'
 // actif souligné de cyan ; barre du haut blanche (fil d'Ariane, action
 // principale, notifications, compte) et temps réel.
 const NAV = [
-  { to: '/', icon: LayoutDashboard, label: 'Tableau de bord', end: true },
+  // area : zone soumise au rôle du membre d'équipe (voir ProAuth.jsx can())
+  { to: '/', icon: LayoutDashboard, label: 'Tableau de bord', end: true, area: 'dashboard' },
   { to: '/livraisons', icon: Bike, label: 'Livraisons' },
-  { to: '/boutique', icon: Store, label: 'Boutique' },
+  { to: '/tournees', icon: RouteIcon, label: 'Tournées' },
   { to: '/commandes', icon: Inbox, label: 'Commandes reçues', badge: 'requests' },
-  { to: '/wallet', icon: Wallet, label: 'Wallet' },
-  { to: '/compte', icon: UserRound, label: 'Compte' },
+  { to: '/boutique', icon: Store, label: 'Boutique' },
+  { to: '/clients', icon: Users, label: 'Clients' },
+  { to: '/statistiques', icon: ChartColumn, label: 'Statistiques', area: 'dashboard' },
+  { to: '/wallet', icon: Wallet, label: 'Wallet', area: 'wallet' },
+  { to: '/compte/api', icon: Plug, label: 'API DEM', area: 'api' },
+  { to: '/compte', icon: UserRound, label: 'Compte', end: true },
 ]
 
 const TITLES = {
@@ -34,11 +40,19 @@ const TITLES = {
   '/commandes': 'Commandes reçues',
   '/wallet': 'Wallet',
   '/compte': 'Compte',
+  '/compte/equipe': 'Équipe',
+  '/compte/api': 'API DEM',
+  '/compte/parrainage': 'Parrainage',
+  '/tournees': 'Tournées groupées',
+  '/tournees/nouvelle': 'Nouvelle tournée',
+  '/clients': 'Clients',
+  '/statistiques': 'Statistiques',
 }
 // Écrans qui portent déjà « Nouvelle livraison » : pas de doublon en haut
-const HAS_OWN_NEW = new Set(['/livraisons', '/livraisons/nouvelle'])
+const HAS_OWN_NEW = new Set(['/livraisons', '/livraisons/nouvelle', '/tournees', '/tournees/nouvelle'])
 
-const HELP_URL = 'https://wa.me/221784448524'
+// Support : mêmes contacts que l'app (support.js)
+const HELP_URL = whatsappUrl()
 
 // Événements temps réel (mêmes que l'app) → notification + rafraîchissement
 const EVENTS = {
@@ -52,12 +66,18 @@ const EVENTS = {
   'order:payment_confirmed': ['success', 'Paiement confirmé', 'Le paiement de la livraison est enregistré.'],
   'batch:accepted':        ['driver', 'Tournée acceptée', 'Un coursier a accepté votre tournée.'],
   'batch:completed':       ['delivered', 'Tournée terminée', 'Tous les colis de la tournée sont livrés.'],
+  'batch:searching':       ['info', 'Recherche d\'un coursier', 'Votre tournée est proposée aux coursiers proches.'],
+  'batch:auto_cancelled':  ['error', 'Aucun coursier disponible', 'La tournée a été annulée faute de coursier. Relancez-la.'],
+  'order:scheduled_assigned':  ['driver', 'Coursier réservé', 'Un coursier est réservé pour votre livraison programmée.'],
+  'order:scheduled_searching': ['info', 'Nouveau coursier recherché', 'Le coursier prévu n\'est plus disponible : nous en cherchons un autre.'],
+  'order:driver_unreachable':  ['error', 'Coursier injoignable', 'Le coursier ne répond plus depuis quelques minutes. DEM s\'en occupe.'],
 }
 
 const searchingSeen = new Set()
 
 export default function ProLayout({ children }) {
-  const { user, logout } = useProAuth()
+  const { user, logout, can, member } = useProAuth()
+  const canWallet = can('wallet')
   const navigate = useNavigate()
   const { pathname } = useLocation()
   const notify = useNotify()
@@ -75,7 +95,8 @@ export default function ProLayout({ children }) {
   const lastLiveNew = useRef(0)
   const pushRef = useRef(null)
   const loadSide = useCallback(() => {
-    proApi.get('/users/dem-pro/wallet').then(r => setWallet(r.data)).catch(() => {})
+    // Employé sans accès au wallet : ni appel (403) ni solde affiché
+    if (canWallet) proApi.get('/users/dem-pro/wallet').then(r => setWallet(r.data)).catch(() => {})
     proApi.get('/dem-pro/order-requests', { params: { status: 'PENDING' } })
       .then(r => {
         const n = (r.data ?? []).filter(x => (x.status ?? 'PENDING') === 'PENDING').length
@@ -86,7 +107,7 @@ export default function ProLayout({ children }) {
           pushRef.current?.('order', n - before > 1 ? `${n - before} nouvelles commandes` : 'Nouvelle commande reçue', 'À accepter dans Commandes reçues.', '/commandes')
         }
       }).catch(() => {})
-  }, [])
+  }, [canWallet])
   useEffect(() => {
     loadSide()
     const t = setInterval(() => { if (!document.hidden) loadSide() }, 60_000)
@@ -115,7 +136,7 @@ export default function ProLayout({ children }) {
         const once = ev === 'order:searching' && p?.orderId
         if (!once || !searchingSeen.has(p.orderId)) {
           if (once) searchingSeen.add(p.orderId)
-          push(kind, title, text, p?.orderId ? `/livraisons?id=${p.orderId}` : null)
+          push(kind, title, text, p?.orderId ? `/livraisons?id=${p.orderId}` : p?.batchId ? `/tournees?id=${p.batchId}` : null)
         }
         refresh({ ev, p })
       })),
@@ -130,6 +151,11 @@ export default function ProLayout({ children }) {
         push('order', p?.paid ? 'Nouvelle commande payée' : 'Nouvelle commande reçue',
           `${p?.customerName ?? 'Un client'} · ${fcfa(p?.total)} · à accepter dans Commandes reçues.`, '/commandes')
         refresh({ ev: 'order_request:new', p })
+      }),
+      on('order:driver_arrived', (p) => {
+        if (p?.point === 'pickup') push('driver', 'Coursier arrivé', 'Il est à votre point de retrait. Préparez le colis.', p?.orderId ? `/livraisons?id=${p.orderId}` : null)
+        else if (p?.point === 'delivery') push('driver', 'Coursier chez votre client', 'La remise est en cours.', p?.orderId ? `/livraisons?id=${p.orderId}` : null)
+        refresh({ ev: 'order:driver_arrived', p })
       }),
       on('wallet:updated', () => refresh({ ev: 'wallet:updated' })),
     ]
@@ -160,7 +186,7 @@ export default function ProLayout({ children }) {
         </div>
 
         <nav className="pro-side-nav">
-          {NAV.map(item => {
+          {NAV.filter(item => !item.area || can(item.area)).map(item => {
             const Icon = item.icon
             return (
               <NavLink key={item.to} to={item.to} end={item.end} onClick={closeNav} className={({ isActive }) => `pro-nav ${isActive ? 'active' : ''}`}>
@@ -178,7 +204,7 @@ export default function ProLayout({ children }) {
           <div className="pro-side-user">
             <Avatar user={user} size={34} dark person />
             <div style={{ minWidth: 0 }}>
-              <div className="pro-side-user-name">{user?.name ?? shopName}</div>
+              <div className="pro-side-user-name">{member?.name ?? user?.name ?? shopName}</div>
               <div className="pro-side-user-phone num">{phoneFmt(user?.phone)}</div>
             </div>
           </div>
@@ -202,10 +228,12 @@ export default function ProLayout({ children }) {
             <span className="pro-crumbs-current" aria-current="page">{title}</span>
           </nav>
           <div style={{ flex: 1 }} />
-          <Link to="/wallet" className="pro-wallet-pill" title="Solde retirable">
-            <span className="pro-wallet-label">Solde</span>
-            <span className="num">{wallet ? fcfa(wallet.withdrawableBalance) : '—'}</span>
-          </Link>
+          {canWallet && (
+            <Link to="/wallet" className="pro-wallet-pill" title="Solde retirable">
+              <span className="pro-wallet-label">Solde</span>
+              <span className="num">{wallet ? fcfa(wallet.withdrawableBalance) : '—'}</span>
+            </Link>
+          )}
           {!HAS_OWN_NEW.has(pathname) && (
             <Button size="sm" icon={Plus} className="pro-top-new" onClick={() => navigate('/livraisons/nouvelle')}
               aria-label="Nouvelle livraison">
