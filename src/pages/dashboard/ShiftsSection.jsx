@@ -5,16 +5,29 @@ import { glass, glassInput } from '../../lib/glassStyles'
 import WhatsAppButton from '../../components/WhatsAppButton'
 
 // ── Shifts du jour (Responsable de flottes, C6) ──────────────────────────────
-// Par créneau : coursiers prévus, présents, et statut de chacun comparé à sa
-// connexion réelle (GET /admin/shifts/today). Super + Resp. flottes règlent
+// Par créneau : coursiers prévus, présents, et statut de chacun d'après son
+// temps de connexion cumulé sur le créneau, sans tolérance (GET /admin/shifts/today) :
+// présent tout le créneau, partiel 2 h ou plus (1 h au soir), absent en dessous ;
+// « en cours » + temps cumulé tant que le créneau n'est pas fini. Super + Resp. flottes règlent
 // ici les créneaux et les coursiers de chaque créneau, jour par jour
 // (/admin/shifts/slots/:key/drivers) ; aussi dans la fiche de chaque coursier.
 const STATUS = {
-  PRESENT:    { label: 'Présent',            color: '#15803d' },
-  LATE:       { label: 'En retard',          color: '#d97706' },
-  ABSENT:     { label: 'Absent',             color: '#dc2626' },
-  LEFT_EARLY: { label: 'Parti avant la fin', color: '#dc2626' },
-  UPCOMING:   { label: 'À venir',            color: '#64748b' },
+  PRESENT:  { label: 'Présent', color: '#15803d' },
+  PARTIAL:  { label: 'Partiel', color: '#d97706' },
+  ABSENT:   { label: 'Absent',  color: '#dc2626' },
+  UPCOMING: { label: 'À venir', color: '#64748b' },
+}
+
+const fmtMinutes = m => (m < 60 ? `${m} min` : `${Math.floor(m / 60)} h ${String(m % 60).padStart(2, '0')}`)
+
+// Libellé + couleur d'un coursier ; créneau en cours : en ligne / hors ligne,
+// verdict à la fin. Temps cumulé affiché dès qu'il y en a.
+function statusOf(d) {
+  const base = d.status === 'ONGOING'
+    ? (d.online ? { label: 'En ligne', color: '#15803d' } : { label: 'Hors ligne', color: '#dc2626' })
+    : (STATUS[d.status] ?? { label: d.status, color: '#64748b' })
+  const time = d.onlineMinutes > 0 && d.status !== 'PRESENT' ? ` · ${fmtMinutes(d.onlineMinutes)}` : ''
+  return { label: base.label + time, color: base.color }
 }
 
 function SlotsEditor({ slots, onSaved, onCancel }) {
@@ -174,7 +187,7 @@ export default function ShiftsSection(props) {
     : null
 
   return (
-    <Section title="Shifts du jour" hint="Planning de la flotte DEM comparé à la connexion réelle · 15 min de tolérance" right={right}>
+    <Section title="Shifts du jour" hint="Temps connecté sur chaque créneau · présent tout le créneau, partiel 2 h ou plus (1 h au soir), absent en dessous · coupures de moins de 10 min ignorées" right={right}>
       {planning && <SlotPlanner slot={planning} today={data.weekday} onClose={() => setPlanning(null)} onSaved={onChanged} />}
       {editing && <SlotsEditor slots={data.slots} onCancel={() => setEditing(false)} onSaved={() => { setEditing(false); onChanged() }} />}
       {data.absents.length > 0 && (
@@ -184,7 +197,7 @@ export default function ShiftsSection(props) {
             <div key={`${d.slotKey}-${d.id}`} style={row}>
               <span style={{ flex: 1, fontWeight: 600 }}>{d.name ?? d.phone}</span>
               <span style={{ color: 'var(--text-muted)' }}>{d.slot}</span>
-              <span style={{ color: STATUS[d.status].color, fontWeight: 700 }}>{STATUS[d.status].label}</span>
+              <span style={{ color: statusOf(d).color, fontWeight: 700 }}>{statusOf(d).label}</span>
               {d.phone && <a href={`tel:${d.phone}`} title={`Appeler ${d.phone}`} style={{ color: 'var(--primary)', display: 'flex' }}><Phone size={13} /></a>}
               <WhatsAppButton phone={d.phone} compact />
             </div>
@@ -201,7 +214,8 @@ export default function ShiftsSection(props) {
             </div>
             <div style={{ fontSize: 12, color: 'var(--text-muted)', margin: '4px 0 8px' }}>
               {s.planned} prévu{s.planned > 1 ? 's' : ''} sur {s.target} attendu{s.target > 1 ? 's' : ''}
-              {(s.ongoing || s.ended) && ` · ${s.present} présent${s.present > 1 ? 's' : ''}`}
+              {s.ongoing && ` · ${s.present} en ligne`}
+              {s.ended && ` · ${s.present} présent${s.present > 1 ? 's' : ''} tout le créneau`}
             </div>
             {s.drivers.length === 0
               ? <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>Aucun coursier planifié aujourd'hui.</div>
@@ -209,8 +223,8 @@ export default function ShiftsSection(props) {
                 <div key={d.id} style={row}>
                   <span style={{ width: 7, height: 7, borderRadius: '50%', background: d.online ? '#22c55e' : '#cbd5e1' }} />
                   <span style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{d.name ?? d.phone}{d.suspended ? ' (suspendu)' : ''}</span>
-                  <span style={{ color: STATUS[d.status].color, fontWeight: 600, whiteSpace: 'nowrap' }}>
-                    {STATUS[d.status].label}{d.lateMinutes ? ` (${d.lateMinutes} min)` : ''}
+                  <span style={{ color: statusOf(d).color, fontWeight: 600, whiteSpace: 'nowrap' }}>
+                    {statusOf(d).label}
                   </span>
                 </div>
               ))}
