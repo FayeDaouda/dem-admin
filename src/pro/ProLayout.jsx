@@ -347,7 +347,7 @@ const LAYOUT_CSS = `
 .pro .pro-nav {
   position: relative; display: flex; align-items: center; gap: 12px; height: 44px; padding: 0 12px;
   color: rgba(255,255,255,.68); text-decoration: none; cursor: pointer; border: none; background: none; width: 100%; text-align: left;
-  font: 700 11.5px/1 var(--p-head); letter-spacing: .12em; text-transform: uppercase;
+  font: 600 14px/1 var(--p-head);
   transition: background var(--p-fast), color var(--p-fast);
 }
 .pro .pro-nav:hover { background: rgba(255,255,255,.04); color: #fff; }
@@ -371,7 +371,7 @@ const LAYOUT_CSS = `
   position: sticky; top: 0; z-index: 40; height: 56px; display: flex; align-items: center; gap: 10px; padding: 0 40px;
   background: #fff; border-bottom: 1px solid var(--p-line);
 }
-.pro .pro-crumbs { display: flex; align-items: center; gap: 10px; min-width: 0; font: 700 11.5px/1 var(--p-head); letter-spacing: .12em; text-transform: uppercase; }
+.pro .pro-crumbs { display: flex; align-items: center; gap: 10px; min-width: 0; font: 600 13.5px/1 var(--p-head); }
 .pro .pro-crumbs-root { color: var(--p-subtle); white-space: nowrap; }
 .pro .pro-crumbs-sep { color: var(--p-line-2); }
 .pro .pro-crumbs-current { color: var(--p-ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }

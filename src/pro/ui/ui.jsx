@@ -23,7 +23,7 @@ export function Spinner({ size = 16 }) {
 // Bouton : primary (sombre → cyan au survol), ghost/outline (contour), quiet,
 // danger. `arrow` = 'right' | 'ne' ajoute la flèche du site, qui glisse au
 // survol. Avec `href` (ou `to`), rendu en lien.
-export function Button({ variant = 'primary', size, icon, arrow, loading, children, className = '', href, to, ...rest }) {
+export function Button({ variant = 'primary', size, icon, arrow, loading, disabled, children, className = '', href, to, ...rest }) {
   const Icon = icon
   const cls = `btn btn-${variant} ${size ? `btn-${size}` : ''} ${className}`
   const iconSize = size === 'sm' ? 15 : 16
@@ -37,7 +37,9 @@ export function Button({ variant = 'primary', size, icon, arrow, loading, childr
   )
   if (to) return <Link to={to} className={cls} {...rest}>{content}</Link>
   if (href) return <a href={href} className={cls} {...rest}>{content}</a>
-  return <button type="button" className={cls} disabled={loading || rest.disabled} {...rest}>{content}</button>
+  // `disabled` après `rest` : pendant l'envoi (loading), le bouton reste
+  // désactivé même si la page le dit actif — pas de double retrait au double clic
+  return <button type="button" className={cls} {...rest} disabled={!!loading || !!disabled} aria-busy={loading || undefined}>{content}</button>
 }
 
 // Bouton icône : le libellé est obligatoire (lecteurs d'écran, infobulle)

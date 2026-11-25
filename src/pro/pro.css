@@ -1152,3 +1152,78 @@
   .pro .ac-sec { grid-template-columns: 1fr; gap: 16px; padding: 22px 18px; }
   .pro .ac-list li { flex-wrap: wrap; }
 }
+
+/* ============================================================
+   Lot 1 (25/11) — lisibilité, tablette, tactile, statut du compte
+   ============================================================ */
+/* Texte en cyan : #0086C8 ne fait que 4,0:1 sur blanc → couleur dédiée au
+   texte (5,5:1). #0086C8 reste pour les traits, points et contours. */
+.pro { --p-link: #006FA6; }
+.pro .eyebrow, .pro .script, .pro .page-title .dot, .pro .link, .pro .link-caps:hover,
+.pro .nd-lock-note, .pro .sp-row-feat { color: var(--p-link); }
+
+/* Capitales espacées réservées aux surtitres et au bouton principal (D3) :
+   le reste en casse normale, plus rapide à lire toute la journée */
+.pro .btn:not(.btn-primary), .pro .btn-sm, .pro .dl-tab, .pro .badge, .pro .link-caps,
+.pro .dl-cancel-link, .pro .nd-frozen {
+  text-transform: none; letter-spacing: 0;
+}
+.pro .btn:not(.btn-primary) { font-size: 14px; font-weight: 600; }
+.pro .btn-sm { font-size: 13px; font-weight: 600; }
+.pro .btn-primary.btn-sm { text-transform: none; letter-spacing: 0; }
+.pro .dl-tab { font-size: 14px; font-weight: 600; }
+.pro .badge { font-size: 12px; font-weight: 600; }
+.pro .link-caps, .pro .dl-cancel-link { font-size: 13.5px; font-weight: 600; }
+.pro .field > span, .pro .nd-label {
+  text-transform: none; letter-spacing: 0; font: 600 13px/1.3 var(--p-head); color: var(--p-ink);
+}
+.pro .dl-table th, .pro .sp-table th {
+  text-transform: none; letter-spacing: 0; font: 600 12.5px/1 var(--p-head);
+}
+
+/* Écran tactile : cibles d'au moins 44 px */
+@media (pointer: coarse) {
+  .pro .icon-btn, .pro .icon-btn.sm { width: 44px; height: 44px; }
+  .pro .btn-sm { height: 44px; }
+  .pro .btn-icon.btn-sm { width: 44px; }
+  .pro .chip-btn { height: 40px; }
+  .pro .nd-qty button { width: 44px; height: 44px; }
+  .pro .nd-x { width: 44px; height: 44px; }
+}
+
+/* Livraisons sur tablette (iPad horizontal : menu latéral + tableau) */
+@media (max-width: 1360px) { .pro .dl-table .c-driver { display: none; } }
+@media (max-width: 1240px) { .pro .dl-table .c-ref { display: none; } }
+
+/* Commandes reçues : cartes jusqu'à 1100 px, tableau au-delà */
+.pro .rq-narrow { display: none; }
+@media (max-width: 1100px) {
+  .pro .rq-narrow { display: block; }
+  .pro .rq-wide { display: none; }
+}
+.pro .rq-card-actions { display: flex; flex-wrap: wrap; gap: 8px; justify-content: flex-end; padding: 0 16px 14px; }
+.pro .rq-table col.c-actions { width: 330px; }
+.pro .rq-actions { display: table-cell; }
+.pro .rq-actions .btn + .btn { margin-left: 6px; }
+.pro .rq-dfoot { display: flex; flex-wrap: wrap; gap: 8px; justify-content: flex-end; }
+.pro .dl-mcard-bot .badge { height: 20px; padding: 0 6px; vertical-align: middle; }
+.pro .rq-prog { list-style: none; margin: 0; padding: 0; display: flex; gap: 6px; font-size: 12.5px; color: var(--p-subtle); }
+.pro .rq-prog li { flex: 1; display: flex; align-items: center; gap: 6px; padding-top: 8px; border-top: 2px solid var(--p-line); min-width: 0; white-space: nowrap; }
+.pro .rq-prog li.on { border-top-color: var(--p-cyan-2); color: var(--p-ink); font-weight: 600; }
+.pro .rq-prog-dot { width: 14px; height: 14px; border-radius: 50%; display: grid; place-items: center; background: var(--p-line); color: #fff; flex-shrink: 0; }
+.pro .rq-prog li.on .rq-prog-dot { background: var(--p-cyan-2); }
+
+/* Statut du compte (AccountGate) */
+.pro.gate { min-height: 100vh; display: grid; place-items: center; padding: 24px 16px; background: var(--p-bg); }
+.pro .gate-card {
+  width: 100%; max-width: 520px; background: #fff; border: 1px solid var(--p-line); padding: 36px 32px;
+  display: grid; gap: 14px; justify-items: start;
+}
+.pro .gate-icon { width: 44px; height: 44px; display: grid; place-items: center; }
+.pro .gate-info { background: var(--p-info-bg); color: var(--p-info); }
+.pro .gate-danger { background: var(--p-danger-bg); color: var(--p-danger); }
+.pro .gate-title { margin: 0; font: 700 24px/1.2 var(--p-head); color: var(--p-ink); text-wrap: balance; }
+.pro .gate-text { margin: 0; color: var(--p-muted); font-size: 15px; line-height: 1.55; }
+.pro .gate-reason { margin: 0; padding: 12px 14px; background: var(--p-soft); border-left: 2px solid var(--p-danger); font-size: 14px; }
+.pro .gate-actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 8px; }
+@media (max-width: 480px) { .pro .gate-card { padding: 28px 20px; } }

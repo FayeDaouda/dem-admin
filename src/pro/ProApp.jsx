@@ -5,6 +5,7 @@ import { ProAuthProvider } from './ProAuth'
 import { useProAuth } from './proAuthContext'
 import { NotifyProvider } from './ui/notify'
 import ProLayout from './ProLayout'
+import AccountGate from './AccountGate'
 import Login from './pages/Login'
 
 // Espace web DEM Pro : pro.dem.sn (racine) ou admin.dem.sn/pro.
@@ -34,7 +35,7 @@ function Protected({ children }) {
   const { user, loading } = useProAuth()
   if (loading) return <Loader />
   if (!user) return <Navigate to="/connexion" replace />
-  return <ProLayout><Suspense fallback={<div />}>{children}</Suspense></ProLayout>
+  return <AccountGate><ProLayout><Suspense fallback={<div />}>{children}</Suspense></ProLayout></AccountGate>
 }
 
 function PublicOnly({ children }) {
@@ -46,6 +47,8 @@ function PublicOnly({ children }) {
 export default function ProApp({ basename = '' }) {
   useEffect(() => {
     document.title = 'DEM Pro'
+    // index.html est celui de l'admin (lang="en") : lecteurs d'écran et traduction
+    document.documentElement.lang = 'fr'
     document.body.style.background = '#F6F8FB'
   }, [])
   return (

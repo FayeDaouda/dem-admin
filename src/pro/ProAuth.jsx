@@ -30,7 +30,9 @@ export function ProAuthProvider({ children }) {
     if (!session.accessToken) return
     refreshMe()
       .catch((e) => {
-        if (e instanceof NotProAccount || e?.response?.status === 401) { session.clear(); setUser(null) }
+        // 401 : le client HTTP a déjà fermé la session si le serveur l'a refusée
+        if (e instanceof NotProAccount) { session.clear(); setUser(null) }
+        else if (!session.accessToken) setUser(null)
       })
       .finally(() => setLoading(false))
   }, [refreshMe])
@@ -38,7 +40,22 @@ export function ProAuthProvider({ children }) {
   useEffect(() => {
     const onOut = () => { closeProSocket(); setUser(null) }
     window.addEventListener('dem-pro:logged-out', onOut)
-    return () => window.removeEventListener('dem-pro:logged-out', onOut)
+    // Autres onglets : déconnexion ou connexion d'un AUTRE compte (ordinateur
+    // partagé en boutique) — l'onglet suit, il n'agit jamais sur le mauvais compte
+    const onStorage = (e) => {
+      if (e.key === session.keys.access && !e.newValue) { closeProSocket(); setUser(null); return }
+      if (e.key === session.keys.user) {
+        const parse = (v) => { try { return JSON.parse(v ?? 'null') } catch { return null } }
+        const before = parse(e.oldValue), next = parse(e.newValue)
+        if (before && next && before.id !== next.id) { closeProSocket(); window.location.reload(); return }
+        setUser(next)
+      }
+    }
+    window.addEventListener('storage', onStorage)
+    return () => {
+      window.removeEventListener('dem-pro:logged-out', onOut)
+      window.removeEventListener('storage', onStorage)
+    }
   }, [])
 
   async function startSession(payload) {

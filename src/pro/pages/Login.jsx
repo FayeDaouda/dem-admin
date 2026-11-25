@@ -5,6 +5,7 @@ import wordmarkSrc from '../assets/dem-wordmark-white.svg'
 import photoSrc from '../assets/login-coursier.jpg'
 import { useProAuth, NotProAccount } from '../proAuthContext'
 import { errMsg } from '../lib/proApi'
+import { session } from '../lib/session'
 import { Spinner } from '../ui/ui'
 
 // Connexion à l'espace web DEM Pro — même compte, même code secret que
@@ -43,7 +44,8 @@ export default function Login() {
   const [code, setCode] = useState('')
   const [pin1, setPin1] = useState('')
   const [ticket, setTicket] = useState(null)
-  const [error, setError] = useState('')
+  // Motif d'une déconnexion par le serveur (appareil déconnecté, compte gelé…)
+  const [error, setError] = useState(() => session.takeNotice() ?? '')
   const [busy, setBusy] = useState(false)
   const [resendIn, setResendIn] = useState(0)
   const [reveal, setReveal] = useState(false)

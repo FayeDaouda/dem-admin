@@ -20,6 +20,13 @@ export const session = {
     if (user !== undefined) write(K.user, user ? JSON.stringify(user) : null)
   },
   clear() { write(K.access, null); write(K.refresh, null); write(K.user, null) },
+  // Motif d'une déconnexion décidée par le serveur (appareil déconnecté
+  // depuis Compte, compte gelé…), affiché une fois sur l'écran de connexion
+  setNotice(message) { try { sessionStorage.setItem('dem_pro_notice', message) } catch { /* rien */ } },
+  takeNotice() {
+    try { const m = sessionStorage.getItem('dem_pro_notice'); sessionStorage.removeItem('dem_pro_notice'); return m } catch { return null }
+  },
+  keys: K,
 }
 
 // Identifiant stable de ce navigateur (le serveur l'exige pour le code

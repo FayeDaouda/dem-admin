@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
 import { Banknote, Wallet, AlertTriangle, Send, Lock, ShieldCheck, Download, Hourglass } from 'lucide-react'
 import proApi, { errMsg } from '../lib/proApi'
@@ -281,7 +281,11 @@ function CashoutModal({ open, wallet, onClose, onDone }) {
     catch (e) { notify.error('Le code n’a pas été envoyé', errMsg(e)) } finally { setBusy(false) }
   }
 
+  // Un seul retrait à la fois, même si l'envoi est relancé (Entrée, double clic)
+  const sending = useRef(false)
   const submit = async () => {
+    if (sending.current || !valid) return
+    sending.current = true
     setBusy(true)
     try {
       await proApi.post('/users/dem-pro/wallet/cashout', {
@@ -291,7 +295,11 @@ function CashoutModal({ open, wallet, onClose, onDone }) {
       })
       notify.success('Retrait demandé', `${fcfa(n)} vers ${OPERATORS.find(o => o[0] === operator)[1]} · ${phoneFmt(destE164)}.`)
       onDone()
-    } catch (e) { notify.error('Retrait refusé', errMsg(e)) } finally { setBusy(false) }
+    } catch (e) {
+      // Code secret faux : champ vidé pour la nouvelle saisie
+      if (e?.response?.data?.code === 'PIN_INCORRECT') setPin('')
+      notify.error('Retrait refusé', errMsg(e))
+    } finally { sending.current = false; setBusy(false) }
   }
 
   return (
