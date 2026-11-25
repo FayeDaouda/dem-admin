@@ -1,5 +1,5 @@
 import axios from 'axios'
-import { session, deviceId } from './session'
+import { session, deviceId, deviceName } from './session'
 
 // Client HTTP de l'espace web DEM Pro : même serveur et mêmes routes que
 // l'app DEM Pro (/dem-pro/*, /orders/*, /users/dem-pro/*) — données
@@ -10,6 +10,9 @@ export const PRO_APP_VERSION = 'pro-web-1.0.0'
 
 const deviceHeaders = () => ({
   'X-Device-Id': deviceId(),
+  // Nom lisible dans « Appareils connectés » (connexion par code SMS aussi)
+  // (en-tête HTTP : caractères ASCII seulement)
+  'X-Device': deviceName().replace(/\s*·\s*/g, ' - '),
   'X-Platform': 'web',
   'X-App-Version': PRO_APP_VERSION,
 })

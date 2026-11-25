@@ -11,6 +11,15 @@ import { PlaceSearch } from './NewDelivery'
 
 // Compte (modèle « réglages ») : profil, offre, paiement, adresses de
 // retrait, appareils connectés — les mêmes réglages que dans l'application.
+// Téléphones (comptés dans l'offre) et navigateurs de l'espace web (non
+// comptés, décision du 25/11) — un serveur plus ancien ne distingue pas
+function devicesSummary({ sessions = [], max }) {
+  const phones = sessions.filter(x => x.platform !== 'web').length
+  const web = sessions.length - phones
+  const limit = max == null ? 'sans limite' : `${phones} sur ${max} autorisé${max > 1 ? 's' : ''} par votre offre`
+  return `Téléphones : ${limit}.${web ? ` Espace web : ${web} navigateur${web > 1 ? 's' : ''}, non compté${web > 1 ? 's' : ''}.` : ' L\'espace web ne compte pas dans cette limite.'}`
+}
+
 const longDate = (d) => new Date(d).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })
 
 function deviceIcon(s) {
@@ -190,7 +199,7 @@ export default function Account() {
         </Section>
 
         <Section title="Appareils connectés"
-          description={sessions ? `${sessions.sessions?.length ?? 0} sur ${sessions.max ?? '—'} autorisés par votre offre.` : 'Les appareils où votre compte est ouvert.'}
+          description={sessions ? devicesSummary(sessions) : 'Les appareils où votre compte est ouvert.'}
           action={others.length > 0 && <Button size="sm" variant="ghost" icon={LogOut} onClick={askRevokeOthers}>Déconnecter les autres appareils</Button>}>
           {failed.sessions && !sessions ? <ErrorState compact title="Impossible de charger vos appareils" onRetry={load} />
             : !sessions ? <Skeleton h={56} />
@@ -205,6 +214,7 @@ export default function Account() {
                         <div style={{ fontWeight: 600, display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
                           {s.deviceLabel ?? 'Appareil inconnu'}{s.memberName ? ` · ${s.memberName}` : ''}
                           {s.current && <Chip color="var(--p-success)" bg="var(--p-success-bg)">Cet appareil</Chip>}
+                          {s.platform === 'web' && !s.current && <Chip color="var(--p-slate)" bg="var(--p-slate-bg)">Espace web</Chip>}
                         </div>
                         <div className="muted" style={{ fontSize: 13 }}>Connecté le {dateTime(s.createdAt)} · actif {timeAgo(s.lastSeenAt)}</div>
                       </div>
