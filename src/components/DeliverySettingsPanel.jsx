@@ -27,10 +27,12 @@ const MODES = [
 ]
 
 // Code de retrait (commandes DEM Pro) : la boutique le donne au coursier.
-// Jamais bloquant : pas de mode obligatoire.
+// Réglé par le Super Admin ; l'admin valide toujours un retrait sans code
+// pour régler une course (Commandes › Colis récupéré).
 const PICKUP_MODES = [
   { key: 'off', label: 'Éteint', help: 'Aucun code au retrait.' },
-  { key: 'show', label: 'Activé', help: 'Le commerçant reçoit le code dès qu\'un coursier accepte (notification + suivi). L\'app du coursier le demande au retrait (1.2.5), avec « Continuer sans code » : jamais bloquant. Un retrait sans code est signalé sur la fiche de la course.' },
+  { key: 'show', label: 'Affiché', help: 'Le commerçant reçoit le code dès qu\'un coursier accepte (notification + suivi). L\'app du coursier le demande au retrait, avec « Continuer sans code » : jamais bloquant. Un retrait sans code est signalé sur la fiche de la course.' },
+  { key: 'required', label: 'Obligatoire', help: 'Le retrait exige le bon code. À activer seulement quand les coursiers sont en 1.2.5 : les versions plus anciennes ne savent pas le demander. En cas de souci, « Colis récupéré » (Commandes) valide sans code.' },
 ]
 
 export default function DeliverySettingsPanel() {
@@ -82,6 +84,7 @@ export default function DeliverySettingsPanel() {
     mode !== data?.deliveryCodeMode && `Code de livraison : ${MODES.find(m => m.key === mode)?.label}`,
     tracking !== data?.receiverTrackingSms && `SMS de suivi au destinataire : ${tracking ? 'activé' : 'coupé'}`,
     hasPickup && pickupMode !== data?.pickupCodeMode && `Code de retrait DEM Pro : ${PICKUP_MODES.find(m => m.key === pickupMode)?.label}`,
+    hasPickup && pickupMode === 'required' && pickupMode !== data?.pickupCodeMode && 'Les coursiers sans la 1.2.5 ne pourront plus valider un retrait DEM Pro sans passer par l\'admin.',
     risky && `Attention : ${r.notReady + r.unknown} livreur(s) actif(s) pas encore en ${r.minVersion} ou inconnu(s).`,
   ].filter(Boolean)
 
@@ -145,7 +148,7 @@ export default function DeliverySettingsPanel() {
           </div>
           <p style={{ fontSize: 12.5, color: 'var(--text-muted)', margin: '0 0 14px' }}>
             4 chiffres que la boutique donne au coursier quand il récupère le colis : le bon coursier repart avec le bon colis.
-            Une tournée a un seul code. En cas de souci, « Colis récupéré » (Commandes) valide sans code.
+            Une tournée a un seul code. Quel que soit le mode, « Colis récupéré » (Commandes) valide sans code pour régler une course.
           </p>
           <div role="radiogroup" aria-label="Mode du code de retrait" style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
             {PICKUP_MODES.map(m => (
