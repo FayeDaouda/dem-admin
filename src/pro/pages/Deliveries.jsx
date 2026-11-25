@@ -9,6 +9,7 @@ import {
 } from 'lucide-react'
 import MapBaseLayer from '../../components/MapBaseLayer'
 import proApi, { errMsg } from '../lib/proApi'
+import PayOrderModal from '../ui/PayOrderModal'
 import { ACTIVE_STATUSES, ORDER_STATUS, dateTime, fcfa, orderTotal, phoneFmt, timeAgo, timeOnly, dakarDay, dakarMidnight } from '../lib/format'
 import { Button, Card, Drawer, Empty, ErrorState, IconButton, Modal, PageHeader, Skeleton, StatusBadge } from '../ui/ui'
 import { useNotify } from '../ui/notifyContext'
@@ -395,6 +396,7 @@ function OrderDrawer({ id, onClose, onChanged }) {
   const [order, setOrder] = useState(null)
   const [failed, setFailed] = useState(false)
   const [cancelOpen, setCancelOpen] = useState(false)
+  const [payOpen, setPayOpen] = useState(false)
 
   const load = useCallback(async () => {
     if (!id) return
@@ -410,6 +412,8 @@ function OrderDrawer({ id, onClose, onChanged }) {
   const o = order
   const cancellable = o && CANCELLABLE.has(o.status)
   const canCall = !!o?.driver?.phone && ACTIVE_STATUSES.has(o.status)
+  // « Ma boutique paie » : la course se règle en ligne depuis ce suivi
+  const canPay = !!o && o.paymentMode === 'merchant' && o.paymentStatus !== 'PAID' && o.status !== 'CANCELLED'
   const copyRef = async () => {
     try { await navigator.clipboard.writeText(shortRef(id)); notify.success('Référence copiée', shortRef(id)) } catch { /* presse-papiers refusé */ }
   }
@@ -491,8 +495,9 @@ function OrderDrawer({ id, onClose, onChanged }) {
                 {Number(o.discountAmount) > 0 && <Row label="Réduction" value={`− ${fcfa(o.discountAmount)}`} />}
                 <div className="dl-total"><span>Total</span><span className="num">{fcfa(orderTotal(o))}</span></div>
                 <div className="muted" style={{ fontSize: 13, marginTop: 8 }}>
-                  {o.paymentMode === 'merchant' ? 'Payée par vous' : 'Payée par le client à la livraison'}{o.paymentStatus === 'PAID' ? ' · réglée' : ''}
+                  {o.paymentMode === 'merchant' ? (o.paymentStatus === 'PAID' ? 'Réglée par votre boutique.' : 'À régler par votre boutique, en ligne.') : `Payée par le client à la livraison${o.paymentStatus === 'PAID' ? ' · réglée' : ''}.`}
                 </div>
+                {canPay && <Button size="sm" style={{ marginTop: 12 }} onClick={() => setPayOpen(true)}>Payer {fcfa(orderTotal(o))}</Button>}
               </section>
             </>
           )}
@@ -509,6 +514,7 @@ function OrderDrawer({ id, onClose, onChanged }) {
         </div>
       )}
       <CancelModal open={cancelOpen} order={o} onClose={() => setCancelOpen(false)} onDone={() => { setCancelOpen(false); load(); onChanged() }} />
+      <PayOrderModal open={payOpen} order={o} onClose={() => setPayOpen(false)} onPaid={() => { load(); onChanged() }} />
     </Drawer>
   )
 }
