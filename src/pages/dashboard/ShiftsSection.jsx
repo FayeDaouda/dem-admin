@@ -187,7 +187,7 @@ export default function ShiftsSection(props) {
     : null
 
   return (
-    <Section title="Shifts du jour" hint="Temps connecté sur chaque créneau · présent tout le créneau, partiel 2 h ou plus (1 h au soir), absent en dessous · coupures de moins de 2 min ignorées" right={right}>
+    <Section title="Shifts du jour" hint="Temps connecté sur chaque créneau · présent tout le créneau, partiel 2 h ou plus (1 h au soir), absent en dessous · coupures de moins de 10 min ignorées" right={right}>
       {planning && <SlotPlanner slot={planning} today={data.weekday} onClose={() => setPlanning(null)} onSaved={onChanged} />}
       {editing && <SlotsEditor slots={data.slots} onCancel={() => setEditing(false)} onSaved={() => { setEditing(false); onChanged() }} />}
       {data.absents.length > 0 && (
