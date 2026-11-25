@@ -8,13 +8,15 @@ import { ACTIVE_STATUSES, fcfa, greeting, orderLink, orderTotal, todayLabel, dak
 import { Button, Card, Corners, Empty, ErrorState, PageHeader, SectionTitle, Skeleton, StatCard, StatusBadge } from '../ui/ui'
 import { useNotify } from '../ui/notifyContext'
 import { useLiveRefresh } from '../lib/useLiveRefresh'
+import StartChecklist from '../ui/StartChecklist'
+import { markShopShared } from '../ui/prefs'
 
 // Tableau de bord DEM Pro : à traiter, chiffres du jour, activité sur
 // 14 jours, livraisons en cours, boutique en ligne, bilan du mois.
 const safe = (p) => p.then(r => ({ ok: true, v: r.data })).catch((e) => ({ ok: false, v: null, status: e?.response?.status, message: e?.response?.data?.message }))
 
 export default function Dashboard() {
-  const { user } = useProAuth()
+  const { user, isOwner } = useProAuth()
   const [data, setData] = useState(null)
   const [failed, setFailed] = useState(false)
   const shown = useRef(false)
@@ -74,6 +76,9 @@ export default function Dashboard() {
       ) : (
         <>
           {data?.requests?.length > 0 && <ToHandle requests={data.requests} />}
+
+          {/* Compte récent : liste de démarrage (responsable du compte seulement) */}
+          {isOwner && <StartChecklist user={user} orders={data ? data.orders : undefined} />}
 
           <section className="grid-stats dash-stats" aria-label="Chiffres clés">
             <StatCard label="Livrées aujourd'hui" icon={PackageCheck} to="/livraisons?filtre=livrees&periode=jour" loading={loading}
@@ -259,7 +264,7 @@ function ShopCard({ user }) {
   const copy = async () => {
     try {
       await navigator.clipboard.writeText(link)
-      setCopied(true); notify.success('Lien copié', 'Partagez-le sur WhatsApp, Instagram ou par SMS.')
+      setCopied(true); markShopShared(user?.id); notify.success('Lien copié', 'Partagez-le sur WhatsApp, Instagram ou par SMS.')
       setTimeout(() => setCopied(false), 1800)
     } catch { notify.error('Copie impossible', 'Sélectionnez le lien et copiez-le à la main.') }
   }

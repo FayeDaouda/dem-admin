@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import {
   Plus, Search, Bike, X, Phone, Link2, Copy, Download, MoreHorizontal, Eye, Ban, ChevronLeft, ChevronRight,
-  ArrowDown, ArrowUp, ArrowUpDown, Star, Wine, Gauge,
+  ArrowDown, ArrowUp, ArrowUpDown, Star, Wine, Gauge, Printer, FileUp,
 } from 'lucide-react'
 import proApi, { errMsg } from '../lib/proApi'
 import PayOrderModal from '../ui/PayOrderModal'
@@ -11,7 +11,9 @@ import LiveDriverMap from '../ui/LiveDriverMap'
 import RateDriverModal, { StarInput } from '../ui/RateDriverModal'
 import { SCORE_LABELS } from '../ui/ratingLabels'
 import { categoryOf } from '../ui/packageCategories'
+import PrintLabelsButton, { PrintLabelsModal } from '../ui/PrintLabelsButton'
 import '../styles/delivery.css'
+import '../styles/import.css'
 import { ACTIVE_STATUSES, ORDER_STATUS, dateTime, fcfa, orderTotal, phoneFmt, timeAgo, timeOnly, dakarDay, dakarMidnight } from '../lib/format'
 import { Button, Card, Drawer, Empty, ErrorState, IconButton, Modal, PageHeader, Skeleton, StatusBadge } from '../ui/ui'
 import { useNotify } from '../ui/notifyContext'
@@ -94,6 +96,9 @@ export default function Deliveries() {
   const [menuId, setMenuId] = useState(null)
   const [cancelling, setCancelling] = useState(null)
   const [flash, setFlash] = useState(() => new Set())
+  // Bons de livraison : lignes cochées (tableau) et livraisons à imprimer
+  const [selected, setSelected] = useState(() => new Set())
+  const [printing, setPrinting] = useState(null)
   const prevStatus = useRef(null)
 
   const openId = params.get('id')
@@ -180,6 +185,21 @@ export default function Deliveries() {
   const current = Math.min(page, pages)
   const visible = list.slice((current - 1) * PAGE_SIZE, current * PAGE_SIZE)
 
+  // Bons du jour : livraisons créées aujourd'hui (heure de Dakar), hors annulées
+  const today = useMemo(() => {
+    const day = dakarDay()
+    return (orders ?? []).filter(o => o.status !== 'CANCELLED' && o.createdAt && dakarDay(o.createdAt) === day)
+  }, [orders])
+  const selectedOrders = useMemo(() => (orders ?? []).filter(o => selected.has(o.id)), [orders, selected])
+  const pageAll = visible.length > 0 && visible.every(o => selected.has(o.id))
+  const pageSome = visible.some(o => selected.has(o.id))
+  const toggleOne = (id) => setSelected(s => { const n = new Set(s); if (n.has(id)) n.delete(id); else n.add(id); return n })
+  const togglePage = () => setSelected(s => {
+    const n = new Set(s)
+    if (pageAll) visible.forEach(o => n.delete(o.id)); else visible.forEach(o => n.add(o.id))
+    return n
+  })
+
   const total = orders?.length ?? 0
   const activeCount = (orders ?? []).filter(o => match(o, 'en-cours')).length
   const description = !orders ? 'Chargement de vos livraisons…'
@@ -207,6 +227,7 @@ export default function Deliveries() {
       onDetail={() => open(o.id)}
       onCopy={() => { setMenuId(null); copyTrackingLink(o.id, notify) }}
       onDuplicate={() => { setMenuId(null); navigate(`/livraisons/nouvelle?dupliquer=${o.id}`) }}
+      onPrint={() => { setMenuId(null); setPrinting([o]) }}
       onCancel={() => { setMenuId(null); setCancelling(o) }} />
   )
 
@@ -216,7 +237,10 @@ export default function Deliveries() {
         eyebrow="Livraisons"
         title={<>Vos livraisons<span className="dot">.</span></>}
         description={description}
-        actions={<Button icon={Plus} onClick={() => navigate('/livraisons/nouvelle')}>Nouvelle livraison</Button>}
+        actions={<>
+          <Button variant="ghost" icon={FileUp} onClick={() => navigate('/livraisons/import')}>Importer</Button>
+          <Button icon={Plus} onClick={() => navigate('/livraisons/nouvelle')}>Nouvelle livraison</Button>
+        </>}
       />
 
       <Card className="dl-card" style={{ padding: 0 }}>
@@ -242,9 +266,24 @@ export default function Deliveries() {
                 onClick={() => { setPage(1); setParam({ periode: k === 'tout' ? null : k }) }}>{label}</button>
             ))}
           </div>
-          <Button variant="ghost" size="sm" icon={Download} className="dl-export"
+          <Button variant="ghost" size="sm" icon={Printer} className="dl-export"
+            disabled={!today.length} onClick={() => setPrinting(today)}
+            title={today.length ? `Imprimer les bons des ${today.length} livraison(s) créées aujourd'hui` : 'Aucune livraison créée aujourd\'hui'}>
+            Bons du jour{today.length ? ` (${today.length})` : ''}
+          </Button>
+          <Button variant="ghost" size="sm" icon={Download} style={{ height: 40 }}
             disabled={!list.length} onClick={() => exportCsv(list)}>Exporter CSV</Button>
         </div>
+
+        {selected.size > 0 && (
+          <div className="dl-selbar" role="region" aria-label="Livraisons sélectionnées">
+            <b className="num">{selected.size} livraison{selected.size > 1 ? 's' : ''} sélectionnée{selected.size > 1 ? 's' : ''}</b>
+            <div className="dl-selbar-actions">
+              <Button variant="ghost" size="sm" onClick={() => setSelected(new Set())}>Désélectionner</Button>
+              <Button size="sm" icon={Printer} disabled={!selectedOrders.length} onClick={() => setPrinting(selectedOrders)}>Imprimer les bons</Button>
+            </div>
+          </div>
+        )}
 
         {failed ? (
           <ErrorState title="Impossible de charger vos livraisons" onRetry={retry} />
@@ -256,7 +295,12 @@ export default function Deliveries() {
           total === 0 ? (
             <Empty icon={Bike} title="Pas encore de livraison"
               text="Créez votre première livraison : un coursier DEM récupère le colis chez vous et le livre à votre client."
-              action={<Button icon={Plus} onClick={() => navigate('/livraisons/nouvelle')}>Nouvelle livraison</Button>} />
+              action={
+                <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', justifyContent: 'center' }}>
+                  <Button icon={Plus} onClick={() => navigate('/livraisons/nouvelle')}>Nouvelle livraison</Button>
+                  <Button variant="ghost" icon={FileUp} onClick={() => navigate('/livraisons/import')}>Importer un fichier</Button>
+                </div>
+              } />
           ) : (
             <Empty icon={Search} title="Aucune livraison ne correspond"
               text="Aucun résultat pour ces filtres."
@@ -291,11 +335,15 @@ export default function Deliveries() {
             {/* Tablette et ordinateur : tableau */}
             <table className="dl-table pro-hide-only-sm">
               <colgroup>
-                <col className="c-ref" /><col className="c-client" /><col className="c-dest" /><col className="c-status" />
+                <col className="c-sel" /><col className="c-ref" /><col className="c-client" /><col className="c-dest" /><col className="c-status" />
                 <col className="c-driver" /><col className="c-amount" /><col className="c-date" /><col className="c-menu" />
               </colgroup>
               <thead>
                 <tr>
+                  <th className="c-sel" scope="col">
+                    <input type="checkbox" className="lb-cb" checked={pageAll} aria-label="Sélectionner les livraisons de cette page"
+                      ref={(el) => { if (el) el.indeterminate = pageSome && !pageAll }} onChange={togglePage} />
+                  </th>
                   <th className="c-ref" scope="col">Référence</th>
                   <th scope="col">Client</th>
                   <th scope="col">Destination</th>
@@ -313,9 +361,13 @@ export default function Deliveries() {
               <tbody>
                 {visible.map(o => (
                   <tr key={o.id} tabIndex={0} aria-label={`Livraison ${shortRef(o.id)} pour ${o.receiverName || 'client'}`}
-                    className={`dl-row ${openId === o.id ? 'is-open' : ''} ${flash.has(o.id) ? 'flash' : ''}`}
+                    className={`dl-row ${openId === o.id ? 'is-open' : ''} ${flash.has(o.id) ? 'flash' : ''} ${selected.has(o.id) ? 'is-selected' : ''}`}
                     onClick={() => open(o.id)}
                     onKeyDown={(e) => { if (e.key === 'Enter' && e.target === e.currentTarget) open(o.id) }}>
+                    <td className="c-sel" onClick={(e) => e.stopPropagation()} onKeyDown={(e) => e.stopPropagation()}>
+                      <input type="checkbox" className="lb-cb" checked={selected.has(o.id)} onChange={() => toggleOne(o.id)}
+                        aria-label={`Sélectionner la livraison ${shortRef(o.id)}`} />
+                    </td>
                     <td className="c-ref"><span className="mono dl-ref">{shortRef(o.id)}</span></td>
                     <td>
                       <div className="dl-name dl-ellipsis">{o.receiverName || 'Client'}</div>
@@ -348,6 +400,7 @@ export default function Deliveries() {
 
       <OrderDrawer key={openId ?? 'none'} id={openId} onClose={() => setParam({ id: null })} onChanged={load} />
       <CancelModal open={!!cancelling} order={cancelling} onClose={() => setCancelling(null)} onDone={() => { setCancelling(null); load() }} />
+      {printing && <PrintLabelsModal open orders={printing} onClose={() => setPrinting(null)} />}
     </div>
   )
 }
@@ -362,7 +415,7 @@ function SortButton({ label, active, dir, onClick, align }) {
 }
 
 // Menu « ⋯ » d'une ligne
-function RowMenu({ order: o, open, onToggle, onDetail, onCopy, onDuplicate, onCancel }) {
+function RowMenu({ order: o, open, onToggle, onDetail, onCopy, onDuplicate, onPrint, onCancel }) {
   const canTrack = o.status !== 'CANCELLED'
   const canCall = !!o.driver?.phone && ACTIVE_STATUSES.has(o.status)
   const canCancel = CANCELLABLE.has(o.status)
@@ -375,6 +428,7 @@ function RowMenu({ order: o, open, onToggle, onDetail, onCopy, onDuplicate, onCa
           <button role="menuitem" type="button" onClick={onDetail}><Eye size={15} aria-hidden /> Voir le détail</button>
           {canTrack && <button role="menuitem" type="button" onClick={onCopy}><Link2 size={15} aria-hidden /> Copier le lien de suivi</button>}
           {canCall && <a role="menuitem" href={`tel:${o.driver.phone}`}><Phone size={15} aria-hidden /> Appeler le coursier</a>}
+          {canTrack && <button role="menuitem" type="button" onClick={onPrint}><Printer size={15} aria-hidden /> Imprimer le bon</button>}
           <button role="menuitem" type="button" onClick={onDuplicate}><Copy size={15} aria-hidden /> Dupliquer</button>
           {canCancel && <>
             <span className="dl-menu-sep" aria-hidden />
@@ -498,6 +552,11 @@ function OrderDrawer({ id, onClose, onChanged }) {
                 {(pkg || o.isFragile) && <KV label="Type de colis" value={[pkg?.label, o.isFragile && 'Fragile'].filter(Boolean).join(' · ')} />}
                 {o.description && <KV label="Colis" value={o.description} />}
                 <KV label="Retrait" value={o.pickupAddress} />
+                {o.status !== 'CANCELLED' && (
+                  <div style={{ marginTop: 12 }}>
+                    <PrintLabelsButton orders={[o]}>Imprimer le bon</PrintLabelsButton>
+                  </div>
+                )}
               </section>
 
               {o.driver && (

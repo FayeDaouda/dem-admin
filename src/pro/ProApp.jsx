@@ -1,12 +1,14 @@
 import { lazy, Suspense, useEffect } from 'react'
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
 import './pro.css'
+import './styles/lot3.css'
 import { ProAuthProvider } from './ProAuth'
 import { useProAuth } from './proAuthContext'
 import { NotifyProvider } from './ui/notify'
 import ProLayout from './ProLayout'
 import AccountGate from './AccountGate'
 import Login from './pages/Login'
+import { setupPwa } from './ui/pwa'
 
 // Espace web DEM Pro : pro.dem.sn (racine) ou admin.dem.sn/pro.
 // Indépendant de l'admin : sa propre connexion (compte DEM Pro), son menu.
@@ -19,6 +21,7 @@ const WalletPage = lazy(() => import('./pages/WalletPage'))
 const Account = lazy(() => import('./pages/Account'))
 const Batches = lazy(() => import('./pages/Batches'))
 const NewBatch = lazy(() => import('./pages/NewBatch'))
+const ImportDeliveries = lazy(() => import('./pages/ImportDeliveries'))
 const Clients = lazy(() => import('./pages/Clients'))
 const Stats = lazy(() => import('./pages/Stats'))
 const Team = lazy(() => import('./pages/Team'))
@@ -63,7 +66,10 @@ export default function ProApp({ basename = '' }) {
     // index.html est celui de l'admin (lang="en") : lecteurs d'écran et traduction
     document.documentElement.lang = 'fr'
     document.body.style.background = '#F6F8FB'
-  }, [])
+    // Application installable : manifeste, couleur, icônes et service worker
+    // ajoutés ici seulement (index.html est partagé avec l'admin)
+    setupPwa(basename)
+  }, [basename])
   return (
     <BrowserRouter basename={basename}>
       <NotifyProvider>
@@ -73,6 +79,7 @@ export default function ProApp({ basename = '' }) {
             <Route path="/" element={<Protected><Home /></Protected>} />
             <Route path="/livraisons" element={<Protected><Deliveries /></Protected>} />
             <Route path="/livraisons/nouvelle" element={<Protected><NewDelivery /></Protected>} />
+            <Route path="/livraisons/import" element={<Protected><ImportDeliveries /></Protected>} />
             <Route path="/boutique" element={<Protected><Shop /></Protected>} />
             <Route path="/commandes" element={<Protected><Requests /></Protected>} />
             <Route path="/wallet" element={<Protected><WalletPage /></Protected>} />
