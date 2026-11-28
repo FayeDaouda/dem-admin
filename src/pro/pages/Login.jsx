@@ -1,12 +1,14 @@
 import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { AlertCircle, ArrowRight, ArrowUpRight, Check, Eye, EyeOff, Lock, ShieldCheck } from 'lucide-react'
+import { AlertCircle, ArrowRight, ArrowUpRight, Check, Eye, EyeOff, Lock, ShieldCheck, Store, UserRound } from 'lucide-react'
 import wordmarkSrc from '../assets/dem-wordmark-white.svg'
 import photoSrc from '../assets/login-coursier.jpg'
-import { useProAuth, NotProAccount } from '../proAuthContext'
+import { useProAuth, NotProAccount, canAccess } from '../proAuthContext'
 import { errMsg } from '../lib/proApi'
 import { session } from '../lib/session'
 import { Spinner } from '../ui/ui'
+import { whatsappUrl } from '../support'
+import '../styles/account.css'
 
 // Connexion à l'espace web DEM Pro — même compte, même code secret que
 // dans l'application. Charte du site www.dem.sn : photo DEM sous voile
@@ -30,14 +32,14 @@ const TRIAL = 'https://www.dem.sn/essai-gratuit-dem-pro'
 const LINKS = [
   ['Conditions', 'https://www.dem.sn/terms'],
   ['Confidentialité', 'https://www.dem.sn/privacy'],
-  ['Aide', 'https://wa.me/221784448524'],
+  ['Aide', whatsappUrl()],
 ]
 const SETUP_STEP = { 'setup-otp': 1, 'setup-pin': 2, 'setup-confirm': 3 }
 
 export default function Login() {
   const auth = useProAuth()
   const navigate = useNavigate()
-  // phone → pin | otp | setup-otp → setup-pin → setup-confirm
+  // phone → pin | otp | setup-otp → setup-pin → setup-confirm → (team)
   const [step, setStep] = useState('phone')
   const [phone, setPhone] = useState('')
   const [touched, setTouched] = useState(false)
@@ -50,6 +52,9 @@ export default function Login() {
   const [resendIn, setResendIn] = useState(0)
   const [reveal, setReveal] = useState(false)
   const [shake, setShake] = useState(0)
+  // Numéro membre d'une équipe : choix de la boutique ou du compte personnel
+  const [pending, setPending] = useState(null)
+  const [picking, setPicking] = useState(null)
 
   useEffect(() => {
     if (resendIn <= 0) return
@@ -75,7 +80,14 @@ export default function Login() {
     } finally { setBusy(false) }
   }
 
-  const done = () => navigate('/', { replace: true })
+  // Un employé n'a pas le tableau de bord (chiffres réservés) : il arrive
+  // sur ses livraisons
+  const done = (u) => navigate(u && !canAccess(u, 'dashboard') ? '/livraisons' : '/', { replace: true })
+  // Connexion réussie, ou choix du compte à faire (membre d'une équipe)
+  const after = (r) => {
+    if (r?.choose) { setPending(r.choose); setCode(''); setReveal(false); setStep('team'); return }
+    done(r?.user)
+  }
 
   const submitPhone = (ev) => {
     ev?.preventDefault()
@@ -96,13 +108,13 @@ export default function Login() {
     setCode(value)
     if (error) setError('')
     if (value.length !== 6 || busy) return
-    if (step === 'pin') run(async () => { await auth.loginWithPin(e164, value); done() })
-    if (step === 'otp') run(async () => { await auth.verifyOtp(e164, value); done() })
+    if (step === 'pin') run(async () => after(await auth.loginWithPin(e164, value)))
+    if (step === 'otp') run(async () => after(await auth.verifyOtp(e164, value)))
     if (step === 'setup-otp') run(async () => { setTicket(await auth.verifySetupOtp(e164, value)); setCode(''); setStep('setup-pin') })
     if (step === 'setup-pin') { setPin1(value); setCode(''); setStep('setup-confirm') }
     if (step === 'setup-confirm') {
       if (value !== pin1) { failCode('Les deux codes ne sont pas identiques.'); return }
-      run(async () => { await auth.setupPin(ticket, value); done() })
+      run(async () => after(await auth.setupPin(ticket, value)))
     }
   }
 
@@ -111,7 +123,19 @@ export default function Login() {
     setResendIn(r?.resendAfter ?? 60)
   })
 
-  const backToPhone = () => { setStep('phone'); setError(''); setCode(''); setReveal(false) }
+  const backToPhone = () => { setStep('phone'); setError(''); setCode(''); setReveal(false); setPending(null) }
+
+  // Choix du compte : une seule entrée à la fois (pas de double connexion)
+  const pick = async (membershipId) => {
+    if (picking) return
+    setPicking(membershipId ?? 'personal'); setError('')
+    try {
+      done(membershipId ? await auth.enterTeam(pending, membershipId) : auth.enterPersonal(pending))
+    } catch (e) {
+      if (e?.expired) { backToPhone(); setError(e.message); return }
+      setError(e instanceof NotProAccount ? e.message : errMsg(e, 'Impossible d\'ouvrir le compte de la boutique.'))
+    } finally { setPicking(null) }
+  }
 
   const titles = {
     phone: ['Connexion', 'Accédez à vos ventes, vos livraisons et votre wallet avec le numéro de votre compte DEM Pro.'],
@@ -120,6 +144,7 @@ export default function Login() {
     'setup-otp': ['Vérification', 'Saisissez le code à 6 chiffres envoyé par SMS.'],
     'setup-pin': ['Votre code secret', '6 chiffres, à garder pour vous. Vous l\'utiliserez aussi dans l\'application.'],
     'setup-confirm': ['Confirmation', 'Saisissez votre code secret une seconde fois.'],
+    team: ['Quel compte ouvrir', 'Votre numéro fait partie de l\'équipe d\'une boutique DEM Pro. Choisissez où travailler.'],
   }
   const [title, subtitle] = titles[step]
   const setupIndex = SETUP_STEP[step]
@@ -152,7 +177,9 @@ export default function Login() {
             <h1 className="login-title">{title}<span className="login-dot-end">.</span></h1>
             <p className="login-sub">{subtitle}</p>
 
-            {step === 'phone' ? (
+            {step === 'team' && pending ? (
+              <TeamChoice pending={pending} picking={picking} error={error} onPick={pick} />
+            ) : step === 'phone' ? (
               <form onSubmit={submitPhone} noValidate>
                 <label className="login-label" htmlFor="login-phone">Numéro de téléphone</label>
                 <div className={`login-phone ${error || phoneHint ? 'has-error' : ''} ${phoneOk ? 'is-valid' : ''}`}>
@@ -220,6 +247,52 @@ export default function Login() {
           {LINKS.map(([label, href]) => <a key={label} href={href} target="_blank" rel="noopener noreferrer">{label}</a>)}
         </footer>
       </section>
+    </div>
+  )
+}
+
+// Boutiques dont ce numéro fait partie de l'équipe, puis le compte
+// personnel (même choix que l'app, team_account_picker_sheet.dart)
+function TeamChoice({ pending, picking, error, onPick }) {
+  return (
+    <div>
+      <ul className="login-choices">
+        {pending.teams.map(t => (
+          <li key={t.membershipId}>
+            <button type="button" className="login-choice is-shop" disabled={!!picking} aria-busy={picking === t.membershipId || undefined}
+              onClick={() => onPick(t.membershipId)}>
+              <span className="login-choice-ico" aria-hidden>
+                {t.avatar ? <img src={t.avatar} alt="" /> : <Store size={18} />}
+              </span>
+              <span className="login-choice-text">
+                <strong>{t.businessName}</strong>
+                <small>Membre de l'équipe</small>
+              </span>
+              {picking === t.membershipId ? <Spinner size={16} /> : <ArrowRight size={18} className="login-choice-arrow" aria-hidden />}
+            </button>
+          </li>
+        ))}
+        {pending.personalIsPro && (
+          <li>
+            <button type="button" className="login-choice" disabled={!!picking} aria-busy={picking === 'personal' || undefined}
+              onClick={() => onPick(null)}>
+              <span className="login-choice-ico" aria-hidden><UserRound size={18} /></span>
+              <span className="login-choice-text">
+                <strong>Mon compte DEM Pro</strong>
+                <small>Ma propre boutique</small>
+              </span>
+              {picking === 'personal' ? <Spinner size={16} /> : <ArrowRight size={18} className="login-choice-arrow" aria-hidden />}
+            </button>
+          </li>
+        )}
+      </ul>
+      {!pending.personalIsPro && (
+        <p className="login-choice-note">
+          Votre compte personnel (vos propres livraisons) s'utilise dans l'application DEM.
+        </p>
+      )}
+      <div aria-live="assertive">{error && <FieldError>{error}</FieldError>}</div>
+      <Assurances />
     </div>
   )
 }

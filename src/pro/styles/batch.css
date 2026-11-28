@@ -1,0 +1,137 @@
+/* ============================================================
+   Tournées groupées (.bt-*) — liste, suivi et création.
+   S'appuie sur les blocs .nd-* (formulaire) et .dl-* (liste,
+   panneau) de pro.css ; même charte : angles vifs, bleu nuit,
+   cyan pour l'accent, capitales réservées aux surtitres.
+   ============================================================ */
+
+/* ── Numéro d'arrêt : carré bleu nuit ───────────────────────── */
+.pro .bt-num {
+  width: 26px; height: 26px; flex-shrink: 0; display: grid; place-items: center;
+  background: var(--p-dark); color: #fff; font: 700 12.5px/1 var(--p-head);
+}
+.pro .bt-num.is-ok { background: var(--p-cyan-2); }
+
+.pro .bt-textarea { height: auto; min-height: 44px; padding: 10px 14px; line-height: 1.45; resize: vertical; }
+
+/* ── Création ───────────────────────────────────────────────── */
+.pro .bt-alert {
+  display: flex; align-items: center; gap: 14px; flex-wrap: wrap; padding: 14px 18px; margin-bottom: 20px;
+  background: var(--p-danger-bg); border: 1px solid #FECACA; color: var(--p-danger);
+}
+.pro .bt-alert > svg { flex-shrink: 0; }
+.pro .bt-alert > div { flex: 1 1 260px; min-width: 0; }
+.pro .bt-alert strong { display: block; font: 600 14.5px/1.3 var(--p-head); color: var(--p-ink); }
+.pro .bt-alert span { display: block; font-size: 13px; color: var(--p-ink); margin-top: 2px; }
+
+.pro .bt-stops { list-style: none; margin: 0; padding: 0; display: grid; gap: 14px; }
+.pro .bt-stop { border: 1px solid var(--p-line); background: #fff; transition: border-color var(--p-fast), box-shadow var(--p-fast); }
+.pro .bt-stop.is-active { border-color: var(--p-dark); box-shadow: inset 2px 0 0 var(--p-cyan-2); }
+.pro .bt-stop-head { display: flex; align-items: center; gap: 12px; padding: 12px 12px 12px 16px; border-bottom: 1px solid var(--p-line); background: var(--p-soft); }
+.pro .bt-stop-title { flex: 1; min-width: 0; display: grid; gap: 1px; }
+.pro .bt-stop-title b { font: 600 14.5px/1.3 var(--p-head); }
+.pro .bt-stop-title span { font-size: 12.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pro .bt-stop-tools { display: flex; gap: 2px; flex-shrink: 0; }
+.pro .bt-stop-tools .nd-x { width: 32px; height: 32px; }
+.pro .bt-stop-tools .nd-x:disabled { color: #CBD5E1; cursor: not-allowed; background: transparent; }
+.pro .bt-stop-tools .bt-del:hover { color: var(--p-danger); background: var(--p-danger-bg); }
+.pro .bt-stop-body { padding: 18px 16px 18px; display: grid; gap: 16px; }
+.pro .bt-recent .nd-sub { margin-bottom: 8px; }
+.pro .bt-field { display: grid; gap: 6px; }
+.pro .bt-pkg .nd-sub { margin-bottom: 8px; }
+.pro .bt-pkg-row { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+
+.pro .bt-add {
+  margin-top: 14px; width: 100%; display: flex; align-items: center; gap: 10px; padding: 14px 16px;
+  border: 1px dashed var(--p-line-2); background: #fff; color: var(--p-ink); cursor: pointer;
+  font: 600 14px var(--p-head); text-align: left; transition: border-color var(--p-fast), background var(--p-fast);
+}
+.pro .bt-add > svg { color: var(--p-cyan-2); }
+.pro .bt-add .muted { margin-left: auto; font: 500 12.5px var(--p-body); }
+.pro .bt-add:hover { border-color: var(--p-dark); background: var(--p-soft); }
+
+/* Résumé : ordre conseillé et prix */
+.pro .bt-route { margin-top: 18px; padding: 12px 14px; border: 1px solid var(--p-line); background: var(--p-soft); }
+.pro .bt-route.is-better { border-color: var(--p-cyan-2); background: var(--p-info-bg); }
+.pro .bt-route-head { display: flex; align-items: center; gap: 6px; font: 600 13.5px/1.3 var(--p-head); color: var(--p-ink); }
+.pro .bt-route-head svg { color: var(--p-cyan-2); }
+.pro .bt-route.is-better .bt-route-head svg { color: var(--p-info); }
+.pro .bt-route p { margin: 4px 0 0; font-size: 13px; color: var(--p-muted); line-height: 1.45; }
+.pro .bt-route.is-better p { color: var(--p-ink); }
+.pro .bt-route .btn { margin-top: 10px; }
+.pro .bt-price p { margin: 8px 0 0; font-size: 13.5px; line-height: 1.5; color: var(--p-ink); }
+.pro .bt-price p.muted { color: var(--p-muted); font-size: 13px; margin-top: 6px; }
+
+/* ── Confirmation après création ────────────────────────────── */
+.pro .bt-done { max-width: 720px; margin: 0 auto; }
+.pro .bt-done-card { padding: 0; }
+.pro .bt-done-head { display: flex; gap: 18px; align-items: flex-start; padding: 32px 32px 24px; outline: none; }
+.pro .bt-done-ico { width: 48px; height: 48px; flex-shrink: 0; display: grid; place-items: center; background: var(--p-success-bg); color: var(--p-success); }
+.pro .bt-done-route { padding: 20px 32px; border-top: 1px solid var(--p-line); }
+.pro .bt-done-pick, .pro .bt-pick { display: flex; gap: 10px; align-items: flex-start; font-size: 14px; font-weight: 600; }
+.pro .bt-done-pick > svg, .pro .bt-pick > svg { color: var(--p-cyan-2); flex-shrink: 0; margin-top: 2px; }
+.pro .bt-done-stops { list-style: none; margin: 14px 0 0; padding: 0; border: 1px solid var(--p-line); }
+.pro .bt-done-stops li { display: flex; align-items: center; gap: 12px; padding: 12px 14px; border-bottom: 1px solid var(--p-line); }
+.pro .bt-done-stops li:last-child { border-bottom: 0; }
+.pro .bt-done-stop-txt { flex: 1; min-width: 0; display: grid; gap: 2px; }
+.pro .bt-done-stop-txt b { font-size: 14px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pro .bt-done-stop-txt b .muted { font-weight: 500; }
+.pro .bt-done-stop-txt > span { font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pro .bt-done-amount { font: 700 14.5px var(--p-head); white-space: nowrap; }
+.pro .bt-done-sum { padding: 18px 32px 22px; border-top: 1px solid var(--p-line); }
+.pro .bt-done-actions { display: flex; gap: 10px; flex-wrap: wrap; padding: 16px 32px; border-top: 1px solid var(--p-line); background: var(--p-soft); }
+
+/* ── Liste ──────────────────────────────────────────────────── */
+.pro .bt-table col.c-tour { width: auto; }
+.pro .bt-table col.c-prog { width: 132px; }
+.pro .bt-prog { display: inline-flex; align-items: center; gap: 8px; }
+.pro .bt-prog-bar { display: inline-flex; gap: 3px; }
+.pro .bt-prog-bar i { width: 14px; height: 6px; background: var(--p-line-2); display: block; }
+.pro .bt-prog-bar i.go { background: var(--p-cyan-2); }
+.pro .bt-prog-bar i.done { background: var(--p-success); }
+.pro .bt-prog-bar i.off { background: #FCA5A5; }
+.pro .bt-prog-txt { font-size: 12.5px; font-weight: 600; color: var(--p-muted); }
+.pro .bt-prog.is-compact .bt-prog-bar i { width: 10px; }
+.pro .dl-mcard-bot .bt-prog { margin-left: auto; }
+
+@media (max-width: 1100px) { .pro .bt-table col.c-prog { width: 104px; } .pro .bt-prog-bar i { width: 10px; } }
+@media (max-width: 860px) { .pro .bt-table .c-prog { display: none; } }
+
+/* ── Suivi (panneau) ────────────────────────────────────────── */
+.pro .bt-dmap { height: 260px; }
+.pro .bt-note { display: flex; gap: 10px; align-items: flex-start; padding: 12px 24px; background: var(--p-info-bg); color: var(--p-ink); font-size: 13px; line-height: 1.45; border-bottom: 1px solid var(--p-line); }
+.pro .bt-note > svg { color: var(--p-info); flex-shrink: 0; margin-top: 1px; }
+.pro .bt-notes { margin-top: 10px; font-weight: 500; color: var(--p-muted); }
+.pro .bt-notes > svg { color: var(--p-subtle); }
+
+.pro .bt-dstops { list-style: none; margin: 0; padding: 0; display: grid; }
+.pro .bt-dstops li { position: relative; display: flex; gap: 12px; align-items: flex-start; padding: 12px 0; border-bottom: 1px solid var(--p-line); }
+.pro .bt-dstops li:first-child { padding-top: 0; }
+.pro .bt-dstops li:last-child { border-bottom: 0; padding-bottom: 0; }
+.pro .bt-dstops li.is-done .bt-num { background: var(--p-success); }
+.pro .bt-dstops li.is-off .bt-num { background: #94A3B8; }
+.pro .bt-dstops li.is-current .bt-num { background: var(--p-cyan-2); }
+.pro .bt-dstop-main { flex: 1; min-width: 0; display: grid; gap: 3px; }
+.pro .bt-dstop-top { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.pro .bt-dstop-top b { flex: 1; min-width: 0; font-size: 14.5px; font-weight: 700; }
+.pro .bt-dstop-addr { font-size: 13px; overflow-wrap: anywhere; }
+.pro .bt-dstop-desc { font-size: 12.5px; }
+.pro .bt-dstop-meta { display: flex; align-items: center; gap: 6px 14px; flex-wrap: wrap; margin-top: 4px; font-size: 13px; }
+.pro .bt-dstop-meta .num { font-weight: 700; }
+.pro .bt-current { font: 700 11px/1 var(--p-head); letter-spacing: .1em; text-transform: uppercase; color: var(--p-info); background: var(--p-info-bg); padding: 4px 6px; }
+.pro .bt-dstops li.is-off .bt-dstop-main { opacity: .7; }
+
+/* ── Téléphone ──────────────────────────────────────────────── */
+@media (max-width: 560px) {
+  .pro .bt-stop-body { padding: 16px 14px; }
+  .pro .bt-stop-head { padding: 10px 8px 10px 12px; }
+  .pro .bt-add .muted { display: none; }
+  .pro .bt-pkg-row .seg { width: 100%; display: flex; }
+  .pro .bt-pkg-row .seg button { flex: 1; }
+  .pro .bt-done-head { padding: 24px 18px 18px; gap: 14px; }
+  .pro .bt-done-route, .pro .bt-done-sum { padding-left: 18px; padding-right: 18px; }
+  .pro .bt-done-actions { padding: 14px 18px; }
+  .pro .bt-done-actions .btn { flex: 1 1 100%; justify-content: center; }
+  .pro .bt-dmap { height: 220px; }
+  .pro .bt-note { padding: 12px 16px; }
+}

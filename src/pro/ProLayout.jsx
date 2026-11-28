@@ -2,8 +2,9 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { Link, NavLink, useLocation, useNavigate } from 'react-router-dom'
 import {
   LayoutDashboard, Bike, Plus, Store, Inbox, Wallet, UserRound, LogOut, Bell, ChevronDown, Menu, X, BellRing,
-  MessageCircle, WifiOff,
+  MessageCircle, WifiOff, Route as RouteIcon, Users, ChartColumn, Plug, Search, Volume2, VolumeX, Keyboard, MonitorDown, Share,
 } from 'lucide-react'
+import { whatsappUrl } from './support'
 import wordmark from './assets/dem-wordmark-white.svg'
 import { useProAuth } from './proAuthContext'
 import proApi from './lib/proApi'
@@ -11,34 +12,52 @@ import { proSocket } from './lib/proSocket'
 import { useLiveRefresh } from './lib/useLiveRefresh'
 import { fcfa, phoneFmt, planName, timeAgo } from './lib/format'
 import { useNotify, KIND as notifyKinds, useBrowserNotifications } from './ui/notifyContext'
-import { Button, IconButton } from './ui/ui'
+import { Button, IconButton, Modal } from './ui/ui'
+import { bindSoundUnlock, disableSound, enableSound, playOrderChime, useCounterSound } from './ui/sound'
+import { isIOS, promptInstall, useInstallPrompt } from './ui/pwa'
+import { ShortcutKeys, ShortcutsHelp } from './ui/Shortcuts'
+import CommandPalette from './ui/CommandPalette'
 
 // Structure de l'espace web DEM Pro, dans l'esprit de la navigation du site
 // dem.sn : barre latérale bleu nuit, libellés en capitales espacées, élément
 // actif souligné de cyan ; barre du haut blanche (fil d'Ariane, action
 // principale, notifications, compte) et temps réel.
 const NAV = [
-  { to: '/', icon: LayoutDashboard, label: 'Tableau de bord', end: true },
+  // area : zone soumise au rôle du membre d'équipe (voir ProAuth.jsx can())
+  { to: '/', icon: LayoutDashboard, label: 'Tableau de bord', end: true, area: 'dashboard' },
   { to: '/livraisons', icon: Bike, label: 'Livraisons' },
-  { to: '/boutique', icon: Store, label: 'Boutique' },
+  { to: '/tournees', icon: RouteIcon, label: 'Tournées' },
   { to: '/commandes', icon: Inbox, label: 'Commandes reçues', badge: 'requests' },
-  { to: '/wallet', icon: Wallet, label: 'Wallet' },
-  { to: '/compte', icon: UserRound, label: 'Compte' },
+  { to: '/boutique', icon: Store, label: 'Boutique' },
+  { to: '/clients', icon: Users, label: 'Clients' },
+  { to: '/statistiques', icon: ChartColumn, label: 'Statistiques', area: 'dashboard' },
+  { to: '/wallet', icon: Wallet, label: 'Wallet', area: 'wallet' },
+  { to: '/compte/api', icon: Plug, label: 'API DEM', area: 'api' },
+  { to: '/compte', icon: UserRound, label: 'Compte', end: true },
 ]
 
 const TITLES = {
   '/': 'Tableau de bord',
   '/livraisons': 'Livraisons',
   '/livraisons/nouvelle': 'Nouvelle livraison',
+  '/livraisons/import': 'Importer des livraisons',
   '/boutique': 'Boutique',
   '/commandes': 'Commandes reçues',
   '/wallet': 'Wallet',
   '/compte': 'Compte',
+  '/compte/equipe': 'Équipe',
+  '/compte/api': 'API DEM',
+  '/compte/parrainage': 'Parrainage',
+  '/tournees': 'Tournées groupées',
+  '/tournees/nouvelle': 'Nouvelle tournée',
+  '/clients': 'Clients',
+  '/statistiques': 'Statistiques',
 }
 // Écrans qui portent déjà « Nouvelle livraison » : pas de doublon en haut
-const HAS_OWN_NEW = new Set(['/livraisons', '/livraisons/nouvelle'])
+const HAS_OWN_NEW = new Set(['/livraisons', '/livraisons/nouvelle', '/livraisons/import', '/tournees', '/tournees/nouvelle'])
 
-const HELP_URL = 'https://wa.me/221784448524'
+// Support : mêmes contacts que l'app (support.js)
+const HELP_URL = whatsappUrl()
 
 // Événements temps réel (mêmes que l'app) → notification + rafraîchissement
 const EVENTS = {
@@ -52,12 +71,18 @@ const EVENTS = {
   'order:payment_confirmed': ['success', 'Paiement confirmé', 'Le paiement de la livraison est enregistré.'],
   'batch:accepted':        ['driver', 'Tournée acceptée', 'Un coursier a accepté votre tournée.'],
   'batch:completed':       ['delivered', 'Tournée terminée', 'Tous les colis de la tournée sont livrés.'],
+  'batch:searching':       ['info', 'Recherche d\'un coursier', 'Votre tournée est proposée aux coursiers proches.'],
+  'batch:auto_cancelled':  ['error', 'Aucun coursier disponible', 'La tournée a été annulée faute de coursier. Relancez-la.'],
+  'order:scheduled_assigned':  ['driver', 'Coursier réservé', 'Un coursier est réservé pour votre livraison programmée.'],
+  'order:scheduled_searching': ['info', 'Nouveau coursier recherché', 'Le coursier prévu n\'est plus disponible : nous en cherchons un autre.'],
+  'order:driver_unreachable':  ['error', 'Coursier injoignable', 'Le coursier ne répond plus depuis quelques minutes. DEM s\'en occupe.'],
 }
 
 const searchingSeen = new Set()
 
 export default function ProLayout({ children }) {
-  const { user, logout } = useProAuth()
+  const { user, logout, can, member } = useProAuth()
+  const canWallet = can('wallet')
   const navigate = useNavigate()
   const { pathname } = useLocation()
   const notify = useNotify()
@@ -65,6 +90,18 @@ export default function ProLayout({ children }) {
   const [requests, setRequests] = useState(0)
   const [offline, setOffline] = useState(false)
   const [mobileNav, setMobileNav] = useState(false)
+  const [paletteOpen, setPaletteOpen] = useState(false)
+  const [helpOpen, setHelpOpen] = useState(false)
+  const [iosHelp, setIosHelp] = useState(false)
+  const openPalette = useCallback(() => { setHelpOpen(false); setPaletteOpen(true) }, [])
+  const closePalette = useCallback(() => setPaletteOpen(false), [])
+  const openHelp = useCallback(() => { setPaletteOpen(false); setHelpOpen(true) }, [])
+  const closeHelp = useCallback(() => setHelpOpen(false), [])
+
+  // Son du comptoir : débloqué au premier geste sur la page (exigence des
+  // navigateurs), s'il est activé
+  const sound = useCounterSound()
+  useEffect(() => bindSoundUnlock(), [])
 
   // Wallet et commandes reçues : relus à chaque événement (rafales regroupées)
   // et toutes les minutes en filet de sécurité, onglet visible seulement
@@ -75,7 +112,8 @@ export default function ProLayout({ children }) {
   const lastLiveNew = useRef(0)
   const pushRef = useRef(null)
   const loadSide = useCallback(() => {
-    proApi.get('/users/dem-pro/wallet').then(r => setWallet(r.data)).catch(() => {})
+    // Employé sans accès au wallet : ni appel (403) ni solde affiché
+    if (canWallet) proApi.get('/users/dem-pro/wallet').then(r => setWallet(r.data)).catch(() => {})
     proApi.get('/dem-pro/order-requests', { params: { status: 'PENDING' } })
       .then(r => {
         const n = (r.data ?? []).filter(x => (x.status ?? 'PENDING') === 'PENDING').length
@@ -83,10 +121,11 @@ export default function ProLayout({ children }) {
         lastPending.current = n
         setRequests(n)
         if (before != null && n > before && Date.now() - lastLiveNew.current > 90_000) {
+          playOrderChime()
           pushRef.current?.('order', n - before > 1 ? `${n - before} nouvelles commandes` : 'Nouvelle commande reçue', 'À accepter dans Commandes reçues.', '/commandes')
         }
       }).catch(() => {})
-  }, [])
+  }, [canWallet])
   useEffect(() => {
     loadSide()
     const t = setInterval(() => { if (!document.hidden) loadSide() }, 60_000)
@@ -115,7 +154,7 @@ export default function ProLayout({ children }) {
         const once = ev === 'order:searching' && p?.orderId
         if (!once || !searchingSeen.has(p.orderId)) {
           if (once) searchingSeen.add(p.orderId)
-          push(kind, title, text, p?.orderId ? `/livraisons?id=${p.orderId}` : null)
+          push(kind, title, text, p?.orderId ? `/livraisons?id=${p.orderId}` : p?.batchId ? `/tournees?id=${p.batchId}` : null)
         }
         refresh({ ev, p })
       })),
@@ -127,9 +166,15 @@ export default function ProLayout({ children }) {
       }),
       on('order_request:new', (p) => {
         lastLiveNew.current = Date.now()
+        playOrderChime()
         push('order', p?.paid ? 'Nouvelle commande payée' : 'Nouvelle commande reçue',
           `${p?.customerName ?? 'Un client'} · ${fcfa(p?.total)} · à accepter dans Commandes reçues.`, '/commandes')
         refresh({ ev: 'order_request:new', p })
+      }),
+      on('order:driver_arrived', (p) => {
+        if (p?.point === 'pickup') push('driver', 'Coursier arrivé', 'Il est à votre point de retrait. Préparez le colis.', p?.orderId ? `/livraisons?id=${p.orderId}` : null)
+        else if (p?.point === 'delivery') push('driver', 'Coursier chez votre client', 'La remise est en cours.', p?.orderId ? `/livraisons?id=${p.orderId}` : null)
+        refresh({ ev: 'order:driver_arrived', p })
       }),
       on('wallet:updated', () => refresh({ ev: 'wallet:updated' })),
     ]
@@ -160,7 +205,7 @@ export default function ProLayout({ children }) {
         </div>
 
         <nav className="pro-side-nav">
-          {NAV.map(item => {
+          {NAV.filter(item => !item.area || can(item.area)).map(item => {
             const Icon = item.icon
             return (
               <NavLink key={item.to} to={item.to} end={item.end} onClick={closeNav} className={({ isActive }) => `pro-nav ${isActive ? 'active' : ''}`}>
@@ -178,7 +223,7 @@ export default function ProLayout({ children }) {
           <div className="pro-side-user">
             <Avatar user={user} size={34} dark person />
             <div style={{ minWidth: 0 }}>
-              <div className="pro-side-user-name">{user?.name ?? shopName}</div>
+              <div className="pro-side-user-name">{member?.name ?? user?.name ?? shopName}</div>
               <div className="pro-side-user-phone num">{phoneFmt(user?.phone)}</div>
             </div>
           </div>
@@ -202,10 +247,23 @@ export default function ProLayout({ children }) {
             <span className="pro-crumbs-current" aria-current="page">{title}</span>
           </nav>
           <div style={{ flex: 1 }} />
-          <Link to="/wallet" className="pro-wallet-pill" title="Solde retirable">
-            <span className="pro-wallet-label">Solde</span>
-            <span className="num">{wallet ? fcfa(wallet.withdrawableBalance) : '—'}</span>
-          </Link>
+          <button type="button" className="pro-search-btn" onClick={openPalette} aria-label="Rechercher" aria-keyshortcuts="/ Control+K">
+            <Search size={16} aria-hidden />
+            <span className="pro-search-label">Rechercher</span>
+            <kbd className="kb-key" aria-hidden>/</kbd>
+          </button>
+          {sound.supported && (sound.pref == null || (sound.pref === 'on' && !sound.unlocked)) && (
+            <button type="button" className="pro-sound-btn" onClick={enableSound}
+              title="Un carillon à chaque nouvelle commande reçue" aria-label="Activer le son des nouvelles commandes">
+              <VolumeX size={16} aria-hidden /><span className="pro-sound-label">Activer le son</span>
+            </button>
+          )}
+          {canWallet && (
+            <Link to="/wallet" className="pro-wallet-pill" title="Solde retirable">
+              <span className="pro-wallet-label">Solde</span>
+              <span className="num">{wallet ? fcfa(wallet.withdrawableBalance) : '—'}</span>
+            </Link>
+          )}
           {!HAS_OWN_NEW.has(pathname) && (
             <Button size="sm" icon={Plus} className="pro-top-new" onClick={() => navigate('/livraisons/nouvelle')}
               aria-label="Nouvelle livraison">
@@ -213,7 +271,8 @@ export default function ProLayout({ children }) {
             </Button>
           )}
           <NotificationBell />
-          <AccountMenu user={user} onLogout={logout} onAccount={() => navigate('/compte')} />
+          <AccountMenu user={user} onLogout={logout} onAccount={() => navigate('/compte')}
+            sound={sound} onShortcuts={openHelp} onIosInstall={() => setIosHelp(true)} />
         </header>
         {offline && (
           <div className="pro-offline" role="status">
@@ -224,6 +283,18 @@ export default function ProLayout({ children }) {
           {children}
         </main>
       </div>
+      <ShortcutKeys onSearch={openPalette} onHelp={openHelp} />
+      <CommandPalette open={paletteOpen} onClose={closePalette} onHelp={openHelp} />
+      <ShortcutsHelp open={helpOpen} onClose={closeHelp} />
+      <Modal open={iosHelp} onClose={() => setIosHelp(false)} title="Installer DEM Pro sur l’iPad" width={460}
+        subtitle="Une icône DEM Pro sur l’écran d’accueil, qui s’ouvre en plein écran comme une application."
+        footer={<Button onClick={() => setIosHelp(false)}>J’ai compris</Button>}>
+        <ol className="pwa-steps">
+          <li>Ouvrez pro.dem.sn dans <strong>Safari</strong>.</li>
+          <li>Touchez <Share size={15} aria-label="Partager" style={{ verticalAlign: '-2px' }} /> <strong>Partager</strong>, en haut ou en bas de l’écran.</li>
+          <li>Choisissez <strong>Sur l’écran d’accueil</strong>, puis <strong>Ajouter</strong>.</li>
+        </ol>
+      </Modal>
       <style>{LAYOUT_CSS}</style>
     </div>
   )
@@ -302,8 +373,11 @@ function NotificationBell() {
   )
 }
 
-function AccountMenu({ user, onLogout, onAccount }) {
+function AccountMenu({ user, onLogout, onAccount, sound, onShortcuts, onIosInstall }) {
   const [open, setOpen] = useState(false)
+  const pwa = useInstallPrompt()
+  const ios = isIOS()
+  const soundOn = sound.pref === 'on'
   const ref = useRef(null)
   const close = useCallback(() => setOpen(false), [])
   useOutside(ref, close)
@@ -315,12 +389,31 @@ function AccountMenu({ user, onLogout, onAccount }) {
         <ChevronDown size={14} color="var(--p-subtle)" aria-hidden />
       </button>
       {open && (
-        <div className="card anim-scale pro-dropdown" style={{ width: 248, right: 0, padding: 6 }}>
+        <div className="card anim-scale pro-dropdown" style={{ width: 280, right: 0, padding: 6 }}>
           <div style={{ padding: '10px 12px 12px', borderBottom: '1px solid var(--p-line)', marginBottom: 6 }}>
             <div style={{ fontWeight: 700, fontSize: 14 }}>{user?.name}</div>
             <div className="muted num" style={{ fontSize: 12.5 }}>{phoneFmt(user?.phone)}</div>
           </div>
           <button type="button" className="pro-menu-item" onClick={() => { setOpen(false); onAccount() }}><UserRound size={16} aria-hidden /> Mon compte</button>
+          <div className="pro-menu-sep" role="separator" />
+          {sound.supported && (
+            <button type="button" className="pro-menu-item" aria-pressed={soundOn}
+              onClick={() => { if (soundOn) disableSound(); else enableSound() }}>
+              {soundOn ? <Volume2 size={16} aria-hidden /> : <VolumeX size={16} aria-hidden />}
+              <span style={{ flex: 1 }}>Son des nouvelles commandes</span>
+              <span className={`pro-menu-switch ${soundOn ? 'is-on' : ''}`} aria-hidden><span /></span>
+            </button>
+          )}
+          {!pwa.installed && (pwa.canInstall || ios) && (
+            <button type="button" className="pro-menu-item"
+              onClick={() => { setOpen(false); if (pwa.canInstall) promptInstall(); else onIosInstall() }}>
+              <MonitorDown size={16} aria-hidden /> Installer l’application
+            </button>
+          )}
+          <button type="button" className="pro-menu-item" onClick={() => { setOpen(false); onShortcuts() }}>
+            <Keyboard size={16} aria-hidden /><span style={{ flex: 1 }}>Raccourcis clavier</span><kbd className="kb-key" aria-hidden>?</kbd>
+          </button>
+          <div className="pro-menu-sep" role="separator" />
           <a className="pro-menu-item" href={HELP_URL} target="_blank" rel="noopener noreferrer"><MessageCircle size={16} aria-hidden /> Aide (WhatsApp)</a>
           <button type="button" className="pro-menu-item" style={{ color: 'var(--p-danger)' }} onClick={onLogout}><LogOut size={16} aria-hidden /> Se déconnecter</button>
         </div>

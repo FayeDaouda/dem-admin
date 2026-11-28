@@ -1,83 +1,25 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Inbox, MapPin, Phone, StickyNote, Lock, X, Package, Truck, ChefHat, PackageCheck, Check } from 'lucide-react'
+import { Inbox, MapPin, Phone, StickyNote, Lock, X, Package, LayoutList, Columns3 } from 'lucide-react'
 import proApi, { errMsg } from '../lib/proApi'
 import { dateTime, fcfa, phoneFmt, timeAgo } from '../lib/format'
-import { Button, Card, Drawer, Empty, ErrorState, IconButton, Modal, PageHeader, Skeleton } from '../ui/ui'
+import { Button, Card, Drawer, Empty, ErrorState, IconButton, Modal, PageHeader, Segmented, Skeleton } from '../ui/ui'
 import { useNotify } from '../ui/notifyContext'
 import { useLiveRefresh } from '../lib/useLiveRefresh'
+import { PREF, readPref, writePref } from '../ui/prefs'
+import RequestsBoard from '../ui/RequestsBoard'
+import { stepOf, STEP_LABEL, PREP, itemCount, articlesTotal, deliveryOf, grandTotal, lastAt, nextAction, moveRule } from '../ui/requestSteps'
+import { PayBadge, StepBadge, PrepProgress } from '../ui/RequestBadges'
 
-// Commandes reçues par le lien de la boutique, par étape — mêmes étapes que
-// l'app 1.2.5 (dem_pro_order_requests_screen.dart) et que le serveur
-// (dem_pro.service.js:requestStep) :
-//   NEW → (Accepter) CONFIRMED → PREPARING → READY → (Lancer la livraison)
-//   IN_DELIVERY → DELIVERED ; refusée ou annulée : CANCELLED.
+// Commandes reçues par le lien de la boutique : vue liste (onglets) ou vue
+// tableau en colonnes (glisser-déposer, ui/RequestsBoard.jsx). Étapes et
+// actions communes : ui/requestSteps.js.
 const TABS = [
   ['new', 'Nouvelles', ['NEW']],
   ['active', 'En cours', ['CONFIRMED', 'PREPARING', 'READY']],
   ['delivery', 'En livraison', ['IN_DELIVERY']],
   ['done', 'Terminées', ['DELIVERED', 'CANCELLED']],
 ]
-const DELIVERED = new Set(['DELIVERED', 'COMPLETED'])
-// Étape : donnée par le serveur ; à défaut (ancien serveur), déduite du statut
-const stepOf = (r) => r.step ?? ({
-  PENDING: 'NEW',
-  ACCEPTED: r.prepStage === 'READY' ? 'READY' : r.prepStage === 'PREPARING' ? 'PREPARING' : 'CONFIRMED',
-  CONFIRMED: DELIVERED.has(r.orderStatus) ? 'DELIVERED' : 'IN_DELIVERY',
-}[r.status ?? 'PENDING'] ?? 'CANCELLED')
-const STEP_LABEL = {
-  NEW: 'Nouvelle', CONFIRMED: 'Acceptée', PREPARING: 'En préparation', READY: 'Prête',
-  IN_DELIVERY: 'En livraison', DELIVERED: 'Livrée', CANCELLED: 'Refusée ou annulée',
-}
-const PREP = ['CONFIRMED', 'PREPARING', 'READY']
-
-const itemCount = (r) => (r.items ?? []).reduce((s, it) => s + (Number(it.quantity) || 1), 0)
-const articlesTotal = (r) => r.productAmount ?? r.total ?? (r.items ?? []).reduce((s, it) => s + (it.price ?? 0) * (it.quantity ?? 1), 0)
-// Prix complet (lien au prix complet) : livraison figée à la commande du client
-const deliveryOf = (r) => r.deliveryQuote ?? r.delivery ?? null
-const grandTotal = (r) => r.totalAmount ?? (deliveryOf(r) ? articlesTotal(r) + (Number(deliveryOf(r).total) || 0) : null)
-const lastAt = (r) => r.readyAt ?? r.preparingAt ?? r.acceptedAt ?? r.updatedAt ?? r.createdAt
-
-// Paiement : vert payé en ligne, gris à l'arrivée (normal), orange en attente
-function PayBadge({ r }) {
-  const paid = !!r.paidAt
-  const later = r.paymentTiming !== 'NOW'
-  const tone = paid ? { background: 'var(--p-success-bg)', color: 'var(--p-success)' }
-    : later ? { background: 'var(--p-slate-bg)', color: 'var(--p-slate)' }
-    : { background: 'var(--p-warning-bg)', color: 'var(--p-warning)' }
-  return <span className="badge" style={tone}><span className="badge-dot" aria-hidden />{paid ? 'Payée en ligne' : later ? 'Paiement à l’arrivée' : 'Paiement en attente'}</span>
-}
-
-function StepBadge({ step }) {
-  const tone = step === 'DELIVERED' ? { background: 'var(--p-success-bg)', color: 'var(--p-success)' }
-    : step === 'CANCELLED' ? { background: 'var(--p-danger-bg)', color: 'var(--p-danger)' }
-    : step === 'NEW' ? { background: 'var(--p-info-bg)', color: 'var(--p-info)' }
-    : { background: 'var(--p-slate-bg)', color: 'var(--p-slate)' }
-  return <span className="badge" style={tone}><span className="badge-dot" aria-hidden />{STEP_LABEL[step] ?? step}</span>
-}
-
-// Barre Acceptée → En préparation → Prête
-function PrepProgress({ step }) {
-  const at = PREP.indexOf(step)
-  return (
-    <ol className="rq-prog" aria-label={`Étape : ${STEP_LABEL[step]}`}>
-      {PREP.map((s, i) => (
-        <li key={s} className={i <= at ? 'on' : ''} aria-current={i === at ? 'step' : undefined}>
-          <span className="rq-prog-dot" aria-hidden>{i < at ? <Check size={10} /> : null}</span>{STEP_LABEL[s]}
-        </li>
-      ))}
-    </ol>
-  )
-}
-
-// Action principale selon l'étape (tableau, carte et panneau)
-function nextAction(step) {
-  if (step === 'NEW') return { kind: 'accept', label: 'Accepter', icon: Check }
-  if (step === 'CONFIRMED') return { kind: 'PREPARING', label: 'Commencer la préparation', icon: ChefHat }
-  if (step === 'PREPARING') return { kind: 'READY', label: 'Marquer prête', icon: PackageCheck }
-  if (step === 'READY') return { kind: 'launch', label: 'Lancer la livraison', icon: Truck }
-  return null
-}
 
 export default function Requests() {
   const navigate = useNavigate()
@@ -89,6 +31,10 @@ export default function Requests() {
   const [rejecting, setRejecting] = useState(null)
   const [busyId, setBusyId] = useState(null)
   const [busy, setBusy] = useState(false)
+  const [announce, setAnnounce] = useState('')
+  // Vue liste (onglets) ou tableau en colonnes, mémorisée dans ce navigateur
+  const [view, setViewState] = useState(() => (readPref(PREF.requestsView) === 'board' ? 'board' : 'list'))
+  const setView = (v) => { setViewState(v); writePref(PREF.requestsView, v) }
   const seq = useRef(0)
 
   // Une réponse en retard n'écrase jamais une plus récente
@@ -121,6 +67,46 @@ export default function Requests() {
       replace(res.data ?? {})
       if (a.kind === 'accept') {
         notify.success('Commande acceptée', 'Elle passe dans « En cours ». Lancez la livraison quand elle est prête.')
+        window.dispatchEvent(new CustomEvent('dem-pro:refresh'))
+      }
+      load()
+    } catch (e) {
+      notify.error('Action impossible', errMsg(e))
+      load()
+    } finally { setBusyId(null) }
+  }
+
+  // Tableau : déplacer une commande vers une étape (glisser-déposer, menu
+  // « Déplacer » ou bouton). Jamais de retour en arrière : le serveur
+  // l'accepterait pour Prête → En préparation, l'écran le refuse.
+  const moveTo = async (r, target) => {
+    const step = stepOf(r)
+    const rule = moveRule(step, target)
+    if (rule.same) return
+    const who = r.customerName || 'Client'
+    if (!rule.ok) {
+      notify.info('Déplacement impossible', rule.why)
+      setAnnounce(`Déplacement impossible. ${rule.why}`)
+      return
+    }
+    if (target === 'IN_DELIVERY') return launch(r)
+    if (busyId) return
+    setBusyId(r.id)
+    // Affichage immédiat, confirmé (ou corrigé) par la réponse du serveur
+    replace({ id: r.id, status: 'ACCEPTED', step: target, prepStage: target === 'CONFIRMED' ? null : target })
+    try {
+      if (step === 'NEW') {
+        const res = await proApi.post(`/dem-pro/order-requests/${r.id}/accept`)
+        // Accepter puis préparer : pas de retour visuel à « Acceptée » entre les deux
+        if (target === 'CONFIRMED') replace(res.data ?? {})
+      }
+      if (target === 'PREPARING' || target === 'READY') {
+        const res = await proApi.post(`/dem-pro/order-requests/${r.id}/stage`, { stage: target })
+        replace(res.data ?? {})
+      }
+      setAnnounce(`Commande de ${who} : ${STEP_LABEL[target]}.`)
+      if (step === 'NEW') {
+        notify.success('Commande acceptée', target === 'CONFIRMED' ? 'Elle passe dans « En cours ».' : `Elle passe directement à « ${STEP_LABEL[target]} ».`)
         window.dispatchEvent(new CustomEvent('dem-pro:refresh'))
       }
       load()
@@ -170,8 +156,20 @@ export default function Requests() {
 
   return (
     <div>
-      <PageHeader eyebrow="Commandes reçues" title={<>Vos commandes<span className="dot">.</span></>} description={description} />
+      <PageHeader eyebrow="Commandes reçues" title={<>Vos commandes<span className="dot">.</span></>} description={description}
+        actions={<Segmented label="Affichage des commandes" value={view} onChange={setView}
+          options={[['list', 'Liste', LayoutList], ['board', 'Tableau', Columns3]]} />} />
 
+      <div className="sr-only" aria-live="polite" role="status">{announce}</div>
+
+      {view === 'board' ? (
+        failed && !all ? <Card style={{ padding: 0 }}><ErrorState title="Impossible de charger vos commandes" onRetry={load} /></Card>
+          : (
+            <RequestsBoard requests={all} busyId={busyId} openId={openId}
+              onOpen={setOpenId} onMove={moveTo} onAct={act} onReject={setRejecting} onLaunch={launch}
+              onShowHistory={() => { setTab('done'); setView('list') }} />
+          )
+      ) : (
       <Card className="dl-card" style={{ padding: 0 }}>
         <div className="dl-tabs" role="tablist" aria-label="Commandes par étape">
           {TABS.map(([k, label]) => (
@@ -243,6 +241,7 @@ export default function Requests() {
             </>
           )}
       </Card>
+      )}
 
       <RequestDrawer r={opened} onClose={() => setOpenId(null)} actions={opened ? rowActions(opened) : null} />
 
