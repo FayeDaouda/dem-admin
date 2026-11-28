@@ -9,7 +9,7 @@ import TabBar from '../../components/TabBar'
 import { useUrlTab } from '../../lib/useUrlTab'
 import AmbassadorDrawer from './AmbassadorDrawer'
 import AmbassadorSettings from './AmbassadorSettings'
-import { STATUS, MEDAL, fcfa, dateShort } from './ambassadorUi'
+import { STATUS, MEDAL, ROLE, fcfa, dateShort } from './ambassadorUi'
 
 // ── Programme Ambassadeurs ────────────────────────────────────────────────────
 // Dossiers à valider, suivi des ambassadeurs (Pro, médailles, gains),
@@ -98,7 +98,7 @@ function Table({ rows, pending, onOpen }) {
           {rows.map(r => (
             <tr key={r.id} onClick={() => onOpen(r.id)} style={{ cursor: 'pointer', borderTop: '1px solid rgba(0,0,0,.06)' }}>
               <td style={td}><div style={{ fontWeight: 600 }}>{r.name || '—'}</div><div style={{ color: 'var(--text-muted)', fontSize: 12 }}>{r.phone}</div></td>
-              <td style={td}>{r.role === 'DRIVER' ? 'Coursier' : 'Client'}</td>
+              <td style={td}>{ROLE[r.role] ?? r.role}</td>
               <td style={td}><StatusPill status={r.status} training={!!r.trainingPassedAt} /></td>
               {pending ? (
                 <><td style={td}>{r.documents ? 'Recto et verso' : <span style={{ color: '#b45309' }}>Incomplète</span>}</td><td style={td}>{dateShort(r.createdAt)}</td></>

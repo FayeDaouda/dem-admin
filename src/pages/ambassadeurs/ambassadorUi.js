@@ -19,3 +19,4 @@ export const GAIN_STATUS = {
 export const fcfa = (n) => `${Math.round(Number(n) || 0).toLocaleString('fr-FR')} F`
 export const dateShort = (d) => (d ? new Date(d).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'Africa/Dakar' }) : '—')
 export const gainLabel = (g) => (g.kind === 'MEDAL' ? `Médaille ${MEDAL[g.code]?.label ?? g.code}` : 'Booster réussi')
+export const ROLE = { AMBASSADOR: 'Compte Ambassadeur', CLIENT: 'Client', DRIVER: 'Coursier', DEM_PRO: 'DEM Pro', CHEF_DE_FLOTTE: 'Chef de flotte' }

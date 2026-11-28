@@ -4,7 +4,7 @@ import api from '../../lib/api'
 import { isSuperRole } from '../../lib/droits'
 import { glass, glassInput } from '../../lib/glassStyles'
 import { StatusPill } from './AmbassadeursPage'
-import { MEDAL, GAIN_STATUS, fcfa, dateShort, gainLabel } from './ambassadorUi'
+import { MEDAL, GAIN_STATUS, ROLE, fcfa, dateShort, gainLabel } from './ambassadorUi'
 
 // Fiche d'un ambassadeur : dossier, décision, Pro, gains, boosters.
 // Décision sur le dossier : Super, SC, AE, Commercial ; argent et
@@ -46,7 +46,7 @@ export default function AmbassadorDrawer({ id, role, onClose, onChanged }) {
             <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginTop: 4, flexWrap: 'wrap', fontSize: 12.5, color: 'var(--text-muted)' }}>
               {a && <StatusPill status={a.status} training={!!a.trainingPassedAt} />}
               <span>{u?.phone}</span>
-              <span>· {u?.role === 'DRIVER' ? 'Coursier' : 'Client'}</span>
+              <span>· {ROLE[u?.role] ?? u?.role}</span>
             </div>
           </div>
           <button onClick={onClose} aria-label="Fermer" style={iconBtn}><X size={18} /></button>
