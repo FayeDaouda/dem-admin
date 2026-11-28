@@ -165,3 +165,10 @@
 @media (prefers-reduced-motion: reduce) {
   .pro .dv-star:hover { transform: none; }
 }
+
+/* Code de retrait à donner au coursier */
+.pro .dl-pickup { display: flex; align-items: center; gap: 16px; margin: 16px 24px 0; padding: 14px 16px; border: 1px solid var(--p-info); border-radius: 12px; background: var(--p-info-bg); }
+@media (max-width: 560px) { .pro .dl-pickup { margin: 16px 16px 0; } }
+.pro .dl-pickup.is-done { border-color: var(--p-line); background: var(--p-soft); }
+.pro .dl-pickup-code { font: 900 28px/1 var(--p-body); letter-spacing: .28em; color: var(--p-ink); padding-left: .28em; }
+.pro .dl-pickup.is-done .dl-pickup-code { color: var(--p-muted); }

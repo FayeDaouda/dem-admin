@@ -5,6 +5,7 @@ import {
   ArrowDown, ArrowUp, ArrowUpDown, Star, Wine, Gauge, Printer, FileUp,
 } from 'lucide-react'
 import proApi, { errMsg } from '../lib/proApi'
+import { proSocket } from '../lib/proSocket'
 import PayOrderModal from '../ui/PayOrderModal'
 import { ReceiptActions } from '../ui/ReceiptButton'
 import LiveDriverMap from '../ui/LiveDriverMap'
@@ -447,6 +448,40 @@ const CANCEL_LABELS = {
   FOUND_ALTERNATIVE: 'Autre solution trouvée', DRIVER_ISSUE: 'Problème avec le coursier', NO_DRIVER_FOUND: 'Aucun coursier disponible', OTHER: 'Autre',
 }
 
+// Code de retrait d'une course DEM Pro : créé quand un coursier accepte,
+// à donner au coursier qui vient chercher le colis. Rien si le réglage est
+// éteint ou si le serveur ne connaît pas encore la route (404).
+const PICKUP_STATUSES = new Set(['ACCEPTED', 'PICKED_UP', 'IN_TRANSIT', 'DELIVERED'])
+function PickupCodeCard({ order: o }) {
+  const [info, setInfo] = useState(null)
+  const shown = !!o && PICKUP_STATUSES.has(o.status)
+  useEffect(() => {
+    if (!shown) return
+    let alive = true
+    const get = () => proApi.get(`/orders/${o.id}/pickup-code`).then(r => alive && setInfo(r.data ?? null), () => {})
+    get()
+    const s = proSocket()
+    const onCode = (p) => { if (p?.orderId === o.id || (p?.batchId && p.batchId === o.batchOrderId)) get() }
+    s.on('order:pickup_code', onCode)
+    return () => { alive = false; s.off('order:pickup_code', onCode) }
+  }, [o?.id, o?.status, shown]) // eslint-disable-line react-hooks/exhaustive-deps
+  if (!shown || !info?.enabled || !info.code) return null
+  const done = info.verified || info.skipped || !!o.pickedUpAt
+  return (
+    <section className={`dl-sec dl-pickup ${done ? 'is-done' : ''}`} aria-live="polite">
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <h3 className="label-caps dl-sec-title" style={{ margin: 0 }}>Code de retrait</h3>
+        <p className="muted" style={{ margin: '4px 0 0', fontSize: 13 }}>
+          {info.verified ? 'Donné au coursier : colis bien remis.'
+            : done ? 'Colis récupéré.'
+            : 'Donnez ce code au coursier quand il récupère le colis.'}
+        </p>
+      </div>
+      <span className="dl-pickup-code mono" aria-label={`Code de retrait ${info.code.split('').join(' ')}`}>{info.code}</span>
+    </section>
+  )
+}
+
 function OrderDrawer({ id, onClose, onChanged }) {
   const notify = useNotify()
   const [order, setOrder] = useState(null)
@@ -531,6 +566,9 @@ function OrderDrawer({ id, onClose, onChanged }) {
           : (
             <>
               <LiveDriverMap order={o} />
+
+              {/* Code de retrait (réglé par le Super Admin) : à donner au coursier */}
+              <PickupCodeCard order={o} />
 
               <section className="dl-sec">
                 <h3 className="label-caps dl-sec-title">Suivi</h3>

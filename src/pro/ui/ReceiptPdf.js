@@ -99,6 +99,22 @@ async function loadLogo() {
   return logoData
 }
 
+// Logo de la boutique (Cloudinary) en image intégrée ; null si injoignable
+async function remoteImage(url) {
+  if (!url || !/^https:\/\//.test(url)) return null
+  try {
+    const blob = await (await fetch(url, { mode: 'cors' })).blob()
+    const data = await new Promise((resolve, reject) => {
+      const fr = new FileReader()
+      fr.onload = () => resolve(fr.result)
+      fr.onerror = reject
+      fr.readAsDataURL(blob)
+    })
+    const fmt = /^data:image\/png/.test(data) ? 'PNG' : /^data:image\/(jpe?g)/.test(data) ? 'JPEG' : null
+    return fmt ? { data, fmt } : null
+  } catch { return null }
+}
+
 // Texte aligné à droite avec espacement des lettres (capitales espacées)
 function textRight(doc, str, x, y, charSpace = 0) {
   const s = clean(str)
@@ -112,7 +128,7 @@ function caps(doc, str, x, y, { color = MUTED, size = 7.5 } = {}) {
 }
 
 // Bandeau : marque DEM Pro (reçu, récapitulatif) ou nom du commerçant (facture)
-async function band(doc, { brand, merchantName, title, ref, date }) {
+async function band(doc, { brand, merchantName, merchantLogo, title, ref, date }) {
   doc.setFillColor(...NAVY); doc.rect(0, 0, W, 36, 'F')
   doc.setFillColor(...CYAN); doc.rect(0, 36, W, 1.1, 'F')
 
@@ -127,11 +143,17 @@ async function band(doc, { brand, merchantName, title, ref, date }) {
     doc.setFont('helvetica', 'normal'); doc.setFontSize(8); doc.setTextColor(...LIGHT)
     doc.text('Livraison à Dakar  ·  dem.sn', x, 25.5)
   } else {
+    // Logo de la boutique (offres avec factures), sinon le nom seul
+    let x = M
+    if (merchantLogo) {
+      doc.setFillColor(255, 255, 255); doc.rect(M, 8, 20, 20, 'F')
+      try { doc.addImage(merchantLogo.data, merchantLogo.fmt, M + 1, 9, 18, 18, undefined, 'FAST'); x = M + 25 } catch { /* image illisible */ }
+    }
     doc.setFont('helvetica', 'bold'); doc.setFontSize(17); doc.setTextColor(255, 255, 255)
-    const name = doc.splitTextToSize(clean(merchantName) || 'Mon entreprise', 112)[0]
-    doc.text(name, M, 19.5)
+    const name = doc.splitTextToSize(clean(merchantName) || 'Mon entreprise', 112 - (x - M))[0]
+    doc.text(name, x, 19.5)
     doc.setFont('helvetica', 'normal'); doc.setFontSize(8); doc.setTextColor(...LIGHT)
-    doc.text('Facture émise avec DEM Pro', M, 25.5)
+    doc.text('Facture émise avec DEM Pro', x, 25.5)
   }
 
   doc.setFont('helvetica', 'bold'); doc.setFontSize(10.5); doc.setTextColor(255, 255, 255)
@@ -315,16 +337,22 @@ export async function downloadReceiptPdf(order, user) {
 }
 
 // ── Facture d'une commande (document du commerçant) ──────────────────────────
-export async function downloadInvoicePdf(order, user) {
+// `issued` = réponse de POST /dem-pro/orders/:id/invoice : numéro suivi
+// (FACT-2026-0001), date d'émission et mentions du commerçant (logo, NINEA,
+// RCCM). Absent (serveur pas encore à jour) : numéro tiré de la commande.
+export async function downloadInvoicePdf(order, user, issued = null) {
   const o = order ?? {}
   const { doc, autoTable } = await newDoc()
   const ref = shortRef(o.id)
   const items = Array.isArray(o.items) ? o.items : []
-  const me = merchantOf(user)
+  const me = merchantOf(user, issued?.merchant ?? {})
   const delivery = orderTotal(o)
   const products = itemsTotal(o)
+  const number = issued?.invoiceNumber || `FACT-${ref}`
+  const issuedAt = issued?.invoiceIssuedAt || o.createdAt
+  const merchantLogo = await remoteImage(issued?.merchant?.logo)
 
-  await band(doc, { brand: 'merchant', merchantName: me.name, title: 'Facture', ref: `N° FACT-${ref}`, date: dateLong(o.createdAt) })
+  await band(doc, { brand: 'merchant', merchantName: me.name, merchantLogo, title: 'Facture', ref: `N° ${number}`, date: dateLong(issuedAt) })
 
   let y = 48
   const colW = (W - 2 * M - 10) / 2
@@ -337,7 +365,7 @@ export async function downloadInvoicePdf(order, user) {
   y = Math.max(left, right) + 4
 
   // Repères : date, livraison, référence
-  const metas = [['Date de facture', dateLong(o.createdAt)], ['Livrée le', o.deliveredAt ? dateLong(o.deliveredAt) : '-'], ['Référence livraison', ref]]
+  const metas = [['Date de facture', dateLong(issuedAt)], ['Livrée le', o.deliveredAt ? dateLong(o.deliveredAt) : '-'], ['Référence livraison', ref]]
   const mw = (W - 2 * M) / 3
   doc.setDrawColor(...LINE); doc.setLineWidth(0.3)
   doc.line(M, y, W - M, y); doc.line(M, y + 14, W - M, y + 14)
@@ -361,8 +389,9 @@ export async function downloadInvoicePdf(order, user) {
   y = totals(doc, y, rows, ['Total à payer', money(products + delivery)]) + 8
   note(doc, y, 'Montants en francs CFA (FCFA).')
 
+  note(doc, y + 4, 'Merci pour votre achat.')
   footer(doc, `${me.name || 'Facture'} — facture générée avec DEM Pro · dem.sn`)
-  doc.save(`facture-${ref}.pdf`)
+  doc.save(`facture-${number}.pdf`)
 }
 
 // ── Facture récapitulative d'une période (offre Premium) ─────────────────────
@@ -411,4 +440,50 @@ export async function downloadInvoiceBatchPdf(batch, user) {
 
   footer(doc, 'DEM · Plateforme de livraison à Dakar · dem.sn — Facture récapitulative générée depuis l\'espace DEM Pro.')
   doc.save(`facture-recapitulative-${b.period?.key ?? 'periode'}-${new Date().toISOString().slice(0, 10)}.pdf`)
+}
+
+// ── Facture d'abonnement DEM Pro (document DEM) ──────────────────────────────
+// `data` = réponse de GET /dem-pro/me/plan-invoices ({ issuer, customer,
+// invoices }), `inv` l'une des factures. Mentions de DEM réglées par le
+// Super Admin (Maintenance › Factures), sans TVA.
+export async function downloadPlanInvoicePdf(data, inv) {
+  const issuer = data?.issuer ?? {}
+  const c = data?.customer ?? {}
+  const { doc, autoTable } = await newDoc()
+  const days = Number(inv?.durationDays) || 7
+  const period = days >= 28 ? '1 mois' : days === 7 ? '1 semaine' : `${days} jours`
+  const operator = inv?.operatorName === 'WAVE' ? 'Wave' : inv?.operatorName === 'ORANGE_MONEY' ? 'Orange Money' : null
+
+  await band(doc, { brand: 'dem', title: 'Facture', ref: `N° ${inv?.number ?? '-'}`, date: dateLong(inv?.paidAt) })
+
+  let y = 48
+  const colW = (W - 2 * M - 10) / 2
+  const left = block(doc, M, y, colW, 'Émetteur', issuer.name || 'DEM', [
+    issuer.address, issuer.phone && phoneTxt(issuer.phone), issuer.email,
+    issuer.ninea && `NINEA : ${issuer.ninea}`, issuer.rccm && `RCCM : ${issuer.rccm}`,
+  ])
+  const business = c.businessName || c.name || 'Commerçant DEM Pro'
+  const right = block(doc, M + colW + 10, y, colW, 'Facturé à', business, [
+    c.businessName && c.name, c.phone && phoneTxt(c.phone), c.email, c.ninea && `NINEA : ${c.ninea}`,
+  ])
+  y = Math.max(left, right) + 8
+
+  autoTable(doc, {
+    ...tableBase,
+    startY: y,
+    head: [['Désignation', 'Qté', 'Prix unitaire', 'Total']],
+    body: [[
+      clean(`Abonnement DEM Pro ${inv?.planLabel ?? ''} - ${period}${valid(inv?.expiresAt) ? `\nDu ${dateLong(inv?.paidAt)} au ${dateLong(inv?.expiresAt)}` : ''}`),
+      '1', money(inv?.amount ?? 0), money(inv?.amount ?? 0),
+    ]],
+    columnStyles: itemColumns,
+  })
+  y = doc.lastAutoTable.finalY + 10
+  y = totals(doc, y, [], ['Total payé', money(inv?.amount ?? 0)]) + 8
+  y = note(doc, y, operator ? `Payée par ${operator} le ${dateLong(inv?.paidAt)}.` : 'Payée.') + 2
+  if (inv?.reference) y = note(doc, y, `Référence : ${inv.reference}`) + 2
+  note(doc, y, issuer.vatNote || '')
+
+  footer(doc, 'DEM · Delivery Express Mobility · dem.sn')
+  doc.save(`facture-${inv?.number ?? 'abonnement'}.pdf`)
 }

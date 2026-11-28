@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { FileDown, FileText, Lock } from 'lucide-react'
-import { errMsg } from '../lib/proApi'
+import proApi, { errMsg } from '../lib/proApi'
 import { useProAuth } from '../proAuthContext'
 import { Button, IconButton, Modal } from './ui'
 import { useNotify } from './notifyContext'
@@ -34,9 +34,17 @@ export function ReceiptButton({ order, kind = 'receipt', iconOnly, size = 'sm', 
           setLocked(unlockTierLabel(info, 'invoiceEnabled'))
           return
         }
+        // Numéro suivi et mentions (logo, NINEA) donnés par le serveur ;
+        // 404 = serveur pas encore à jour : ancien numéro
+        let issued = null
+        try { issued = (await proApi.post(`/dem-pro/orders/${order.id}/invoice`)).data }
+        catch (e) {
+          if (e?.response?.status === 403) { setLocked(unlockTierLabel(info, 'invoiceEnabled')); return }
+          if (e?.response?.status !== 404) { notify.error('Facture impossible', errMsg(e)); return }
+        }
         const { downloadInvoicePdf } = await import('./ReceiptPdf')
-        await downloadInvoicePdf(order, user)
-        notify.success('Facture téléchargée', `Facture de la livraison ${String(order.id ?? '').slice(0, 8).toUpperCase()}.`)
+        await downloadInvoicePdf(order, user, issued)
+        notify.success('Facture téléchargée', issued?.invoiceNumber ? `Facture ${issued.invoiceNumber}.` : `Facture de la livraison ${String(order.id ?? '').slice(0, 8).toUpperCase()}.`)
       } else {
         const { downloadReceiptPdf } = await import('./ReceiptPdf')
         await downloadReceiptPdf(order, user)

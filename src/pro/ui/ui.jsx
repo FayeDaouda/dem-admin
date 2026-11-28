@@ -265,7 +265,8 @@ export function Modal({ open, onClose, title, subtitle, children, width = 520, f
               <div id={titleId} style={{ fontFamily: 'var(--p-head)', fontSize: 20, fontWeight: 700, letterSpacing: '-.01em' }}>{title}</div>
               {subtitle && <div className="muted" style={{ fontSize: 13.5, marginTop: 4 }}>{subtitle}</div>}
             </div>
-            <IconButton icon={X} label="Fermer" size="sm" variant="plain" onClick={onClose} />
+            {/* Sans onClose (fenêtre obligatoire, envoi en cours) : pas de croix */}
+            {onClose && <IconButton icon={X} label="Fermer" size="sm" variant="plain" onClick={onClose} />}
           </div>
           <div className="scroll-y" style={{ padding: '20px 24px 24px', flex: 1 }}>{children}</div>
           {footer && <div style={{ padding: '16px 24px', borderTop: '1px solid var(--p-line)', display: 'flex', justifyContent: 'flex-end', gap: 10, flexWrap: 'wrap', background: 'var(--p-soft)' }}>{footer}</div>}

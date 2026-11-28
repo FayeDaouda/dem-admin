@@ -3,12 +3,12 @@ import { Link, useSearchParams } from 'react-router-dom'
 import {
   MapPin, Plus, Star, Trash2, Monitor, LogOut, Smartphone, Tablet, CheckCircle2, ArrowRight, Camera, Pencil,
   Phone, MessageCircle, Mail, Globe, FileText, ShieldCheck, KeyRound, Users, Plug, Gift, AlertTriangle, Store,
-  Lock, Sparkles, Upload, Eye,
+  Lock, Sparkles, Upload, Eye, Download,
 } from 'lucide-react'
 import proApi, { errMsg, endSession } from '../lib/proApi'
 import { useProAuth, ROLE_LABEL } from '../proAuthContext'
 import { Avatar } from '../ProLayout'
-import { dateTime, phoneFmt, planName, timeAgo } from '../lib/format'
+import { dateTime, fcfa, phoneFmt, planName, timeAgo } from '../lib/format'
 import { Button, Chip, Empty, ErrorState, IconButton, Modal, PageHeader, Skeleton, Spinner, Toggle } from '../ui/ui'
 import { useNotify } from '../ui/notifyContext'
 import PlanPurchaseModal from '../ui/PlanPurchaseModal'
@@ -330,7 +330,7 @@ function OfferTab({ plan, failed, reload, notify }) {
   }
   return (
     <>
-      <Section title="Offre" description="Votre abonnement DEM Pro, payé à la semaine par Wave ou Orange Money.">
+      <Section title="Offre" description="Votre abonnement DEM Pro, payé à la semaine ou au mois par Wave ou Orange Money.">
         {failed && !plan ? <ErrorState compact title="Impossible de charger votre offre" onRetry={reload} />
           : !plan ? <Skeleton h={64} />
           : (
@@ -372,8 +372,62 @@ function OfferTab({ plan, failed, reload, notify }) {
         </Link>
       </Section>
 
+      <PlanInvoices notify={notify} />
+
       <PlanPurchaseModal open={offers} onClose={() => setOffers(false)} onChanged={reload} />
     </>
+  )
+}
+
+// ── Factures d'abonnement (émises par DEM) ───────────────────────────────────
+// GET /dem-pro/me/plan-invoices : une facture par offre payée, numérotée
+// ABO-2026-0001. Section masquée tant que le serveur ne la connaît pas (404).
+function PlanInvoices({ notify }) {
+  const [data, setData] = useState(null) // null = chargement, false = indisponible, 'error'
+  const [opening, setOpening] = useState(null)
+  const load = useCallback(() => {
+    proApi.get('/dem-pro/me/plan-invoices')
+      .then(r => setData(r.data ?? { invoices: [] }))
+      .catch(e => setData(e?.response?.status === 404 || e?.response?.status === 403 ? false : 'error'))
+  }, [])
+  useEffect(() => { load() }, [load])
+  if (data === false) return null
+
+  const open = async (inv) => {
+    setOpening(inv.id)
+    try {
+      const { downloadPlanInvoicePdf } = await import('../ui/ReceiptPdf')
+      await downloadPlanInvoicePdf(data, inv)
+      notify.success('Facture téléchargée', inv.number)
+    } catch { notify.error('Facture impossible', 'Le document n\'a pas pu être créé. Réessayez dans un instant.') }
+    finally { setOpening(null) }
+  }
+  const invoices = data && data !== 'error' ? data.invoices ?? [] : []
+
+  return (
+    <Section title="Mes factures" description="Une facture par offre payée, émise par DEM. L'essai gratuit n'en a pas.">
+      {data === 'error' ? <ErrorState compact title="Impossible de charger vos factures" onRetry={load} />
+        : data === null ? <Skeleton h={56} />
+        : invoices.length === 0 ? <p className="muted" style={{ margin: 0, fontSize: 13.5 }}>Aucune facture pour le moment.</p>
+        : (
+          <ul className="ac-invoices">
+            {invoices.map(inv => {
+              const days = Number(inv.durationDays) || 7
+              return (
+                <li key={inv.id} className="ac-invoice">
+                  <FileText size={17} aria-hidden className="ac-invoice-ico" />
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div className="ac-strong" style={{ fontSize: 14 }}>Offre {inv.planLabel} · {days >= 28 ? '1 mois' : '1 semaine'}</div>
+                    <div className="muted" style={{ fontSize: 12.5 }}>{inv.number} · {longDate(inv.paidAt)}</div>
+                  </div>
+                  <span className="num ac-strong" style={{ fontSize: 14 }}>{fcfa(inv.amount)}</span>
+                  <Button variant="ghost" size="sm" icon={Download} loading={opening === inv.id} onClick={() => open(inv)}>PDF</Button>
+                </li>
+              )
+            })}
+          </ul>
+        )}
+    </Section>
   )
 }
 
@@ -845,7 +899,7 @@ function DeleteAccountModal({ onClose }) {
   )
 }
 
-function AddAddressModal({ open, onClose, onSaved, hasDefault }) {
+export function AddAddressModal({ open, onClose, onSaved, hasDefault }) {
   const notify = useNotify()
   const [label, setLabel] = useState('')
   const [place, setPlace] = useState(null)

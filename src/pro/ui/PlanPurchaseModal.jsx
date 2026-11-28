@@ -81,6 +81,9 @@ export default function PlanPurchaseModal({ open, onClose, onChanged }) {
   const [qr, setQr] = useState(null)
   const [busy, setBusy] = useState(false)
   const [done, setDone] = useState(null) // { label, until, trial, features }
+  // Semaine (7 j, toujours en vente) ou mois (30 j, si le Super Admin en a
+  // fixé le prix : limits.pricePerMonth)
+  const [period, setPeriod] = useState('WEEK')
   const sending = useRef(false)
   const before = useRef(null)
 
@@ -111,6 +114,17 @@ export default function PlanPurchaseModal({ open, onClose, onChanged }) {
   const run = running(info)
   const tierLabel = (p) => tiers.find(t => t.plan === p)?.label ?? ({ STARTER: 'Starter', BUSINESS: 'Business', PREMIUM: 'Premium' })[p] ?? p
   const limitsOf = (p) => tiers.find(t => t.plan === p)?.limits ?? {}
+  const monthOf = (l) => (l?.pricePerMonth > 0 ? l.pricePerMonth : null)
+  const monthly = tiers.some(t => monthOf(t.limits) != null)
+  const priceOf = (l) => (period === 'MONTH' ? monthOf(l) : l?.priceMonthly ?? null)
+  // Économie du mois comparée à 30 jours payés à la semaine
+  const savingOf = (l) => {
+    const w = l?.priceMonthly, m = monthOf(l)
+    if (!(w > 0) || !m) return null
+    const pct = Math.floor((1 - m / (w * 30 / 7)) * 100)
+    return pct >= 1 ? pct : null
+  }
+  const bestSaving = Math.max(0, ...tiers.map(t => savingOf(t.limits) ?? 0)) || null
 
   // ── Essai gratuit ────────────────────────────────────────────────────────
   const startTrial = async () => {
@@ -135,7 +149,9 @@ export default function PlanPurchaseModal({ open, onClose, onChanged }) {
     sending.current = true; setBusy(true)
     try {
       const url = choice.legacy ? '/dem-pro/me/plan/purchase' : '/dem-pro/me/tiers/purchase'
-      const r = await proApi.post(url, { plan: choice.plan, operatorName: operator })
+      const r = await proApi.post(url, choice.legacy
+        ? { plan: choice.plan, operatorName: operator }
+        : { plan: choice.plan, operatorName: operator, period: choice.period ?? 'WEEK' })
       setPayment(r.data ?? {})
       setView('pay')
       if (r.data?.paymentUrl) window.open(r.data.paymentUrl, '_blank', 'noopener')
@@ -191,7 +207,7 @@ export default function PlanPurchaseModal({ open, onClose, onChanged }) {
     : view === 'confirm' ? `Offre ${choice?.label}`
     : view === 'pay' ? 'Paiement en cours'
     : 'Les offres DEM Pro'
-  const subtitle = view === 'choose' ? 'Payées à la semaine par Wave ou Orange Money. Sans engagement.' : undefined
+  const subtitle = view === 'choose' ? `Payées ${monthly ? 'à la semaine ou au mois' : 'à la semaine'} par Wave ou Orange Money. Sans engagement.` : undefined
 
   let footer = null
   if (view === 'choose') footer = <Button variant="ghost" onClick={close}>Fermer</Button>
@@ -223,10 +239,23 @@ export default function PlanPurchaseModal({ open, onClose, onChanged }) {
               </div>
             )}
 
+            {offersTiers && monthly && (
+              <div role="radiogroup" aria-label="Durée" className="pl-period">
+                {[['WEEK', 'À la semaine'], ['MONTH', 'Au mois']].map(([k, label]) => (
+                  <button key={k} type="button" role="radio" aria-checked={period === k}
+                    className={`pl-period-btn ${period === k ? 'is-on' : ''}`} onClick={() => setPeriod(k)}>
+                    {label}
+                    {k === 'MONTH' && bestSaving && <span className="pl-period-save">−{bestSaving} %</span>}
+                  </button>
+                ))}
+              </div>
+            )}
+
             {offersTiers ? (
               <div className="pl-grid">
                 {tiers.map(t => {
-                  const price = t.limits?.priceMonthly
+                  const price = priceOf(t.limits)
+                  const saving = period === 'MONTH' ? savingOf(t.limits) : null
                   const current = run?.plan === t.plan
                   const lower = run && TIER_ORDER.indexOf(t.plan) < TIER_ORDER.indexOf(run.plan)
                   const renew = !run && info.lastPlan === t.plan
@@ -237,7 +266,8 @@ export default function PlanPurchaseModal({ open, onClose, onChanged }) {
                       <div className="pl-name">{t.label}</div>
                       <div className="pl-price">
                         <span className="num">{price != null ? fcfa(price) : '—'}</span>
-                        <small>par semaine</small>
+                        <small>{period === 'MONTH' ? 'par mois' : 'par semaine'}</small>
+                        {saving && <span className="pl-period-save">−{saving} %</span>}
                       </div>
                       <ul className="pl-feats">
                         {tierFeatureRows(t.limits).map(f => <li key={f}><Check size={14} aria-hidden /> {f}</li>)}
@@ -251,10 +281,10 @@ export default function PlanPurchaseModal({ open, onClose, onChanged }) {
                         ) : lower ? (
                           <div className="pl-state is-muted">Disponible à la fin de votre offre actuelle</div>
                         ) : price == null ? (
-                          <div className="pl-state is-muted">Prix bientôt disponible</div>
+                          <div className="pl-state is-muted">{period === 'MONTH' ? 'Proposée à la semaine seulement' : 'Prix bientôt disponible'}</div>
                         ) : (
                           <Button variant={featured ? 'primary' : 'ghost'} className="pl-btn" arrow="right"
-                            onClick={() => choose({ plan: t.plan, label: t.label, price, days: 7, upgrade: !!run, renew })}>
+                            onClick={() => choose({ plan: t.plan, label: t.label, price, days: period === 'MONTH' ? 30 : 7, period, upgrade: !!run, renew })}>
                             {run ? `Passer à ${t.label}` : renew ? `Renouveler ${t.label}` : `Choisir ${t.label}`}
                           </Button>
                         )}

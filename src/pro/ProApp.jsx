@@ -27,6 +27,8 @@ const Stats = lazy(() => import('./pages/Stats'))
 const Team = lazy(() => import('./pages/Team'))
 const ApiDem = lazy(() => import('./pages/ApiDem'))
 const Referral = lazy(() => import('./pages/Referral'))
+// Adresse d'expédition obligatoire (fenêtre bloquante, chargée à part)
+const RequireAddress = lazy(() => import('./ui/RequireAddress'))
 
 // Accueil : tableau de bord, ou Livraisons pour un employé (sans accès au tableau de bord)
 function Home() {
@@ -51,7 +53,7 @@ function Protected({ children }) {
   const { user, loading } = useProAuth()
   if (loading) return <Loader />
   if (!user) return <Navigate to="/connexion" replace />
-  return <AccountGate><ProLayout><Suspense fallback={<div />}>{children}</Suspense></ProLayout></AccountGate>
+  return <AccountGate><ProLayout><Suspense fallback={<div />}>{children}<RequireAddress /></Suspense></ProLayout></AccountGate>
 }
 
 function PublicOnly({ children }) {

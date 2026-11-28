@@ -276,3 +276,17 @@
   .pro .pl-op, .pro .api-opt, .pro .login-choice { min-height: 56px; }
   .pro .api-scope { min-height: 48px; }
 }
+
+/* Choix semaine / mois (formule au mois réglée par le Super Admin) */
+.pro .pl-period { display: inline-flex; justify-self: center; gap: 4px; padding: 4px; border: 1px solid var(--p-line); border-radius: 999px; background: var(--p-card); }
+.pro .pl-period-btn { display: inline-flex; align-items: center; gap: 8px; padding: 8px 18px; border: 0; border-radius: 999px; background: transparent; color: var(--p-muted); font: 600 13.5px/1 var(--p-body); cursor: pointer; transition: background .15s ease, color .15s ease; }
+.pro .pl-period-btn.is-on { background: var(--p-ink); color: #fff; }
+.pro .pl-period-btn:focus-visible { outline: 2px solid var(--p-cyan-2); outline-offset: 2px; }
+.pro .pl-period-save { display: inline-block; padding: 2px 7px; border-radius: 999px; background: var(--p-success-bg); color: var(--p-success); font: 700 11px/1.4 var(--p-body); }
+.pro .pl-period-btn.is-on .pl-period-save { background: rgba(255,255,255,.18); color: #fff; }
+
+/* Factures d'abonnement */
+.pro .ac-invoices { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.pro .ac-invoice { display: flex; align-items: center; gap: 12px; padding: 12px 14px; border: 1px solid var(--p-line); border-radius: 12px; background: var(--p-card); }
+.pro .ac-invoice-ico { color: var(--p-cyan-2); flex-shrink: 0; }
+@media (max-width: 520px) { .pro .ac-invoice { flex-wrap: wrap; } }
