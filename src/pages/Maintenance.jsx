@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
-import { Eye, Play, CheckCircle2, AlertTriangle, RefreshCw, Database, MessageSquare, KeyRound, Clock, PackageCheck } from 'lucide-react'
+import { Eye, Play, CheckCircle2, AlertTriangle, RefreshCw, Database, MessageSquare, KeyRound, Clock, PackageCheck, FileText } from 'lucide-react'
 import api from '../lib/api'
 import { glass, pageWrap, pageScroll } from '../lib/glassStyles'
 import { formatF, formatCount } from '../lib/format'
@@ -7,6 +7,7 @@ import SmsRoutingPanel from '../components/SmsRoutingPanel'
 import PinSettingsPanel from '../components/PinSettingsPanel'
 import DispatchAlertPanel from '../components/DispatchAlertPanel'
 import DeliverySettingsPanel from '../components/DeliverySettingsPanel'
+import LegalInfoPanel from '../components/LegalInfoPanel'
 import PageHeader from '../components/PageHeader'
 import TabBar from '../components/TabBar'
 import InlineConfirm from '../components/InlineConfirm'
@@ -24,6 +25,7 @@ const TABS = [
   { key: 'code',   label: 'Code secret',       icon: KeyRound },
   { key: 'alertes', label: 'Alertes',          icon: Clock },
   { key: 'remise',  label: 'Remise',           icon: PackageCheck },
+  { key: 'factures', label: 'Factures',        icon: FileText },
 ]
 
 const fmtDateTime = (d) => (d ? new Date(d).toLocaleString('fr-FR', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '—')
@@ -75,6 +77,8 @@ export default function Maintenance() {
         {tab === 'alertes' && <DispatchAlertPanel />}
         {/* Code de livraison et SMS de suivi au destinataire */}
         {tab === 'remise' && <DeliverySettingsPanel />}
+
+        {tab === 'factures' && <LegalInfoPanel />}
       </div>
     </div>
   )
