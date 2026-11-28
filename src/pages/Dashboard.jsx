@@ -577,6 +577,7 @@ function MainDashboard() {
     demProActivity: can.accounts     && '/admin/stats/dem-pro-activity?hours=24',
     cancellationTrend: (isAE || isFlotte) && '/admin/stats/timeseries?days=30',
     kycReview:     can.fleetAnalytics && '/admin/drivers?status=kyc-review&limit=1', // pièces coursiers à revoir
+    pendingAvatars: can.fleetAnalytics && '/admin/drivers/pending-avatars', // nouvelles photos à valider
     shiftsToday:   can.fleetAnalytics && '/admin/shifts/today', // shifts de la flotte DEM
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }), [loadSources, role])
@@ -694,6 +695,8 @@ function MainDashboard() {
       count: data.shiftsToday?.absents?.length, onClick: () => document.getElementById('shifts-du-jour')?.scrollIntoView({ behavior: 'smooth' }) },
     can.fleetAnalytics && { id: 'kyc-review', icon: ClipboardCheck, color: '#d97706', label: 'Pièces coursiers à revoir',
       count: data.kycReview?.total, onClick: () => navigate('/validation?tab=kyc-review') },
+    can.fleetAnalytics && { id: 'pending-avatars', icon: ClipboardCheck, color: '#d97706', label: 'Nouvelles photos de coursiers à valider',
+      count: data.pendingAvatars?.drivers?.length, onClick: () => navigate('/validation?tab=photos') },
     can.validations && { id: 'validations', icon: ClipboardCheck, color: '#6366f1', label: 'Validations en attente',
       count: validations?.total, onClick: () => navigate('/validation'),
       detail: validations ? [

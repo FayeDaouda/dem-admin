@@ -282,9 +282,9 @@ export default function Orders() {
     : confirming === 'PICKED_UP' ? { title: `Marquer le colis comme récupéré par ${driverName} ?`, button: 'Colis récupéré', color: '#7c3aed', run: () => forceStatus('PICKED_UP') }
     : { title: `Marquer la course comme livrée par ${driverName} ?`, button: 'Colis livré', color: '#16a34a', run: () => forceStatus('DELIVERED') }
   const confirmHint = confirming === 'PICKED_UP'
-    ? 'Le client est prévenu que son colis est en route.'
+    ? 'Sans code de retrait ni contrôle de distance. Le client est prévenu que son colis est en route.'
     : confirming === 'DELIVERED'
-      ? `${driverName} est crédité de ${(detail?.price ?? 0).toLocaleString('fr-FR')} F et le client est prévenu. La course passe en Livrée : impossible de revenir en arrière.`
+      ? `Sans code de livraison. ${driverName} est crédité de ${(detail?.price ?? 0).toLocaleString('fr-FR')} F et le client est prévenu. La course passe en Livrée : impossible de revenir en arrière.`
       : confirming === 'paid'
         ? 'Un paiement en ligne se confirme tout seul : ne marquez payé que ce que le coursier a encaissé lui-même. Les frais DEM sont repris sur son wallet.'
         : null
@@ -410,6 +410,13 @@ export default function Orders() {
                   <Badge status={detail.status} />
                   {detail.status === 'DELIVERED' && <Badge status={detail.paymentStatus ?? 'PENDING'} />}
                   {detail.batchOrderId && <span style={pill}>Tournée DEM Pro</span>}
+                  {/* Code de retrait DEM Pro : donné par la boutique, ou retrait sans code */}
+                  {detail.pickupCode?.verified && <span style={pill}>Code de retrait donné</span>}
+                  {detail.pickupCode?.skipped && (
+                    <span style={{ ...pill, background: 'rgba(245,158,11,.14)', color: '#b45309' }}>
+                      Retrait sans code{detail.pickupCode.skippedBy === 'ADMIN' ? ' (admin)' : ''}
+                    </span>
+                  )}
                 </div>
               </div>
               <div style={{ display: 'flex', alignItems: 'flex-start', gap: 14 }}>

@@ -95,6 +95,8 @@ export const TAB_ROLES = {
   badges: {
     clients:   ['MARKETING', 'CM'],                     // /admin/client-badges/* (seuils et validation : Super)
     coursiers: ['MARKETING', 'ASSISTANCE_EXECUTIVE', 'FLOTTE'], // /admin/badges/config, driver-distribution (lecture ; seuils : Super)
+    // Points de la semaine : classement en lecture (barème : Super)
+    points:    ['MARKETING', 'ASSISTANCE_EXECUTIVE', 'FLOTTE', 'SERVICE_CLIENT'],
   },
   // Validation (page visible de Super, Ass. exéc. et Service Client) : chefs
   // de flotte, coursiers, pièces et DEM Pro ouverts aux trois ; extensions de
@@ -105,6 +107,8 @@ export const TAB_ROLES = {
     ambassadors:        ['SERVICE_CLIENT', 'ASSISTANCE_EXECUTIVE', 'FLOTTE'],
     drivers:            ['SERVICE_CLIENT', 'ASSISTANCE_EXECUTIVE', 'FLOTTE'],
     'kyc-review':       ['SERVICE_CLIENT', 'ASSISTANCE_EXECUTIVE', 'FLOTTE'],
+    // Nouvelles photos des coursiers vérifiés (décision : kycReview)
+    photos:             ['SERVICE_CLIENT', 'ASSISTANCE_EXECUTIVE', 'FLOTTE'],
     // DEM Pro : Service Client et Commercial (Valider / Refuser), pas le Resp. flottes
     'dem-pro':          ['SERVICE_CLIENT', 'ASSISTANCE_EXECUTIVE', 'COMMERCIAL'],
     // Extensions de flotte : Responsable de flottes en lecture (décision : Super)

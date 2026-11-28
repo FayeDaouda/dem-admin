@@ -25,6 +25,8 @@ export default function ClaimThread({ incidentId, canReply, canRefund, onChanged
   const [message, setMessage] = useState('')
   const [resolve, setResolve] = useState(false)
   const [refundOn, setRefundOn] = useState(false)
+  // Réclamation fondée, faute du coursier : retire des points de la semaine
+  const [driverFault, setDriverFault] = useState(false)
   const [refund, setRefund]   = useState('')
   const [confirming, setConfirming] = useState(false)
   const [sending, setSending] = useState(false)
@@ -61,6 +63,7 @@ export default function ClaimThread({ incidentId, canReply, canRefund, onChanged
   const summary = [
     resolve ? `Envoyer la réponse et marquer ${kind} comme traité${byDriver ? '' : 'e'} ?` : `Envoyer la réponse au ${who} ?`,
     refundOn && `Geste commercial : ${fcfa(refundValue)} crédités sur son wallet (avoir pour ses prochaines courses, non retirable). Une seule fois par réclamation.`,
+    resolve && driverFault && 'Faute du coursier : des points sont retirés de sa semaine.',
     `Le ${who} reçoit une notification avec votre message.`,
   ].filter(Boolean)
 
@@ -71,9 +74,10 @@ export default function ClaimThread({ incidentId, canReply, canRefund, onChanged
         message: message.trim(),
         ...(resolve ? { status: 'RESOLVED' } : {}),
         ...(refundOn ? { refundAmount: refundValue } : {}),
+        ...(resolve && !byDriver ? { driverFault } : {}),
       })
       setThread(data)
-      setMessage(''); setResolve(false); setRefundOn(false); setRefund(''); setConfirming(false)
+      setMessage(''); setResolve(false); setRefundOn(false); setRefund(''); setDriverFault(false); setConfirming(false)
       onChanged?.()
     } catch (e) {
       setError(e.response?.data?.message ?? 'La réponse n’a pas pu être envoyée. Réessayez.')
@@ -105,6 +109,9 @@ export default function ClaimThread({ incidentId, canReply, canRefund, onChanged
           {thread.order.finishedAt ? ` le ${when(thread.order.finishedAt)}` : ''}
           {' · '}payé par le client : <strong style={{ color: 'var(--text)' }}>{fcfa(thread.order.amountPaid)}</strong>
         </div>
+      )}
+      {thread.driverFault && (
+        <div style={{ fontSize: 12.5, color: '#b45309', fontWeight: 600 }}>Faute du coursier retenue : points retirés de sa semaine.</div>
       )}
       {thread.refundAmount != null && (
         <div style={{ display: 'flex', gap: 6, alignItems: 'center', fontSize: 12.5, color: '#15803d', fontWeight: 600 }}>
@@ -158,6 +165,12 @@ export default function ClaimThread({ incidentId, canReply, canRefund, onChanged
               <label style={{ display: 'flex', gap: 6, alignItems: 'center', cursor: 'pointer' }}>
                 <input type="checkbox" checked={resolve} onChange={e => setResolve(e.target.checked)} />
                 <CheckCircle2 size={14} color="#22c55e" /> Marquer comme traitée
+              </label>
+            )}
+            {resolve && !byDriver && (
+              <label style={{ display: 'flex', gap: 6, alignItems: 'center', cursor: 'pointer' }} title="Réclamation fondée et le coursier est fautif : des points sont retirés de sa semaine">
+                <input type="checkbox" checked={driverFault} onChange={e => setDriverFault(e.target.checked)} />
+                Faute du coursier
               </label>
             )}
             {canRefund && !thread.refundAmount && cap > 0 && (
