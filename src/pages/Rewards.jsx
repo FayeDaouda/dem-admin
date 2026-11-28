@@ -30,7 +30,7 @@ const TABS = [
   { key: 'loyalty', label: 'Fidélité', icon: Crown },
 ]
 
-const ROLE_LABELS = { CLIENT: 'Client', DRIVER: 'Coursier', DEM_PRO: 'DEM Pro', CHEF_DE_FLOTTE: 'Chef de flotte' }
+const ROLE_LABELS = { CLIENT: 'Client', DRIVER: 'Coursier', DEM_PRO: 'DEM Pro', CHEF_DE_FLOTTE: 'Chef de flotte', AMBASSADOR: 'Ambassadeur' }
 const STATUS = {
   SCHEDULED: { label: 'Programmée', color: '#6366f1' },
   APPLYING: { label: 'En cours', color: '#6366f1' },

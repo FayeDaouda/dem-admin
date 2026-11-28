@@ -15,7 +15,7 @@ import InfoTip from './InfoTip'
 // lien rouvre le même résultat.
 
 const PURPOSE_LABELS = { LOGIN: 'Connexion', CASHOUT: 'Retrait', PIN_SETUP: 'Code secret (création / oubli)', PHONE_CHANGE: 'Changement de numéro' }
-const ROLE_LABELS = { CLIENT: 'Client', DRIVER: 'Coursier', DEM_PRO: 'DEM Pro', CHEF_DE_FLOTTE: 'Chef de flotte', ADMIN: 'Admin' }
+const ROLE_LABELS = { CLIENT: 'Client', DRIVER: 'Coursier', DEM_PRO: 'DEM Pro', CHEF_DE_FLOTTE: 'Chef de flotte', AMBASSADOR: 'Ambassadeur', ADMIN: 'Admin' }
 
 function formatWait(sec) {
   if (!sec) return '—'

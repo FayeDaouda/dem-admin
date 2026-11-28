@@ -84,6 +84,13 @@ export function withoutHiddenTabs(path, tabs) {
 
 // Onglets par page — rôles en plus du Super Admin.
 export const TAB_ROLES = {
+  // Programme Ambassadeurs : dossiers (décision Super, SC, AE, Commercial),
+  // suivi en lecture (+ Marketing) ; réglages : Super seul
+  ambassadeurs: {
+    dossiers: ['SERVICE_CLIENT', 'ASSISTANCE_EXECUTIVE', 'COMMERCIAL'],
+    suivi:    ['SERVICE_CLIENT', 'ASSISTANCE_EXECUTIVE', 'COMMERCIAL', 'MARKETING'],
+    reglages: [],
+  },
   // CM / CRM Client : Marketing complet, Badges clients en lecture
   marketing: {
     overview:    ['MARKETING', 'CM'],                         // indicateurs : /admin/marketing/kpis

@@ -58,6 +58,11 @@ export const PAGE_TABS = {
     t('history', 'Historique'),
     t('rules',   'Règles automatiques', ACTION_ROLES.rewardsAll),
   ],
+  '/ambassadeurs': [
+    t('dossiers', 'Dossiers à valider', TAB_ROLES.ambassadeurs.dossiers),
+    t('suivi',    'Ambassadeurs',       TAB_ROLES.ambassadeurs.suivi),
+    t('reglages', 'Réglages',           TAB_ROLES.ambassadeurs.reglages),
+  ],
   '/badges': [
     t('clients',   'Clients',   TAB_ROLES.badges.clients),
     t('coursiers', 'Coursiers', TAB_ROLES.badges.coursiers),
