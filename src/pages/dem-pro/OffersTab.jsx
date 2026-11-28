@@ -94,6 +94,9 @@ export default function OffersTab({ isSuper, onSystemChange }) {
               <div style={{ fontSize: 20, fontWeight: 800 }}>
                 {t.limits?.priceMonthly ? formatF(t.limits.priceMonthly) : <span style={{ color: 'var(--danger)', fontSize: 13 }}>prix non posé</span>}
                 {t.limits?.priceMonthly ? <span style={{ fontSize: 12, color: 'var(--text-muted)', fontWeight: 500 }}> / semaine</span> : null}
+                {t.limits?.pricePerMonth > 0 ? (
+                  <div style={{ fontSize: 12, color: 'var(--text-muted)', fontWeight: 600, textAlign: 'right' }}>ou {formatF(t.limits.pricePerMonth)} / mois</div>
+                ) : null}
               </div>
             </div>
 

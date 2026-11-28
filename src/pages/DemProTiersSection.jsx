@@ -22,13 +22,16 @@ import InfoTip from '../components/InfoTip'
 const PLAN_ORDER = ['STARTER', 'BUSINESS', 'PREMIUM']
 const PLAN_LABELS = { STARTER: 'Starter', BUSINESS: 'Business', PREMIUM: 'Premium' }
 
-// type: 'number' | 'nullableNumber' (vide = illimité) | 'boolean' | 'select'
+// type: 'number' | 'nullableNumber' (vide = illimité) | 'optionalPrice'
+// (vide = non proposé) | 'boolean' | 'select'
 // Noms et ordre = grille commerciale des offres DEM Pro (Course Groupée,
 // Catalogue produits « 1 cat · 3 prod », Vente en ligne (lien + paiement)…),
 // pour que le SUPER admin retrouve les mêmes lignes. Les deux dernières
 // lignes n'apparaissent pas dans la grille.
 const FIELDS = [
   { key: 'priceMonthly',              label: 'Prix',                             type: 'number',          unit: 'F / semaine' },
+  // Formule au mois (30 jours) à côté de la semaine ; vide = pas proposée
+  { key: 'pricePerMonth',             label: 'Prix au mois',                     type: 'optionalPrice',   unit: 'F / mois', onlyIfPresent: true },
   { key: 'maxBatchSimultaneous',      label: 'Course Groupée (simultanées)',     type: 'nullableNumber' },
   { key: 'maxScheduledSimultaneous',  label: 'Course Programmée (simultanées)',  type: 'nullableNumber' },
   { key: 'maxCatalogues',             label: 'Catalogue produits',               type: 'nullableNumber', unit: 'cat' },
@@ -62,6 +65,7 @@ function Cell({ field, value, onChange, editable, changed }) {
   if (!editable) {
     let display = value
     if (field.type === 'nullableNumber') display = value == null ? 'Illimité' : value.toLocaleString()
+    else if (field.type === 'optionalPrice') display = value == null ? 'Non proposé' : value.toLocaleString()
     else if (field.type === 'number') display = value?.toLocaleString?.() ?? value
     else if (field.type === 'boolean') display = value ? '✓' : '—'
     else if (field.type === 'select') display = field.options.find(([v]) => v === value)?.[1] ?? value
@@ -93,8 +97,8 @@ function Cell({ field, value, onChange, editable, changed }) {
     <input
       type="number" min={0}
       value={value ?? ''}
-      placeholder={field.type === 'nullableNumber' ? 'Illimité' : undefined}
-      onChange={e => onChange(e.target.value === '' ? (field.type === 'nullableNumber' ? null : 0) : Number(e.target.value))}
+      placeholder={field.type === 'nullableNumber' ? 'Illimité' : field.type === 'optionalPrice' ? 'Non proposé' : undefined}
+      onChange={e => onChange(e.target.value === '' ? (field.type === 'nullableNumber' || field.type === 'optionalPrice' ? null : 0) : Number(e.target.value))}
       style={{
         ...glassInput, width: 90, padding: '5px 6px', fontSize: 12, textAlign: 'center',
         fontWeight: changed ? 700 : 500,
