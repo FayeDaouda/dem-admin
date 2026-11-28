@@ -29,6 +29,7 @@ import Equipes from './pages/Equipes'
 import Maintenance from './pages/Maintenance'
 import BadgesPage from './pages/Badges'
 import Parrainage from './pages/Parrainage'
+import AmbassadeursPage from './pages/ambassadeurs/AmbassadeursPage'
 import Notifications from './pages/Notifications'
 import ProBase from './pages/ProBase'
 import ClientBase from './pages/ClientBase'
@@ -162,6 +163,7 @@ function AppRoutes() {
       <Route path="/badges/clients" element={<Navigate to="/badges?tab=clients" replace />} />
       <Route path="/badges/drivers" element={<Navigate to="/badges?tab=coursiers" replace />} />
       <Route path="/parrainage" element={<ProtectedRoute><Parrainage /></ProtectedRoute>} />
+      <Route path="/ambassadeurs" element={<ProtectedRoute><AmbassadeursPage /></ProtectedRoute>} />
       <Route path="/notifications" element={<ProtectedRoute><Notifications /></ProtectedRoute>} />
       <Route path="/broadcast" element={<Navigate to="/notifications" replace />} />
       <Route path="/incidents"   element={<ProtectedRoute><Incidents /></ProtectedRoute>} />

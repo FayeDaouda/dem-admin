@@ -2,6 +2,7 @@
 // les pages qu'ouvre chaque rôle.
 import {
   Gift, LayoutDashboard, Package, Users, Bike, Map, TrendingUp, ShieldCheck, AlertTriangle, ScrollText, UserCog, Briefcase, UsersRound, SlidersHorizontal, Award, GitBranch, Bell, Wallet, Table2, KeyRound, Wrench, Headset, Smartphone, Gauge, Activity, Contact, Banknote, Rocket, Settings, MapPin,
+  Megaphone,
 } from 'lucide-react'
 import { roleHas } from './droits'
 
@@ -40,6 +41,7 @@ export const NAV = [
   { group: 'argent',     to: '/tarifs',          icon: SlidersHorizontal, label: 'Tarifs et zones',    keywords: 'prix zones config promo prix unique heures de pointe', roles: ['SUPER','DEV'] },
   { group: 'croissance', to: '/marketing',       icon: TrendingUp,      label: 'Marketing',            keywords: 'dashboard acquisition rétention promotions codes promo campagnes 100 clients', roles: ['SUPER','MARKETING','ASSISTANCE_EXECUTIVE','CM'] },
   { group: 'croissance', to: '/recompenses',     icon: Gift,            label: 'Récompenses',          keywords: 'cadeaux bonus', roles: ['SUPER','MARKETING','CM'] },
+  { group: 'croissance', to: '/ambassadeurs',    icon: Megaphone,       label: 'Ambassadeurs',         keywords: 'ambassadeur campagne commerçants médailles boosters', roles: ['SUPER','SERVICE_CLIENT','ASSISTANCE_EXECUTIVE','COMMERCIAL','MARKETING'] },
   { group: 'croissance', to: '/parrainage',      icon: GitBranch,       label: 'Parrainage',           roles: ['SUPER','MARKETING','CM'] },
   { group: 'croissance', to: '/badges',          icon: Award,           label: 'Badges',               keywords: 'badge client coursier paliers', roles: ['SUPER','MARKETING','ASSISTANCE_EXECUTIVE','FLOTTE','CM'] },
   { group: 'croissance', to: '/notifications',   icon: Bell,            label: 'Notifications',        keywords: 'push broadcast envoi messages programmées historique alerte campagnes', roles: ['SUPER','MARKETING','FLOTTE','CM'] },
